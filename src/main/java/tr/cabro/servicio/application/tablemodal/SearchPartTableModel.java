@@ -1,0 +1,101 @@
+package tr.cabro.servicio.application.tablemodal;
+
+import tr.cabro.servicio.model.Part;
+
+import javax.swing.table.AbstractTableModel;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+
+public class SearchPartTableModel extends AbstractTableModel {
+
+    private final String[] columnsNames = { "SELECT", "Barkod", "Marka", "Ürün Adı", "Stok", "Alış Fiyatı", "Satış Fiyatı" };
+    private final List<Part> parts;
+    private final Boolean[] selectedRows;
+
+    public SearchPartTableModel(List<Part> parts) {
+        this.parts = parts;
+        this.selectedRows = new Boolean[parts.size()];
+        Arrays.fill(selectedRows, false);
+    }
+
+    @Override
+    public int getRowCount() {
+        return parts.size();
+    }
+
+    @Override
+    public int getColumnCount() {
+        return columnsNames.length;
+    }
+
+    @Override
+    public Object getValueAt(int rowIndex, int columnIndex) {
+        Part device_part = parts.get(rowIndex);
+
+        switch (columnIndex) {
+            case 0: return selectedRows[rowIndex];
+            case 1: return device_part.getBarcode();
+            case 2: return device_part.getBrand();
+            case 3: return device_part.getName();
+            case 4: return device_part.getStock();
+            case 5: return formatPrice(device_part.getPurchase_price());
+            case 6: return formatPrice(device_part.getSale_price());
+            default: return null;
+        }
+    }
+
+    @Override
+    public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+        if (columnIndex == 0 && aValue instanceof Boolean) {
+            selectedRows[rowIndex] = (Boolean) aValue;
+            fireTableCellUpdated(rowIndex, columnIndex);
+        }
+    }
+
+    @Override
+    public boolean isCellEditable(int rowIndex, int columnIndex) {
+        return columnIndex == 0;
+    }
+
+    @Override
+    public String getColumnName(int column) {
+        return columnsNames[column];
+    }
+
+    @Override
+    public Class<?> getColumnClass(int columnIndex) {
+        if (columnIndex == 0) {
+            return Boolean.class;
+        }
+        return String.class;
+    }
+
+    public String getPartBarcode(int rowIndex) {
+        return getPart(rowIndex).getBarcode();
+    }
+
+    public Part getPart(int rowIndex) {
+        if (rowIndex >= 0 && rowIndex < parts.size()) {
+            return parts.get(rowIndex); // Belirtilen satırı döndür
+        } else {
+            throw new IndexOutOfBoundsException("Geçersiz satır indeksi" + rowIndex);
+        }
+    }
+
+    private static String formatPrice(double price) {
+        Locale turkishLocale = new Locale("tr", "TR"); // Türkçe yerel ayar
+        return String.format(turkishLocale, "%,.2f ₺", price);
+    }
+
+    public List<Part> getSelectedPart() {
+        List<Part> selected = new java.util.ArrayList<>();
+        for (int i = 0; i < parts.size(); i++) {
+            if (selectedRows[i]) {
+                selected.add(parts.get(i));
+            }
+        }
+        return selected;
+    }
+
+}

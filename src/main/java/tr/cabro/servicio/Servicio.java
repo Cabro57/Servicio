@@ -1,0 +1,142 @@
+package tr.cabro.servicio;
+
+import com.formdev.flatlaf.FlatLaf;
+import eu.okaeri.configs.ConfigManager;
+import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
+import lombok.Getter;
+import tr.cabro.servicio.application.ui.ImporterUI;
+import tr.cabro.servicio.application.ui.MainUI;
+import tr.cabro.servicio.database.DatabaseInitializer;
+import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.database.DatabaseType;
+import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.settings.Theme;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.File;
+import java.sql.SQLException;
+import java.util.logging.*;
+
+
+public final class Servicio {
+
+    @Getter
+    private final File dataFolder;
+
+    @Getter
+    private static Servicio instance;
+
+    @Getter
+    private static Settings settings;
+
+    @Getter
+    private MainUI frame;
+
+    @Getter
+    private final Logger logger = Logger.getLogger("Servicio");
+
+    private boolean isBeingRun = false;
+    private String appVersion;
+
+    public Servicio(File dataFolder) {
+        if (!LauncherAccessContext.isAllowed()) {
+            throw new SecurityException("Bu uygulama sadece launcher tarafından çalıştırılabilir.");
+        }
+
+        instance = this;
+        this.dataFolder = new File(dataFolder, ".servicio");
+        if (!this.dataFolder.exists()) {
+            if (this.dataFolder.mkdirs()) logger.info("Dosya oluşturuldu!");
+        }
+
+        onLoad();
+    }
+
+    public void run() {
+        if (!isBeingRun) {
+            logger.info("Uygulama Çalışıtırılıyor!");
+            isBeingRun = true;
+            onRun();
+        }
+    }
+
+    public void onLoad() {
+        setupSettingsFile();
+
+        try {
+            DatabaseManager.connect(DatabaseType.SQLite);
+
+            DatabaseInitializer.initializeFromClasspath(DatabaseManager.getConnection(), "init.sql");
+
+        } catch (SQLException e) {
+            Servicio.getInstance().getLogger().severe(e.toString());
+        }
+    }
+
+    private void onRun() {
+
+        FlatLaf.registerCustomDefaultsSource("themes");
+
+        Theme.apply(Theme.selected());
+
+        EventQueue.invokeLater(() -> {
+            if (settings.isFirstRun()) {
+                JDialog dialog = new ImporterUI();
+                dialog.setModal(true);
+                dialog.setVisible(true);
+                settings.setFirstRun(false);
+            }
+
+            frame = new MainUI();
+            frame.setVisible(true);
+        });
+
+    }
+
+    private void setupSettingsFile() {
+        settings = ConfigManager.create(Settings.class, (it) -> {
+            it.withConfigurer(new JsonGsonConfigurer());
+            it.withBindFile(new File(getDataFolder(), "config.json"));
+            it.withRemoveOrphans(true);
+            it.saveDefaults();
+            it.load(true);
+        });
+    }
+
+    public String getAppVersion() {
+        if (appVersion == null) {
+            try {
+                java.util.Properties props = new java.util.Properties();
+                props.load(Servicio.class.getClassLoader().getResourceAsStream("version.properties"));
+                appVersion = props.getProperty("version", "v0.0.0");
+            } catch (Exception e) {
+                appVersion = "v0.0.0";
+            }
+        }
+        return appVersion;
+    }
+
+    public void disable() {
+
+        settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
+        settings.save();
+
+        frame.closeApplication();
+
+        try {
+            DatabaseManager.disconnect();
+        } catch (SQLException e) {
+            logger.severe(e.toString());
+        }
+    }
+
+    public static void main(String[] args) {
+
+        LauncherAccessContext.allow();
+
+        Servicio servicio = new Servicio(new File("."));
+        servicio.run();
+    }
+}
+
