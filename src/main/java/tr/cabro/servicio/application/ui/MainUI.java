@@ -4,7 +4,6 @@ import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.compenents.SMenuBar;
 import tr.cabro.servicio.application.compenents.SearchField;
-import tr.cabro.servicio.application.listeners.SearchKeyListener;
 import tr.cabro.servicio.application.listeners.WindowClosingEvent;
 import tr.cabro.servicio.model.Customer;
 
@@ -53,21 +52,19 @@ public class MainUI extends JFrame {
         setLocationRelativeTo(null);
         setVisible(true);
 
-        search_field.addKeyListener(
-                new SearchKeyListener(s -> {
-                    CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
-                    customerSearchUI.setModal(true);
-                    customerSearchUI.setVisible(true);
+        search_field.addActionListener(e -> {
+            String s = search_field.getText().trim();
+            CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
+            customerSearchUI.setModal(true);
+            customerSearchUI.setVisible(true);
 
-                    Customer cs = customerSearchUI.getSelectedCustomer();
-
-                    if (cs != null) {
-                        CustomerInfoUI dialog = new CustomerInfoUI(cs);
-                        dialog.setModal(true);
-                        dialog.setVisible(true);
-                    }
-                })
-        );
+            Customer cs = customerSearchUI.getSelectedCustomer();
+            if (cs != null) {
+                CustomerInfoUI dialog = new CustomerInfoUI(cs);
+                dialog.setModal(true);
+                dialog.setVisible(true);
+            }
+        });
 
         customer_list_button.addActionListener(e -> showUI(new CustomerListUI()));
         part_edits_button.addActionListener(e -> showUI(new PartEditUI()));

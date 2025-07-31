@@ -23,8 +23,8 @@ public class SettingsDevicePanel extends JPanel {
     private JScrollPane brand_scroll;
     private JScrollPane type_scroll;
 
-    private DefaultListModel<String> deviceTypeListModel = new DefaultListModel<>();
-    private DefaultListModel<String> brandListModel = new DefaultListModel<>();
+    private final DefaultListModel<String> deviceTypeListModel = new DefaultListModel<>();
+    private final DefaultListModel<String> brandListModel = new DefaultListModel<>();
 
     public SettingsDevicePanel() {
         init();

@@ -3,6 +3,8 @@ package tr.cabro.servicio.settings;
 import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import lombok.Setter;
+import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.model.BackupMode;
 
 import java.util.*;
 
@@ -23,14 +25,25 @@ public class Settings extends OkaeriConfig {
     private boolean full_size = false;
     private boolean FirstRun = true;
 
+    private BackupSettings backup = new BackupSettings();
+
+    @Getter @Setter
+    public static class BackupSettings extends OkaeriConfig {
+
+        private String path = Servicio.getInstance().getDataFolder().getAbsolutePath() + "\\backups";
+        private BackupMode mode = BackupMode.ON_START;
+        private int interval = 15;
+
+
+    }
+
     private List<String> device_types = new ArrayList<>();
     private Map<String, List<String>> device_brands = new HashMap<>();
     private Map<String, Map<String, Double>> device_process = new HashMap<>();
 
     private List<String> payment_type = new ArrayList<>();
 
-    @Getter
-    @Setter
+    @Getter @Setter
     public static class Template extends OkaeriConfig {
         private String selected_theme = "Light";
         private Map<String, String> themes = new HashMap<>();

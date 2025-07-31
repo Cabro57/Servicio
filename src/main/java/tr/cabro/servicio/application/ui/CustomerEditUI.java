@@ -175,13 +175,6 @@ public class CustomerEditUI extends JDialog {
         DefaultComboBoxModel<CustomerType> model = new DefaultComboBoxModel<>(CustomerType.values());
         customer_type_box.setModel(model);
         customer_type_box.setRenderer(new CustomerTypeRenderer());
-
-        for (int i = 0; i < customer_type_box.getItemCount(); i++) {
-            if (customer_type_box.getItemAt(i).getDisplayName().equals(customer.getStatus())) {
-                customer_type_box.setSelectedIndex(i);
-                break;
-            }
-        }
     }
 
 

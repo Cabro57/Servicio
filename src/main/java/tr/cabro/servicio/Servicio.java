@@ -6,9 +6,11 @@ import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
 import tr.cabro.servicio.application.ui.ImporterUI;
 import tr.cabro.servicio.application.ui.MainUI;
+import tr.cabro.servicio.database.BackupScheduler;
 import tr.cabro.servicio.database.DatabaseInitializer;
 import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.DatabaseType;
+import tr.cabro.servicio.model.BackupMode;
 import tr.cabro.servicio.settings.Settings;
 import tr.cabro.servicio.settings.Theme;
 
@@ -63,12 +65,19 @@ public final class Servicio {
 
     public void onLoad() {
         setupSettingsFile();
-
         try {
             DatabaseManager.connect(DatabaseType.SQLite);
 
-            DatabaseInitializer.initializeFromClasspath(DatabaseManager.getConnection(), "init.sql");
+            // Açılışta backup
+            BackupMode mode = settings.getBackup().getMode();
+            if (mode == BackupMode.ON_START || mode == BackupMode.ON_START_AND_EXIT) {
+                DatabaseManager.backup();
+            }
 
+            // Zamanlayıcı başlat
+            BackupScheduler.start();
+
+            DatabaseInitializer.migrate();
         } catch (SQLException e) {
             Servicio.getInstance().getLogger().severe(e.toString());
         }
@@ -118,13 +127,17 @@ public final class Servicio {
     }
 
     public void disable() {
-
         settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
         settings.save();
 
         frame.closeApplication();
 
         try {
+            BackupMode mode = settings.getBackup().getMode();
+            if (mode == BackupMode.ON_EXIT || mode == BackupMode.ON_START_AND_EXIT) {
+                DatabaseManager.backup();
+            }
+            BackupScheduler.stop();
             DatabaseManager.disconnect();
         } catch (SQLException e) {
             logger.severe(e.toString());
@@ -135,7 +148,7 @@ public final class Servicio {
 
         LauncherAccessContext.allow();
 
-        Servicio servicio = new Servicio(new File("."));
+        Servicio servicio = new Servicio(new File("/"));
         servicio.run();
     }
 }

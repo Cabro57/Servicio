@@ -8,18 +8,18 @@ import java.util.Arrays;
 @Getter
 public enum CustomerType {
     NORMAL("Normal", "icon/customer.svg"),
-    DIKKAT("Dikkat Et", "icon/customer.svg"),
-    IS_YAPMA("İş Yapma", "icon/customer.svg"),
-    ESNAF("Esnaf", "icon/customer.svg"),
-    BAYI("Bayi", "icon/customer.svg"),
-    PROBLEMLI("Problemli", "icon/customer.svg");
+    DIKKAT("Dikkat Et", "icon/attention.svg"),
+    IS_YAPMA("İş Yapma", "icon/not_work.svg"),
+    ESNAF("Esnaf", "icon/esnaf.svg"),
+    BAYI("Bayi", "icon/business.svg"),
+    PROBLEMLI("Problemli", "icon/problematic.svg");
 
     private final String displayName;
     private final FlatSVGIcon icon;
 
     CustomerType(String displayName, String iconPath) {
         this.displayName = displayName;
-        this.icon = new FlatSVGIcon(iconPath);
+        this.icon = new FlatSVGIcon(iconPath, 16, 16);
     }
 
     public static CustomerType of(String name) {
