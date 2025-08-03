@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.compenents;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
+import tr.cabro.servicio.icons.SVGIconUIColor;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,11 +23,7 @@ public class SearchField extends JTextField {
         putClientProperty(FlatClientProperties.STYLE_CLASS, "searchField");
         putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
-        FlatSVGIcon icon = new FlatSVGIcon("icon/enter.svg", 16, 16);
-        Color newcolor = UIManager.getColor( "MenuItem.foreground" );
-        icon.setColorFilter(new FlatSVGIcon.ColorFilter(color -> newcolor));
-
-        enter.setIcon(icon);
+        enter.setIcon(new SVGIconUIColor("icon/enter.svg", 0.02f, "MenuItem.foreground"));
         enter.setFocusable(false);
 
         JToolBar toolBar = new JToolBar();

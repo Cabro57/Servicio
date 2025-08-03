@@ -55,7 +55,7 @@ public class DatabaseManager {
             Files.createDirectories(new File(backupDir).toPath());
 
             // Yedek dosya adı
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd-HHmmss"));
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss"));
             String backupFile = backupDir + File.separator + timestamp + ".db";
 
             // VACUUM INTO ile canlı yedek al

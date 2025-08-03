@@ -30,7 +30,8 @@ public class SMenuBar extends JMenuBar {
 
         JMenuItem service_records = new JMenuItem("Servis Kayıtları");
         service_records.addActionListener(e -> {
-
+            ServiceListUI dialog = new ServiceListUI();
+            dialog.setVisible(true);
         });
         service.add(service_records);
 
@@ -72,13 +73,15 @@ public class SMenuBar extends JMenuBar {
         // Customer
         JMenuItem add_customer = new JMenuItem("Müşteri Ekle");
         add_customer.addActionListener(e -> {
-
+            CustomerEditUI dialog = new CustomerEditUI(null);
+            dialog.setVisible(true);
         });
         customer.add(add_customer);
 
         JMenuItem customer_list = new JMenuItem("Müşteri Listesi");
         customer_list.addActionListener(e -> {
-
+            CustomerListUI dialog = new CustomerListUI();
+            dialog.setVisible(true);
         });
         customer.add(customer_list);
 

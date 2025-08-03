@@ -6,19 +6,17 @@ import lombok.Getter;
 import java.util.Arrays;
 
 @Getter
-public enum CustomerType {
-    NORMAL("Normal", "icon/customer.svg"),
-    DIKKAT("Dikkat Et", "icon/attention.svg"),
-    IS_YAPMA("İş Yapma", "icon/not_work.svg"),
-    ESNAF("Esnaf", "icon/esnaf.svg"),
-    BAYI("Bayi", "icon/business.svg"),
-    PROBLEMLI("Problemli", "icon/problematic.svg");
+public enum PaymentType {
+    CASH("Nakit", "icon/cash.svg"),
+    CARD("Banka/Kredi Kartı", "icon/card.svg"),
+    TRANSFER("Banka Havale/EFT", "icon/transfer.svg"),
+    ON_ACCOUNT("Veresiye", "icon/on_account.svg");
 
     private final String displayName;
     private final String iconPath;
     private final FlatSVGIcon icon;
 
-    CustomerType(String displayName, String iconPath) {
+    PaymentType(String displayName, String iconPath) {
         this.displayName = displayName;
         this.iconPath = iconPath;
         this.icon = new FlatSVGIcon(iconPath, 16, 16);
@@ -28,12 +26,12 @@ public enum CustomerType {
         return new FlatSVGIcon(iconPath, width, height);
     }
 
-    public static CustomerType of(String name) {
-        if (name == null) return NORMAL;
+    public static PaymentType of(String name) {
+        if (name == null) return CASH;
         return Arrays.stream(values())
-                .filter(ct -> ct.displayName.equalsIgnoreCase(name) || ct.name().equalsIgnoreCase(name))
+                .filter(pt -> pt.displayName.equalsIgnoreCase(name) || pt.name().equalsIgnoreCase(name))
                 .findFirst()
-                .orElse(NORMAL);
+                .orElse(CASH);
     }
 
     @Override

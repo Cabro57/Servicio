@@ -28,7 +28,7 @@ public class PartEditUI extends JDialog {
     private JPanel barcode_panel;
     private JLabel barcode_label;
     private JTextField barcode_field;
-    private JLabel situation_label;
+    private JTextArea situation_label;
     private JLabel barcode_info_label;
     private JLabel barcode_info;
 
@@ -297,11 +297,11 @@ public class PartEditUI extends JDialog {
     }
 
     private void handleBarcodeInput(String barcode) {
-        barcode = barcode.trim();
+        this.barcode = barcode.trim();
 
         if (barcode.isEmpty()) {
             showValidationError("Lütfen barkod girin.");
-            barcode = null;
+            this.barcode = null;
             return;
         }
 

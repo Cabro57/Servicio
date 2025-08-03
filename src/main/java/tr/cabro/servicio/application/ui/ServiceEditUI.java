@@ -59,21 +59,18 @@ public class ServiceEditUI extends JDialog {
         int screenWidth = screen_size.width;
         int screenHeight = screen_size.height;
 
-        if (screenWidth > 1280 && screenHeight > 720) {
-            // 720p ve altı → yüzde boyut
-            int width = (int) (screenWidth * 0.80);
-            int height = (int) (screenHeight * 0.75);
-            setSize(width, height);
+        int width;
+        int height;
+        if (screenWidth < 1920 && screenHeight < 1080) {
+            width = (int) (screenWidth * 0.9);
+            height = (int) (screenHeight * 0.9);
         } else {
-            // 1080p ve üstü → tam ekran
-            setSize(screenWidth, screenHeight);
+            width = (int) (screenWidth * 0.80);
+            height = (int) (screenHeight * 0.75);
         }
-        setLocationRelativeTo(null);
 
-        if (service != null) {
-            fillForm();
-            save_button.setEnabled(false);
-        }
+        setSize(width, height);
+        setLocationRelativeTo(null);
 
         save_button.addActionListener(e -> saveService());
         update_button.addActionListener(e -> updateService());
@@ -104,6 +101,11 @@ public class ServiceEditUI extends JDialog {
         part_notes_info.addPartsChangeListener(totalMaterialCost -> {
             price_info.setMaterialCost(totalMaterialCost);
         });
+
+        if (service != null) {
+            fillForm();
+            save_button.setEnabled(false);
+        }
     }
 
     private void fillForm() {

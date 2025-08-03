@@ -18,6 +18,18 @@ public class MainUI extends JFrame {
     private JButton record_service_button;
 
     public MainUI() {
+
+        String version = Servicio.getInstance().getAppVersion();
+        setTitle("Servicio - " + version);
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+
+        Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
+        int width = (int) (screen_size.width * 0.8);
+        int height = (int) (screen_size.height * 0.8);
+        setSize(width, height);
+        setMinimumSize(new Dimension(width, height));
+        setLocationRelativeTo(null);
+
         init();
 
         setContentPane(main_panel);
@@ -25,32 +37,6 @@ public class MainUI extends JFrame {
 
     private void init() {
         setJMenuBar(new SMenuBar());
-
-        Setup();
-
-        String version = Servicio.getInstance().getAppVersion();
-        setTitle("Servicio - " + version);
-        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-
-        if (Servicio.getSettings().isFull_size()) {
-            setExtendedState(JFrame.MAXIMIZED_BOTH);
-        }
-
-        addWindowListener(new WindowClosingEvent());
-
-    }
-
-    public void Setup() {
-
-        dispose();
-        setUndecorated(false);
-        Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
-        int width = (int) (screen_size.width * 0.8);
-        int height = (int) (screen_size.height * 0.8);
-        setSize(width, height);
-        setMinimumSize(new Dimension(width, height));
-        setLocationRelativeTo(null);
-        setVisible(true);
 
         search_field.addActionListener(e -> {
             String s = search_field.getText().trim();
@@ -73,6 +59,13 @@ public class MainUI extends JFrame {
         part_edits_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
         customer_list_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
         record_service_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
+
+        if (Servicio.getSettings().isFull_size()) {
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+        }
+
+        addWindowListener(new WindowClosingEvent());
+
     }
 
     private void showUI(JDialog dialog) {

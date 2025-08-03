@@ -172,6 +172,20 @@ public class PartService {
         }
     }
 
+    public double getTotalPartsCostForService(int serviceId) {
+        try {
+            List<AddedPart> addedParts = servicePartDao.getByServiceId(serviceId);
+            double total = 0;
+            for (AddedPart ap : addedParts) {
+                total += ap.getTotal(); // fiyat * adet
+            }
+            return total;
+        } catch (Exception e) {
+            Servicio.getInstance().getLogger().severe("SERVICE ERROR [GET TOTAL PARTS COST] " + e);
+            return 0.0;
+        }
+    }
+
     public List<AddedPart> getPartsByServiceId(int serviceId) {
         try {
             return servicePartDao.getByServiceId(serviceId);

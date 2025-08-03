@@ -1,6 +1,7 @@
 package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import tr.cabro.servicio.model.ServiceStatus;
 
 import javax.swing.*;
 
@@ -64,6 +65,11 @@ public class StatusInfoPanel extends JPanel {
         }
         // Eğer eşleşen bulunmazsa seçimi temizle
         clearSelection();
+    }
+
+    public ServiceStatus getSelectedStatus() {
+        JRadioButton selected = getSelectedRadioButton();
+        return (selected != null) ? (ServiceStatus) selected.getClientProperty("ServiceStatus") : null;
     }
 
     public void clearSelection() {

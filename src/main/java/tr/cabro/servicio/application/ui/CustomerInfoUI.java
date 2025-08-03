@@ -4,6 +4,8 @@ import tr.cabro.servicio.database.dao.ServiceDao;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.application.tablemodal.CustomerServiceRecordTableModel;
+import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -60,7 +62,8 @@ public class CustomerInfoUI extends  JDialog {
             address_info.setText(customer.getAddress());
 
             // Hizmet kayıtları çek ve tabloya bas
-            List<Service> services = new ServiceDao().getByCustomerId(customer.getID());
+            RepairService service = ServiceManager.getRepairService();
+            List<Service> services = service.getServicesByCustomerId(customer.getID());
             CustomerServiceRecordTableModel model = new CustomerServiceRecordTableModel(services);
             table.setModel(model);
 

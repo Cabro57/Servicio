@@ -30,8 +30,6 @@ public class CustomerEditUI extends JDialog {
     private JComboBox<CustomerType> customer_type_box;
     private JLabel notes_label;
     private JTextField notes_field;
-    private JButton picture_add_button;
-    private JLabel selected_picture_label;
     private JLabel id_no_label;
     private JTextField id_no_field;
 

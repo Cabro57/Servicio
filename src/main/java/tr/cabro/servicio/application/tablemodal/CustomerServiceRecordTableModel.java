@@ -1,6 +1,8 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.service.PartService;
+import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.table.AbstractTableModel;
 import java.time.LocalDate;
@@ -12,6 +14,8 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
 
     private final String[] columnsNames = { "#", "Ürün", "Ücret", "Durum", "Kayıt Tarihi" };
     private final List<Service> services;
+
+    private final PartService partService = ServiceManager.getPartService();
 
     public CustomerServiceRecordTableModel(List<Service> services) {
         this.services = services;
@@ -34,7 +38,7 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
         switch (columnIndex) {
             case 0: return service.getId();
             case 1: return service.getDevice_brand() + " " + service.getDevice_model();
-            case 2: return formatPrice(service.getLabor_cost());
+            case 2: return formatPrice(calculateRemainingAmount(service));
             case 3: return service.getService_status();
             case 4: return formatDate(service.getCreated_at());
             default: return null;
@@ -65,6 +69,13 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
         } else {
             throw new IndexOutOfBoundsException("Geçersiz satır indeksi: " + rowIndex);
         }
+    }
+
+    private double calculateRemainingAmount(Service service) {
+        double labor = service.getLabor_cost();
+        double parts = partService.getTotalPartsCostForService(service.getId());
+        double paid = service.getPaid();
+        return (labor + parts) - paid;
     }
 
     private static String formatPrice(double price) {

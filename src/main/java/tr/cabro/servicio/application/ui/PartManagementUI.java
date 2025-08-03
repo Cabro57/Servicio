@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.ui;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
+import tr.cabro.servicio.application.renderer.AlignedRenderer;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.application.tablemodal.PartTableModel;
@@ -153,16 +154,34 @@ public class PartManagementUI extends JDialog {
     private void refreshProductTable() {
         PartTableModel model = new PartTableModel(service.getAllParts());
         product_table.setModel(model);
+
+        Integer[] columnAlignments = {
+                SwingConstants.CENTER,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.CENTER,
+                SwingConstants.TRAILING,
+                SwingConstants.TRAILING,
+                SwingConstants.LEADING
+        };
+
+        product_table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(product_table, columnAlignments));
         product_table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(product_table, 0));
-        product_table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(product_table));
+        product_table.getColumnModel().getColumn(6).setCellRenderer(new AlignedRenderer(product_table, 6, SwingConstants.CENTER));
 
         product_table.getColumnModel().getColumn(0).setMaxWidth(50);   // SELECT (checkbox)
         product_table.getColumnModel().getColumn(1).setMinWidth(150);   // Barkod
         product_table.getColumnModel().getColumn(2).setPreferredWidth(100);  // Marka
         product_table.getColumnModel().getColumn(3).setPreferredWidth(120);  // Ürün Adı
-        product_table.getColumnModel().getColumn(4).setPreferredWidth(70);  // Stok
-        product_table.getColumnModel().getColumn(5).setPreferredWidth(70);  // Alış
-        product_table.getColumnModel().getColumn(6).setPreferredWidth(70);  // Satış
+        product_table.getColumnModel().getColumn(4).setPreferredWidth(70);  // Cihaz Türü
+        product_table.getColumnModel().getColumn(5).setPreferredWidth(120);  // Uyumlu Modeller
+        product_table.getColumnModel().getColumn(6).setPreferredWidth(50);  // Stok
+        product_table.getColumnModel().getColumn(7).setPreferredWidth(70);  // Alış Fiyatı
+        product_table.getColumnModel().getColumn(8).setPreferredWidth(70);  // Satış Fiyatı
+        product_table.getColumnModel().getColumn(9).setPreferredWidth(70);  // Alış Tarihi
 
         TableRowSorter<PartTableModel> sorter = new TableRowSorter<>(model);
         product_table.setRowSorter(sorter);

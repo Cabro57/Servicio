@@ -98,8 +98,18 @@ public class PartSearchUI extends JDialog {
         sorter = new TableRowSorter<>(partTableModel);
         product_table.setRowSorter(sorter);
 
+        Integer[] columnAlignments = {
+                SwingConstants.CENTER,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING
+        };
+
+        product_table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(product_table, columnAlignments));
         product_table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(product_table, 0));
-        product_table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(product_table));
         product_table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(product_table));
 
         product_table.getColumnModel().getColumn(0).setMaxWidth(50);

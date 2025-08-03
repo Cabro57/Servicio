@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.compenents;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.application.ui.SettingsUI;
+import tr.cabro.servicio.icons.SVGIconUIColor;
 
 import javax.swing.*;
 import java.awt.*;
@@ -15,10 +16,7 @@ public class SettingsButton extends JButton {
     }
 
     private void init() {
-        FlatSVGIcon icon = new FlatSVGIcon("icon/settings.svg", 18, 18);
-        Color newcolor = UIManager.getColor( "MenuItem.foreground" );
-        icon.setColorFilter(new FlatSVGIcon.ColorFilter(color -> newcolor));
-        setIcon(icon);
+        setIcon(new SVGIconUIColor("icon/settings.svg", 0.025f, "MenuItem.foreground"));
         setBorderPainted(false);
         setFocusPainted(false);
         setOpaque(true);
@@ -29,7 +27,6 @@ public class SettingsButton extends JButton {
 
         addActionListener(e -> {
             SettingsUI settingsUI = new SettingsUI();
-            settingsUI.setModal(true);
             settingsUI.setVisible(true);
         });
     }

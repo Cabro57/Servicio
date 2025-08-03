@@ -1,37 +1,30 @@
 package tr.cabro.servicio.settings;
 
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
 import tr.cabro.servicio.Servicio;
 
 import javax.swing.*;
-import java.awt.*;
 
 public class Theme {
 
+    private static final Settings settings = Servicio.getSettings();
+
     public static void apply(String theme) {
-        try {
-            String themeClass = Servicio.getSettings().getTemplate().getThemes().get(theme);
-
-            // Sistem teması kontrolü
-            if (themeClass != null && themeClass.equals("UIManager.getSystemLookAndFeelClassName")) {
-                themeClass = UIManager.getSystemLookAndFeelClassName();
-            } else if (themeClass == null) {
-                System.out.println("Geçersiz tema: " + theme);
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-                return;
-            }
-
-            UIManager.setLookAndFeel(themeClass);
-
-            // Swing bileşenlerini güncelle
-            for (Window window : Window.getWindows()) {
-                SwingUtilities.updateComponentTreeUI(window);
-                window.repaint();
-            }
-
-            System.out.println("[Themes] INFO | Tema başarıyla uygulandı: " + theme);
-        } catch (Exception e) {
-            System.err.println("[Themes] WARN | Tema uygulanamadı: " + theme + "\n" + e);
+        if (theme.equals(UIManager.getLookAndFeel().getClass().getName())) {
+            return;
         }
+        FlatAnimatedLafChange.showSnapshot();
+        try {
+            UIManager.setLookAndFeel(settings.getTemplate().getThemes().get(theme));
+        } catch (Exception ex) {
+            Servicio.getInstance().getLogger().severe(ex.toString());
+        }
+
+        FlatLaf.updateUI();
+        FlatAnimatedLafChange.hideSnapshotWithAnimation();
+
+        Servicio.getInstance().getLogger().severe("[Themes] INFO | Tema başarıyla uygulandı: " + theme);
     }
 
     public static String selected() {

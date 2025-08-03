@@ -8,10 +8,11 @@ import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.SupplierService;
+import tr.cabro.servicio.util.barcode.BarcodeConfig;
+import tr.cabro.servicio.util.barcode.BarcodeGenerator;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Consumer;
 
 public class ImportManager {
@@ -107,8 +108,14 @@ public class ImportManager {
 
             // 3. Part
             logLine("[INFO] Parça verileri içe aktarılıyor...");
+            BarcodeConfig barcodeConfig = new BarcodeConfig();
+            barcodeConfig.setPrefix("SILA");
+            barcodeConfig.setSeparator("-");
+
+            BarcodeGenerator barcodeGenerator = new BarcodeGenerator(barcodeConfig);
+
             CsvImporter<Part> partImporter = new CsvImporter<>();
-            CsvImportResult<Part> partResult = partImporter.importFromCsv(folderPath + "/device_parts.csv", new PartCsvMapper());
+            CsvImportResult<Part> partResult = partImporter.importFromCsv(folderPath + "/device_parts.csv", new PartCsvMapper(barcodeGenerator));
             int partAdded = 0, partStockUpdated = 0, partBarcodeChanged = 0;
             for (Part p : partResult.getData()) {
                 Integer newSupplierId = supplierMap.get(p.getSupplier_name());
@@ -132,7 +139,7 @@ public class ImportManager {
                         continue;
 
                     } else {
-                        String newBarcode = UUID.randomUUID().toString();
+                        String newBarcode = barcodeGenerator.generate();
                         logLine("[Parça] Çakışan barkod için yeni barkod atandı: " + p.getBarcode() + " -> " + newBarcode);
                         p.setBarcode(newBarcode);
                         partBarcodeChanged++;

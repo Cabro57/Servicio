@@ -134,15 +134,24 @@ public class SupplierListUI extends JDialog {
         sorter = new TableRowSorter<>(tableModel);
         table.setRowSorter(sorter);
 
+        Integer[] columnAlignments = {
+                SwingConstants.CENTER,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING
+        };
+
+        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
         table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table));
         table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(table));
 
         table.getColumnModel().getColumn(0).setMaxWidth(50);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);
         table.getColumnModel().getColumn(2).setPreferredWidth(150);
         table.getColumnModel().getColumn(3).setPreferredWidth(120);
-        table.getColumnModel().getColumn(4).setPreferredWidth(120);
-        table.getColumnModel().getColumn(5).setPreferredWidth(100);
+        table.getColumnModel().getColumn(4).setPreferredWidth(180);
+        table.getColumnModel().getColumn(5).setPreferredWidth(80);
     }
 }

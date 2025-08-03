@@ -6,19 +6,19 @@ import lombok.Getter;
 import java.util.Arrays;
 
 @Getter
-public enum CustomerType {
-    NORMAL("Normal", "icon/customer.svg"),
-    DIKKAT("Dikkat Et", "icon/attention.svg"),
-    IS_YAPMA("İş Yapma", "icon/not_work.svg"),
-    ESNAF("Esnaf", "icon/esnaf.svg"),
-    BAYI("Bayi", "icon/business.svg"),
-    PROBLEMLI("Problemli", "icon/problematic.svg");
+public enum ServiceStatus {
+    UNDER_REPAIR("Tamirde", "icon/under_repair.svg"),
+    READY("Hazır", "icon/ready.svg"),
+    ANOTHER_SERVICE("Başka Serviste", "icon/another_service.svg"),
+    DELIVERED("Teslim edildi", "icon/delivered.svg"),
+    RETURN("İade", "icon/return.svg"),
+    WAITING_FOR_PART("Parça Bekliyor", "icon/waiting_for_part.svg");
 
     private final String displayName;
     private final String iconPath;
     private final FlatSVGIcon icon;
 
-    CustomerType(String displayName, String iconPath) {
+    ServiceStatus(String displayName, String iconPath) {
         this.displayName = displayName;
         this.iconPath = iconPath;
         this.icon = new FlatSVGIcon(iconPath, 16, 16);
@@ -28,12 +28,12 @@ public enum CustomerType {
         return new FlatSVGIcon(iconPath, width, height);
     }
 
-    public static CustomerType of(String name) {
-        if (name == null) return NORMAL;
+    public static ServiceStatus of(String name) {
+        if (name == null) return UNDER_REPAIR;
         return Arrays.stream(values())
                 .filter(ct -> ct.displayName.equalsIgnoreCase(name) || ct.name().equalsIgnoreCase(name))
                 .findFirst()
-                .orElse(NORMAL);
+                .orElse(UNDER_REPAIR);
     }
 
     @Override

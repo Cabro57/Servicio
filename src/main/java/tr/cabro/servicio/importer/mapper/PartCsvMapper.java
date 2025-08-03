@@ -1,13 +1,19 @@
 package tr.cabro.servicio.importer.mapper;
 
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.util.barcode.BarcodeGenerator;
 
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 
 public class PartCsvMapper extends BaseCsvMapper<Part> {
 
     static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+    private final BarcodeGenerator barcodeGenerator;
+
+    public PartCsvMapper(BarcodeGenerator barcodeGenerator) {
+        this.barcodeGenerator = barcodeGenerator;
+    }
 
     @Override
     protected int expectedFieldCount() {
@@ -23,9 +29,9 @@ public class PartCsvMapper extends BaseCsvMapper<Part> {
 
         String barcode = clean(fields[2]);
         if (barcode == null || barcode.isEmpty()) {
-            // Barkod boşsa UUID ile benzersiz barkod oluştur
-            barcode = UUID.randomUUID().toString();
+            barcode = barcodeGenerator.generate();
         }
+
         p.setBarcode(barcode);
 
         p.setSupplier_name(clean(fields[4]));

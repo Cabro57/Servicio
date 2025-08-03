@@ -95,9 +95,14 @@ public class CustomerSearchUI extends JDialog {
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
 
-        //table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table));
-        //table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(table));
+        Integer[] columnAlignments = {
+                SwingConstants.CENTER,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+        };
+        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
         table.getColumnModel().getColumn(0).setCellRenderer(new CustomerTypeTableRenderer());
 
         table.getColumnModel().getColumn(0).setPreferredWidth(100);

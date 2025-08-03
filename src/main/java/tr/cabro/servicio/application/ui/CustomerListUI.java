@@ -3,7 +3,9 @@ package tr.cabro.servicio.application.ui;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.renderer.AlignedRenderer;
 import tr.cabro.servicio.application.renderer.CustomerTypeTableRenderer;
+import tr.cabro.servicio.application.renderer.ServiceStatusTableRenderer;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.application.tablemodal.CustomerTableModel;
@@ -155,18 +157,32 @@ public class CustomerListUI extends JDialog {
         sorter = new TableRowSorter<>(model);
         customer_table.setRowSorter(sorter);
 
+        Integer[] columnAlignments = {
+                SwingConstants.CENTER,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING
+        };
+
+        customer_table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(customer_table, columnAlignments));
         customer_table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(customer_table, 0));
-        customer_table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(customer_table));
+        customer_table.getColumnModel().getColumn(1).setCellRenderer(new AlignedRenderer(customer_table, 1, SwingConstants.CENTER));
         customer_table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(customer_table));
-        customer_table.getColumnModel().getColumn(5).setCellRenderer(new CustomerTypeTableRenderer());
+        customer_table.getColumnModel().getColumn(7).setCellRenderer(new CustomerTypeTableRenderer());
 
         customer_table.getColumnModel().getColumn(0).setMaxWidth(50);
         customer_table.getColumnModel().getColumn(1).setMaxWidth(40);
         customer_table.getColumnModel().getColumn(2).setPreferredWidth(150);
         customer_table.getColumnModel().getColumn(3).setPreferredWidth(120);
-        customer_table.getColumnModel().getColumn(4).setPreferredWidth(180);
-        customer_table.getColumnModel().getColumn(5).setPreferredWidth(100);
-        customer_table.getColumnModel().getColumn(6).setPreferredWidth(150);
+        customer_table.getColumnModel().getColumn(4).setPreferredWidth(100);
+        customer_table.getColumnModel().getColumn(5).setPreferredWidth(180);
+        customer_table.getColumnModel().getColumn(6).setPreferredWidth(100);
+        customer_table.getColumnModel().getColumn(7).setPreferredWidth(80);
+        customer_table.getColumnModel().getColumn(8).setPreferredWidth(80);
 
         applySearchFieldListener();
     }

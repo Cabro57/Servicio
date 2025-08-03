@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.model.BackupMode;
+import tr.cabro.servicio.util.barcode.BarcodeConfig;
 
 import java.util.*;
 
@@ -12,14 +13,6 @@ import java.util.*;
 @Setter
 public class Settings extends OkaeriConfig {
 
-    public Settings() {
-        payment_type.add("Nakit");
-        payment_type.add("Banka/Kredi Kartı");
-        payment_type.add("Banka Havale/EFT");
-        payment_type.add("Veresiye");
-    }
-
-    private String version = "2.0.0 BETA-3";
     private Template template = new Template();
     private String path = "";
     private boolean full_size = false;
@@ -34,14 +27,13 @@ public class Settings extends OkaeriConfig {
         private BackupMode mode = BackupMode.ON_START;
         private int interval = 15;
 
-
     }
+
+    private BarcodeConfig barcode = new BarcodeConfig();
 
     private List<String> device_types = new ArrayList<>();
     private Map<String, List<String>> device_brands = new HashMap<>();
     private Map<String, Map<String, Double>> device_process = new HashMap<>();
-
-    private List<String> payment_type = new ArrayList<>();
 
     @Getter @Setter
     public static class Template extends OkaeriConfig {

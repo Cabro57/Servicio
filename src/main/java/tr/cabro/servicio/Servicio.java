@@ -2,6 +2,7 @@ package tr.cabro.servicio;
 
 import com.formdev.flatlaf.FlatLaf;
 import eu.okaeri.configs.ConfigManager;
+import eu.okaeri.configs.exception.OkaeriException;
 import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
 import tr.cabro.servicio.application.ui.ImporterUI;
@@ -64,26 +65,26 @@ public final class Servicio {
     }
 
     public void onLoad() {
-        setupSettingsFile();
         try {
+            setupSettingsFile();
             DatabaseManager.connect(DatabaseType.SQLite);
 
-            // Açılışta backup
-            BackupMode mode = settings.getBackup().getMode();
-            if (mode == BackupMode.ON_START || mode == BackupMode.ON_START_AND_EXIT) {
-                DatabaseManager.backup();
-            }
-
-            // Zamanlayıcı başlat
-            BackupScheduler.start();
-
             DatabaseInitializer.migrate();
-        } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe(e.toString());
+        } catch (SQLException | OkaeriException e) {
+            logger.severe(e.toString());
         }
     }
 
     private void onRun() {
+
+        // Açılışta backup
+        BackupMode mode = settings.getBackup().getMode();
+        if (mode == BackupMode.ON_START || mode == BackupMode.ON_START_AND_EXIT) {
+            DatabaseManager.backup();
+        }
+
+        // Zamanlayıcı başlat
+        BackupScheduler.start();
 
         FlatLaf.registerCustomDefaultsSource("themes");
 
@@ -148,7 +149,7 @@ public final class Servicio {
 
         LauncherAccessContext.allow();
 
-        Servicio servicio = new Servicio(new File("/"));
+        Servicio servicio = new Servicio(new File("."));
         servicio.run();
     }
 }

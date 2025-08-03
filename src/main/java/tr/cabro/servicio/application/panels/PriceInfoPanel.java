@@ -1,8 +1,9 @@
 package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.compenents.CurrencyField;
+import tr.cabro.servicio.application.renderer.PaymentTypeRenderer;
+import tr.cabro.servicio.model.PaymentType;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -24,7 +25,7 @@ public class PriceInfoPanel extends JPanel {
     private JLabel remainder_label;
     private JFormattedTextField remainder_field;
     private JLabel payment_type_label;
-    private JComboBox<String> payment_type_combo;
+    private JComboBox<PaymentType> payment_type_combo;
 
     public PriceInfoPanel() {
         init();
@@ -35,9 +36,9 @@ public class PriceInfoPanel extends JPanel {
         this.putClientProperty(FlatClientProperties.STYLE_CLASS, "editServicePanel");
         main_panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "editServicePanel");
 
-        DefaultComboBoxModel<String> defaultComboBoxModel = new DefaultComboBoxModel<>();
-        Servicio.getSettings().getPayment_type().forEach(defaultComboBoxModel::addElement);
+        DefaultComboBoxModel<PaymentType> defaultComboBoxModel = new DefaultComboBoxModel<>(PaymentType.values());
         payment_type_combo.setModel(defaultComboBoxModel);
+        payment_type_combo.setRenderer(new PaymentTypeRenderer());
 
         addListeners();
     }
@@ -110,7 +111,7 @@ public class PriceInfoPanel extends JPanel {
 
     public void setPaymentType(String type) {
         if (type != null) {
-            payment_type_combo.setSelectedItem(type);
+            payment_type_combo.setSelectedItem(PaymentType.of(type));
         } else {
             payment_type_combo.setSelectedItem(null);
         }
@@ -129,7 +130,7 @@ public class PriceInfoPanel extends JPanel {
     }
 
     public String getPaymentType() {
-        Object selected = payment_type_combo.getSelectedItem();
+        PaymentType selected = (PaymentType) payment_type_combo.getSelectedItem();
         return selected != null ? selected.toString() : "";
     }
 

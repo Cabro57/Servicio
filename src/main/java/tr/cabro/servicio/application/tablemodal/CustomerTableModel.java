@@ -12,7 +12,7 @@ import java.util.Locale;
 
 public class CustomerTableModel extends AbstractTableModel {
 
-    private final String[] columnsNames = { "SELECT", "#", "Ad Soyad", "Firma İsmi", "Telefon 1", "Tip", "Kayıt Tarihi" };
+    private final String[] columnsNames = { "SELECT", "#", "Ad Soyad", "Firma İsmi", "Kimlik No.", "Adres", "Telefon 1", "Tip", "Kayıt Tarihi" };
     private final List<Customer> customers;
     private final Boolean[] selectedRows;
 
@@ -41,9 +41,11 @@ public class CustomerTableModel extends AbstractTableModel {
             case 1: return customer.getID();
             case 2: return customer.getName() + " " + customer.getSurname();
             case 3: return customer.getBusiness_name();
-            case 4: return formatPhoneNumber(customer.getPhone_number_1());
-            case 5: return CustomerType.of(customer.getStatus());
-            case 6: return formatDate(customer.getCreated_at());
+            case 4: return customer.getId_no();
+            case 5: return customer.getAddress();
+            case 6: return formatPhoneNumber(customer.getPhone_number_1());
+            case 7: return CustomerType.of(customer.getStatus());
+            case 8: return formatDate(customer.getCreated_at());
             default: return null;
         }
     }
