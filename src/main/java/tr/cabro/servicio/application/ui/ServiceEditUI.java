@@ -62,8 +62,8 @@ public class ServiceEditUI extends JDialog {
         int width;
         int height;
         if (screenWidth < 1920 && screenHeight < 1080) {
-            width = (int) (screenWidth * 0.9);
-            height = (int) (screenHeight * 0.9);
+            width = (int) (screenWidth * 0.99);
+            height = (int) (screenHeight * 0.95);
         } else {
             width = (int) (screenWidth * 0.80);
             height = (int) (screenHeight * 0.75);
