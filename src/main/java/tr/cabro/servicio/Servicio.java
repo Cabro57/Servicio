@@ -91,15 +91,10 @@ public final class Servicio {
         Theme.apply(Theme.selected());
 
         EventQueue.invokeLater(() -> {
-            if (settings.isFirstRun()) {
-                JDialog dialog = new ImporterUI();
-                dialog.setModal(true);
-                dialog.setVisible(true);
-                settings.setFirstRun(false);
-            }
-
             frame = new MainUI();
             frame.setVisible(true);
+
+
         });
 
     }
