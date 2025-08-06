@@ -74,12 +74,27 @@ public class MainUI extends JFrame {
     }
 
     public void closeApplication() {
+
+        if (Servicio.getSettings().isConfirmExitDialog()) {
+            System.exit(0);
+            return;
+        }
+
+        JPanel panel = new JPanel(new BorderLayout(15, 5));
+
+        JLabel label = new JLabel("Çıkmak istediğinizden emin misiniz?");
+        panel.add(label, BorderLayout.NORTH);
+
+        JCheckBox dontAskAgain = new JCheckBox("Bir daha sorma");
+        panel.add(dontAskAgain, BorderLayout.CENTER);
+
+
         Object[] options = {"Evet", "Hayır"};
 
         int choice = JOptionPane.showOptionDialog(
-                null,
-                "Uygulamayı kapatmak istiyor musunuz?",
-                "Onay",
+                this,
+                panel,
+                "",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE,
                 null, // Varsayılan simge (null)
@@ -88,6 +103,11 @@ public class MainUI extends JFrame {
         );
 
         if (choice == JOptionPane.YES_OPTION) {
+            if (dontAskAgain.isSelected()) {
+                Servicio.getSettings().setConfirmExitDialog(true);
+                Servicio.getSettings().save();
+            }
+
             System.exit(1);
         }
     }
