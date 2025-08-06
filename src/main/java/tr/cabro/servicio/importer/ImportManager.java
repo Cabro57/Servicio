@@ -135,6 +135,7 @@ public class ImportManager {
                         existing.setStock(existing.getStock() + p.getStock());
                         partService.savePart(existing, true);
                         logLine("[Parça] Mevcut barkod bulundu, stok arttırıldı: " + p.getBarcode() + " -> Yeni stok: " + existing.getStock());
+                        partIdMap.put(p.getOldId(), existing.getBarcode());
                         partStockUpdated++;
                         continue;
 
