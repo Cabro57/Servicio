@@ -93,8 +93,6 @@ public final class Servicio {
         EventQueue.invokeLater(() -> {
             frame = new MainUI();
             frame.setVisible(true);
-
-
         });
 
     }

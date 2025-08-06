@@ -11,9 +11,13 @@ public class WindowClosingEvent implements WindowListener {
     public void windowOpened(WindowEvent e) {
         if (Servicio.getSettings().isFirstRun()) {
             ImporterUI dialog = new ImporterUI();
-            dialog.setModal(true);
-            dialog.setVisible(true);
+
+            if (dialog.hasDetectedFolder()) {
+                dialog.setVisible(true);
+            }
+
             Servicio.getSettings().setFirstRun(false);
+            Servicio.getSettings().save();
         }
     }
 

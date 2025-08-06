@@ -22,7 +22,7 @@ public class ImporterUI extends JDialog {
         INFO, SUCCESS, WARNING, ERROR
     }
 
-    private JTextField path_field;
+    private JLabel path_field;
     private JTextPane logger_area;
     private JButton import_button;
     private JScrollPane text_scroll;
@@ -34,7 +34,7 @@ public class ImporterUI extends JDialog {
     private File savedLogFile;
 
     public ImporterUI() {
-        super((Frame) null, "Servicio - Veri Tabanı Aktarma", false);
+        super((Frame) null, "Servicio - Veri Tabanı Aktarma", true);
         setContentPane(main_panel);
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
         int width = (int) (screen_size.width * 0.45);
@@ -54,7 +54,7 @@ public class ImporterUI extends JDialog {
         path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooserButton);
 
         File folder = detectOldAppData();
-        path_field.setText(folder != null ? folder.getAbsolutePath() : "");
+        path_field.setText(folder != null ? "Dosya Yolu: " + folder.getAbsolutePath() : "Dosya Yolu: ");
 
         import_button.addActionListener(e -> {
             if (savedLogFile != null) {
@@ -69,7 +69,7 @@ public class ImporterUI extends JDialog {
     }
 
     private void importCmd() {
-        Path path = Paths.get(path_field.getText());
+        Path path = Paths.get(path_field.getText().replace("Dosya Yolu: ", ""));
         File folder = path.toFile();
         if (!folder.exists() || !folder.isDirectory()) {
             appendLog("Geçerli bir klasör seçiniz.", LogLevel.ERROR);
@@ -133,6 +133,10 @@ public class ImporterUI extends JDialog {
                 Servicio.getInstance().getLogger().severe("Log açılamadı: " + e.getMessage());
             }
         }
+    }
+
+    public boolean hasDetectedFolder() {
+        return detectOldAppData() != null;
     }
 
     private File detectOldAppData() {
