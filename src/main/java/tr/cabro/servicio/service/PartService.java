@@ -26,7 +26,7 @@ public class PartService {
         try {
             if (!update) {
                 if (partDao.isBarcodeExists(part.getBarcode())) {
-                    Servicio.getInstance().getLogger().warning("Barcode already exists: " + part.getBarcode());
+                    Servicio.getLogger().warn("Barcode already exists: {}", part.getBarcode());
                     return false;
                 }
                 partDao.create(part);
@@ -35,19 +35,13 @@ public class PartService {
             }
             return true;
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [SAVE PART] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [SAVE PART] {}", String.valueOf(e));
             return false;
         }
     }
 
     public boolean deletePart(Part part) {
-        try {
-            partDao.delete(part.getBarcode());
-            return true;
-        } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [DELETE PART] " + e);
-            return false;
-        }
+        return partDao.delete(part.getBarcode());
     }
 
     public boolean deletePartByBarcode(String barcode) {
@@ -55,7 +49,7 @@ public class PartService {
             partDao.delete(barcode);
             return true;
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [DELETE PART] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [DELETE PART] {}", String.valueOf(e));
             return false;
         }
     }
@@ -64,7 +58,7 @@ public class PartService {
         try {
             return partDao.getAll();
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [GET ALL PARTS] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [GET ALL PARTS] {}", String.valueOf(e));
             return Collections.emptyList();
         }
     }
@@ -74,7 +68,7 @@ public class PartService {
             Optional<Part> part = partDao.getByKey(barcode);
             return part.orElse(null); // eğer varsa döner, yoksa null
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [GET PART BY BARCODE] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [GET PART BY BARCODE] {}", String.valueOf(e));
             return null;
         }
     }
@@ -83,7 +77,7 @@ public class PartService {
         try {
             return partDao.getProductsBelowMinStock();
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [GET BELOW MIN STOCK] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [GET BELOW MIN STOCK] {}", String.valueOf(e));
             return Collections.emptyList();
         }
     }
@@ -107,7 +101,7 @@ public class PartService {
 
             return true;
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [ADD PART TO SERVICE] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [ADD PART TO SERVICE] {}", String.valueOf(e));
             return false;
         }
     }
@@ -131,7 +125,7 @@ public class PartService {
 
             return true;
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [UPDATE ADDED PART] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [UPDATE ADDED PART] {}", String.valueOf(e));
             return false;
         }
     }
@@ -148,7 +142,7 @@ public class PartService {
 
             return true;
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [DELETE ADDED PART] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [DELETE ADDED PART] {}", String.valueOf(e));
             return false;
         }
     }
@@ -167,7 +161,7 @@ public class PartService {
 
             return servicePartDao.deleteByServiceId(serviceId);
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [DELETE PARTS BY SERVICE ID] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [DELETE PARTS BY SERVICE ID] {}", String.valueOf(e));
             return false;
         }
     }
@@ -181,7 +175,7 @@ public class PartService {
             }
             return total;
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [GET TOTAL PARTS COST] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [GET TOTAL PARTS COST] {}", String.valueOf(e));
             return 0.0;
         }
     }
@@ -190,7 +184,7 @@ public class PartService {
         try {
             return servicePartDao.getByServiceId(serviceId);
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [GET PARTS BY SERVICE ID] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [GET PARTS BY SERVICE ID] {}", String.valueOf(e));
             return Collections.emptyList();
         }
     }

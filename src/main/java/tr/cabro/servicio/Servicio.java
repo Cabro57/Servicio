@@ -5,7 +5,8 @@ import eu.okaeri.configs.ConfigManager;
 import eu.okaeri.configs.exception.OkaeriException;
 import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
-import tr.cabro.servicio.application.ui.ImporterUI;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.application.ui.MainUI;
 import tr.cabro.servicio.database.BackupScheduler;
 import tr.cabro.servicio.database.DatabaseInitializer;
@@ -19,8 +20,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.sql.SQLException;
-import java.util.logging.*;
-
 
 public final class Servicio {
 
@@ -37,7 +36,7 @@ public final class Servicio {
     private MainUI frame;
 
     @Getter
-    private final Logger logger = Logger.getLogger("Servicio");
+    private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
 
     private boolean isBeingRun = false;
     private String appVersion;
@@ -71,7 +70,7 @@ public final class Servicio {
 
             DatabaseInitializer.migrate();
         } catch (SQLException | OkaeriException e) {
-            logger.severe(e.toString());
+            logger.error(e.toString());
         }
     }
 
@@ -134,7 +133,7 @@ public final class Servicio {
             BackupScheduler.stop();
             DatabaseManager.disconnect();
         } catch (SQLException e) {
-            logger.severe(e.toString());
+            logger.error(e.toString());
         }
     }
 

@@ -18,13 +18,13 @@ public class Theme {
         try {
             UIManager.setLookAndFeel(settings.getTemplate().getThemes().get(theme));
         } catch (Exception ex) {
-            Servicio.getInstance().getLogger().severe(ex.toString());
+            Servicio.getLogger().error(ex.toString());
         }
 
         FlatLaf.updateUI();
         FlatAnimatedLafChange.hideSnapshotWithAnimation();
 
-        Servicio.getInstance().getLogger().severe("[Themes] INFO | Tema başarıyla uygulandı: " + theme);
+        Servicio.getLogger().info("Tema başarıyla uygulandı: {}", theme);
     }
 
     public static String selected() {

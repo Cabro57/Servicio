@@ -23,7 +23,7 @@ public class BackupScheduler {
 
         if (isIntervalMode(mode)) {
             scheduleNext(mode, backupSettings.getInterval());
-            Servicio.getInstance().getLogger().info("BackupScheduler: " + mode + " modunda başlatıldı.");
+            Servicio.getLogger().info("BackupScheduler: {} modunda başlatıldı.", mode);
         }
     }
 
@@ -35,7 +35,7 @@ public class BackupScheduler {
     }
 
     public static void restart() {
-        Servicio.getInstance().getLogger().info("BackupScheduler: ayar değişti, yeniden başlatılıyor...");
+        Servicio.getLogger().info("BackupScheduler: ayar değişti, yeniden başlatılıyor...");
         start();
     }
 
@@ -55,10 +55,10 @@ public class BackupScheduler {
 
         scheduler.schedule(() -> {
             try {
-                Servicio.getInstance().getLogger().info("Planlanan yedekleme başlatıldı: " + LocalDateTime.now());
+                Servicio.getLogger().info("Planlanan yedekleme başlatıldı: {}", LocalDateTime.now());
                 DatabaseManager.backup();
             } catch (Exception e) {
-                Servicio.getInstance().getLogger().severe("Planlanan yedekleme hatası: " + e.getMessage());
+                Servicio.getLogger().error("Planlanan yedekleme hatası: {}", e.getMessage());
             }
             scheduleNext(mode, interval);
         }, delay, TimeUnit.MILLISECONDS);

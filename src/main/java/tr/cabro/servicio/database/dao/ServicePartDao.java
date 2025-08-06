@@ -78,7 +78,7 @@ public class ServicePartDao extends BaseDao<AddedPart, Integer> {
                 parts.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [GET PARTS BY SERVICE ID] " + e.toString());
+            Servicio.getLogger().error("DB ERROR [GET PARTS BY SERVICE ID] {}", e.toString());
         }
         return parts;
     }
@@ -90,7 +90,7 @@ public class ServicePartDao extends BaseDao<AddedPart, Integer> {
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [DELETE BY SERVICE ID] " + e.toString());
+            Servicio.getLogger().error("DB ERROR [DELETE BY SERVICE ID] {}", e.toString());
             return false;
         }
     }

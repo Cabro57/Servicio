@@ -24,7 +24,7 @@ public class SupplierService {
                 return supplierDao.create(supplier);
             }
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SUPPLIER ERROR [SAVE]: " + e.getMessage());
+            Servicio.getLogger().error("SUPPLIER ERROR [SAVE]: {}", e.getMessage());
             return false;
         }
     }
@@ -33,7 +33,7 @@ public class SupplierService {
         try {
             return supplierDao.delete(id);
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SUPPLIER ERROR [DELETE]: " + e.getMessage());
+            Servicio.getLogger().error("SUPPLIER ERROR [DELETE]: {}", e.getMessage());
             return false;
         }
     }
@@ -42,7 +42,7 @@ public class SupplierService {
         try {
             return supplierDao.getByKey(id);
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SUPPLIER ERROR [GET]: " + e.getMessage());
+            Servicio.getLogger().error("SUPPLIER ERROR [GET]: {}", e.getMessage());
             return Optional.empty();
         }
     }
@@ -51,7 +51,7 @@ public class SupplierService {
         try {
             return supplierDao.getAll();
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SUPPLIER ERROR [GET ALL]: " + e.getMessage());
+            Servicio.getLogger().error("SUPPLIER ERROR [GET ALL]: {}", e.getMessage());
             return Collections.emptyList();
         }
     }

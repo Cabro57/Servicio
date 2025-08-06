@@ -8,7 +8,7 @@ public class DatabaseInitializer {
 
     public static void migrate() {
         try {
-            Servicio.getInstance().getLogger().info("Migration öncesi yedek alınıyor...");
+            Servicio.getLogger().info("Migration öncesi yedek alınıyor...");
             DatabaseManager.backup();
 
             String dbPath = DatabaseManager.getConnection().getMetaData().getURL();
@@ -20,16 +20,10 @@ public class DatabaseInitializer {
                     .load();
 
             MigrateResult result = flyway.migrate();
-            Servicio.getInstance().getLogger().info(
-                    String.format("Database migrated. From %s to %s (Applied: %d)",
-                            result.initialSchemaVersion,
-                            result.targetSchemaVersion,
-                            result.migrationsExecuted
-                    )
-            );
+            Servicio.getLogger().info("Database migrated. From {} to {} (Applied: {})", result.initialSchemaVersion, result.targetSchemaVersion, result.migrationsExecuted);
 
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("Migration error: " + e.getMessage());
+            Servicio.getLogger().error("Migration error: {}", e.getMessage());
             throw new RuntimeException(e);
         }
     }

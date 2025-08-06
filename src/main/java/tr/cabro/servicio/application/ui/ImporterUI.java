@@ -121,7 +121,7 @@ public class ImporterUI extends JDialog {
         try (FileWriter writer = new FileWriter(savedLogFile)) {
             writer.write(importManager.getLog());
         } catch (IOException ex) {
-            Servicio.getInstance().getLogger().severe("Log kaydedilemedi: " + ex.getMessage());
+            Servicio.getLogger().error("Log kaydedilemedi: {}", ex.getMessage());
         }
     }
 
@@ -130,7 +130,7 @@ public class ImporterUI extends JDialog {
             try {
                 Desktop.getDesktop().open(savedLogFile);
             } catch (IOException e) {
-                Servicio.getInstance().getLogger().severe("Log açılamadı: " + e.getMessage());
+                Servicio.getLogger().error("Log açılamadı: {}", e.getMessage());
             }
         }
     }
@@ -192,7 +192,7 @@ public class ImporterUI extends JDialog {
                 doc.insertString(doc.getLength(), icon + "[" + time + "] " + message + "\n", style);
                 logger_area.setCaretPosition(doc.getLength());
             } catch (BadLocationException e) {
-                Servicio.getInstance().getLogger().severe(e.getMessage());
+                Servicio.getLogger().error(e.getMessage());
             }
         });
     }

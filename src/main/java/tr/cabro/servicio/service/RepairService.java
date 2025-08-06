@@ -25,7 +25,7 @@ public class RepairService {
             }
             return true;
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [SAVE SERVICE] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [SAVE SERVICE] {}", String.valueOf(e));
             return false;
         }
     }
@@ -35,7 +35,7 @@ public class RepairService {
             serviceDao.delete(id);
             return true;
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [DELETE SERVICE] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [DELETE SERVICE] {}", String.valueOf(e));
             return false;
         }
     }
@@ -48,7 +48,7 @@ public class RepairService {
         try {
             return serviceDao.getByCustomerId(customerId);
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [GET BY CUSTOMER ID] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [GET BY CUSTOMER ID] {}", String.valueOf(e));
             return Collections.emptyList();
         }
     }
@@ -57,7 +57,7 @@ public class RepairService {
         try {
             return serviceDao.getAll();
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SERVICE ERROR [GET ALL SERVICES] " + e);
+            Servicio.getLogger().error("SERVICE ERROR [GET ALL SERVICES] {}", String.valueOf(e));
             return Collections.emptyList();
         }
     }

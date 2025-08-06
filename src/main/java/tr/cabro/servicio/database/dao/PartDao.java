@@ -124,7 +124,7 @@ public class PartDao extends BaseDao<Part, String> {
                 return rs.getInt(1) > 0;
             }
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [CHECK BARCODE EXISTS] " + e);
+            Servicio.getLogger().error("DB ERROR [CHECK BARCODE EXISTS] {}", String.valueOf(e));
         }
         return false;
     }
@@ -138,7 +138,7 @@ public class PartDao extends BaseDao<Part, String> {
                 list.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [GET BELOW MIN STOCK] " + e);
+            Servicio.getLogger().error("DB ERROR [GET BELOW MIN STOCK] {}", String.valueOf(e));
         }
         return list;
     }
@@ -151,7 +151,7 @@ public class PartDao extends BaseDao<Part, String> {
             stmt.setString(2, barcode);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [UPDATE STOCK] " + e);
+            Servicio.getLogger().error("DB ERROR [UPDATE STOCK] {}", String.valueOf(e));
         }
     }
 

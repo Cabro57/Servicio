@@ -24,7 +24,7 @@ public class CustomerService {
                 return customerDao.update(customer);
             }
         } catch (Exception ex) {
-            Servicio.getInstance().getLogger().severe("CUSTOMER ERROR [SAVE]: " + ex.getMessage());
+            Servicio.getLogger().error("CUSTOMER ERROR [SAVE]: {}", ex.getMessage());
             return false;
         }
     }
@@ -33,7 +33,7 @@ public class CustomerService {
         try {
             return customerDao.delete(id);
         } catch (Exception ex) {
-            Servicio.getInstance().getLogger().severe("CUSTOMER ERROR [DELETE]: " + ex.getMessage());
+            Servicio.getLogger().error("CUSTOMER ERROR [DELETE]: {}", ex.getMessage());
             return false;
         }
     }
@@ -42,7 +42,7 @@ public class CustomerService {
         try {
             return customerDao.getByKey(id);
         } catch (Exception ex) {
-            Servicio.getInstance().getLogger().severe("CUSTOMER ERROR [GET]: " + ex.getMessage());
+            Servicio.getLogger().error("CUSTOMER ERROR [GET]: {}", ex.getMessage());
             return Optional.empty();
         }
     }
@@ -51,7 +51,7 @@ public class CustomerService {
         try {
             return customerDao.getAll();
         } catch (Exception ex) {
-            Servicio.getInstance().getLogger().severe("CUSTOMER ERROR [GET ALL]: " + ex.getMessage());
+            Servicio.getLogger().error("CUSTOMER ERROR [GET ALL]: {}", ex.getMessage());
             return new ArrayList<>();
         }
     }

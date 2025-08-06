@@ -29,7 +29,7 @@ public abstract class BaseDao<T, K> {
 
             int affected = stmt.executeUpdate();
             if (affected == 0) {
-                Servicio.getInstance().getLogger().severe("Kayıt eklenemedi: " + getTableName());
+                Servicio.getLogger().error("Kayıt eklenemedi: " + getTableName());
                 return false;
             }
 
@@ -42,7 +42,7 @@ public abstract class BaseDao<T, K> {
             return true;
 
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [CREATE] " + e.toString());
+            Servicio.getLogger().error("DB ERROR [CREATE] {}", e.toString());
             return false;
         }
     }
@@ -52,7 +52,7 @@ public abstract class BaseDao<T, K> {
             fillUpdateStatement(stmt, entity);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [UPDATE] " + e.toString());
+            Servicio.getLogger().error("DB ERROR [UPDATE] {}", e.toString());
             return false;
         }
     }
@@ -63,7 +63,7 @@ public abstract class BaseDao<T, K> {
             setKey(stmt, 1, key);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [DELETE] " + e.toString());
+            Servicio.getLogger().error("DB ERROR [DELETE] {}", e.toString());
             return false;
         }
     }
@@ -77,7 +77,7 @@ public abstract class BaseDao<T, K> {
                 return Optional.of(mapRow(rs));
             }
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [GET BY KEY] " + e.toString());
+            Servicio.getLogger().error("DB ERROR [GET BY KEY] {}", e.toString());
         }
         return Optional.empty();
     }
@@ -91,7 +91,7 @@ public abstract class BaseDao<T, K> {
                 list.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe("DB ERROR [GET ALL] " + e.toString());
+            Servicio.getLogger().error("DB ERROR [GET ALL] {}", e.toString());
         }
         return list;
     }

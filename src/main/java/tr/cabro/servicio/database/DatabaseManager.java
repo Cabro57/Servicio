@@ -31,7 +31,7 @@ public class DatabaseManager {
                 // Klasörü yoksa oluştur
                 File dbDir = dbFile.getParentFile();
                 if (!dbDir.exists() && dbDir.mkdirs()) {
-                    Servicio.getInstance().getLogger().info("Veritabanı klasörü oluşturuldu: " + dbDir.getAbsolutePath());
+                    Servicio.getLogger().info("Veritabanı klasörü oluşturuldu: {}", dbDir.getAbsolutePath());
                 }
 
                 connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
@@ -64,10 +64,10 @@ public class DatabaseManager {
                 stmt.execute("VACUUM INTO '" + backupFile.replace("\\", "/") + "'");
             }
 
-            Servicio.getInstance().getLogger().info("SQLite yedeği oluşturuldu: " + backupFile);
+            Servicio.getLogger().info("SQLite yedeği oluşturuldu: {}", backupFile);
 
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("SQLite yedekleme hatası: " + e.getMessage());
+            Servicio.getLogger().error("SQLite yedekleme hatası: {}", e.getMessage());
         }
     }
 
@@ -90,9 +90,9 @@ public class DatabaseManager {
             // Bağlantıyı tekrar aç
             connect(DatabaseType.SQLite);
 
-            Servicio.getInstance().getLogger().info("Veritabanı geri yüklendi: " + backupFile.getName());
+            Servicio.getLogger().info("Veritabanı geri yüklendi: {}", backupFile.getName());
         } catch (Exception e) {
-            Servicio.getInstance().getLogger().severe("Geri yükleme hatası: " + e.getMessage());
+            Servicio.getLogger().error("Geri yükleme hatası: {}", e.getMessage());
             throw new RuntimeException("Geri yükleme başarısız: " + e.getMessage(), e);
         }
     }

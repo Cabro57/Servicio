@@ -134,7 +134,7 @@ public class ServiceDao extends BaseDao<Service, Integer> {
                 }
             }
         } catch (SQLException e) {
-            Servicio.getInstance().getLogger().severe(e.getMessage());
+            Servicio.getLogger().error(e.getMessage());
         }
         return services;
     }
