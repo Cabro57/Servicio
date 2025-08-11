@@ -4,6 +4,7 @@ import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.util.barcode.BarcodeGenerator;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 public class PartCsvMapper extends BaseCsvMapper<Part> {
 
@@ -11,8 +12,11 @@ public class PartCsvMapper extends BaseCsvMapper<Part> {
 
     private final BarcodeGenerator barcodeGenerator;
 
-    public PartCsvMapper(BarcodeGenerator barcodeGenerator) {
+    private final Map<Integer, String> oldSerialMap;
+
+    public PartCsvMapper(BarcodeGenerator barcodeGenerator, Map<Integer, String> oldSerialMap) {
         this.barcodeGenerator = barcodeGenerator;
+        this.oldSerialMap = oldSerialMap;
     }
 
     @Override
@@ -24,15 +28,18 @@ public class PartCsvMapper extends BaseCsvMapper<Part> {
     protected Part mapRow(String[] fields) {
         Part p = new Part();
 
-        p.setOldId(parseInt(fields[0]));
+        int oldId = parseInt(fields[0]);
+        p.setOldId(oldId);
         p.setName(clean(fields[1]));
 
-        String barcode = clean(fields[2]);
-        if (barcode == null || barcode.isEmpty()) {
-            barcode = barcodeGenerator.generate();
+        // eski seri_no (eski sistemde part üzerine yazılıyordu)
+        String oldSerial = clean(fields[2]);
+        if (oldSerial != null && !oldSerial.isEmpty()) {
+            oldSerialMap.put(oldId, oldSerial);
         }
 
-        p.setBarcode(barcode);
+        // artık eski seri_no'yu PART.barcode olarak koymuyoruz; yeni barcode üretiyoruz
+        p.setBarcode(barcodeGenerator.generate());
 
         p.setSupplier_name(clean(fields[4]));
         p.setBrand("");

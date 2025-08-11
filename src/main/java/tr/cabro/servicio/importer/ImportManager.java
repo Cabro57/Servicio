@@ -26,6 +26,7 @@ public class ImportManager {
     private final Map<Integer, Integer> serviceIdMap = new HashMap<>();
     private final Map<Integer, String> partIdMap = new HashMap<>();
     private final Map<String, Integer> supplierMap = new HashMap<>();
+    private final Map<Integer, String> oldSerialMap = new HashMap<>();
 
     private final StringBuilder log = new StringBuilder();
     private final Consumer<String> logCallback;
@@ -115,7 +116,7 @@ public class ImportManager {
             BarcodeGenerator barcodeGenerator = new BarcodeGenerator(barcodeConfig);
 
             CsvImporter<Part> partImporter = new CsvImporter<>();
-            CsvImportResult<Part> partResult = partImporter.importFromCsv(folderPath + "/device_parts.csv", new PartCsvMapper(barcodeGenerator));
+            CsvImportResult<Part> partResult = partImporter.importFromCsv(folderPath + "/device_parts.csv", new PartCsvMapper(barcodeGenerator, oldSerialMap));
             int partAdded = 0, partStockUpdated = 0, partBarcodeChanged = 0;
             for (Part p : partResult.getData()) {
                 Integer newSupplierId = supplierMap.get(p.getSupplier_name());
@@ -184,13 +185,26 @@ public class ImportManager {
             int addedPartsCount = 0;
             for (AddedPart ap : addedPartsResult.getData()) {
                 Integer newServiceId = serviceIdMap.get(ap.getServiceId());
-                String newBarcode = partIdMap.get(Integer.parseInt(ap.getBarcode()));
+
+                // ap.getBarcode() burada eski PART ID'si olarak geliyor (CSV eski yapıya göre)
+                Integer oldPartId = Integer.parseInt(ap.getBarcode());
+                String newBarcode = partIdMap.get(oldPartId);
+                String oldSerial = oldSerialMap.get(oldPartId);
+
                 if (newServiceId == null || newBarcode == null) {
                     logLine("[Eklenen Parça][HATA] Servis veya Parça bulunamadı: " + ap.getServiceId() + " / " + ap.getBarcode());
                     continue;
                 }
+
                 ap.setServiceId(newServiceId);
                 ap.setBarcode(newBarcode);
+                Part part = partService.getPartByBarcode(newBarcode);
+                ap.setName(part.getName());
+
+                if (oldSerial != null && !oldSerial.isEmpty()) {
+                    ap.setSerial_no(oldSerial);
+                }
+
                 partService.addPartToService(ap);
                 logLine("[Eklenen Parça] Servise eklendi: ServisID " + newServiceId + ", Barkod: " + newBarcode);
                 addedPartsCount++;
