@@ -1,11 +1,9 @@
 package tr.cabro.servicio.application.ui;
 
 import tr.cabro.servicio.application.panels.*;
-import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.model.AddedPart;
-import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.Process;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.RepairService;
@@ -136,7 +134,7 @@ public class ServiceEditUI extends JDialog {
         part_notes_info.setServiceId(service.getId());
         part_notes_info.setAddedParts(addedParts);
         part_notes_info.setNotes(service.getNotes());
-        status_info.setSelected(service.getService_status());
+        status_info.setSelected(service.getService_status().getDisplayName());
     }
 
     private void saveService() {
@@ -198,7 +196,7 @@ public class ServiceEditUI extends JDialog {
         // Güncellenmiş servis verilerini topla
         Service deliveredService = collectForm();
         deliveredService.setId(service.getId());
-        deliveredService.setService_status("Teslim Edildi");
+        deliveredService.setService_status(ServiceStatus.DELIVERED);
         deliveredService.setDelivery_at(LocalDate.now()); // Teslim tarihi şimdi
 
         if (repairService.saveService(deliveredService, true)) {

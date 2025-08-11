@@ -3,6 +3,10 @@ package tr.cabro.servicio.application.panels;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Setter;
+import tr.cabro.servicio.application.compenents.CurrencyField;
+import tr.cabro.servicio.application.editors.DoubleEditor;
+import tr.cabro.servicio.application.editors.SpinnerEditor;
+import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import tr.cabro.servicio.application.ui.PartEditUI;
 import tr.cabro.servicio.application.ui.PartSearchUI;
 import tr.cabro.servicio.application.listeners.PartsChangeListener;
@@ -27,6 +31,21 @@ public class PartsNotesInfoPanel extends JPanel {
     private JTextField product_search_field;
     private JTextField notes_field;
     private JButton part_add_button;
+    private JTextField series_no_field;
+    private JFormattedTextField sale_price_field;
+    private JSpinner amount_spinner;
+    private JFormattedTextField purchase_price_field;
+    private JPanel manual_add_panel;
+    private JLabel series_no_label;
+    private JButton manual_add_button;
+    private JLabel sale_price_label;
+    private JLabel pruchase_price_label;
+    private JLabel amount_label;
+    private JLabel part_name_label;
+    private JTextField part_name_field;
+    private JPanel manual_content_panel;
+
+    private final PartService partService;
 
     private ServicePartTableModel tableModel;
 
@@ -36,6 +55,7 @@ public class PartsNotesInfoPanel extends JPanel {
     private int serviceId = 0;
 
     public PartsNotesInfoPanel() {
+        this.partService = ServiceManager.getPartService();
         init();
 
         add(main_panel);
@@ -59,16 +79,19 @@ public class PartsNotesInfoPanel extends JPanel {
 
         new_part_add_button.addActionListener(e -> new_part_cmd());
 
-        PartService partService = ServiceManager.getPartService();
-
         tableModel = new ServicePartTableModel(partService.getPartsByServiceId(serviceId));
+        tableModel.addPriceChangeListener(this::updateMaterialCost);
 
         parts_table.setModel(tableModel);
-
-
         parts_table.setRowHeight(30);
-
+        parts_table.getColumnModel().getColumn(2).setCellEditor(new SpinnerEditor(0, Integer.MAX_VALUE, 1));
+        parts_table.getColumnModel().getColumn(3).setCellRenderer(new CurrencyTableCellRenderer());
+        parts_table.getColumnModel().getColumn(3).setCellEditor(new DoubleEditor());
         applyPartsTableDoubleClickListener();
+
+        manual_add_panel.setBackground(null);
+        manual_content_panel.setBackground(null);
+        manual_add_button.addActionListener(e -> manualAddPart());
     }
 
     private void new_part_cmd() {
@@ -96,32 +119,50 @@ public class PartsNotesInfoPanel extends JPanel {
                 }
 
                 if (!alreadyExists) {
-                    String input = JOptionPane.showInputDialog(
-                            this,
-                            "Yeni ürün: " + part.getName() + "\nSatış fiyatı (₺):",
-                            part.getSale_price()
-                    );
-
-                    double sellingPrice;
-                    try {
-                        sellingPrice = Double.parseDouble(input);
-                    } catch (Exception e) {
-                        JOptionPane.showMessageDialog(
-                                this,
-                                "Geçersiz fiyat girdiniz. Varsayılan değer atanacak.",
-                                "Uyarı",
-                                JOptionPane.WARNING_MESSAGE
-                        );
-                        sellingPrice = part.getSale_price();
-                    }
-
-                    AddedPart addedPart = new AddedPart(part.getBarcode(), 1, sellingPrice, serviceId);
+                    AddedPart addedPart = new AddedPart(part.getBarcode(), 1, part.getSale_price(), serviceId);
                     tableModel.addAddedPart(addedPart);
                 }
             }
 
             updateMaterialCost();
         }
+    }
+
+    private void manualAddPart() {
+        String serialNo = series_no_field.getText().trim();
+
+        double sellingPrice;
+        try {
+            // Eğer sale_price_field JFormattedTextField ise:
+            Object val = sale_price_field.getValue();
+            if (val instanceof Number) {
+                sellingPrice = ((Number) val).doubleValue();
+            } else {
+                sellingPrice = Double.parseDouble(sale_price_field.getText().trim());
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Geçerli bir satış fiyatı giriniz.", "Hata", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int amount = (Integer) amount_spinner.getValue();
+
+        if (amount <= 0) {
+            JOptionPane.showMessageDialog(this, "Adet 0 veya negatif olamaz.", "Hata", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        AddedPart newPart = new AddedPart("", amount, sellingPrice, serviceId); // barcode boş
+        newPart.setSerial_no(serialNo);
+
+        tableModel.addAddedPart(newPart);
+        updateMaterialCost();
+
+        // İstersen form alanlarını temizleyebilirsin:
+        series_no_field.setText("");
+        sale_price_field.setValue(0.0);
+        purchase_price_field.setValue(0.0);
+        amount_spinner.setValue(1);
     }
 
 
@@ -171,8 +212,9 @@ public class PartsNotesInfoPanel extends JPanel {
 
     // Parça listesiyle tabloyu doldurur (örneğin Service'den yüklerken)
     public void setAddedParts(List<AddedPart> parts) {
-        tableModel = new ServicePartTableModel(parts);
-        parts_table.setModel(tableModel);
+        for (AddedPart part : parts) {
+            tableModel.addAddedPart(part);
+        }
         updateMaterialCost();
     }
 
@@ -186,4 +228,9 @@ public class PartsNotesInfoPanel extends JPanel {
     }
 
 
+    private void createUIComponents() {
+        // TODO: place custom component creation code here
+        sale_price_field = new CurrencyField();
+        purchase_price_field = new CurrencyField();
+    }
 }

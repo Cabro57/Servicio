@@ -22,8 +22,8 @@ public class Part {
     private String device_type; // Ürün Cihaz Türü
     private String models; // Ürün uyumlu modelleri
 
-    private double purchase_price;; // Alış Fiyatı
-    private double sale_price;; // Satış Fiyatı
+    private double purchase_price; // Alış Fiyatı
+    private double sale_price; // Satış Fiyatı
     private int stock; // Stok miktarı
     private int min_stock; // Minimum Stok Miktarı
 

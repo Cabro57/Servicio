@@ -16,7 +16,7 @@ import java.util.Locale;
 
 public class ServiceListTableModel extends AbstractTableModel {
 
-    private final String[] columnNames = { "#", "Müşteri", "Cihaz Türü", "Marka", "Model", "Ücret", "Durum", "Kayıt Tarih" };
+    private final String[] columnNames = { "#", "Müşteri", "Cihaz Türü", "Marka", "Model", "Ücret", "Kayıt Tarih", "Teslim Tarihi", "Durum" };
 
     @Getter
     private final List<Service> services;
@@ -54,8 +54,9 @@ public class ServiceListTableModel extends AbstractTableModel {
             case 3: return service.getDevice_brand();
             case 4: return service.getDevice_model();
             case 5: return formatPrice(calculateRemainingAmount(service));
-            case 6: return ServiceStatus.of(service.getService_status());
-            case 7: return formatDate(service.getCreated_at());
+            case 6: return formatDate(service.getCreated_at());
+            case 7: return formatDate(service.getDelivery_at());
+            case 8: return service.getService_status();
             default: return null;
         }
     }

@@ -1,20 +1,24 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import lombok.Getter;
+import tr.cabro.servicio.application.listeners.PriceChangeListener;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Part;
 
+import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ServicePartTableModel extends AbstractTableModel {
 
-    private final String[] columnNames = { "Barkod", "Parça Adı", "Adet", "Satış Fiyatı" };
+    private final String[] columnNames = { "Seri No.", "Parça Adı", "Adet", "Satış Fiyatı" };
 
     @Getter
     private final List<AddedPart> addedParts;
+
+    private final List<PriceChangeListener> priceChangeListeners = new ArrayList<>();
 
     public ServicePartTableModel(List<AddedPart> addedParts) {
         this.addedParts = (addedParts != null) ? addedParts : new ArrayList<>();
@@ -40,7 +44,7 @@ public class ServicePartTableModel extends AbstractTableModel {
         AddedPart part = addedParts.get(rowIndex);
         Part p = ServiceManager.getPartService().getPartByBarcode(part.getBarcode());
         switch (columnIndex) {
-            case 0: return part.getBarcode();
+            case 0: return part.getSerial_no();
             case 1: return p != null ? p.getName() : "[Silinmiş Parça]";
             case 2: return part.getAmount();
             case 3: return part.getSellingPrice();
@@ -49,8 +53,88 @@ public class ServicePartTableModel extends AbstractTableModel {
     }
 
     @Override
+    public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+        AddedPart part = addedParts.get(rowIndex);
+        boolean changed = false;
+
+        switch (columnIndex) {
+            case 0: // Seri No
+                if (aValue != null) {
+                    String serial = aValue.toString().trim();
+                    part.setSerial_no(serial);
+                    changed = true;
+                    fireTableCellUpdated(rowIndex, columnIndex);
+                }
+                break;
+
+            case 2: // Adet
+                if (aValue instanceof Number) {
+                    int newAmount = ((Number) aValue).intValue();
+                    if (newAmount > 0) {
+                        part.setAmount(newAmount);
+                        changed = true;
+                        fireTableCellUpdated(rowIndex, columnIndex);
+                        fireTableCellUpdated(rowIndex, 3); // Toplam fiyat vs. değiştiyse
+                    } else {
+                        JOptionPane.showMessageDialog(null,
+                                "Adet 0'dan büyük olmalıdır.",
+                                "Hatalı Değer",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                } else {
+                    try {
+                        int newAmount = Integer.parseInt(aValue.toString());
+                        if (newAmount > 0) {
+                            part.setAmount(newAmount);
+                            changed = true;
+                            fireTableCellUpdated(rowIndex, columnIndex);
+                            fireTableCellUpdated(rowIndex, 3);
+                        } else {
+                            JOptionPane.showMessageDialog(null,
+                                    "Adet 0'dan büyük olmalıdır.",
+                                    "Hatalı Değer",
+                                    JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (NumberFormatException e) {
+                        JOptionPane.showMessageDialog(null,
+                                "Geçerli bir sayı giriniz.",
+                                "Hatalı Değer",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+                break;
+
+            case 3: // Satış Fiyatı
+                if (aValue instanceof Number) {
+                    double newPrice = ((Number) aValue).doubleValue();
+                    part.setSellingPrice(newPrice);
+                    changed = true;
+                    fireTableCellUpdated(rowIndex, columnIndex);
+                } else {
+                    try {
+                        double newPrice = Double.parseDouble(aValue.toString());
+                        part.setSellingPrice(newPrice);
+                        changed = true;
+                        fireTableCellUpdated(rowIndex, columnIndex);
+                    } catch (NumberFormatException e) {
+                        JOptionPane.showMessageDialog(null,
+                                "Geçerli bir fiyat giriniz.",
+                                "Hatalı Değer",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+                break;
+        }
+
+        if (changed) {
+            notifyPriceChange();
+        }
+    }
+
+    @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return false; // Tüm hücreler salt okunur
+        // Seri No, Adet ve Satış Fiyatı düzenlenebilir
+        return columnIndex == 0 || columnIndex == 2 || columnIndex == 3;
     }
 
     @Override
@@ -88,6 +172,16 @@ public class ServicePartTableModel extends AbstractTableModel {
         if (index != -1) {
             addedParts.remove(index);
             fireTableRowsDeleted(index, index);
+        }
+    }
+
+    public void addPriceChangeListener(PriceChangeListener listener) {
+        priceChangeListeners.add(listener);
+    }
+
+    private void notifyPriceChange() {
+        for (PriceChangeListener listener : priceChangeListeners) {
+            listener.onPriceOrAmountChanged();
         }
     }
 }

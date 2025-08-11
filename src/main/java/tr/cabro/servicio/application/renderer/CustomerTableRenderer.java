@@ -16,7 +16,7 @@ public class CustomerTableRenderer extends DefaultTableCellRenderer {
         if (value instanceof Customer) {
             Customer ct = (Customer) value;
             label.setText(ct.toString());
-            label.setIcon(CustomerType.of(ct.getStatus()).getIcon());
+            label.setIcon(ct.getType().getIcon());
             label.setHorizontalTextPosition(SwingConstants.RIGHT);
             label.setIconTextGap(8);
         } else {

@@ -106,7 +106,7 @@ public class CustomerInfoPanel extends JPanel {
     public void setCustomer(Customer customer) {
         this.selected_customer = customer;
         if (customer != null) {
-            customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, CustomerType.of(customer.getStatus()).getIcon());
+            customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, customer.getType().getIcon());
             customer_field.setText(customer.toString());
         } else {
             customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icon/customer.svg", 22, 22));

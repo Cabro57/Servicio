@@ -6,12 +6,14 @@ import lombok.Getter;
 import raven.datetime.DatePicker;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.compenents.CurrencyField;
+import tr.cabro.servicio.icons.SVGIconUIColor;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.SupplierService;
 import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 import java.awt.*;
@@ -28,7 +30,7 @@ public class PartEditUI extends JDialog {
     private JPanel barcode_panel;
     private JLabel barcode_label;
     private JTextField barcode_field;
-    private JTextArea situation_label;
+    private JTextPane situation_label;
     private JLabel barcode_info_label;
     private JLabel barcode_info;
 
@@ -80,10 +82,12 @@ public class PartEditUI extends JDialog {
 
     private boolean updated = false;
     private final PartService partService;
+    private final SupplierService supplierService;
 
     public PartEditUI() {
         super((JFrame) null, "Parça Ekle/Güncelle", true);
         partService = ServiceManager.getPartService();
+        supplierService = ServiceManager.getSupplierService();
         purchase_picker  = new DatePicker();
 
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
@@ -97,7 +101,7 @@ public class PartEditUI extends JDialog {
     private void init() {
 
         // Barkod üretici butonu
-        JButton generate_barcode_button = new JButton(new FlatSVGIcon("icon/barcode.svg", 24, 24));
+        JButton generate_barcode_button = new JButton(new SVGIconUIColor("icon/barcode.svg", 0.03f, "MenuItem.foreground"));
         generate_barcode_button.setToolTipText("Rastgele barkod üret");
         generate_barcode_button.addActionListener(e -> {
             if (barcode_field.isEditable()) {
@@ -108,6 +112,8 @@ public class PartEditUI extends JDialog {
         });
         barcode_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, generate_barcode_button);
         barcode_field.addActionListener(e -> handleBarcodeInput(barcode_field.getText()));
+
+        situation_label.setBackground(null);
 
         device_type_combo.setModel(deviceTypeComboBoxModel);
         loadDeviceTypes();
@@ -167,44 +173,54 @@ public class PartEditUI extends JDialog {
     }
 
     private boolean validateForm() {
-        if (barcode.isEmpty()) {
+        // Barkod kontrolü
+        if (Validator.isEmpty(barcode)) {
             showValidationError("Barkod boş olamaz.");
             return false;
         }
 
-        if (brand_field.getText().trim().isEmpty()) {
+        // Marka kontrolü
+        if (Validator.isEmpty(brand_field.getText())) {
             showValidationError("Marka boş olamaz.");
             return false;
         }
 
-        if (name_field.getText().trim().isEmpty()) {
+        // Ürün adı kontrolü
+        if (Validator.isEmpty(name_field.getText())) {
             showValidationError("Ürün adı boş olamaz.");
             return false;
         }
 
+        // Fiyat ve stok değerlerini al
         double purchasePrice = (double) purchase_price_field.getValue();
         int stock = (int) stock_spinner.getValue();
         int minStock = (int) min_stock_spinner.getValue();
 
-        if (purchasePrice < 0) {
+        // Negatif sayı kontrolleri
+        if (Validator.isNegative(purchasePrice)) {
             showValidationError("Alış fiyatı negatif olamaz.");
             return false;
         }
-        if (stock < 0) {
+        if (Validator.isNegative(stock)) {
             showValidationError("Stok negatif olamaz.");
             return false;
         }
-        if (minStock < 0) {
+        if (Validator.isNegative(minStock)) {
             showValidationError("Min stok negatif olamaz.");
             return false;
         }
+
+        // Minimum stok uyarısı
         if (stock < minStock) {
-            int confirm = JOptionPane.showConfirmDialog(this,
+            int confirm = JOptionPane.showConfirmDialog(
+                    this,
                     "Stok miktarı minimum stok seviyesinin altında. Devam etmek istiyor musunuz?",
-                    "Uyarı", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                    "Uyarı",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE
+            );
             return confirm == JOptionPane.YES_OPTION;
         }
-
         return true;
     }
 
@@ -228,9 +244,8 @@ public class PartEditUI extends JDialog {
         description_area.setText(part.getDescription());
 
         // Supplier seçimi
-        SupplierService supplierService = ServiceManager.getSupplierService();
         Optional<Supplier> supplier = supplierService.get(part.getSupplier_id());
-        supplier.ifPresent(value -> supplier_combo.setSelectedItem(value));
+        supplier_combo.setSelectedItem(supplier.orElse(null));
 
     }
 
@@ -272,8 +287,7 @@ public class PartEditUI extends JDialog {
 
     private void loadSuppliers() {
         supplierTypeComboBoxModel.removeAllElements();
-        SupplierService service = ServiceManager.getSupplierService();
-        List<Supplier> suppliers = service.getAll();
+        List<Supplier> suppliers = supplierService.getAll();
         for (Supplier supplier : suppliers) {
             supplierTypeComboBoxModel.addElement(supplier);
         }

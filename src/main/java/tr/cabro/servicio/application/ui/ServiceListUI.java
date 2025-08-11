@@ -2,16 +2,22 @@ package tr.cabro.servicio.application.ui;
 
 import com.formdev.flatlaf.FlatClientProperties;
 
+import com.formdev.flatlaf.extras.FlatSVGIcon;
+import tr.cabro.servicio.application.compenents.InfoBox;
 import tr.cabro.servicio.application.compenents.table.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.CustomerTableRenderer;
 import tr.cabro.servicio.application.renderer.ServiceStatusTableRenderer;
 import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
+import tr.cabro.servicio.icons.SVGIconUIColor;
+import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.util.List;
 
 public class ServiceListUI extends JDialog {
     private JPanel main_panel;
@@ -28,14 +34,23 @@ public class ServiceListUI extends JDialog {
     private JPanel table_panel;
     private JScrollPane table_scroll;
     private JPanel buttons_panel;
+    private InfoBox repair_box;
+    private InfoBox ready_box;
+    private InfoBox other_service_box;
+    private InfoBox delivery_box;
+    private InfoBox return_box;
+    private InfoBox part_wait_box;
+    private InfoBox debt_box;
 
-    private final RepairService service;
+    private final RepairService repairService;
+    private final PartService partService;
     private TableRowSorter<ServiceListTableModel> sorter;
 
     public ServiceListUI() {
         super((Frame) null, "Servis Kayıtları", true);
 
-        this.service = ServiceManager.getRepairService();
+        this.repairService = ServiceManager.getRepairService();
+        this.partService = ServiceManager.getPartService();
 
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
         int width = (int) (screen_size.width * 0.8);
@@ -51,7 +66,15 @@ public class ServiceListUI extends JDialog {
 
     private void init() {
 
+        buttons_panel.setBackground(null);
 
+        all_device_button.setIcon(new SVGIconUIColor("icon/all-service.svg", 0.03f, "MenuItem.foreground"));
+        repair_button.setIcon(new FlatSVGIcon("icon/under_repair.svg", 24, 24));
+        ready_button.setIcon(new FlatSVGIcon("icon/ready.svg", 0.03f));
+        other_service_button.setIcon(new FlatSVGIcon("icon/another_service.svg", 0.03f));
+        delivery_button.setIcon(new FlatSVGIcon("icon/delivered.svg", 0.03f));
+        return_button.setIcon(new FlatSVGIcon("icon/return.svg", 0.03f));
+        part_wait_button.setIcon(new FlatSVGIcon("icon/waiting_for_part.svg", 0.06f));
 
         table_panel.putClientProperty(FlatClientProperties.STYLE, ""
                 + "arc:18;"
@@ -80,10 +103,62 @@ public class ServiceListUI extends JDialog {
 
 
         refreshTable();
+        loadInfoBox();
+    }
+
+    private void loadInfoBox() {
+        List<Service> services = repairService.getAllServices();
+        int total = services.size();
+        if (total == 0) total = 1; // % hesaplamada 0 bölme hatasını önlemek için
+
+        // Her durumun sayısını çekiyoruz
+        int tamirde = repairService.getServicesByStatus("Tamirde").size();
+        int hazir = repairService.getServicesByStatus("Hazır").size();
+        int baskaServiste = repairService.getServicesByStatus("Başka Serviste").size();
+        int teslimEdilen = repairService.getServicesByStatus("Teslim edildi").size();
+        int iade = repairService.getServicesByStatus("İade").size();
+        int parcaBekleyen = repairService.getServicesByStatus("Parça Bekliyor").size();
+        int borcuOlanlar = calculateRemainingAmount(services);
+
+        // Her InfoBox’a Content (metin şablonu) ve Value (maksimum ve mevcut değer) veriyoruz
+        repair_box.setContent(
+                new InfoBox.Content("Tamirde", "{AMOUNT} Adet", "{PERCENT}% tamiri devam etmekte"),
+                new InfoBox.Value(total, tamirde)
+        );
+
+        ready_box.setContent(
+                new InfoBox.Content("Tamir Edilenler", "{AMOUNT} Adet", "{PERCENT}% tamir edildi"),
+                new InfoBox.Value(total, hazir)
+        );
+
+        other_service_box.setContent(
+                new InfoBox.Content("Başka Serviste", "{AMOUNT} Adet", "{PERCENT}% başka serviste"),
+                new InfoBox.Value(total, baskaServiste)
+        );
+
+        delivery_box.setContent(
+                new InfoBox.Content("Teslim Edilen", "{AMOUNT} Adet", "{PERCENT}% teslim edildi"),
+                new InfoBox.Value(total, teslimEdilen)
+        );
+
+        return_box.setContent(
+                new InfoBox.Content("İptal İade", "{AMOUNT} Adet", "{PERCENT}% iptal/iade edildi"),
+                new InfoBox.Value(total, iade)
+        );
+
+        part_wait_box.setContent(
+                new InfoBox.Content("Parça Bekleyen", "{AMOUNT} Adet", "{PERCENT}% parça bekleniyor"),
+                new InfoBox.Value(total, parcaBekleyen)
+        );
+
+        debt_box.setContent(
+                new InfoBox.Content("Borcu Olanlar", "{AMOUNT} Adet", "{PERCENT}% borcu var"),
+                new InfoBox.Value(total, borcuOlanlar)
+        );
     }
 
     private void refreshTable() {
-        ServiceListTableModel model = new ServiceListTableModel(service.getAllServices());
+        ServiceListTableModel model = new ServiceListTableModel(repairService.getDescServices());
         table.setModel(model);
 
         sorter = new TableRowSorter<>(model);
@@ -104,7 +179,7 @@ public class ServiceListUI extends JDialog {
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
         table.getColumnModel().getColumn(1).setCellRenderer(new CustomerTableRenderer());
 
-        table.getColumnModel().getColumn(6).setCellRenderer(new ServiceStatusTableRenderer());
+        table.getColumnModel().getColumn(8).setCellRenderer(new ServiceStatusTableRenderer());
 
         table.getColumnModel().getColumn(0).setMaxWidth(50);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);
@@ -114,5 +189,30 @@ public class ServiceListUI extends JDialog {
         table.getColumnModel().getColumn(5).setPreferredWidth(80);
         table.getColumnModel().getColumn(6).setPreferredWidth(80);
         table.getColumnModel().getColumn(7).setPreferredWidth(80);
+    }
+
+    private int calculateRemainingAmount(List<Service> services) {
+        int result = 0;
+        for (Service service : services) {
+            double labor = service.getLabor_cost();
+            double parts = partService.getTotalPartsCostForService(service.getId());
+            double paid = service.getPaid();
+            double total = (labor + parts) - paid;
+
+            if (total > 0) {
+                result+=1;
+            }
+        }
+        return result;
+    }
+
+    private void createUIComponents() {
+        repair_box = new InfoBox("icon/repair.svg", new Color(0, 166, 90));
+        ready_box = new InfoBox("icon/ready.svg", new Color(243, 156, 18));
+        other_service_box = new InfoBox("icon/another_service.svg", new Color(0, 31, 63));
+        delivery_box = new InfoBox("icon/delivered.svg", new Color(221, 75, 57));
+        return_box = new InfoBox("icon/return.svg", new Color(216, 27, 96));
+        part_wait_box = new InfoBox("icon/waiting_for_part.svg", new Color(0, 192, 239));
+        debt_box = new InfoBox("icon/cash.svg", new Color(0, 115, 183));
     }
 }

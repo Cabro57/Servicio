@@ -2,13 +2,14 @@ package tr.cabro.servicio.database.dao;
 
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.model.PaymentType;
 import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.ServiceStatus;
 
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class ServiceDao extends BaseDao<Service, Integer> {
 
@@ -65,14 +66,14 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         stmt.setString(9, entity.getDevice_accessory());
         stmt.setDouble(10, entity.getLabor_cost());
         stmt.setDouble(11, entity.getPaid());
-        stmt.setString(12, entity.getPayment_type());
+        stmt.setString(12, entity.getPayment_type().getDisplayName());
         stmt.setString(13, dateToStr(entity.getWarranty_date()));
         stmt.setString(14, dateToStr(entity.getMaintenance_date()));
         stmt.setString(15, entity.getReported_fault());
         stmt.setString(16, entity.getDetected_fault());
         stmt.setString(17, entity.getAction_taken());
         stmt.setString(18, entity.getUrgency_status());
-        stmt.setString(19, entity.getService_status());
+        stmt.setString(19, entity.getService_status().getDisplayName());
         stmt.setString(20, entity.getNotes());
     }
 
@@ -92,14 +93,14 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         service.setDevice_accessory(rs.getString("device_accessory"));
         service.setLabor_cost(rs.getDouble("labor_cost"));
         service.setPaid(rs.getDouble("paid"));
-        service.setPayment_type(rs.getString("payment_type"));
+        service.setPayment_type(PaymentType.of(rs.getString("payment_type")));
         service.setWarranty_date(strToDate(rs.getString("warranty_date")));
         service.setMaintenance_date(strToDate(rs.getString("maintenance_date")));
         service.setReported_fault(rs.getString("reported_fault"));
         service.setDetected_fault(rs.getString("detected_fault"));
         service.setAction_taken(rs.getString("action_taken"));
         service.setUrgency_status(rs.getString("urgency_status"));
-        service.setService_status(rs.getString("service_status"));
+        service.setService_status(ServiceStatus.of(rs.getString("service_status")));
         service.setNotes(rs.getString("Notes"));
         return service;
     }
@@ -138,6 +139,39 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         }
         return services;
     }
+
+    public List<Service> getServicesByStatus(String status) {
+        String sql = "SELECT * FROM services WHERE service_status = ?";
+        try (PreparedStatement ps = DatabaseManager.getConnection().prepareStatement(sql)) {
+            ps.setString(1, status);
+            ResultSet rs = ps.executeQuery();
+            List<Service> list = new ArrayList<>();
+            while (rs.next()) {
+                list.add(mapRow(rs)); // mapRow senin Service nesnesini oluşturan metodun
+            }
+            return list;
+        } catch (SQLException e) {
+            throw new RuntimeException("Servis durumu sorgulanırken hata oluştu: " + status, e);
+        }
+    }
+
+    public List<Service> getAllDesc() {
+        String sql = "SELECT * FROM services ORDER BY id DESC"; // id yerine tarih alanı da olabilir
+        List<Service> services = new ArrayList<>();
+
+        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                services.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Tüm servisler alınırken hata oluştu", e);
+        }
+        return services;
+    }
+
+
 
 
 }

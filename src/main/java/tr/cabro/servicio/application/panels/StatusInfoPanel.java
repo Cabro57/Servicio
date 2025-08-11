@@ -46,9 +46,9 @@ public class StatusInfoPanel extends JPanel {
         return null; // Hiçbiri seçili değilse
     }
 
-    public String getSelected() {
+    public ServiceStatus getSelected() {
         JRadioButton selected = getSelectedRadioButton();
-        return (selected != null) ? selected.getText() : null;
+        return (selected != null) ? ServiceStatus.of(selected.getText()) : ServiceStatus.UNDER_REPAIR;
     }
 
     public void setSelected(String text) {

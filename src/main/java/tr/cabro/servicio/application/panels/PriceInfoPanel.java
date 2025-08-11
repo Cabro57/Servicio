@@ -129,9 +129,9 @@ public class PriceInfoPanel extends JPanel {
         return getFieldValue(paid_field).doubleValue();
     }
 
-    public String getPaymentType() {
+    public PaymentType getPaymentType() {
         PaymentType selected = (PaymentType) payment_type_combo.getSelectedItem();
-        return selected != null ? selected.toString() : "";
+        return selected != null ? selected : PaymentType.CASH;
     }
 
     // Diğer mevcut add/subtract metodları korunuyor

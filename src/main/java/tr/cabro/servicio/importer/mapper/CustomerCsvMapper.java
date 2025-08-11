@@ -1,6 +1,8 @@
 package tr.cabro.servicio.importer.mapper;
 
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.CustomerType;
+
 import java.time.format.DateTimeFormatter;
 
 public class CustomerCsvMapper extends BaseCsvMapper<Customer> {
@@ -26,7 +28,7 @@ public class CustomerCsvMapper extends BaseCsvMapper<Customer> {
         c.setId_no(clean(fields[2]));
         c.setEmail(clean(fields[3]));
         c.setPhone_number_1(normalizePhone(fields[4]));
-        c.setStatus(mapStatusFromType(fields[5]));
+        c.setType(mapStatusFromType(fields[5]));
         c.setAddress(clean(fields[7]));
         c.setNote(clean(fields[8]));
         if (!fields[9].isEmpty()) {
@@ -50,13 +52,13 @@ public class CustomerCsvMapper extends BaseCsvMapper<Customer> {
         }
     }
 
-    private String mapStatusFromType(String type) {
-        if (type == null) return "Dikkat Et";
+    private CustomerType mapStatusFromType(String type) {
+        if (type == null) return CustomerType.DIKKAT;
         switch (type.trim()) {
-            case "Bireysel Müşteri": return "Normal";
-            case "Kurumsal Müşteri": return "Esnaf";
-            case "Sorunlu Müşteri": return "Problemli";
-            default: return "Dikkat Et";
+            case "Bireysel Müşteri": return CustomerType.NORMAL;
+            case "Kurumsal Müşteri": return CustomerType.ESNAF;
+            case "Sorunlu Müşteri": return CustomerType.PROBLEMLI;
+            default: return CustomerType.DIKKAT;
         }
     }
 

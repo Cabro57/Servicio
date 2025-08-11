@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Getter @Setter
 public class AddedPart {
@@ -13,7 +12,9 @@ public class AddedPart {
 
     private int serviceId; // Hangi servis kaydına ait
     private String barcode; // parça kodu
+    private String serial_no; // Parça Seri Numarası
     private int amount; // Parça Adeti
+    private double purchasePrice; //Parça Alış Fiyatı
     private double sellingPrice; // Parça Satış Fiyatı
 
     private LocalDate addedDate;

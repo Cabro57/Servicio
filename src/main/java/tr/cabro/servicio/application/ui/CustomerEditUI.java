@@ -79,7 +79,7 @@ public class CustomerEditUI extends JDialog {
         c.setId_no(id_no_field.getText().trim());
         CustomerType selectedType = (CustomerType) customer_type_box.getSelectedItem();
         if (selectedType != null) {
-            c.setStatus(selectedType.getDisplayName());
+            c.setType(selectedType);
         }
         return c;
     }
@@ -157,11 +157,11 @@ public class CustomerEditUI extends JDialog {
         email_field.setText(customer.getEmail());
         notes_field.setText(customer.getNote());
 
-        String status = customer.getStatus();
+        CustomerType type = customer.getType();
 
         for (int i = 0; i < customer_type_box.getItemCount(); i++) {
             CustomerType ct = customer_type_box.getItemAt(i);
-            if (ct.getDisplayName().equals(status)) {
+            if (ct.equals(type)) {
                 customer_type_box.setSelectedIndex(i);
                 break;
             }

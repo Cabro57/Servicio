@@ -16,7 +16,7 @@ public class Customer {
     private String id_no;
     private String address;
     private String email;
-    private String status;
+    private CustomerType type;
     private String note;
 
     private LocalDateTime created_at;

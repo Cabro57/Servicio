@@ -198,6 +198,21 @@ public class ImportManager {
             logLine("Eklenen Parçalar: " + addedPartsCount + " / " + addedPartsResult.getData().size() + " kayıt eklendi.");
             addedPartsResult.getErrors().forEach(err -> logLine("[Eklenen Parça][HATA] " + err));
 
+            // 6. Teslim edilmiş servislerin borcunu sıfırla
+            logLine("[INFO] Teslim edilmiş servislerin borçları sıfırlanıyor...");
+            for (Map.Entry<Integer, Integer> entry : serviceIdMap.entrySet()) {
+                int oldId = entry.getKey();
+                int newId = entry.getValue();
+                Service service = serviceService.getServiceById(newId).orElse(null);
+                if (service != null && ServiceStatus.DELIVERED.equals(service.getService_status())) {
+                    double labor = service.getLabor_cost();
+                    double parts = partService.getTotalPartsCostForService(newId);
+                    service.setPaid(labor + parts);
+                    serviceService.saveService(service, true);
+                    logLine("[Servis] Borç sıfırlandı: YeniID " + newId + ", Toplam = " + (labor + parts));
+                }
+            }
+
             logLine("=== İçe Aktarma Tamamlandı ===");
 
         } catch (Exception ex) {

@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.CustomerType;
 
 import javax.swing.table.AbstractTableModel;
 import java.time.LocalDateTime;
@@ -44,7 +43,7 @@ public class CustomerTableModel extends AbstractTableModel {
             case 4: return customer.getId_no();
             case 5: return customer.getAddress();
             case 6: return formatPhoneNumber(customer.getPhone_number_1());
-            case 7: return CustomerType.of(customer.getStatus());
+            case 7: return customer.getType();
             case 8: return formatDate(customer.getCreated_at());
             default: return null;
         }

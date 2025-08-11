@@ -33,7 +33,7 @@ public class CsvImporter<T> {
             while ((row = reader.readNext()) != null) {
                 lineNumber++;
 
-                if (firstLine) {
+                if (row[0].equals("id")) {
                     firstLine = false; // Başlık satırını atla
                     continue;
                 }

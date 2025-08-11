@@ -35,6 +35,19 @@ public class Supplier {
 
     @Override
     public String toString() {
-        return name + " (" + business_name + ")";
+        return business_name;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Supplier)) return false;
+        Supplier other = (Supplier) o;
+        return this.id == other.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(id);
     }
 }

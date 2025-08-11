@@ -1,6 +1,7 @@
 package tr.cabro.servicio.database.dao;
 
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.CustomerType;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -41,7 +42,7 @@ public class CustomerDao extends BaseDao<Customer, Integer> {
         stmt.setString(6, c.getId_no());
         stmt.setString(7, c.getAddress());
         stmt.setString(8, c.getEmail());
-        stmt.setString(9, c.getStatus());
+        stmt.setString(9, c.getType().getDisplayName());
         stmt.setString(10, c.getNote());
         stmt.setString(11, c.getCreated_at() != null ? c.getCreated_at().format(formatter) : null);
     }
@@ -56,7 +57,7 @@ public class CustomerDao extends BaseDao<Customer, Integer> {
         stmt.setString(6, c.getId_no());
         stmt.setString(7, c.getAddress());
         stmt.setString(8, c.getEmail());
-        stmt.setString(9, c.getStatus());
+        stmt.setString(9, c.getType().getDisplayName());
         stmt.setString(10, c.getNote());
         stmt.setString(11, c.getCreated_at() != null ? c.getCreated_at().format(formatter) : null);
         stmt.setInt(12, c.getID());
@@ -71,7 +72,7 @@ public class CustomerDao extends BaseDao<Customer, Integer> {
         c.setId_no(rs.getString("id_no"));
         c.setAddress(rs.getString("address"));
         c.setEmail(rs.getString("email"));
-        c.setStatus(rs.getString("status"));
+        c.setType(CustomerType.of(rs.getString("status")));
         c.setNote(rs.getString("note"));
         if (rs.getString("created_at") != null) {
             // DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");

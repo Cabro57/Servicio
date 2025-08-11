@@ -28,7 +28,7 @@ public class Service {
     // private double material_cost; // Malzeme Ücretleri
     private double labor_cost; // İşçilik Ücretleri
     private double paid; // Ödenen
-    private String payment_type; // Ödeme Türü
+    private PaymentType payment_type; // Ödeme Türü
 
     // Garanti Bakım Bilgileri
     private LocalDate warranty_date;
@@ -44,7 +44,7 @@ public class Service {
 
     // Durum
     private String urgency_status; // Aciliyet
-    private String service_status;
+    private ServiceStatus service_status;
 
 
     public Service(int customer, String type, String brand, String model) {
