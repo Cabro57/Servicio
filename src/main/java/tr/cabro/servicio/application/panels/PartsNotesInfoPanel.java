@@ -3,9 +3,7 @@ package tr.cabro.servicio.application.panels;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.application.compenents.CurrencyField;
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.editors.AmountCellEditor;
-import tr.cabro.servicio.application.editors.PriceCellEditor;
+import tr.cabro.servicio.application.editors.*;
 import tr.cabro.servicio.application.events.EventCellInputChange;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
@@ -92,10 +90,16 @@ public class PartsNotesInfoPanel extends JPanel {
         parts_table.setRowHeight(30);
 
         // Kolon düzenlemeleri - kolon indekslerini değişken olarak tutmak iyi olur
+        final int COL_SERIAL = 0;
+        final int COL_NAME = 1;
         final int COL_AMOUNT = 2;
         final int COL_SALE_PRICE = 3;
 
         EventCellInputChange eventCellInputChange = this::updateMaterialCost;
+
+        parts_table.getColumnModel().getColumn(COL_SERIAL).setCellEditor(new SerialCellEditor());
+
+        parts_table.getColumnModel().getColumn(COL_NAME).setCellEditor(new NameCellEditor());
 
         parts_table.getColumnModel().getColumn(COL_AMOUNT).setCellEditor(new AmountCellEditor(eventCellInputChange));
         parts_table.getColumnModel().getColumn(COL_AMOUNT).setCellRenderer(new DefaultTableCellRenderer() {
