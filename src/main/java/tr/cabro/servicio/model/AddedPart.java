@@ -13,6 +13,7 @@ public class AddedPart {
     private int serviceId; // Hangi servis kaydına ait
     private String barcode; // parça kodu
     private String serial_no; // Parça Seri Numarası
+    private String name; // Parça Adı
     private int amount; // Parça Adeti
     private double purchasePrice; //Parça Alış Fiyatı
     private double sellingPrice; // Parça Satış Fiyatı
