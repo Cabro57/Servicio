@@ -99,12 +99,16 @@ CREATE TABLE IF NOT EXISTS added_part (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     service_id INTEGER NOT NULL,     -- Hangi servis kaydına ait
-    barcode TEXT NOT NULL,           -- Hangi parçadan kullanıldı
-    amount INTEGER NOT NULL,         -- Kullanılan/Satılan miktar
-    price REAL NOT NULL,             -- Satıştaki birim fiyatı
+    barcode TEXT,           -- Hangi parçadan kullanıldı
+    series_no TEXT,
+    name TEXT,
+    amount INTEGER DEFAULT 1,         -- Kullanılan/Satılan miktar
+    purchase_price REAL DEFAULT 0.0,
+    selling_price REAL DEFAULT 0.0,            -- Satıştaki birim fiyatı
+    added_date TEXT,
 
     FOREIGN KEY (barcode) REFERENCES part(barcode),
-    FOREIGN KEY (service_id) REFERENCES service(id)
+    FOREIGN KEY (service_id) REFERENCES services(id)
 );
 
 
