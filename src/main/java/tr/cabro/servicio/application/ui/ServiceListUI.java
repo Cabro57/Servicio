@@ -15,9 +15,12 @@ import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
+import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.util.*;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class ServiceListUI extends JDialog {
     private JPanel main_panel;
@@ -161,8 +164,7 @@ public class ServiceListUI extends JDialog {
         ServiceListTableModel model = new ServiceListTableModel(repairService.getDescServices());
         table.setModel(model);
 
-        sorter = new TableRowSorter<>(model);
-        table.setRowSorter(sorter);
+        initFilters();
 
         Integer[] columnAlignments = {
                 SwingConstants.CENTER,
@@ -204,6 +206,75 @@ public class ServiceListUI extends JDialog {
             }
         }
         return result;
+    }
+
+    private void initFilters() {
+        sorter = new TableRowSorter<>((ServiceListTableModel) table.getModel());
+        table.setRowSorter(sorter);
+
+        // ID sütununa göre DESC sıralama
+        List<RowSorter.SortKey> sortKeys = new ArrayList<>();
+        //sortKeys.add(new RowSorter.SortKey(0, SortOrder.DESCENDING));
+        sorter.setSortKeys(sortKeys);
+
+        // Durum filtreleri
+        Map<JButton, String> statusFilters = new HashMap<>();
+        statusFilters.put(all_device_button, null); // Tümü
+        statusFilters.put(repair_button, "Tamirde");
+        statusFilters.put(ready_button, "Hazır");
+        statusFilters.put(other_service_button, "Başka Serviste");
+        statusFilters.put(delivery_button, "Teslim edildi");
+        statusFilters.put(return_button, "İade");
+        statusFilters.put(part_wait_button, "Parça Bekliyor");
+
+        final String[] currentStatus = {null};
+
+        // Buton dinleyicileri tek metotta ekle
+        for (Map.Entry<JButton, String> entry : statusFilters.entrySet()) {
+            final JButton button = entry.getKey();
+            final String status = entry.getValue();
+
+            button.addActionListener(e -> {
+                currentStatus[0] = status;
+                applyFilters(currentStatus[0], search_field.getText());
+            });
+        }
+
+        // Search field filtreleme
+        search_field.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                applyFilters(currentStatus[0], search_field.getText());
+            }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                applyFilters(currentStatus[0], search_field.getText());
+            }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                applyFilters(currentStatus[0], search_field.getText());
+            }
+        });
+
+    }
+
+    private void applyFilters(String status, String searchText) {
+        List<RowFilter<TableModel, Object>> filters = new ArrayList<>();
+
+        // Durum filtresi
+        if (status != null && !status.isEmpty()) {
+            filters.add(RowFilter.regexFilter("^" + status + "$", 8)); // 8 = durum sütunu
+        }
+
+        // Arama filtresi (tüm sütunlarda arar)
+        if (searchText != null && !searchText.trim().isEmpty()) {
+            filters.add(RowFilter.regexFilter("(?i)" + Pattern.quote(searchText)));
+        }
+
+        if (filters.isEmpty()) {
+            sorter.setRowFilter(null);
+        } else {
+            sorter.setRowFilter(RowFilter.andFilter(filters));
+        }
+
+        sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(0, SortOrder.DESCENDING)));
     }
 
     private void createUIComponents() {
