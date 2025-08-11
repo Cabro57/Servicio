@@ -129,11 +129,9 @@ public class ServiceEditUI extends JDialog {
         warranty_info.setWarrantyDate(service.getWarranty_date());
         warranty_info.setMaintenanceDate(service.getMaintenance_date());
 
-        PartService partService = ServiceManager.getPartService();
-        List<AddedPart> addedParts = partService.getPartsByServiceId(service.getId());
         part_notes_info.setServiceId(service.getId());
-        part_notes_info.setAddedParts(addedParts);
         part_notes_info.setNotes(service.getNotes());
+
         status_info.setSelected(service.getService_status().getDisplayName());
     }
 

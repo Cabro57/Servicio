@@ -1,24 +1,21 @@
 package tr.cabro.servicio.application.renderer;
 
+import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
-import java.text.NumberFormat;
-import java.util.Locale;
+import java.text.DecimalFormat;
 
 public class CurrencyTableCellRenderer extends DefaultTableCellRenderer {
 
-    private final NumberFormat currencyFormat;
 
     public CurrencyTableCellRenderer() {
-        currencyFormat = NumberFormat.getCurrencyInstance(new Locale("tr", "TR"));
     }
 
     @Override
     public void setValue(Object value) {
         if (value instanceof Number) {
-            String formatted = currencyFormat.format(((Number) value).doubleValue());
-            // " TL" ya da "TL" varsa onun yerine "₺" koy
-            formatted = formatted.replace("TL", "₺").replace("Tl", "₺");
-            setText(formatted);
+            DecimalFormat df = new DecimalFormat("#,##0.00 ₺");
+            setText(df.format(value));
+            setHorizontalAlignment(SwingConstants.CENTER);
         } else {
             setText("");
         }

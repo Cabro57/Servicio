@@ -1,17 +1,18 @@
-package tr.cabro.servicio.application.compenents.table;
+package tr.cabro.servicio.application.renderer;
 
-import java.awt.Color;
-import java.awt.Component;
+
+import com.formdev.flatlaf.extras.FlatSVGIcon;
+import tr.cabro.servicio.application.compenents.ActionButton;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
+import java.awt.*;
 
-public class TableActionCellRender extends DefaultTableCellRenderer {
+public class ActionButtonRenderer extends DefaultTableCellRenderer {
 
     @Override
-    public Component getTableCellRendererComponent(JTable table, Object o, boolean isSelected, boolean bln1, int row, int column) {
-        Component com = super.getTableCellRendererComponent(table, o, isSelected, bln1, row, column);
-        PanelAction action = new PanelAction();
-        action.setAmount((Integer) o);
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        ActionButton action = new ActionButton(new FlatSVGIcon("icon/delete.svg"));
         if (isSelected) {
             action.setBackground(table.getSelectionBackground());
         } else if (row % 2 == 0) {
@@ -24,5 +25,6 @@ public class TableActionCellRender extends DefaultTableCellRenderer {
             action.setBackground(table.getBackground());
         }
         return action;
+
     }
 }

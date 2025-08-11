@@ -229,7 +229,6 @@ public class ServiceListUI extends JDialog {
 
         // ID sütununa göre DESC sıralama
         List<RowSorter.SortKey> sortKeys = new ArrayList<>();
-        //sortKeys.add(new RowSorter.SortKey(0, SortOrder.DESCENDING));
         sorter.setSortKeys(sortKeys);
 
         // Durum filtreleri
@@ -289,7 +288,6 @@ public class ServiceListUI extends JDialog {
             sorter.setRowFilter(RowFilter.andFilter(filters));
         }
 
-        sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(0, SortOrder.DESCENDING)));
     }
 
 
