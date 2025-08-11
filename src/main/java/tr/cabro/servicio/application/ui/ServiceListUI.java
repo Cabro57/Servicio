@@ -191,6 +191,21 @@ public class ServiceListUI extends JDialog {
         table.getColumnModel().getColumn(5).setPreferredWidth(80);
         table.getColumnModel().getColumn(6).setPreferredWidth(80);
         table.getColumnModel().getColumn(7).setPreferredWidth(80);
+
+        table.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) { // Çift tıklama kontrolü
+                    int row = table.getSelectedRow();
+                    ServiceListTableModel model = (ServiceListTableModel) table.getModel();
+                    Service service = model.getService(row);
+
+                    // Yeni bir pencere aç, örneğin:
+                    ServiceEditUI dialog = new ServiceEditUI(service);
+                    dialog.setVisible(true);
+                }
+            }
+        });
     }
 
     private int calculateRemainingAmount(List<Service> services) {
@@ -276,6 +291,8 @@ public class ServiceListUI extends JDialog {
 
         sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(0, SortOrder.DESCENDING)));
     }
+
+
 
     private void createUIComponents() {
         repair_box = new InfoBox("icon/repair.svg", new Color(0, 166, 90));

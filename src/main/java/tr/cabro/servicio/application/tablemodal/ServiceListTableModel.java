@@ -61,6 +61,14 @@ public class ServiceListTableModel extends AbstractTableModel {
         }
     }
 
+    public Service getService(int rowIndex) {
+        if (rowIndex >= 0 && rowIndex < services.size()) {
+            return services.get(rowIndex);
+        } else {
+            throw new IndexOutOfBoundsException("Geçersiz satır indeksi: " + rowIndex);
+        }
+    }
+
     private double calculateRemainingAmount(Service service) {
         double labor = service.getLabor_cost();
         double parts = ServiceManager.getPartService().getTotalPartsCostForService(service.getId());
