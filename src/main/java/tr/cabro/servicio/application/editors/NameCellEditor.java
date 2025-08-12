@@ -20,6 +20,7 @@ public class NameCellEditor extends DefaultCellEditor {
     public NameCellEditor() {
         super(new JCheckBox());
         input = new JTextField();
+        input.addPropertyChangeListener(evt -> inputChange());
 
 
     }
@@ -35,6 +36,7 @@ public class NameCellEditor extends DefaultCellEditor {
         input.setText(qty);
         input.setEnabled(false);
         enable();
+
         return input;
     }
 

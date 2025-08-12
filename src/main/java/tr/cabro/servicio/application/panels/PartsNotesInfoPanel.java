@@ -5,6 +5,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.application.compenents.CurrencyField;
 import tr.cabro.servicio.application.editors.*;
 import tr.cabro.servicio.application.events.EventCellInputChange;
+import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import tr.cabro.servicio.application.ui.PartEditUI;
@@ -114,11 +115,14 @@ public class PartsNotesInfoPanel extends JPanel {
         parts_table.getColumnModel().getColumn(COL_SALE_PRICE).setCellEditor(new PriceCellEditor(eventCellInputChange));
         parts_table.getColumnModel().getColumn(COL_SALE_PRICE).setCellRenderer(new CurrencyTableCellRenderer());
 
-        parts_table.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(row -> {
-            if (row != -1) {
-                tableModel.getAddedParts().remove(row);
-                tableModel.fireTableRowsDeleted(row, row);
-                updateMaterialCost();
+        parts_table.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+            @Override
+            public void onAction(int row) {
+                if (row != -1) {
+                    tableModel.getAddedParts().remove(row);
+                    tableModel.fireTableRowsDeleted(row, row);
+                    updateMaterialCost();
+                }
             }
         }));
         parts_table.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());
