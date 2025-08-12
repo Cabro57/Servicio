@@ -10,7 +10,7 @@ import java.util.List;
 
 public class ServicePartTableModel extends AbstractTableModel {
 
-    private final String[] columnNames = { "Seri No.", "Parça Adı", "Adet", "Satış Fiyatı", "" };
+    private final String[] columnNames = { "Seri No.", "Parça Adı", "Adet", "Satış Fiyatı", "Kaldır" };
 
     @Getter
     private final List<AddedPart> addedParts;

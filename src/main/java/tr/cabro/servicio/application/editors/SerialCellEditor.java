@@ -1,12 +1,9 @@
 package tr.cabro.servicio.application.editors;
 
-import tr.cabro.servicio.application.events.EventCellInputChange;
 import tr.cabro.servicio.application.tablemodal.ServicePartTableModel;
 import tr.cabro.servicio.model.AddedPart;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.text.DefaultFormatter;
 import java.awt.*;
 
 public class SerialCellEditor extends DefaultCellEditor {
@@ -20,6 +17,8 @@ public class SerialCellEditor extends DefaultCellEditor {
     public SerialCellEditor() {
         super(new JCheckBox());
         input = new JTextField();
+
+        input.addPropertyChangeListener(evt -> inputChange());
     }
 
     @Override
