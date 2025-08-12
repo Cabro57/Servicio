@@ -65,41 +65,31 @@ public class MainUI extends JFrame {
     }
 
     private void initComponent() {
-        // Daha esnek sütun yapısı:
-        // [grow] -> genişleyebilir sütun
-        // [] -> içeriğe göre otomatik boyut
         main_panel = new JPanel(new MigLayout(
-                "insets 10, fillx, filly, debug", // wrap 5 -> 5 sütun sonra satır atla
-                "[grow 200]10[]10[grow 100][grow 100][grow 100][grow 100]",   // 5 sütun, hepsi eşit büyüyebilir
-                "[50px::100px]10[grow]"                        // Üst satır sabit, alt satır boşluğu doldurur
+                "insets 10, fillx, filly", // wrap 5 -> 5 sütun sonra satır atla
+                "[][center][sg btn][sg btn][sg btn][sg btn]",   // 5 sütun, hepsi eşit büyüyebilir
+                "[6%::12%]10[grow]"                        // Üst satır sabit, alt satır boşluğu doldurur
         ));
 
         search_field = new SearchField();
-        customer_list_button = new JButton("Müşteri Listesi",
-                new SVGIconUIColor("icon/customer.svg", 2, "JButton.foreground"));
-        customer_list_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
 
-        part_edits_button = new JButton("Parça Ekle/Güncelle");
-        part_edits_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
-
-        record_service_button = new JButton("Yeni Servis");
-        record_service_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
-
-        second_hand_device = new JButton("İkinci El Cihaz");
-        second_hand_device.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
+        customer_list_button = createActionButton("Müşteri Listesi", "icon/customer_list.svg");
+        part_edits_button = createActionButton("Parça Ekle/Güncelle", "icon/part_edit.svg");
+        record_service_button = createActionButton("Yeni Servis", "icon/new_service.svg");
+        second_hand_device = createActionButton("İkinci El Cihaz", "icon/second_hand_device.svg");
         second_hand_device.setEnabled(false);
 
         // Arama kutusu tüm genişliği kaplasın
-        main_panel.add(search_field, "grow 200, pushx");
+        main_panel.add(search_field, "grow, pushx, width 24%::");
 
         // Ayraç
         main_panel.add(new JSeparator(JSeparator.VERTICAL), "growy, pushy");
 
         // Butonlar yan yana, hepsi eşit genişlikte
-        main_panel.add(customer_list_button, "grow 100, pushx");
-        main_panel.add(part_edits_button, "grow 100, pushx");
-        main_panel.add(record_service_button, "grow 100, pushx");
-        main_panel.add(second_hand_device, "grow 100, pushx");
+        main_panel.add(customer_list_button, "grow, pushx");
+        main_panel.add(part_edits_button, "grow, pushx");
+        main_panel.add(record_service_button, "grow, pushx");
+        main_panel.add(second_hand_device, "grow, pushx");
 
         setContentPane(main_panel);
     }
@@ -107,6 +97,13 @@ public class MainUI extends JFrame {
     private void showUI(JDialog dialog) {
         dialog.setModal(true);
         dialog.setVisible(true);
+    }
+
+    private JButton createActionButton(String text, String iconPath) {
+        JButton button = new JButton(text, new SVGIconUIColor(iconPath, 0.04f, "Button.foreground"));
+        button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
+        button.setPreferredSize(new Dimension(0, 50));
+        return button;
     }
 
     public void closeApplication() {

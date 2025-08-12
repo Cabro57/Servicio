@@ -23,7 +23,7 @@ public class SearchField extends JTextField {
         putClientProperty(FlatClientProperties.STYLE_CLASS, "searchField");
         putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
-        enter.setIcon(new SVGIconUIColor("icon/enter.svg", 0.02f, "MenuItem.foreground"));
+        enter.setIcon(new SVGIconUIColor("icon/enter.svg", 0.04f, "TextField.foreground"));
         enter.setFocusable(false);
 
         JToolBar toolBar = new JToolBar();
