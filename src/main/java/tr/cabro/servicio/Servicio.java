@@ -1,6 +1,8 @@
 package tr.cabro.servicio;
 
 import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
+import com.formdev.flatlaf.util.FontUtils;
 import eu.okaeri.configs.ConfigManager;
 import eu.okaeri.configs.exception.OkaeriException;
 import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
@@ -8,6 +10,7 @@ import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.application.ui.MainUI;
+import tr.cabro.servicio.application.ui.oldMainUI;
 import tr.cabro.servicio.database.BackupScheduler;
 import tr.cabro.servicio.database.DatabaseInitializer;
 import tr.cabro.servicio.database.DatabaseManager;
@@ -86,7 +89,8 @@ public final class Servicio {
         BackupScheduler.start();
 
         FlatLaf.registerCustomDefaultsSource("themes");
-
+        FlatRobotoFont.install();
+        UIManager.put("defaultFont", FontUtils.getCompositeFont(FlatRobotoFont.FAMILY, Font.PLAIN, 15));
         Theme.apply(Theme.selected());
 
         EventQueue.invokeLater(() -> {

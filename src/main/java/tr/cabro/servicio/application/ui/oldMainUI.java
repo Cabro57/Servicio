@@ -1,29 +1,27 @@
 package tr.cabro.servicio.application.ui;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.compenents.SMenuBar;
 import tr.cabro.servicio.application.compenents.SearchField;
 import tr.cabro.servicio.application.listeners.WindowClosingEvent;
-import tr.cabro.servicio.icons.SVGIconUIColor;
 import tr.cabro.servicio.model.Customer;
 
 import javax.swing.*;
 import java.awt.*;
 
-public class MainUI extends JFrame {
-
+public class oldMainUI extends JFrame {
     private JPanel main_panel;
-    private  SearchField search_field;
+    private SearchField search_field;
     private JButton customer_list_button;
     private JButton part_edits_button;
     private JButton record_service_button;
-    private JButton second_hand_device;
 
+    public oldMainUI() {
 
-    public MainUI() {
-        init();
+        String version = Servicio.getInstance().getAppVersion();
+        setTitle("Servicio - " + version);
+        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
         int width = (int) (screen_size.width * 0.8);
@@ -31,15 +29,13 @@ public class MainUI extends JFrame {
         setSize(width, height);
         setMinimumSize(new Dimension(width, height));
         setLocationRelativeTo(null);
+
+        init();
+
+        setContentPane(main_panel);
     }
 
     private void init() {
-        initComponent();
-
-        String version = Servicio.getInstance().getAppVersion();
-        setTitle("Servicio - " + version);
-        setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-
         setJMenuBar(new SMenuBar());
 
         search_field.addActionListener(e -> {
@@ -60,48 +56,16 @@ public class MainUI extends JFrame {
         part_edits_button.addActionListener(e -> showUI(new PartEditUI()));
         record_service_button.addActionListener(e -> showUI(new ServiceEditUI()));
 
-
-        addWindowListener(new WindowClosingEvent());
-    }
-
-    private void initComponent() {
-        // Daha esnek sütun yapısı:
-        // [grow] -> genişleyebilir sütun
-        // [] -> içeriğe göre otomatik boyut
-        main_panel = new JPanel(new MigLayout(
-                "insets 10, fillx, filly, debug", // wrap 5 -> 5 sütun sonra satır atla
-                "[grow 200]10[]10[grow 100][grow 100][grow 100][grow 100]",   // 5 sütun, hepsi eşit büyüyebilir
-                "[50px::100px]10[grow]"                        // Üst satır sabit, alt satır boşluğu doldurur
-        ));
-
-        search_field = new SearchField();
-        customer_list_button = new JButton("Müşteri Listesi",
-                new SVGIconUIColor("icon/customer.svg", 2, "JButton.foreground"));
-        customer_list_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
-
-        part_edits_button = new JButton("Parça Ekle/Güncelle");
         part_edits_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
-
-        record_service_button = new JButton("Yeni Servis");
+        customer_list_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
         record_service_button.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
 
-        second_hand_device = new JButton("İkinci El Cihaz");
-        second_hand_device.putClientProperty(FlatClientProperties.STYLE_CLASS, "actionButton");
-        second_hand_device.setEnabled(false);
+        if (Servicio.getSettings().isFull_size()) {
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+        }
 
-        // Arama kutusu tüm genişliği kaplasın
-        main_panel.add(search_field, "grow 200, pushx");
+        addWindowListener(new WindowClosingEvent());
 
-        // Ayraç
-        main_panel.add(new JSeparator(JSeparator.VERTICAL), "growy, pushy");
-
-        // Butonlar yan yana, hepsi eşit genişlikte
-        main_panel.add(customer_list_button, "grow 100, pushx");
-        main_panel.add(part_edits_button, "grow 100, pushx");
-        main_panel.add(record_service_button, "grow 100, pushx");
-        main_panel.add(second_hand_device, "grow 100, pushx");
-
-        setContentPane(main_panel);
     }
 
     private void showUI(JDialog dialog) {
@@ -147,5 +111,4 @@ public class MainUI extends JFrame {
             System.exit(1);
         }
     }
-
 }
