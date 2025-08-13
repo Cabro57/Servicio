@@ -5,7 +5,7 @@ import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.table.AbstractTableModel;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -83,7 +83,7 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
         return String.format(turkishLocale, "%,.2f ₺", price);
     }
 
-    private static String formatDate(LocalDate date) {
+    private static String formatDate(LocalDateTime date) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         if (date == null) {
             return "";

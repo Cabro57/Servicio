@@ -3,8 +3,7 @@ package tr.cabro.servicio.model;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
 
 @Getter @Setter
 public class Service {
@@ -13,8 +12,8 @@ public class Service {
 
     // Müşteri Bilgileri
     private int customer_id;
-    private LocalDate created_at;
-    private LocalDate delivery_at;
+    private LocalDateTime created_at;
+    private LocalDateTime delivery_at;
 
     // Cihaz Bilgileri
     private String device_type; // Cihaz Türü
@@ -31,8 +30,8 @@ public class Service {
     private PaymentType payment_type; // Ödeme Türü
 
     // Garanti Bakım Bilgileri
-    private LocalDate warranty_date;
-    private LocalDate maintenance_date;
+    private LocalDateTime warranty_date;
+    private LocalDateTime maintenance_date;
 
     // Arıza ve İşlem Bilgileri
     private String reported_fault; // Bildirilen Arıza
@@ -55,34 +54,6 @@ public class Service {
     }
 
     public Service() {}
-
-
-    public void setWarranty_end_date(LocalDate warranty_end_date) {
-        this.warranty_date = warranty_end_date;
-    }
-
-    public void setWarranty_end_date(String warranty_end_date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        this.warranty_date = LocalDate.parse(warranty_end_date, formatter);
-    }
-
-    public void setDelivery_at(LocalDate delivery_date) {
-        this.delivery_at = delivery_date;
-    }
-
-    public void setDelivery_at(String delivery_date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        this.delivery_at = LocalDate.parse(delivery_date, formatter);
-    }
-
-    public void setCreated_at(LocalDate created_at) {
-        this.created_at = created_at;
-    }
-
-    public void setCreated_at(String created_at) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        this.created_at  = LocalDate.parse(created_at, formatter);
-    }
 
 
 }

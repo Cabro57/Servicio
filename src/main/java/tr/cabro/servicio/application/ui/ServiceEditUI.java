@@ -11,6 +11,7 @@ import tr.cabro.servicio.service.RepairService;
 import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -195,7 +196,7 @@ public class ServiceEditUI extends JDialog {
         Service deliveredService = collectForm();
         deliveredService.setId(service.getId());
         deliveredService.setService_status(ServiceStatus.DELIVERED);
-        deliveredService.setDelivery_at(LocalDate.now()); // Teslim tarihi şimdi
+        deliveredService.setDelivery_at(LocalDateTime.now()); // Teslim tarihi şimdi
 
         if (repairService.saveService(deliveredService, true)) {
             // Parçaları güncelle

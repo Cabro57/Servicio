@@ -23,6 +23,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -170,7 +171,7 @@ public class PartsNotesInfoPanel extends JPanel {
                     AddedPart addedPart = new AddedPart(part.getBarcode(), 1, part.getSale_price(), serviceId);
                     addedPart.setName(part.getName());
                     addedPart.setPurchasePrice(part.getPurchase_price());
-                    addedPart.setAddedDate(LocalDate.now());
+                    addedPart.setAddedDate(LocalDateTime.now());
                     tableModel.addAddedPart(addedPart);
                 }
             }

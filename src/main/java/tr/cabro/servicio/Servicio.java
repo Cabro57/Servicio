@@ -1,7 +1,6 @@
 package tr.cabro.servicio;
 
 import com.formdev.flatlaf.FlatLaf;
-import com.formdev.flatlaf.FlatSystemProperties;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 import com.formdev.flatlaf.util.FontUtils;
 import com.formdev.flatlaf.util.UIScale;

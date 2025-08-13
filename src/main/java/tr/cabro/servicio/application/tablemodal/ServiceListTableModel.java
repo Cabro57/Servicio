@@ -81,7 +81,7 @@ public class ServiceListTableModel extends AbstractTableModel {
         return String.format(turkishLocale, "%,.2f ₺", price);
     }
 
-    private static String formatDate(LocalDate date) {
+    private static String formatDate(LocalDateTime date) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("tr", "TR"));
         try {
             return date.format(formatter);

@@ -6,6 +6,8 @@ import raven.datetime.PanelDateOptionLabel;
 
 import javax.swing.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 public class WarrantyInfoPanel extends JPanel {
     private JLabel warranty_period_label;
@@ -107,13 +109,14 @@ public class WarrantyInfoPanel extends JPanel {
     // ----------------------------
 
 
-    public LocalDate getWarrantyDate() {
-        return warrantyDatePicker.getSelectedDate();
+    public LocalDateTime getWarrantyDate() {
+        LocalDate date = warrantyDatePicker.getSelectedDate();
+        return LocalDateTime.of(date, LocalTime.now());
     }
 
-    public void setWarrantyDate(LocalDate date) {
+    public void setWarrantyDate(LocalDateTime date) {
         if (date != null) {
-            warrantyDatePicker.setSelectedDate(date);
+            warrantyDatePicker.setSelectedDate(date.toLocalDate());
         } else {
             // Eğer tarih null ise, tarih seçim alanını temizlemek için uygun bir yöntem varsa kullan
             warrantyDatePicker.clearSelectedDate(); // veya başka bir temizleme metodu yoksa, boş bırakabilirsin
@@ -121,13 +124,14 @@ public class WarrantyInfoPanel extends JPanel {
         updateWarrantyStatus();
     }
 
-    public LocalDate getMaintenanceDate() {
-        return maintenanceDatePicker.getSelectedDate();
+    public LocalDateTime getMaintenanceDate() {
+        LocalDate date = maintenanceDatePicker.getSelectedDate();
+        return LocalDateTime.of(date, LocalTime.now());
     }
 
-    public void setMaintenanceDate(LocalDate date) {
+    public void setMaintenanceDate(LocalDateTime date) {
         if (date != null) {
-            maintenanceDatePicker.setSelectedDate(date);
+            maintenanceDatePicker.setSelectedDate(date.toLocalDate());
         } else {
             maintenanceDatePicker.clearSelectedDate(); // Varsa
         }

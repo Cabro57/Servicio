@@ -13,6 +13,7 @@ import tr.cabro.servicio.service.CustomerService;
 
 import javax.swing.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
@@ -111,12 +112,12 @@ public class CustomerInfoPanel extends JPanel {
         }
     }
 
-    public LocalDate getRecordDate() {
+    public LocalDateTime getRecordDate() {
         try {
             String text = record_date_field.getText();
             if (text != null && !text.trim().isEmpty()) {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                return LocalDate.parse(text.trim(), formatter);
+                return LocalDateTime.parse(text.trim(), formatter);
             }
         } catch (DateTimeParseException e) {
             // Geçersiz tarih varsa null döndür
@@ -124,7 +125,7 @@ public class CustomerInfoPanel extends JPanel {
         return null;
     }
 
-    public void setRecordDate(LocalDate date) {
+    public void setRecordDate(LocalDateTime date) {
         if (date != null) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             record_date_field.setText(date.format(formatter));
@@ -133,12 +134,12 @@ public class CustomerInfoPanel extends JPanel {
         }
     }
 
-    public LocalDate getDeliverDate() {
+    public LocalDateTime getDeliverDate() {
         try {
             String text = deliver_date_field.getText();
             if (text != null && !text.trim().isEmpty()) {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                return LocalDate.parse(text.trim(), formatter);
+                return LocalDateTime.parse(text.trim(), formatter);
             }
         } catch (DateTimeParseException e) {
             // Geçersiz tarih varsa null döndür
@@ -146,7 +147,7 @@ public class CustomerInfoPanel extends JPanel {
         return null;
     }
 
-    public void setDeliverDate(LocalDate date) {
+    public void setDeliverDate(LocalDateTime date) {
         if (date != null) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
             deliver_date_field.setText(date.format(formatter));

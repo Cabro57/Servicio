@@ -23,7 +23,7 @@ public class AddedPartCsvMapper extends BaseCsvMapper<AddedPart> {
         ap.setAmount(1);
         ap.setPurchasePrice(parseDouble(fields[3]));
         ap.setSellingPrice(parseDouble(fields[4]));
-        ap.setAddedDate(parseDate(fields[5], DATE_TIME_FORMATTER));
+        ap.setAddedDate(parseDateTime(fields[5], DATE_TIME_FORMATTER));
 
 
         return ap;

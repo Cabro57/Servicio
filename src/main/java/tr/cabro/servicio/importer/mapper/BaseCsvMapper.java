@@ -44,7 +44,7 @@ public abstract class BaseCsvMapper<T> {
     protected LocalDate parseDate(String val, DateTimeFormatter formatterWithTime) {
         try {
             if (val == null || val.trim().isEmpty()) return null;
-            return LocalDateTime.parse(val.trim(), formatterWithTime).toLocalDate();
+            return LocalDate.parse(val.trim(), formatterWithTime);
         } catch (Exception e) {
             return null;
         }

@@ -7,7 +7,7 @@ import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
 
 import java.sql.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -115,12 +115,12 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         stmt.setInt(index, key);
     }
 
-    private String dateToStr(LocalDate date) {
+    private String dateToStr(LocalDateTime date) {
         return date != null ? date.toString() : null;
     }
 
-    private LocalDate strToDate(String dateStr) {
-        return (dateStr != null) ? LocalDate.parse(dateStr) : null;
+    private LocalDateTime strToDate(String dateStr) {
+        return (dateStr != null) ? LocalDateTime.parse(dateStr) : null;
     }
 
     public List<Service> getByCustomerId(int customerId) {
