@@ -70,7 +70,9 @@ public class ServiceCsvMapper extends BaseCsvMapper<Service> {
         s.setWarranty_date(parseDate(fields[20], DATE_TIME_FORMATTER));
 
         // delivery_at (dd/MM/yyyy HH:mm:ss)
-        s.setDelivery_at(parseDate(fields[22], DATE_TIME_FORMATTER));
+        if (s.getService_status() == ServiceStatus.DELIVERED || s.getService_status() == ServiceStatus.RETURN) {
+            s.setDelivery_at(parseDate(fields[22], DATE_TIME_FORMATTER));
+        }
 
         // created_at (dd/MM/yyyy HH:mm:ss)
         s.setCreated_at(parseDate(fields[21], DATE_TIME_FORMATTER));
