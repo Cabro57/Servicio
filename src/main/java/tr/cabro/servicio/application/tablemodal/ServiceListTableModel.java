@@ -55,7 +55,7 @@ public class ServiceListTableModel extends AbstractTableModel {
             case 4: return service.getDevice_model();
             case 5: return formatPrice(calculateRemainingAmount(service));
             case 6: return formatDate(service.getCreated_at());
-            case 7: return formatDate(service.getDelivery_at());
+            case 7: return formatDate(service.getDelivery_at()).isEmpty() ? "Teslim Edilmedi" : formatDate(service.getDelivery_at());
             case 8: return service.getService_status();
             default: return null;
         }
@@ -82,7 +82,11 @@ public class ServiceListTableModel extends AbstractTableModel {
     }
 
     private static String formatDate(LocalDate date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        return date.format(formatter);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("tr", "TR"));
+        try {
+            return date.format(formatter);
+        } catch (Exception e) {
+            return "";
+        }
     }
 }
