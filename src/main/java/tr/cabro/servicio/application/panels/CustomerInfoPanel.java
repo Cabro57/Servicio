@@ -7,8 +7,6 @@ import lombok.Setter;
 import raven.datetime.DatePicker;
 import tr.cabro.servicio.application.ui.CustomerEditUI;
 import tr.cabro.servicio.application.ui.CustomerSearchUI;
-import tr.cabro.servicio.application.listeners.SearchKeyListener;
-import tr.cabro.servicio.model.CustomerType;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.service.CustomerService;
@@ -24,7 +22,7 @@ public class CustomerInfoPanel extends JPanel {
     private JLabel title;
 
     @Getter
-    private JTextField customer_field;
+    private tr.cabro.servicio.application.compenents.SearchField customer_field;
     private JButton new_customer_button;
 
     private JPanel date_info_panel;
@@ -50,19 +48,18 @@ public class CustomerInfoPanel extends JPanel {
         customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icon/customer.svg", 22, 22));
         customer_field.putClientProperty(FlatClientProperties.STYLE_CLASS, "serviceSearchField");
         customer_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Müşteri adı, telefon, veya TC kimlik no yazıp ENTER tuşuna basın");
-        customer_field.addKeyListener(
-                new SearchKeyListener(s -> {
-                    CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
-                    customerSearchUI.setModal(true);
-                    customerSearchUI.setVisible(true);
+        customer_field.addActionListener(e -> {
+            String s = customer_field.getText().trim();
+            CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
+            customerSearchUI.setModal(true);
+            customerSearchUI.setVisible(true);
 
-                    Customer cs = customerSearchUI.getSelectedCustomer();
+            Customer cs = customerSearchUI.getSelectedCustomer();
 
-                    if (cs != null) {
-                        setCustomer(cs);
-                    }
-                })
-        );
+            if (cs != null) {
+                setCustomer(cs);
+            }
+        });
 
         new_customer_button.addActionListener(e -> new_customer_cmd());
 
@@ -106,7 +103,7 @@ public class CustomerInfoPanel extends JPanel {
     public void setCustomer(Customer customer) {
         this.selected_customer = customer;
         if (customer != null) {
-            customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, customer.getType().getIcon());
+            customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, customer.getType().getIcon(22, 22));
             customer_field.setText(customer.toString());
         } else {
             customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icon/customer.svg", 22, 22));

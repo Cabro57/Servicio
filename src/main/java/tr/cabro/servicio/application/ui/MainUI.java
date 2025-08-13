@@ -23,7 +23,6 @@ public class MainUI extends JFrame {
 
 
     public MainUI() {
-        init();
 
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
         int width = (int) (screen_size.width * 0.8);
@@ -31,6 +30,8 @@ public class MainUI extends JFrame {
         setSize(width, height);
         setMinimumSize(new Dimension(width, height));
         setLocationRelativeTo(null);
+
+        init();
     }
 
     private void init() {
@@ -80,10 +81,10 @@ public class MainUI extends JFrame {
         second_hand_device.setEnabled(false);
 
         // Arama kutusu tüm genişliği kaplasın
-        main_panel.add(search_field, "grow, pushx, width 24%::");
+        main_panel.add(search_field, "grow, pushx, width 21%:24%:");
 
         // Ayraç
-        main_panel.add(new JSeparator(JSeparator.VERTICAL), "growy, pushy");
+        main_panel.add(new JSeparator(JSeparator.VERTICAL), "growy, pushy, width 3::");
 
         // Butonlar yan yana, hepsi eşit genişlikte
         main_panel.add(customer_list_button, "grow, pushx");

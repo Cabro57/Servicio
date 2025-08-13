@@ -89,12 +89,27 @@ public final class Servicio {
         // Zamanlayıcı başlat
         BackupScheduler.start();
 
+        // Tema uygula
         FlatLaf.registerCustomDefaultsSource("themes");
-        FlatRobotoFont.install();
-
-        UIScale.scale(14);
-
         Theme.apply(Theme.selected());
+
+        // Tema uygulandıktan sonra fontu değiştir
+        Font currentFont = UIManager.getFont("defaultFont");
+
+        UIScale.getUserScaleFactor();
+
+        // İstediğin boyut (DPI ölçekli)
+        int scaledFontSize = UIScale.scale(13);
+
+        // Sadece family değiştir (boyut + stil aynı kalır veya yeniden ayarlanır)
+        Font newFont = FontUtils.getCompositeFont(
+                FlatRobotoFont.FAMILY,
+                currentFont.getStyle(),
+                scaledFontSize
+        );
+
+        UIManager.put("defaultFont", newFont);
+
 
         EventQueue.invokeLater(() -> {
             frame = new MainUI();
