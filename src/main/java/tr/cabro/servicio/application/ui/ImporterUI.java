@@ -1,7 +1,5 @@
 package tr.cabro.servicio.application.ui;
 
-import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.importer.ImportManager;
 
@@ -22,7 +20,7 @@ public class ImporterUI extends JDialog {
         INFO, SUCCESS, WARNING, ERROR
     }
 
-    private JLabel path_field;
+    private JEditorPane path_field;
     private JTextPane logger_area;
     private JButton import_button;
     private JScrollPane text_scroll;
@@ -32,13 +30,13 @@ public class ImporterUI extends JDialog {
 
     private final ImportManager importManager;
     private File savedLogFile;
+    private String folderPath;
 
     public ImporterUI() {
         super((Frame) null, "Servicio - Veri Tabanı Aktarma", true);
-        setContentPane(main_panel);
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
-        int width = (int) (screen_size.width * 0.45);
-        int height = (int) (screen_size.height * 0.6);
+        int width = (int) (screen_size.width * 0.25);
+        int height = (int) (screen_size.height * 0.4);
         setSize(width, height);
         setLocationRelativeTo(null);
 
@@ -46,19 +44,30 @@ public class ImporterUI extends JDialog {
         this.importManager = new ImportManager(line -> appendLog(line, LogLevel.INFO));
 
         init();
+
+        setContentPane(main_panel);
     }
 
     private void init() {
-        JButton chooserButton = new JButton(new FlatSVGIcon("icon/folder.svg"));
-        chooserButton.addActionListener(e -> chooseFolder());
-        path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooserButton);
+        // logger_area ayarları
+        logger_area.setEditable(false);
+        logger_area.setBackground(Color.BLACK);
+        logger_area.setForeground(Color.WHITE);
+        logger_area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
 
         File folder = detectOldAppData();
-        path_field.setText(folder != null ? "Dosya Yolu: " + folder.getAbsolutePath() : "Dosya Yolu: ");
+        if (folder != null) {
+            folderPath = folder.getAbsolutePath();
+            appendLog("Eski uygulamadan kalan veriler bulundu.", LogLevel.INFO);
+            appendLog("Bulunan klasör: " + folderPath, LogLevel.INFO);
+            appendLog("Aktarmak için 'Başlat' butonuna tıklayın.", LogLevel.INFO);
+        } else {
+            appendLog("Eski uygulama verisi bulunamadı.", LogLevel.WARNING);
+        }
 
         import_button.addActionListener(e -> {
             if (savedLogFile != null) {
-                openLogFile(); // işlem bitmişse log dosyasını aç
+                openLogFile();
                 dispose();
             } else {
                 importCmd();
@@ -69,11 +78,10 @@ public class ImporterUI extends JDialog {
     }
 
     private void importCmd() {
-        Path path = Paths.get(path_field.getText().replace("Dosya Yolu: ", ""));
+        Path path = Paths.get(folderPath);
         File folder = path.toFile();
         if (!folder.exists() || !folder.isDirectory()) {
             appendLog("Geçerli bir klasör seçiniz.", LogLevel.ERROR);
-            JOptionPane.showMessageDialog(this, "Geçerli bir klasör seçiniz.", "Hata", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -86,7 +94,7 @@ public class ImporterUI extends JDialog {
         new Thread(() -> {
             try {
                 importManager.importAll(folder.getAbsolutePath());
-                saveLogToFile(); // işlem tamamlanınca otomatik kaydet
+                saveLogToFile();
 
                 SwingUtilities.invokeLater(() -> {
                     appendLog("İçe aktarma işlemi başarıyla tamamlandı.", LogLevel.SUCCESS);
@@ -104,14 +112,6 @@ public class ImporterUI extends JDialog {
                 });
             }
         }).start();
-    }
-
-    private void chooseFolder() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-            path_field.setText(chooser.getSelectedFile().getAbsolutePath());
-        }
     }
 
     private void saveLogToFile() {
@@ -168,7 +168,7 @@ public class ImporterUI extends JDialog {
                         StyleConstants.setForeground(style, Color.RED);
                         break;
                     default:
-                        StyleConstants.setForeground(style, Color.BLACK);
+                        StyleConstants.setForeground(style, Color.WHITE);
                 }
 
                 StyleConstants.setBold(style, level == LogLevel.ERROR || level == LogLevel.SUCCESS);
