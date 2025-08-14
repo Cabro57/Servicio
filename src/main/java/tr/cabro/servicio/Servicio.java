@@ -98,13 +98,13 @@ public final class Servicio {
         UIScale.getUserScaleFactor();
 
         // İstediğin boyut (DPI ölçekli)
-        int scaledFontSize = UIScale.scale(13);
+//        int scaledFontSize = UIScale.scale(13);
 
         // Sadece family değiştir (boyut + stil aynı kalır veya yeniden ayarlanır)
         Font newFont = FontUtils.getCompositeFont(
                 FlatRobotoFont.FAMILY,
                 currentFont.getStyle(),
-                scaledFontSize
+                currentFont.getSize()
         );
 
         UIManager.put("defaultFont", newFont);
@@ -131,7 +131,7 @@ public final class Servicio {
         if (appVersion == null) {
             try {
                 java.util.Properties props = new java.util.Properties();
-                props.load(Servicio.class.getClassLoader().getResourceAsStream("version.properties"));
+                props.load(Servicio.class.getResourceAsStream("version.properties"));
                 appVersion = props.getProperty("version", "v0.0.0");
             } catch (Exception e) {
                 appVersion = "v0.0.0";
