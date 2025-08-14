@@ -68,7 +68,7 @@ public class MainUI extends JFrame {
     private void initComponent() {
         main_panel = new JPanel(new MigLayout(
                 "insets 10, fillx, filly", // wrap 5 -> 5 sütun sonra satır atla
-                "[][center][sg btn][sg btn][sg btn][sg btn]",   // 5 sütun, hepsi eşit büyüyebilir
+                "[][center][][][][]",   // 5 sütun, hepsi eşit büyüyebilir
                 "[6%::12%]10[grow]"                        // Üst satır sabit, alt satır boşluğu doldurur
         ));
 

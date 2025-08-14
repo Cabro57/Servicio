@@ -10,7 +10,6 @@ import tr.cabro.servicio.service.RepairService;
 
 import javax.swing.*;
 import java.awt.*;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -60,9 +59,13 @@ public class ServiceEditUI extends JDialog {
 
         int width;
         int height;
-        if (screenWidth < 1920 && screenHeight < 1080) {
-            width = (int) (screenWidth * 0.99);
+
+        if (screenWidth < 1366 && screenHeight < 768) {
+            width = (int) (screenWidth * 0.999);
             height = (int) (screenHeight * 0.95);
+        } else if (screenWidth < 1920 && screenHeight < 1080) {
+            width = (int) (screenWidth * 0.95);
+            height = (int) (screenHeight * 0.90);
         } else {
             width = (int) (screenWidth * 0.80);
             height = (int) (screenHeight * 0.75);
@@ -97,9 +100,7 @@ public class ServiceEditUI extends JDialog {
             }
         });
 
-        part_notes_info.addPartsChangeListener(totalMaterialCost -> {
-            price_info.setMaterialCost(totalMaterialCost);
-        });
+        part_notes_info.addPartsChangeListener(totalMaterialCost -> price_info.setMaterialCost(totalMaterialCost));
 
         if (service != null) {
             fillForm();

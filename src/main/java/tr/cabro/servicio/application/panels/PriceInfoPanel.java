@@ -26,6 +26,7 @@ public class PriceInfoPanel extends JPanel {
     private JFormattedTextField remainder_field;
     private JLabel payment_type_label;
     private JComboBox<PaymentType> payment_type_combo;
+    private JLabel title;
 
     public PriceInfoPanel() {
         init();

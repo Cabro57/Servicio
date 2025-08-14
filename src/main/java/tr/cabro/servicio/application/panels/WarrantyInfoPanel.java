@@ -19,6 +19,7 @@ public class WarrantyInfoPanel extends JPanel {
     private JLabel maintenance_status_label;
     private JLabel maintenance_status_info;
     private JPanel main_panel;
+    private JLabel title;
 
     private DatePicker warrantyDatePicker;
     private DatePicker maintenanceDatePicker;
