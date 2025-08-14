@@ -112,7 +112,7 @@ public class WarrantyInfoPanel extends JPanel {
 
     public LocalDateTime getWarrantyDate() {
         LocalDate date = warrantyDatePicker.getSelectedDate();
-        return LocalDateTime.of(date, LocalTime.now());
+        return date != null ? LocalDateTime.of(date, LocalTime.now()) : null;
     }
 
     public void setWarrantyDate(LocalDateTime date) {
@@ -127,7 +127,7 @@ public class WarrantyInfoPanel extends JPanel {
 
     public LocalDateTime getMaintenanceDate() {
         LocalDate date = maintenanceDatePicker.getSelectedDate();
-        return LocalDateTime.of(date, LocalTime.now());
+        return date != null ? LocalDateTime.of(date, LocalTime.now()) : null;
     }
 
     public void setMaintenanceDate(LocalDateTime date) {
