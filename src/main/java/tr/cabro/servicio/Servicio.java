@@ -100,6 +100,7 @@ public final class Servicio {
         // İstediğin boyut (DPI ölçekli)
 //        int scaledFontSize = UIScale.scale(13);
 
+        System.out.println(currentFont);
         // Sadece family değiştir (boyut + stil aynı kalır veya yeniden ayarlanır)
         Font newFont = FontUtils.getCompositeFont(
                 FlatRobotoFont.FAMILY,
