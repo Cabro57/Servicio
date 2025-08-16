@@ -61,6 +61,15 @@ public class ServiceListTableModel extends AbstractTableModel {
         }
     }
 
+    @Override
+    public Class<?> getColumnClass(int columnIndex) {
+        switch (columnIndex) {
+            case 6:
+            case 7: return LocalDateTime.class;
+            default: return String.class;
+        }
+    }
+
     public Service getService(int rowIndex) {
         if (rowIndex >= 0 && rowIndex < services.size()) {
             return services.get(rowIndex);

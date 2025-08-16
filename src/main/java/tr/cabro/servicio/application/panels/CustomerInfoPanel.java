@@ -5,6 +5,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
 import lombok.Setter;
 import raven.datetime.DatePicker;
+import tr.cabro.servicio.application.compenents.SearchField;
 import tr.cabro.servicio.application.ui.CustomerEditUI;
 import tr.cabro.servicio.application.ui.CustomerSearchUI;
 import tr.cabro.servicio.service.ServiceManager;
@@ -23,7 +24,7 @@ public class CustomerInfoPanel extends JPanel {
     private JLabel title;
 
     @Getter
-    private tr.cabro.servicio.application.compenents.SearchField customer_field;
+    private SearchField customer_field;
     private JButton new_customer_button;
 
     private JPanel date_info_panel;

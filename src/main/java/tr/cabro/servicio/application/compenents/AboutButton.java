@@ -1,12 +1,10 @@
 package tr.cabro.servicio.application.compenents;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.application.ui.AboutUI;
 import tr.cabro.servicio.icons.SVGIconUIColor;
 
 import javax.swing.*;
-import java.awt.*;
 
 public class AboutButton extends JButton {
 
