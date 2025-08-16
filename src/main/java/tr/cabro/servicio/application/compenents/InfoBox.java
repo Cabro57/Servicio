@@ -5,6 +5,7 @@ import java.awt.*;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
+import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
 
 public class InfoBox extends JPanel {
@@ -17,7 +18,7 @@ public class InfoBox extends JPanel {
     private JLabel progressDescLabel;
 
     public InfoBox(String iconPath, Color color) {
-        setLayout(new MigLayout("insets 0", "[]0[]", ""));
+        setLayout(new MigLayout("insets 0", "[]0[]", "[]"));
         setBackground(color);
 
         // Icon
@@ -32,12 +33,12 @@ public class InfoBox extends JPanel {
 
         // Title
         titleLabel = new JLabel("Title");
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 22f));
+        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, UIScale.scale(16)));
         content.add(titleLabel, "gapleft 10, wrap");
 
         // Amount
         amountLabel = new JLabel("0 Adet");
-        amountLabel.setFont(amountLabel.getFont().deriveFont(18f));
+        amountLabel.setFont(amountLabel.getFont().deriveFont(UIScale.scale(14f)));
         content.add(amountLabel, "gapleft 10, wrap");
 
         // Progress bar
@@ -52,7 +53,7 @@ public class InfoBox extends JPanel {
 
         // Progress description
         progressDescLabel = new JLabel("0% tamamlandı");
-        progressDescLabel.setFont(progressDescLabel.getFont().deriveFont(16f));
+        progressDescLabel.setFont(progressDescLabel.getFont().deriveFont(UIScale.scale(12f)));
         content.add(progressDescLabel, "gapleft 10, wrap");
 
         add(content, "h 100!, grow, push");
