@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public class ServiceEditUI extends JDialog {
+public class ServiceEditUI extends JFrame {
     private JPanel main_panel;
     private JPanel left_panel;
     private JPanel right_panel;
@@ -39,19 +39,9 @@ public class ServiceEditUI extends JDialog {
     private final PartService partService;
 
     public ServiceEditUI(Service service) {
-        super((Frame) null, service != null ? "Seri No: " + service.getId() : "Seri No: Yeni", true);
         this.service = service;
         this.partService = ServiceManager.getPartService();
         this.repairService = ServiceManager.getRepairService();
-        init();
-        setContentPane(main_panel);
-    }
-
-    public ServiceEditUI() {
-        this(null);
-    }
-
-    private void init() {
 
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
         int screenWidth = screen_size.width;
@@ -73,6 +63,18 @@ public class ServiceEditUI extends JDialog {
 
         setSize(width, height);
         setLocationRelativeTo(null);
+
+        init();
+        setContentPane(main_panel);
+    }
+
+    public ServiceEditUI() {
+        this(null);
+    }
+
+    private void init() {
+
+        initComponent();
 
         save_button.addActionListener(e -> saveService());
         update_button.addActionListener(e -> updateService());
@@ -314,5 +316,10 @@ public class ServiceEditUI extends JDialog {
         s.setNotes(part_notes_info.getNotes());
 
         return s;
+    }
+
+    private void initComponent() {
+
+
     }
 }

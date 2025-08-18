@@ -52,7 +52,6 @@ public class FaultProcessInfoPanel extends JPanel {
         }
     }
 
-    // 💡 Eksik setter metodları ekliyoruz
     public void setReportedFault(String fault) {
         reported_fault_field.setText(fault != null ? fault : "");
     }

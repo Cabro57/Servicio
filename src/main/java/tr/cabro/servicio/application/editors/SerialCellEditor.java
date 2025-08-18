@@ -28,7 +28,7 @@ public class SerialCellEditor extends DefaultCellEditor {
         this.row = row;
         ServicePartTableModel tableModel = (ServicePartTableModel) table.getModel();
         this.item = tableModel.getAddedParts().get(row);
-        String qty = value.toString();
+        String qty = value != null ? value.toString() : "";
         input.setText(qty);
         input.setEnabled(false);
         enable();

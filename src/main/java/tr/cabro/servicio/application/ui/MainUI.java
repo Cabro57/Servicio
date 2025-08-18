@@ -21,7 +21,6 @@ public class MainUI extends JFrame {
     private JButton record_service_button;
     private JButton second_hand_device;
 
-
     public MainUI() {
 
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
@@ -59,7 +58,7 @@ public class MainUI extends JFrame {
 
         customer_list_button.addActionListener(e -> showUI(new CustomerListUI()));
         part_edits_button.addActionListener(e -> showUI(new PartEditUI()));
-        record_service_button.addActionListener(e -> showUI(new ServiceEditUI()));
+        record_service_button.addActionListener(e -> new ServiceEditUI().setVisible(true));
 
 
         addWindowListener(new WindowClosingEvent());

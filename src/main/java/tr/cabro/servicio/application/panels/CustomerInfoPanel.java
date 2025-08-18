@@ -15,8 +15,7 @@ import tr.cabro.servicio.service.CustomerService;
 import javax.swing.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import java.time.LocalTime;
 
 public class CustomerInfoPanel extends JPanel {
     private JPanel main_panel;
@@ -28,12 +27,13 @@ public class CustomerInfoPanel extends JPanel {
     private JButton new_customer_button;
 
     private JPanel date_info_panel;
-    @Getter
     private JFormattedTextField record_date_field;
-    @Getter @Setter
     private JFormattedTextField deliver_date_field;
     private JLabel record_date_label;
     private JLabel deliver_date_label;
+
+    private DatePicker recordDatePicker;
+    private DatePicker deliverDatePicker;
 
     @Getter
     private Customer selected_customer;
@@ -67,11 +67,11 @@ public class CustomerInfoPanel extends JPanel {
 
         date_info_panel.setBackground(null);
 
-        DatePicker recordDatePicker = new DatePicker();
+        recordDatePicker = new DatePicker();
         recordDatePicker.setSelectedDate(LocalDate.now());
         recordDatePicker.setEditor(record_date_field);
 
-        DatePicker deliverDatePicker = new DatePicker();
+        deliverDatePicker = new DatePicker();
         deliverDatePicker.setEditor(deliver_date_field);
     }
 
@@ -114,47 +114,22 @@ public class CustomerInfoPanel extends JPanel {
     }
 
     public LocalDateTime getRecordDate() {
-        try {
-            String text = record_date_field.getText();
-            if (text != null && !text.trim().isEmpty()) {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                return LocalDateTime.parse(text.trim(), formatter);
-            }
-        } catch (DateTimeParseException e) {
-            // Geçersiz tarih varsa null döndür
-        }
-        return null;
+        LocalDate date = recordDatePicker.getSelectedDate();
+
+        return LocalDateTime.of(date, LocalTime.now());
     }
 
     public void setRecordDate(LocalDateTime date) {
-        if (date != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            record_date_field.setText(date.format(formatter));
-        } else {
-            record_date_field.setText("");
-        }
+        recordDatePicker.setSelectedDate(date.toLocalDate());
     }
 
     public LocalDateTime getDeliverDate() {
-        try {
-            String text = deliver_date_field.getText();
-            if (text != null && !text.trim().isEmpty()) {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                return LocalDateTime.parse(text.trim(), formatter);
-            }
-        } catch (DateTimeParseException e) {
-            // Geçersiz tarih varsa null döndür
-        }
-        return null;
+        LocalDate date = deliverDatePicker.getSelectedDate();
+        return LocalDateTime.of(date, LocalTime.now());
     }
 
     public void setDeliverDate(LocalDateTime date) {
-        if (date != null) {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-            deliver_date_field.setText(date.format(formatter));
-        } else {
-            deliver_date_field.setText("");
-        }
+        deliverDatePicker.setSelectedDate(date.toLocalDate());
     }
 
 
