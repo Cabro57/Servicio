@@ -20,7 +20,7 @@ public class AboutButton extends JButton {
         setOpaque(true);
         putClientProperty(FlatClientProperties.STYLE, "" +
                 "background:$Panel.background;" +
-                "hoverBackground:tint($Panel.background, 20%);" +
+                "hoverBackground:$Menu.;" +
                 "margin:null");
 
         addActionListener(e -> {

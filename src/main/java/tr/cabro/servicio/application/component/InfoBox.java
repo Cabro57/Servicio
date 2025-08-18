@@ -21,8 +21,10 @@ public class InfoBox extends JPanel {
         setLayout(new MigLayout("insets 0", "[]0[]", "[]"));
         setBackground(color);
 
+        int size = UIScale.scale(64);
+
         // Icon
-        JLabel iconLabel = new JLabel(new FlatSVGIcon(iconPath, 64, 64));
+        JLabel iconLabel = new JLabel(new FlatSVGIcon(iconPath, size, size));
         iconLabel.setOpaque(true);
         iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
         iconLabel.setBackground(darkenColor(color, 0.15f)); // panel renginden biraz daha koyu
