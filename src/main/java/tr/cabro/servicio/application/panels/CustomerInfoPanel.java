@@ -115,20 +115,24 @@ public class CustomerInfoPanel extends JPanel {
 
     public LocalDateTime getRecordDate() {
         LocalDate date = recordDatePicker.getSelectedDate();
-
+        if (date == null) return null;
         return LocalDateTime.of(date, LocalTime.now());
     }
 
     public void setRecordDate(LocalDateTime date) {
+        if (date == null) return;
         recordDatePicker.setSelectedDate(date.toLocalDate());
     }
 
     public LocalDateTime getDeliverDate() {
         LocalDate date = deliverDatePicker.getSelectedDate();
+        if (date == null) return null;
         return LocalDateTime.of(date, LocalTime.now());
     }
 
+
     public void setDeliverDate(LocalDateTime date) {
+        if (date == null) return;
         deliverDatePicker.setSelectedDate(date.toLocalDate());
     }
 
