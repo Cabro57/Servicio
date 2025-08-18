@@ -33,7 +33,7 @@ public class CustomerSearchUI extends JDialog {
 
         search_field.setText(search_text);
 
-        add(main_panel);
+        setContentPane(main_panel);
     }
 
     private void init() {

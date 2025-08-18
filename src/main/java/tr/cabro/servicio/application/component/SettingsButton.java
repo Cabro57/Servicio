@@ -18,7 +18,7 @@ public class SettingsButton extends JButton {
         setBorderPainted(false);
         setFocusPainted(false);
         setOpaque(true);
-        putClientProperty(FlatClientProperties.STYLE, "" +
+        putClientProperty(FlatClientProperties.STYLE,
                 "background:$Panel.background;" +
                 "hoverBackground:tint($Panel.background, 20%);" +
                 "margin:null");

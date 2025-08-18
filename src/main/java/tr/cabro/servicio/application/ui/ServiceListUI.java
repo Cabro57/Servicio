@@ -200,9 +200,10 @@ public class ServiceListUI extends JDialog {
                     ServiceListTableModel model = (ServiceListTableModel) table.getModel();
                     Service service = model.getService(row);
 
-                    // Yeni bir pencere aç, örneğin:
                     ServiceEditUI dialog = new ServiceEditUI(service);
                     dialog.setVisible(true);
+
+                    refreshTable();
                 }
             }
         });

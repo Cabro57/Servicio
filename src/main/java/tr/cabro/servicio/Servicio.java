@@ -78,38 +78,27 @@ public final class Servicio {
     }
 
     private void onRun() {
-
-        // Açılışta backup
         BackupMode mode = settings.getBackup().getMode();
         if (mode == BackupMode.ON_START || mode == BackupMode.ON_START_AND_EXIT) {
             DatabaseManager.backup();
         }
 
-        // Zamanlayıcı başlat
         BackupScheduler.start();
 
-        // Tema uygula
         FlatLaf.registerCustomDefaultsSource("themes");
         Theme.apply(Theme.selected());
 
-        // Tema uygulandıktan sonra fontu değiştir
-        Font currentFont = UIManager.getFont("defaultFont");
-
         UIScale.getUserScaleFactor();
 
-        // İstediğin boyut (DPI ölçekli)
         int scaledFontSize = UIScale.scale(12);
 
-        System.out.println(currentFont);
-        // Sadece family değiştir (boyut + stil aynı kalır veya yeniden ayarlanır)
         Font newFont = FontUtils.getCompositeFont(
                 FlatRobotoFont.FAMILY,
-                currentFont.getStyle(),
+                Font.PLAIN,
                 scaledFontSize
         );
 
         UIManager.put("defaultFont", newFont);
-
 
         EventQueue.invokeLater(() -> {
             frame = new MainUI();
@@ -132,7 +121,7 @@ public final class Servicio {
         if (appVersion == null) {
             try {
                 java.util.Properties props = new java.util.Properties();
-                props.load(Servicio.class.getResourceAsStream("version.properties"));
+                props.load(Servicio.class.getResourceAsStream("/version.properties"));
                 appVersion = props.getProperty("version", "v0.0.0");
             } catch (Exception e) {
                 appVersion = "v0.0.0";
