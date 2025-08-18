@@ -1,20 +1,20 @@
-package tr.cabro.servicio.application.compenents;
+package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import tr.cabro.servicio.application.ui.SettingsUI;
+import tr.cabro.servicio.application.ui.AboutUI;
 import tr.cabro.servicio.icons.SVGIconUIColor;
 
 import javax.swing.*;
 
-public class SettingsButton extends JButton {
+public class AboutButton extends JButton {
 
-    public SettingsButton() {
+    public AboutButton() {
         init();
 
     }
 
     private void init() {
-        setIcon(new SVGIconUIColor("icon/settings.svg", 0.025f, "MenuItem.foreground"));
+        setIcon(new SVGIconUIColor("icon/about.svg", 0.025f, "MenuItem.foreground"));
         setBorderPainted(false);
         setFocusPainted(false);
         setOpaque(true);
@@ -24,8 +24,9 @@ public class SettingsButton extends JButton {
                 "margin:null");
 
         addActionListener(e -> {
-            SettingsUI settingsUI = new SettingsUI();
-            settingsUI.setVisible(true);
+            AboutUI aboutUI = new AboutUI();
+            aboutUI.setModal(true);
+            aboutUI.setVisible(true);
         });
     }
 }

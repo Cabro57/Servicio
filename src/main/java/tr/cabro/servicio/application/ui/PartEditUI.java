@@ -1,11 +1,10 @@
 package tr.cabro.servicio.application.ui;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
 import raven.datetime.DatePicker;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.compenents.CurrencyField;
+import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.icons.SVGIconUIColor;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Part;

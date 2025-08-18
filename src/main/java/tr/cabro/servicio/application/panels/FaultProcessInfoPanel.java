@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.Getter;
-import tr.cabro.servicio.application.compenents.FieldPopupEditor;
+import tr.cabro.servicio.application.component.FieldPopupEditor;
 
 import javax.swing.*;
 

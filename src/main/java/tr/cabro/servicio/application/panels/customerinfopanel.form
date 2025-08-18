@@ -10,7 +10,7 @@
       <size top="0" left="0" bottom="0" right="0"/>
     </border>
     <children>
-      <component id="6173a" class="tr.cabro.servicio.application.compenents.SearchField" binding="customer_field">
+      <component id="6173a" class="tr.cabro.servicio.application.component.SearchField" binding="customer_field">
         <constraints>
           <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="6" anchor="8" fill="3" indent="0" use-parent-layout="false"/>
         </constraints>

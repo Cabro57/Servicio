@@ -3,8 +3,8 @@ package tr.cabro.servicio.application.ui;
 import com.formdev.flatlaf.FlatClientProperties;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
-import tr.cabro.servicio.application.compenents.InfoBox;
-import tr.cabro.servicio.application.compenents.table.TableHeaderAlignment;
+import tr.cabro.servicio.application.component.InfoBox;
+import tr.cabro.servicio.application.component.table.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.CustomerTableRenderer;
 import tr.cabro.servicio.application.renderer.ServiceStatusTableRenderer;
 import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
@@ -59,7 +59,7 @@ public class ServiceListUI extends JDialog {
         int width = (int) (screen_size.width * 0.8);
         int height = (int) (screen_size.height * 0.8);
         setSize(width, height);
-        setMinimumSize(new Dimension(width, height));
+//        setMinimumSize(new Dimension(width, height));
         setLocationRelativeTo(null);
 
         init();

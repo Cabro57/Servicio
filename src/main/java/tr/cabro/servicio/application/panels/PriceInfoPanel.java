@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import tr.cabro.servicio.application.compenents.CurrencyField;
+import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.renderer.PaymentTypeRenderer;
 import tr.cabro.servicio.model.PaymentType;
 

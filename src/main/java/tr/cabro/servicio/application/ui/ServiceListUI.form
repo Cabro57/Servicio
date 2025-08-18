@@ -16,43 +16,43 @@
         <properties/>
         <border type="none"/>
         <children>
-          <component id="3f9bc" class="tr.cabro.servicio.application.compenents.InfoBox" binding="repair_box" custom-create="true">
+          <component id="3f9bc" class="tr.cabro.servicio.application.component.InfoBox" binding="repair_box" custom-create="true">
             <constraints>
               <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties/>
           </component>
-          <component id="425df" class="tr.cabro.servicio.application.compenents.InfoBox" binding="ready_box" custom-create="true">
+          <component id="425df" class="tr.cabro.servicio.application.component.InfoBox" binding="ready_box" custom-create="true">
             <constraints>
               <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties/>
           </component>
-          <component id="d3a45" class="tr.cabro.servicio.application.compenents.InfoBox" binding="other_service_box" custom-create="true">
+          <component id="d3a45" class="tr.cabro.servicio.application.component.InfoBox" binding="other_service_box" custom-create="true">
             <constraints>
               <grid row="0" column="2" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties/>
           </component>
-          <component id="5f6aa" class="tr.cabro.servicio.application.compenents.InfoBox" binding="delivery_box" custom-create="true">
+          <component id="5f6aa" class="tr.cabro.servicio.application.component.InfoBox" binding="delivery_box" custom-create="true">
             <constraints>
               <grid row="0" column="3" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties/>
           </component>
-          <component id="9a93c" class="tr.cabro.servicio.application.compenents.InfoBox" binding="return_box" custom-create="true">
+          <component id="9a93c" class="tr.cabro.servicio.application.component.InfoBox" binding="return_box" custom-create="true">
             <constraints>
               <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties/>
           </component>
-          <component id="cced1" class="tr.cabro.servicio.application.compenents.InfoBox" binding="part_wait_box" custom-create="true">
+          <component id="cced1" class="tr.cabro.servicio.application.component.InfoBox" binding="part_wait_box" custom-create="true">
             <constraints>
               <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties/>
           </component>
-          <component id="8a955" class="tr.cabro.servicio.application.compenents.InfoBox" binding="debt_box" custom-create="true">
+          <component id="8a955" class="tr.cabro.servicio.application.component.InfoBox" binding="debt_box" custom-create="true">
             <constraints>
               <grid row="1" column="2" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>

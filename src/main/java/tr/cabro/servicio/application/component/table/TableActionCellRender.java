@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.compenents.table;
+package tr.cabro.servicio.application.component.table;
 
 import java.awt.Color;
 import java.awt.Component;

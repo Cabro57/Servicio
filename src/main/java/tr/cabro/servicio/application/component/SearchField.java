@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.compenents;
+package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.icons.SVGIconUIColor;

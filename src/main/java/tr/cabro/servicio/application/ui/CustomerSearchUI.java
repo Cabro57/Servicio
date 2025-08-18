@@ -3,7 +3,7 @@ package tr.cabro.servicio.application.ui;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
-import tr.cabro.servicio.application.compenents.table.TableHeaderAlignment;
+import tr.cabro.servicio.application.component.table.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.CustomerTypeTableRenderer;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Customer;

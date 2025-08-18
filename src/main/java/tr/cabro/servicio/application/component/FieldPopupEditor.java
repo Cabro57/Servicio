@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.compenents;
+package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;

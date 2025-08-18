@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.editors;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
-import tr.cabro.servicio.application.compenents.ActionButton;
+import tr.cabro.servicio.application.component.ActionButton;
 import tr.cabro.servicio.application.events.TableActionEvent;
 
 import javax.swing.*;

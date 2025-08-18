@@ -5,14 +5,13 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.renderer.AlignedRenderer;
 import tr.cabro.servicio.application.renderer.CustomerTypeTableRenderer;
-import tr.cabro.servicio.application.renderer.ServiceStatusTableRenderer;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.application.tablemodal.CustomerTableModel;
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.application.compenents.table.CheckBoxTableHeaderRenderer;
-import tr.cabro.servicio.application.compenents.table.ProfileTableRenderer;
-import tr.cabro.servicio.application.compenents.table.TableHeaderAlignment;
+import tr.cabro.servicio.application.component.table.CheckBoxTableHeaderRenderer;
+import tr.cabro.servicio.application.component.table.ProfileTableRenderer;
+import tr.cabro.servicio.application.component.table.TableHeaderAlignment;
 
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;

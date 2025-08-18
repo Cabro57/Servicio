@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.renderer;
 
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
-import tr.cabro.servicio.application.compenents.ActionButton;
+import tr.cabro.servicio.application.component.ActionButton;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;

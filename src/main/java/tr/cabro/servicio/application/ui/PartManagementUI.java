@@ -7,8 +7,8 @@ import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.application.tablemodal.PartTableModel;
 import tr.cabro.servicio.model.Part;
-import tr.cabro.servicio.application.compenents.table.CheckBoxTableHeaderRenderer;
-import tr.cabro.servicio.application.compenents.table.TableHeaderAlignment;
+import tr.cabro.servicio.application.component.table.CheckBoxTableHeaderRenderer;
+import tr.cabro.servicio.application.component.table.TableHeaderAlignment;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
