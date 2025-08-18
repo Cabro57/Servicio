@@ -39,6 +39,7 @@ public class ServiceEditUI extends JDialog {
     private final PartService partService;
 
     public ServiceEditUI(Service service) {
+        super((Frame) null, "", true);
         this.service = service;
         this.partService = ServiceManager.getPartService();
         this.repairService = ServiceManager.getRepairService();
@@ -65,6 +66,18 @@ public class ServiceEditUI extends JDialog {
         setLocationRelativeTo(null);
 
         init();
+
+        // Pencere göründükten sonra başlık ve formu ayarla
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowOpened(java.awt.event.WindowEvent e) {
+                if (service != null) {
+                    fillForm();
+                    save_button.setEnabled(false);
+                }
+                updateTitle();
+            }
+        });
     }
 
     public ServiceEditUI() {
@@ -72,7 +85,6 @@ public class ServiceEditUI extends JDialog {
     }
 
     private void init() {
-
         initComponent();
 
         save_button.addActionListener(e -> saveService());
@@ -102,15 +114,17 @@ public class ServiceEditUI extends JDialog {
         });
 
         part_notes_info.addPartsChangeListener(totalMaterialCost -> price_info.setMaterialCost(totalMaterialCost));
+    }
 
-        if (service != null) {
-            fillForm();
-            save_button.setEnabled(false);
+    private void updateTitle() {
+        if (service == null || service.getId() == 0) {
+            setTitle("Servis No: Yeni");
+        } else {
+            setTitle("Servis No: " + service.getId());
         }
     }
 
     private void fillForm() {
-        // Basit örnek doldurma, sen panel metodlarını uyarlarsın
         customer_info.loadCustomer(service.getCustomer_id());
         customer_info.setRecordDate(service.getCreated_at());
         customer_info.setDeliverDate(service.getDelivery_at());
@@ -143,12 +157,16 @@ public class ServiceEditUI extends JDialog {
 
         if (repairService.saveService(newService, false)) {
             List<AddedPart> addedParts = part_notes_info.getAddedParts();
-            for (AddedPart addedPart: addedParts) {
+            for (AddedPart addedPart : addedParts) {
                 addedPart.setServiceId(newService.getId());
                 partService.addPartToService(addedPart);
             }
             JOptionPane.showMessageDialog(this, "Servis başarıyla kaydedildi!", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
             this.service = newService;
+
+            fillForm();
+            updateTitle();
+            save_button.setEnabled(false);
         } else {
             JOptionPane.showMessageDialog(this, "Servis kaydedilemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
         }
@@ -166,12 +184,16 @@ public class ServiceEditUI extends JDialog {
         if (repairService.saveService(updated, true)) {
             partService.deleteAllPartsFromService(service.getId());
             List<AddedPart> addedParts = part_notes_info.getAddedParts();
-            for (AddedPart addedPart: addedParts) {
+            for (AddedPart addedPart : addedParts) {
                 addedPart.setServiceId(updated.getId());
                 partService.addPartToService(addedPart);
             }
 
             JOptionPane.showMessageDialog(this, "Servis başarıyla güncellendi!", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+            this.service = updated;
+
+            fillForm();
+            updateTitle();
         } else {
             JOptionPane.showMessageDialog(this, "Servis güncellenemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
         }
@@ -199,26 +221,27 @@ public class ServiceEditUI extends JDialog {
             return;
         }
 
-        // Güncellenmiş servis verilerini topla
         Service deliveredService = collectForm();
         deliveredService.setId(service.getId());
         deliveredService.setService_status(ServiceStatus.DELIVERED);
-        deliveredService.setDelivery_at(LocalDateTime.now()); // Teslim tarihi şimdi
+        deliveredService.setDelivery_at(LocalDateTime.now());
 
         if (repairService.saveService(deliveredService, true)) {
-            // Parçaları güncelle
             partService.deleteAllPartsFromService(service.getId());
             List<AddedPart> addedParts = part_notes_info.getAddedParts();
-            for (AddedPart addedPart: addedParts) {
+            for (AddedPart addedPart : addedParts) {
                 addedPart.setServiceId(deliveredService.getId());
                 partService.addPartToService(addedPart);
             }
 
             JOptionPane.showMessageDialog(this, "Servis teslim edildi!", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+            this.service = deliveredService;
+
+            fillForm();
+            updateTitle();
         } else {
             JOptionPane.showMessageDialog(this, "Servis teslim edilemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
         }
-
     }
 
     private void sendWhatsAppMessage() {
@@ -273,14 +296,12 @@ public class ServiceEditUI extends JDialog {
         }
 
         try {
-            // Önce bağlı parçaları sil
             partService.deleteAllPartsFromService(service.getId());
-            // Sonra servisi sil
             boolean deleted = repairService.deleteService(service.getId());
 
             if (deleted) {
                 JOptionPane.showMessageDialog(this, "Servis ve bağlı parçalar başarıyla silindi.", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
-                dispose(); // Dialog'u kapat
+                dispose();
             } else {
                 JOptionPane.showMessageDialog(this, "Servis silinemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
             }
@@ -323,7 +344,6 @@ public class ServiceEditUI extends JDialog {
     }
 
     private void initComponent() {
-
         setContentPane(main_panel);
     }
 }
