@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-public class ServiceEditUI extends JFrame {
+public class ServiceEditUI extends JDialog {
     private JPanel main_panel;
     private JPanel left_panel;
     private JPanel right_panel;
@@ -65,7 +65,6 @@ public class ServiceEditUI extends JFrame {
         setLocationRelativeTo(null);
 
         init();
-        setContentPane(main_panel);
     }
 
     public ServiceEditUI() {
@@ -181,6 +180,11 @@ public class ServiceEditUI extends JFrame {
     private void deliverCmd() {
         if (service == null) {
             JOptionPane.showMessageDialog(this, "Teslim edilecek bir servis seçili değil!", "Hata", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (service.getService_status() == ServiceStatus.DELIVERED) {
+            JOptionPane.showMessageDialog(this, "Bu Servis zaten teslim edilmiş.", "Hata", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -320,6 +324,6 @@ public class ServiceEditUI extends JFrame {
 
     private void initComponent() {
 
-
+        setContentPane(main_panel);
     }
 }
