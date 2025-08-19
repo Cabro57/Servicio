@@ -125,6 +125,8 @@ public class PartEditUI extends JDialog {
         // DatePicker bağlantısı
         purchase_picker.setEditor(purchase_date_field);
 
+        ((SpinnerNumberModel) stock_spinner.getModel()).setMinimum(1);
+
         // Butonlar
         save_button.addActionListener(e -> part_save_cmd());
         delete_button.addActionListener(e -> part_delete_cmd());

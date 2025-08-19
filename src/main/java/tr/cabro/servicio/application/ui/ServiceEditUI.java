@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.ui;
 
+import raven.modal.Toast;
 import tr.cabro.servicio.application.panels.*;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.Process;
@@ -188,8 +189,8 @@ public class ServiceEditUI extends JDialog {
                 addedPart.setServiceId(updated.getId());
                 partService.addPartToService(addedPart);
             }
-
-            JOptionPane.showMessageDialog(this, "Servis başarıyla güncellendi!", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+            Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla güncellendi!");
+            //JOptionPane.showMessageDialog(this, "Servis başarıyla güncellendi!", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
             this.service = updated;
 
             fillForm();

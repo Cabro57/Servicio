@@ -79,27 +79,27 @@ public class ServiceListUI extends JDialog {
         return_button.setIcon(new FlatSVGIcon("icon/return.svg", 0.03f));
         part_wait_button.setIcon(new FlatSVGIcon("icon/waiting_for_part.svg", 0.06f));
 
-        table_panel.putClientProperty(FlatClientProperties.STYLE, ""
-                + "arc:18;"
-                + "background:$Table.background");
+        table_panel.putClientProperty(FlatClientProperties.STYLE,
+                "arc:18;" +
+                "background:$Table.background");
 
-        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE, ""
-                + "height:30;"
+        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
+                "height:30;"
                 + "hoverBackground:null;"
                 + "pressedBackground:null;"
                 + "separatorColor:$TableHeader.background;"
                 + "font:bold;");
 
-        table.putClientProperty(FlatClientProperties.STYLE, ""
-                + "rowHeight:50;"
+        table.putClientProperty(FlatClientProperties.STYLE,
+                "rowHeight:50;"
                 + "showHorizontalLines:true;"
                 + "intercellSpacing:0,1;"
                 + "cellFocusColor:$TableHeader.hoverBackground;"
                 + "selectionBackground:$TableHeader.hoverBackground;"
                 + "selectionForeground:$Table.foreground;");
 
-        table_scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, ""
-                + "trackArc:999;"
+        table_scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE,
+                "trackArc:999;"
                 + "trackInsets:3,3,3,3;"
                 + "thumbInsets:3,3,3,3;"
                 + "background:$Table.background;");
