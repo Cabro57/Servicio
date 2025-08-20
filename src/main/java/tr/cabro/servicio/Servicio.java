@@ -92,13 +92,7 @@ public final class Servicio {
 
         int scaledFontSize = UIScale.scale(12);
 
-        Font newFont = FontUtils.getCompositeFont(
-                FlatRobotoFont.FAMILY,
-                Font.PLAIN,
-                scaledFontSize
-        );
-
-        UIManager.put("defaultFont", newFont);
+        UIManager.put("defaultFont", FontUtils.getCompositeFont(FlatRobotoFont.FAMILY, Font.PLAIN, scaledFontSize));
 
         EventQueue.invokeLater(() -> {
             frame = new MainUI();

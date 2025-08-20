@@ -52,6 +52,7 @@ public class DeviceInfoPanel extends JPanel {
         FieldPopupEditor popupEditor = new FieldPopupEditor(accessory_field);
         accessory_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, popupEditor.getTriggerButton());
         accessory_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        accessory_field.setColumns(20);
 
         device_type_combo.setModel(deviceTypeComboBoxModel);
         brand_combo.setModel(brandComboBoxModel);
