@@ -94,15 +94,19 @@ public class ServicePartTableModel extends AbstractTableModel {
      * Aynı barkod varsa yeni satır eklemek yerine adetini artırır.
      */
     public void addAddedPart(AddedPart addedPart) {
-        for (int i = 0; i < addedParts.size(); i++) {
-            AddedPart existing = addedParts.get(i);
-            if (existing.getBarcode().equals(addedPart.getBarcode())) {
-                existing.setAmount(existing.getAmount() + addedPart.getAmount());
-                fireTableRowsUpdated(i, i);
-                return;
+        // Eğer barcode boş değilse, aynı barkodlu parçaları birleştir
+        if (addedPart.getBarcode() != null && !addedPart.getBarcode().isEmpty()) {
+            for (int i = 0; i < addedParts.size(); i++) {
+                AddedPart existing = addedParts.get(i);
+                if (addedPart.getBarcode().equals(existing.getBarcode())) {
+                    existing.setAmount(existing.getAmount() + addedPart.getAmount());
+                    fireTableRowsUpdated(i, i);
+                    return;
+                }
             }
         }
-        // Yoksa yeni satır ekle
+
+        // Eğer barcode boş ise (manuel parça) veya hiç eşleşme bulunamadıysa yeni satır ekle
         addedParts.add(addedPart);
         fireTableRowsInserted(addedParts.size() - 1, addedParts.size() - 1);
     }
