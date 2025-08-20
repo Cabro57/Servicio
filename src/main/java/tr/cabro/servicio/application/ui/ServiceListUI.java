@@ -196,9 +196,10 @@ public class ServiceListUI extends JDialog {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 if (e.getClickCount() == 2 && table.getSelectedRow() != -1) { // Çift tıklama kontrolü
-                    int row = table.getSelectedRow();
-                    ServiceListTableModel model = (ServiceListTableModel) table.getModel();
-                    Service service = model.getService(row);
+                    int viewRow = table.getSelectedRow();
+                    int modelRow = table.convertRowIndexToModel(viewRow);
+
+                    Service service = ((ServiceListTableModel) table.getModel()).getService(modelRow);
 
                     ServiceEditUI dialog = new ServiceEditUI(service);
                     dialog.setVisible(true);
