@@ -33,14 +33,14 @@ public class FaultProcessInfoPanel extends JPanel {
         FieldPopupEditor reportedPopupEditor = new FieldPopupEditor(reported_fault_field);
         reported_fault_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, reportedPopupEditor.getTriggerButton());
         reported_fault_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        reported_fault_field.setColumns(20);
+        reported_fault_field.setColumns(10);
 
         FieldPopupEditor detectedPopupEditor = new FieldPopupEditor(detected_fault_field);
         detected_fault_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, detectedPopupEditor.getTriggerButton());
         detected_fault_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        detected_fault_field.setColumns(20);
+        detected_fault_field.setColumns(10);
 
-        action_taken_field.setColumns(20);
+        action_taken_field.setColumns(10);
     }
 
     public void appendAction(String newAction) {

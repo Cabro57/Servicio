@@ -35,6 +35,9 @@ public class WarrantyInfoPanel extends JPanel {
 
         PanelDateOptionLabel panelDateOptionLabel = getPanelDateOptionLabel();
 
+        warranty_period_field.setColumns(10);
+        maintenance_period_field.setColumns(10);
+
         warrantyDatePicker = new DatePicker();
         warrantyDatePicker.setUsePanelOption(true);
         warrantyDatePicker.setPanelDateOptionLabel(panelDateOptionLabel);

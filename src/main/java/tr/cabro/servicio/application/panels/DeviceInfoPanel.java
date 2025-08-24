@@ -46,13 +46,18 @@ public class DeviceInfoPanel extends JPanel {
         main_panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "editServicePanel");
 
         model_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        model_field.setColumns(10);
         password_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        password_field.setColumns(10);
         seri_no_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        seri_no_field.setColumns(10);
 
         FieldPopupEditor popupEditor = new FieldPopupEditor(accessory_field);
         accessory_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, popupEditor.getTriggerButton());
         accessory_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        accessory_field.setColumns(20);
+        accessory_field.setColumns(10);
+
+        model_field.setPreferredSize(accessory_field.getPreferredSize());
 
         device_type_combo.setModel(deviceTypeComboBoxModel);
         brand_combo.setModel(brandComboBoxModel);

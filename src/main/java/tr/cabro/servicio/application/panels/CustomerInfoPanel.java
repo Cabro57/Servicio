@@ -49,6 +49,7 @@ public class CustomerInfoPanel extends JPanel {
         customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icon/customer.svg", 22, 22));
         customer_field.putClientProperty(FlatClientProperties.STYLE_CLASS, "serviceSearchField");
         customer_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Müşteri adı, telefon, veya TC kimlik no yazıp ENTER tuşuna basın");
+        customer_field.setColumns(10);
         customer_field.addActionListener(e -> {
             String s = customer_field.getText().trim();
             CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
@@ -69,9 +70,11 @@ public class CustomerInfoPanel extends JPanel {
         recordDatePicker = new DatePicker();
         recordDatePicker.setSelectedDate(LocalDate.now());
         recordDatePicker.setEditor(record_date_field);
+        record_date_field.setColumns(10);
 
         deliverDatePicker = new DatePicker();
         deliverDatePicker.setEditor(deliver_date_field);
+        record_date_field.setColumns(10);
     }
 
     private void new_customer_cmd() {
@@ -119,7 +122,11 @@ public class CustomerInfoPanel extends JPanel {
     }
 
     public void setRecordDate(LocalDateTime date) {
-        if (date == null) return;
+        if (date == null) {
+            recordDatePicker.clearSelectedDate();
+            return;
+        }
+
         recordDatePicker.setSelectedDate(date.toLocalDate());
     }
 

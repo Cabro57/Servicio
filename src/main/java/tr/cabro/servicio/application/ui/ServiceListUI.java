@@ -15,9 +15,12 @@ import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -59,7 +62,6 @@ public class ServiceListUI extends JDialog {
         int width = (int) (screen_size.width * 0.8);
         int height = (int) (screen_size.height * 0.8);
         setSize(width, height);
-//        setMinimumSize(new Dimension(width, height));
         setLocationRelativeTo(null);
 
         init();
@@ -172,6 +174,7 @@ public class ServiceListUI extends JDialog {
                 SwingConstants.LEADING,
                 SwingConstants.LEADING,
                 SwingConstants.LEADING,
+                SwingConstants.LEADING,
                 SwingConstants.TRAILING,
                 SwingConstants.LEADING,
                 SwingConstants.LEADING,
@@ -181,16 +184,42 @@ public class ServiceListUI extends JDialog {
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
         table.getColumnModel().getColumn(1).setCellRenderer(new CustomerTableRenderer());
 
-        table.getColumnModel().getColumn(8).setCellRenderer(new ServiceStatusTableRenderer());
+        table.getColumnModel().getColumn(7).setCellRenderer(new DefaultTableCellRenderer() {
+            private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("tr", "TR"));
+            @Override
+            protected void setValue(Object value) {
+                if (value instanceof LocalDateTime) {
+                    setText(((LocalDateTime) value).format(formatter));
+                } else {
+                    setText("");
+                }
+            }
+        });
+
+        table.getColumnModel().getColumn(8).setCellRenderer(new DefaultTableCellRenderer() {
+            private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("tr", "TR"));
+            @Override
+            protected void setValue(Object value) {
+                if (value instanceof LocalDateTime) {
+                    setText(((LocalDateTime) value).format(formatter));
+                } else {
+                    setText("Teslim Edilmedi");
+                }
+            }
+        });
+
+        table.getColumnModel().getColumn(9).setCellRenderer(new ServiceStatusTableRenderer());
 
         table.getColumnModel().getColumn(0).setMaxWidth(50);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);
         table.getColumnModel().getColumn(2).setPreferredWidth(80);
         table.getColumnModel().getColumn(3).setPreferredWidth(80);
         table.getColumnModel().getColumn(4).setPreferredWidth(80);
-        table.getColumnModel().getColumn(5).setPreferredWidth(80);
+        table.getColumnModel().getColumn(5).setPreferredWidth(100);
         table.getColumnModel().getColumn(6).setPreferredWidth(80);
         table.getColumnModel().getColumn(7).setPreferredWidth(80);
+        table.getColumnModel().getColumn(8).setPreferredWidth(80);
+        table.getColumnModel().getColumn(9).setPreferredWidth(80);
 
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
@@ -199,12 +228,22 @@ public class ServiceListUI extends JDialog {
                     int viewRow = table.getSelectedRow();
                     int modelRow = table.convertRowIndexToModel(viewRow);
 
-                    Service service = ((ServiceListTableModel) table.getModel()).getService(modelRow);
+                    ServiceListTableModel tableModel = (ServiceListTableModel) table.getModel();
+
+                    Service service = tableModel.getService(modelRow);
 
                     ServiceEditUI dialog = new ServiceEditUI(service);
                     dialog.setVisible(true);
 
-                    refreshTable();
+                    int serviceId = service.getId();
+                    service = repairService.getServiceById(serviceId).orElse(null);
+
+                    if (service == null) {
+                        tableModel.removeServiceById(serviceId);
+                        return;
+                    }
+
+                    tableModel.updateService(service);
                 }
             }
         });

@@ -85,11 +85,12 @@ public final class Servicio {
 
         BackupScheduler.start();
 
+        FlatRobotoFont.install();
+
         FlatLaf.registerCustomDefaultsSource("themes");
         Theme.apply(Theme.selected());
 
         UIScale.getUserScaleFactor();
-
         int scaledFontSize = UIScale.scale(12);
 
         UIManager.put("defaultFont", FontUtils.getCompositeFont(FlatRobotoFont.FAMILY, Font.PLAIN, scaledFontSize));

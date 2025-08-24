@@ -35,17 +35,17 @@ public class PartsNotesInfoPanel extends JPanel {
     private JPanel part_search_panel;
     private JButton new_part_add_button;
     private JTextField product_search_field;
-    private JTextField notes_field;
+    private JTextArea notes_field;
     private JButton part_add_button;
     private JTextField series_no_field;
-    private JFormattedTextField sale_price_field;
-    private JSpinner amount_spinner;
     private JFormattedTextField purchase_price_field;
+    private JSpinner amount_spinner;
+    private JFormattedTextField sale_price_field;
     private JPanel manual_add_panel;
     private JLabel series_no_label;
     private JButton manual_add_button;
-    private JLabel sale_price_label;
     private JLabel purchase_price_label;
+    private JLabel sale_price_label;
     private JLabel amount_label;
     private JLabel part_name_label;
     private JTextField part_name_field;
@@ -191,11 +191,11 @@ public class PartsNotesInfoPanel extends JPanel {
 
         double sellingPrice;
         try {
-            Object val = sale_price_field.getValue();
+            Object val = purchase_price_field.getValue();
             if (val instanceof Number) {
                 sellingPrice = ((Number) val).doubleValue();
             } else {
-                sellingPrice = Double.parseDouble(sale_price_field.getText().trim());
+                sellingPrice = Double.parseDouble(purchase_price_field.getText().trim());
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Geçerli bir satış fiyatı giriniz.", "Hata", JOptionPane.ERROR_MESSAGE);
@@ -203,7 +203,7 @@ public class PartsNotesInfoPanel extends JPanel {
         }
 
         double purchasePrice = 0.0;
-        Object purchaseVal = purchase_price_field.getValue();
+        Object purchaseVal = sale_price_field.getValue();
         if (purchaseVal instanceof Number) {
             purchasePrice = ((Number) purchaseVal).doubleValue();
         }
@@ -225,8 +225,8 @@ public class PartsNotesInfoPanel extends JPanel {
 
         // Formu temizle
         series_no_field.setText("");
-        sale_price_field.setValue(0.0);
         purchase_price_field.setValue(0.0);
+        sale_price_field.setValue(0.0);
         amount_spinner.setValue(1);
         part_name_field.setText("");
     }
@@ -295,7 +295,7 @@ public class PartsNotesInfoPanel extends JPanel {
     }
 
     private void createUIComponents() {
-        sale_price_field = new CurrencyField();
         purchase_price_field = new CurrencyField();
+        sale_price_field = new CurrencyField();
     }
 }
