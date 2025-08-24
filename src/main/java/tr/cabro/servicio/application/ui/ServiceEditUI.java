@@ -162,7 +162,7 @@ public class ServiceEditUI extends JDialog {
                 addedPart.setServiceId(newService.getId());
                 partService.addPartToService(addedPart);
             }
-            JOptionPane.showMessageDialog(this, "Servis başarıyla kaydedildi!", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+            Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla kaydedildi!");
             this.service = newService;
 
             fillForm();
@@ -175,7 +175,7 @@ public class ServiceEditUI extends JDialog {
 
     private void updateService() {
         if (service == null) {
-            JOptionPane.showMessageDialog(this, "Güncellenecek bir servis seçili değil!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.WARNING, "Güncellenecek bir servis seçili değil!");
             return;
         }
 
@@ -190,7 +190,6 @@ public class ServiceEditUI extends JDialog {
                 partService.addPartToService(addedPart);
             }
             Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla güncellendi!");
-            //JOptionPane.showMessageDialog(this, "Servis başarıyla güncellendi!", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
             this.service = updated;
 
             fillForm();
@@ -235,7 +234,7 @@ public class ServiceEditUI extends JDialog {
                 partService.addPartToService(addedPart);
             }
 
-            JOptionPane.showMessageDialog(this, "Servis teslim edildi!", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+            Toast.show(this, Toast.Type.INFO, "Servis teslim edildi!");
             this.service = deliveredService;
 
             fillForm();
@@ -301,7 +300,7 @@ public class ServiceEditUI extends JDialog {
             boolean deleted = repairService.deleteService(service.getId());
 
             if (deleted) {
-                JOptionPane.showMessageDialog(this, "Servis ve bağlı parçalar başarıyla silindi.", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+                Toast.show(this, Toast.Type.INFO, "Servis ve bağlı parçalar başarıyla silindi.");
                 dispose();
             } else {
                 JOptionPane.showMessageDialog(this, "Servis silinemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
