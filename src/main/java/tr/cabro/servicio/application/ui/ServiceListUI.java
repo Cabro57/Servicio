@@ -314,7 +314,7 @@ public class ServiceListUI extends JDialog {
         List<RowFilter<TableModel, Object>> filters = new ArrayList<>();
 
         if (status != null && !status.isEmpty()) {
-            filters.add(RowFilter.regexFilter("^" + status + "$", 9)); // 8 = durum sütunu
+            filters.add(RowFilter.regexFilter("^" + status + "$", 9)); // 9 = durum sütunu
         }
 
         if (searchText != null && !searchText.trim().isEmpty()) {

@@ -137,6 +137,8 @@ public class PartsNotesInfoPanel extends JPanel {
 
         addTableDoubleClickListener();
 
+        ((SpinnerNumberModel) amount_spinner.getModel()).setMinimum(1);
+
         // Arka planlar
         manual_add_panel.setBackground(null);
         manual_content_panel.setBackground(null);
@@ -191,11 +193,11 @@ public class PartsNotesInfoPanel extends JPanel {
 
         double sellingPrice;
         try {
-            Object val = purchase_price_field.getValue();
+            Object val = sale_price_field.getValue();
             if (val instanceof Number) {
                 sellingPrice = ((Number) val).doubleValue();
             } else {
-                sellingPrice = Double.parseDouble(purchase_price_field.getText().trim());
+                sellingPrice = Double.parseDouble(sale_price_field.getText().trim());
             }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Geçerli bir satış fiyatı giriniz.", "Hata", JOptionPane.ERROR_MESSAGE);
@@ -203,7 +205,7 @@ public class PartsNotesInfoPanel extends JPanel {
         }
 
         double purchasePrice = 0.0;
-        Object purchaseVal = sale_price_field.getValue();
+        Object purchaseVal = purchase_price_field.getValue();
         if (purchaseVal instanceof Number) {
             purchasePrice = ((Number) purchaseVal).doubleValue();
         }
