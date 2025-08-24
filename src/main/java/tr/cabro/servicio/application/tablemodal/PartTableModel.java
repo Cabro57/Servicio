@@ -1,13 +1,11 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.util.FormatUtils;
 
 import javax.swing.table.AbstractTableModel;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 public class PartTableModel extends AbstractTableModel {
 
@@ -43,9 +41,9 @@ public class PartTableModel extends AbstractTableModel {
             case 4: return device_part.getDevice_type();
             case 5: return device_part.getModels();
             case 6: return device_part.getStock();
-            case 7: return formatPrice(device_part.getPurchase_price());
-            case 8: return formatPrice(device_part.getSale_price());
-            case 9: return formatDate(device_part.getPurchase_date());
+            case 7: return FormatUtils.formatPrice(device_part.getPurchase_price());
+            case 8: return FormatUtils.formatPrice(device_part.getSale_price());
+            case 9: return FormatUtils.formatDate(device_part.getPurchase_date());
             default: return null;
         }
     }
@@ -86,16 +84,6 @@ public class PartTableModel extends AbstractTableModel {
         } else {
             throw new IndexOutOfBoundsException("Geçersiz satır indeksi" + rowIndex);
         }
-    }
-
-    private static String formatPrice(double price) {
-        Locale turkishLocale = new Locale("tr", "TR"); // Türkçe yerel ayar
-        return String.format(turkishLocale, "%,.2f ₺", price);
-    }
-
-    private static String formatDate(LocalDate date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        return date != null ? date.format(formatter) : "";
     }
 
     public List<Part> getSelectedProducts() {

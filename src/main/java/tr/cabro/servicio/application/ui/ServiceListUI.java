@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.ui;
 import com.formdev.flatlaf.FlatClientProperties;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
+import raven.modal.Toast;
 import tr.cabro.servicio.application.component.InfoBox;
 import tr.cabro.servicio.application.component.table.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.CustomerTableRenderer;
@@ -240,6 +241,7 @@ public class ServiceListUI extends JDialog {
 
                     if (service == null) {
                         tableModel.removeServiceById(serviceId);
+                        Toast.show(ServiceListUI.this, Toast.Type.SUCCESS, "Servis ve bağlı parçalar başarıyla silindi.");
                         return;
                     }
 

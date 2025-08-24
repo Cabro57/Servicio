@@ -3,12 +3,10 @@ package tr.cabro.servicio.application.tablemodal;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.FormatUtils;
 
 import javax.swing.table.AbstractTableModel;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Locale;
 
 public class CustomerServiceRecordTableModel extends AbstractTableModel {
 
@@ -38,9 +36,9 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
         switch (columnIndex) {
             case 0: return service.getId();
             case 1: return service.getDevice_brand() + " " + service.getDevice_model();
-            case 2: return formatPrice(calculateRemainingAmount(service));
+            case 2: return FormatUtils.formatPrice(calculateRemainingAmount(service));
             case 3: return service.getService_status();
-            case 4: return formatDate(service.getCreated_at());
+            case 4: return FormatUtils.formatDate(service.getCreated_at());
             default: return null;
         }
     }
@@ -76,18 +74,5 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
         double parts = partService.getTotalPartsCostForService(service.getId());
         double paid = service.getPaid();
         return (labor + parts) - paid;
-    }
-
-    private static String formatPrice(double price) {
-        Locale turkishLocale = new Locale("tr", "TR");
-        return String.format(turkishLocale, "%,.2f ₺", price);
-    }
-
-    private static String formatDate(LocalDateTime date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        if (date == null) {
-            return "";
-        }
-        return date.format(formatter);
     }
 }

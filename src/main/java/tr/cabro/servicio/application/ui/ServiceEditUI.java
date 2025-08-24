@@ -206,7 +206,7 @@ public class ServiceEditUI extends JDialog {
         }
 
         if (service.getService_status() == ServiceStatus.DELIVERED) {
-            Toast.show(this, Toast.Type.ERROR, "Bu Servis zaten teslim edilmiş.");
+            Toast.show(this, Toast.Type.WARNING, "Bu Servis zaten teslim edilmiş.");
             return;
         }
 
@@ -234,7 +234,7 @@ public class ServiceEditUI extends JDialog {
                 partService.addPartToService(addedPart);
             }
 
-            Toast.show(this, Toast.Type.INFO, "Servis teslim edildi!");
+            Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla teslim edildi!");
             this.service = deliveredService;
 
             fillForm();
@@ -300,7 +300,7 @@ public class ServiceEditUI extends JDialog {
             boolean deleted = repairService.deleteService(service.getId());
 
             if (deleted) {
-                Toast.show(this, Toast.Type.INFO, "Servis ve bağlı parçalar başarıyla silindi.");
+                Toast.show(this, Toast.Type.SUCCESS, "Servis ve bağlı parçalar başarıyla silindi.");
                 dispose();
             } else {
                 Toast.show(this, Toast.Type.ERROR, "Servis silinemedi!");

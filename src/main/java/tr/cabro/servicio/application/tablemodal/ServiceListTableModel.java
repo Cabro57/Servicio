@@ -5,13 +5,12 @@ import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.FormatUtils;
 
 import javax.swing.table.AbstractTableModel;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class ServiceListTableModel extends AbstractTableModel {
 
@@ -53,7 +52,7 @@ public class ServiceListTableModel extends AbstractTableModel {
             case 3: return service.getDevice_brand();
             case 4: return service.getDevice_model();
             case 5: return service.getDevice_serial();
-            case 6: return formatPrice(calculateRemainingAmount(service));
+            case 6: return FormatUtils.formatPrice(calculateRemainingAmount(service));
             case 7: return service.getCreated_at();
             case 8: return service.getDelivery_at();
             case 9: return service.getService_status();
@@ -66,9 +65,9 @@ public class ServiceListTableModel extends AbstractTableModel {
         switch (columnIndex) {
             case 0: return Integer.class;
             case 1: return Customer.class;
-            case 6:
-            case 7: return LocalDateTime.class;
-            case 8: return ServiceStatus.class;
+            case 7:
+            case 8: return LocalDateTime.class;
+            case 9: return ServiceStatus.class;
             default: return String.class;
         }
     }
@@ -106,19 +105,5 @@ public class ServiceListTableModel extends AbstractTableModel {
         double parts = ServiceManager.getPartService().getTotalPartsCostForService(service.getId());
         double paid = service.getPaid();
         return (labor + parts) - paid;
-    }
-
-    private static String formatPrice(double price) {
-        Locale turkishLocale = new Locale("tr", "TR");
-        return String.format(turkishLocale, "%,.2f ₺", price);
-    }
-
-    private static String formatDate(LocalDateTime date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("tr", "TR"));
-        try {
-            return date.format(formatter);
-        } catch (Exception e) {
-            return "";
-        }
     }
 }

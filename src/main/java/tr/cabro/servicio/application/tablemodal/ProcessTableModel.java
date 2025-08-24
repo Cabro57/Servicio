@@ -1,10 +1,10 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Process;
+import tr.cabro.servicio.util.FormatUtils;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.List;
-import java.util.Locale;
 
 public class ProcessTableModel extends AbstractTableModel {
 
@@ -43,7 +43,7 @@ public class ProcessTableModel extends AbstractTableModel {
         Process row = processes.get(rowIndex);
         switch (columnIndex) {
             case 0: return row.getName();
-            case 1: return row.getPrice();
+            case 1: return FormatUtils.formatPrice(row.getPrice());
             default: return null;
         }
     }
@@ -54,10 +54,5 @@ public class ProcessTableModel extends AbstractTableModel {
         } else {
             throw new IndexOutOfBoundsException("Geçersiz satır indeksi: " + rowIndex);
         }
-    }
-
-    public String formatPrice(double price) {
-        Locale tr = new Locale("tr", "TR");
-        return String.format(tr, "%,.2f ₺", price);
     }
 }

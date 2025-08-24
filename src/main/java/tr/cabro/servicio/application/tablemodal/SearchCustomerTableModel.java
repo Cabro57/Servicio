@@ -1,14 +1,11 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.CustomerType;
+import tr.cabro.servicio.util.FormatUtils;
 
 import javax.swing.table.AbstractTableModel;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 public class SearchCustomerTableModel extends AbstractTableModel {
 
@@ -40,7 +37,7 @@ public class SearchCustomerTableModel extends AbstractTableModel {
             case 0: return customer.getType();
             case 1: return customer.getName() + " " + customer.getSurname();
             case 2: return customer.getBusiness_name();
-            case 3: return formatPhoneNumber(customer.getPhone_number_1());
+            case 3: return FormatUtils.formatPhoneNumber(customer.getPhone_number_1());
             case 4: return customer.getId_no();
             default: return null;
         }
@@ -70,24 +67,6 @@ public class SearchCustomerTableModel extends AbstractTableModel {
 
     public int getCustomerID(int rowIndex) {
         return getCustomer(rowIndex).getID();
-    }
-
-    private static String formatPhoneNumber(String phoneNumber) {
-        return String.format("%s %s %s %s",
-                phoneNumber.substring(0, 3),
-                phoneNumber.substring(3, 6),
-                phoneNumber.substring(6, 8),
-                phoneNumber.substring(8, 10));
-    }
-
-    private static String formatPrice(double price) {
-        Locale turkishLocale = new Locale("tr", "TR");
-        return String.format(turkishLocale, "%,.2f ₺", price);
-    }
-
-    private static String formatDate(LocalDateTime date) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        return date.format(formatter);
     }
 
     public List<Customer> getSelectedCustomers() {

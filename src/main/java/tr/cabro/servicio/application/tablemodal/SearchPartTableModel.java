@@ -1,11 +1,11 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.util.FormatUtils;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 public class SearchPartTableModel extends AbstractTableModel {
 
@@ -39,8 +39,8 @@ public class SearchPartTableModel extends AbstractTableModel {
             case 2: return device_part.getBrand();
             case 3: return device_part.getName();
             case 4: return device_part.getStock();
-            case 5: return formatPrice(device_part.getPurchase_price());
-            case 6: return formatPrice(device_part.getSale_price());
+            case 5: return FormatUtils.formatPrice(device_part.getPurchase_price());
+            case 6: return FormatUtils.formatPrice(device_part.getSale_price());
             default: return null;
         }
     }
@@ -81,11 +81,6 @@ public class SearchPartTableModel extends AbstractTableModel {
         } else {
             throw new IndexOutOfBoundsException("Geçersiz satır indeksi" + rowIndex);
         }
-    }
-
-    private static String formatPrice(double price) {
-        Locale turkishLocale = new Locale("tr", "TR"); // Türkçe yerel ayar
-        return String.format(turkishLocale, "%,.2f ₺", price);
     }
 
     public List<Part> getSelectedPart() {
