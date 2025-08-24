@@ -19,8 +19,8 @@ public class ServiceEditUI extends JDialog {
     private JPanel main_panel;
     private JPanel left_panel;
     private JPanel right_panel;
-    private DeviceInfoPanel device_info;
     private CustomerInfoPanel customer_info;
+    private DeviceInfoPanel device_info;
     private FaultProcessInfoPanel fault_process_info;
     private PriceInfoPanel price_info;
     private WarrantyInfoPanel warranty_info;

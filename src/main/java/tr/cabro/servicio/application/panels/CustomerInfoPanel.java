@@ -5,6 +5,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
 import raven.datetime.DatePicker;
 import raven.datetime.TimePicker;
+import raven.modal.Toast;
 import tr.cabro.servicio.application.component.SearchField;
 import tr.cabro.servicio.application.ui.CustomerEditUI;
 import tr.cabro.servicio.application.ui.CustomerSearchUI;
@@ -92,7 +93,15 @@ public class CustomerInfoPanel extends JPanel {
         if (customerEditUI.isConfirmed()) {
             Customer customer = customerEditUI.getCustomerFromForm();
             if (customer != null) {
-                setCustomer(customer);
+                CustomerService service = ServiceManager.getCustomerService();
+                boolean savedCustomer = service.save(customer, false);
+
+                if (savedCustomer) {
+                    setCustomer(customer);
+                    Toast.show(this, Toast.Type.SUCCESS, "Müşteri başarıyla kaydedildi!");
+                } else {
+                    Toast.show(this, Toast.Type.ERROR, "Müşteri kaydedilemedi!");
+                }
             }
         }
 
