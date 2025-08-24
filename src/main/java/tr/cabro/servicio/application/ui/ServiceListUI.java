@@ -270,11 +270,10 @@ public class ServiceListUI extends JDialog {
         sorter = new TableRowSorter<>((ServiceListTableModel) table.getModel());
         table.setRowSorter(sorter);
 
-        // ID sütununa göre DESC sıralama
+        // created_at (7. sütun) DESC sıralama
         List<RowSorter.SortKey> sortKeys = new ArrayList<>();
         sortKeys.add(new RowSorter.SortKey(7, SortOrder.DESCENDING));
         sorter.setSortKeys(sortKeys);
-        sorter.sort();
 
         // Durum filtreleri
         Map<JButton, String> statusFilters = new HashMap<>();
@@ -288,7 +287,6 @@ public class ServiceListUI extends JDialog {
 
         final String[] currentStatus = {null};
 
-        // Buton dinleyicileri tek metotta ekle
         for (Map.Entry<JButton, String> entry : statusFilters.entrySet()) {
             final JButton button = entry.getKey();
             final String status = entry.getValue();
@@ -299,7 +297,6 @@ public class ServiceListUI extends JDialog {
             });
         }
 
-        // Search field filtreleme
         search_field.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             public void insertUpdate(javax.swing.event.DocumentEvent e) {
                 applyFilters(currentStatus[0], search_field.getText());
@@ -316,12 +313,10 @@ public class ServiceListUI extends JDialog {
     private void applyFilters(String status, String searchText) {
         List<RowFilter<TableModel, Object>> filters = new ArrayList<>();
 
-        // Durum filtresi
         if (status != null && !status.isEmpty()) {
-            filters.add(RowFilter.regexFilter("^" + status + "$", 8)); // 8 = durum sütunu
+            filters.add(RowFilter.regexFilter("^" + status + "$", 9)); // 8 = durum sütunu
         }
 
-        // Arama filtresi (tüm sütunlarda arar)
         if (searchText != null && !searchText.trim().isEmpty()) {
             filters.add(RowFilter.regexFilter("(?i)" + Pattern.quote(searchText)));
         }
@@ -332,9 +327,9 @@ public class ServiceListUI extends JDialog {
             sorter.setRowFilter(RowFilter.andFilter(filters));
         }
 
+        // filtre sonrası da created_at DESC kalsın
+        sorter.sort();
     }
-
-
 
     private void createUIComponents() {
         repair_box = new InfoBox("icon/repair.svg", new Color(0, 166, 90));

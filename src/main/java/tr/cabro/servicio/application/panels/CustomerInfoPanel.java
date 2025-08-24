@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
 import raven.datetime.DatePicker;
+import raven.datetime.TimePicker;
 import tr.cabro.servicio.application.component.SearchField;
 import tr.cabro.servicio.application.ui.CustomerEditUI;
 import tr.cabro.servicio.application.ui.CustomerSearchUI;
@@ -32,7 +33,9 @@ public class CustomerInfoPanel extends JPanel {
     private JLabel deliver_date_label;
 
     private DatePicker recordDatePicker;
+    private TimePicker recordTimePicker;
     private DatePicker deliverDatePicker;
+    private TimePicker deliverTimePicker;
 
     @Getter
     private Customer selected_customer;
@@ -75,6 +78,10 @@ public class CustomerInfoPanel extends JPanel {
         deliverDatePicker = new DatePicker();
         deliverDatePicker.setEditor(deliver_date_field);
         record_date_field.setColumns(10);
+
+        recordTimePicker = new TimePicker();
+        deliverTimePicker = new TimePicker();
+
     }
 
     private void new_customer_cmd() {
@@ -117,29 +124,36 @@ public class CustomerInfoPanel extends JPanel {
 
     public LocalDateTime getRecordDate() {
         LocalDate date = recordDatePicker.getSelectedDate();
+        LocalTime time = recordTimePicker.getSelectedTime();
         if (date == null) return null;
-        return LocalDateTime.of(date, LocalTime.now());
+        if (time == null) time = LocalTime.now();
+        return LocalDateTime.of(date, time);
     }
 
-    public void setRecordDate(LocalDateTime date) {
-        if (date == null) {
+    public void setRecordDate(LocalDateTime dateTime) {
+        if (dateTime == null) {
             recordDatePicker.clearSelectedDate();
             return;
         }
 
-        recordDatePicker.setSelectedDate(date.toLocalDate());
+        recordTimePicker.setSelectedTime(dateTime.toLocalTime());
+        recordDatePicker.setSelectedDate(dateTime.toLocalDate());
     }
 
     public LocalDateTime getDeliverDate() {
         LocalDate date = deliverDatePicker.getSelectedDate();
+        LocalTime time = deliverTimePicker.getSelectedTime();
         if (date == null) return null;
-        return LocalDateTime.of(date, LocalTime.now());
+        if (time == null) time = LocalTime.now();
+        return LocalDateTime.of(date, time);
     }
 
 
-    public void setDeliverDate(LocalDateTime date) {
-        if (date == null) return;
-        deliverDatePicker.setSelectedDate(date.toLocalDate());
+    public void setDeliverDate(LocalDateTime dateTime) {
+        if (dateTime == null) return;
+
+        deliverTimePicker.setSelectedTime(dateTime.toLocalTime());
+        deliverDatePicker.setSelectedDate(dateTime.toLocalDate());
     }
 
 
