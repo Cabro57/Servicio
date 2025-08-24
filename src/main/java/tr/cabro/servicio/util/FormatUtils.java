@@ -8,7 +8,7 @@ import java.util.Locale;
 public class FormatUtils {
 
     private static final Locale TURKISH_LOCALE = new Locale("tr", "TR");
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy");
 
     private FormatUtils() {
         // static utility class, prevent instantiation

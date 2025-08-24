@@ -164,7 +164,7 @@ public class ServiceListUI extends JDialog {
     }
 
     private void refreshTable() {
-        ServiceListTableModel model = new ServiceListTableModel(repairService.getDescServices());
+        ServiceListTableModel model = new ServiceListTableModel(repairService.getAllServices());
         table.setModel(model);
 
         initFilters();
@@ -272,7 +272,9 @@ public class ServiceListUI extends JDialog {
 
         // ID sütununa göre DESC sıralama
         List<RowSorter.SortKey> sortKeys = new ArrayList<>();
+        sortKeys.add(new RowSorter.SortKey(7, SortOrder.DESCENDING));
         sorter.setSortKeys(sortKeys);
+        sorter.sort();
 
         // Durum filtreleri
         Map<JButton, String> statusFilters = new HashMap<>();
@@ -309,7 +311,6 @@ public class ServiceListUI extends JDialog {
                 applyFilters(currentStatus[0], search_field.getText());
             }
         });
-
     }
 
     private void applyFilters(String status, String searchText) {

@@ -154,24 +154,4 @@ public class ServiceDao extends BaseDao<Service, Integer> {
             throw new RuntimeException("Servis durumu sorgulanırken hata oluştu: " + status, e);
         }
     }
-
-    public List<Service> getAllDesc() {
-        String sql = "SELECT * FROM services ORDER BY id DESC"; // id yerine tarih alanı da olabilir
-        List<Service> services = new ArrayList<>();
-
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                services.add(mapRow(rs));
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Tüm servisler alınırken hata oluştu", e);
-        }
-        return services;
-    }
-
-
-
-
 }

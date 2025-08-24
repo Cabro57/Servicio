@@ -65,8 +65,4 @@ public class RepairService {
     public List<Service> getServicesByStatus(String status) {
         return serviceDao.getServicesByStatus(status);
     }
-
-    public List<Service> getDescServices() {
-        return serviceDao.getAllDesc();
-    }
 }
