@@ -98,7 +98,7 @@ public class ServiceEditUI extends JDialog {
             String selectedDeviceType = (String) device_info.getDevice_type_combo().getSelectedItem();
 
             if (selectedDeviceType == null || selectedDeviceType.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Lütfen bir cihaz türü seçin!", "Uyarı", JOptionPane.WARNING_MESSAGE);
+                Toast.show(this, Toast.Type.WARNING, "Lütfen bir cihaz türü seçin!");
                 return;
             }
 
@@ -169,7 +169,7 @@ public class ServiceEditUI extends JDialog {
             updateTitle();
             save_button.setEnabled(false);
         } else {
-            JOptionPane.showMessageDialog(this, "Servis kaydedilemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Servis kaydedilemedi!");
         }
     }
 
@@ -195,18 +195,18 @@ public class ServiceEditUI extends JDialog {
             fillForm();
             updateTitle();
         } else {
-            JOptionPane.showMessageDialog(this, "Servis güncellenemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Servis güncellenemedi!");
         }
     }
 
     private void deliverCmd() {
         if (service == null) {
-            JOptionPane.showMessageDialog(this, "Teslim edilecek bir servis seçili değil!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Teslim edilecek bir servis seçili değil!");
             return;
         }
 
         if (service.getService_status() == ServiceStatus.DELIVERED) {
-            JOptionPane.showMessageDialog(this, "Bu Servis zaten teslim edilmiş.", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Bu Servis zaten teslim edilmiş.");
             return;
         }
 
@@ -240,13 +240,13 @@ public class ServiceEditUI extends JDialog {
             fillForm();
             updateTitle();
         } else {
-            JOptionPane.showMessageDialog(this, "Servis teslim edilemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Servis teslim edilemedi!");
         }
     }
 
     private void sendWhatsAppMessage() {
         if (service == null) {
-            JOptionPane.showMessageDialog(this, "WhatsApp mesajı için bir servis seçili değil!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "WhatsApp mesajı için bir servis seçili değil!");
             return;
         }
 
@@ -254,14 +254,14 @@ public class ServiceEditUI extends JDialog {
         CustomerService customerService = ServiceManager.getCustomerService();
         Optional<Customer> optionalCustomer = customerService.get(customerId);
         if (!optionalCustomer.isPresent()) {
-            JOptionPane.showMessageDialog(this, "Müşteri bilgisi bulunamadı!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Müşteri bilgisi bulunamadı!");
             return;
         }
         Customer c = optionalCustomer.get();
 
         String phone = c.getPhone_number_1();
         if (phone == null || phone.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Müşteri için telefon numarası bulunamadı!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Müşteri için telefon numarası bulunamadı!");
             return;
         }
 
@@ -272,13 +272,13 @@ public class ServiceEditUI extends JDialog {
                     java.net.URLEncoder.encode(message, "UTF-8");
             Desktop.getDesktop().browse(new java.net.URI(url));
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "WhatsApp açılamadı: " + e.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "WhatsApp açılamadı: " + e.getMessage());
         }
     }
 
     private void deleteService() {
         if (service == null) {
-            JOptionPane.showMessageDialog(this, "Silinecek bir servis seçili değil!", "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Silinecek bir servis seçili değil!");
             return;
         }
 
@@ -303,10 +303,10 @@ public class ServiceEditUI extends JDialog {
                 Toast.show(this, Toast.Type.INFO, "Servis ve bağlı parçalar başarıyla silindi.");
                 dispose();
             } else {
-                JOptionPane.showMessageDialog(this, "Servis silinemedi!", "Hata", JOptionPane.ERROR_MESSAGE);
+                Toast.show(this, Toast.Type.ERROR, "Servis silinemedi!");
             }
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Silme sırasında hata oluştu: " + ex.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
+            Toast.show(this, Toast.Type.ERROR, "Silme sırasında hata oluştu: " + ex.getMessage());
         }
     }
 
