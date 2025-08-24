@@ -98,7 +98,7 @@ public class CustomerInfoPanel extends JPanel {
 
                 if (savedCustomer) {
                     setCustomer(customer);
-                    Toast.show(this, Toast.Type.SUCCESS, "Müşteri başarıyla kaydedildi!");
+                    Toast.show(CustomerInfoPanel.this, Toast.Type.SUCCESS, "Müşteri başarıyla kaydedildi!");
                 } else {
                     Toast.show(this, Toast.Type.ERROR, "Müşteri kaydedilemedi!");
                 }
