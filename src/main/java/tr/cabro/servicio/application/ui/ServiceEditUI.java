@@ -68,17 +68,11 @@ public class ServiceEditUI extends JDialog {
 
         init();
 
-        // Pencere göründükten sonra başlık ve formu ayarla
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowOpened(java.awt.event.WindowEvent e) {
-                if (service != null) {
-                    fillForm();
-                    save_button.setEnabled(false);
-                }
-                updateTitle();
-            }
-        });
+        if (service != null) {
+            fillForm();
+            save_button.setEnabled(false);
+        }
+        updateTitle();
     }
 
     public ServiceEditUI() {
