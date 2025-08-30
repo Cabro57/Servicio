@@ -5,14 +5,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-public class FormatUtils {
+public class Format {
 
     private static final Locale TURKISH_LOCALE = new Locale("tr", "TR");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy");
-
-    private FormatUtils() {
-        // static utility class, prevent instantiation
-    }
 
     public static String formatPrice(double price) {
         return String.format(TURKISH_LOCALE, "%,.2f ₺", price);
