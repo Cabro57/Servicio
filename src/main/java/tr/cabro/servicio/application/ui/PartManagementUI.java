@@ -99,6 +99,8 @@ public class PartManagementUI extends JDialog {
         PartEditUI dialog = new PartEditUI();
         dialog.setModal(true);
         dialog.setVisible(true);
+
+        refreshProductTable();
     }
 
     private void edit_part_cmd() {
@@ -110,6 +112,8 @@ public class PartManagementUI extends JDialog {
             dialog.setModal(true);
             dialog.setVisible(true);
         }
+
+        refreshProductTable();
     }
 
     private void delete_part_cmd() {
