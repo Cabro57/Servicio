@@ -11,16 +11,16 @@ public class DatabaseInitializer {
             Servicio.getLogger().info("Migration öncesi yedek alınıyor...");
             DatabaseManager.backup();
 
-            String dbPath = DatabaseManager.getConnection().getMetaData().getURL();
-
             Flyway flyway = Flyway.configure()
-                    .dataSource(dbPath, "", "")
+                    .dataSource(DatabaseConfig.getDataSource())
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(true)
                     .load();
 
             MigrateResult result = flyway.migrate();
-            Servicio.getLogger().info("Database migrated. From {} to {} (Applied: {})", result.initialSchemaVersion, result.targetSchemaVersion, result.migrationsExecuted);
+
+            Servicio.getLogger().info("Migration tamamlandı. From {} to {} (Applied: {})",
+                    result.initialSchemaVersion, result.targetSchemaVersion, result.migrationsExecuted);
 
         } catch (Exception e) {
             Servicio.getLogger().error("Migration error: {}", e.getMessage());

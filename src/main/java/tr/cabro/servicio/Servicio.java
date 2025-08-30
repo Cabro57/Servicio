@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.application.ui.MainUI;
 import tr.cabro.servicio.database.BackupScheduler;
+import tr.cabro.servicio.database.DatabaseConfig;
 import tr.cabro.servicio.database.DatabaseInitializer;
 import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.DatabaseType;
@@ -22,7 +23,6 @@ import tr.cabro.servicio.settings.Theme;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
-import java.sql.SQLException;
 
 public final class Servicio {
 
@@ -60,7 +60,7 @@ public final class Servicio {
 
     public void run() {
         if (!isBeingRun) {
-            logger.info("Uygulama Çalışıtırılıyor!");
+            logger.info("Uygulama Çalıştırılıyor!");
             isBeingRun = true;
             onRun();
         }
@@ -69,11 +69,17 @@ public final class Servicio {
     public void onLoad() {
         try {
             setupSettingsFile();
-            DatabaseManager.connect(DatabaseType.SQLite);
 
+            // Yeni yapı: Connection pool başlat
+            DatabaseConfig.init(DatabaseType.SQLite); // ileride MySQL’e de çevirebilirsin
+
+            // Migration çalıştır
             DatabaseInitializer.migrate();
-        } catch (SQLException | OkaeriException e) {
-            logger.error(e.toString());
+
+        } catch (OkaeriException e) {
+            logger.error("Config yükleme hatası: {}", e.toString());
+        } catch (Exception e) {
+            logger.error("Veritabanı başlatma hatası: {}", e.toString());
         }
     }
 
@@ -86,7 +92,6 @@ public final class Servicio {
         BackupScheduler.start();
 
         FlatRobotoFont.install();
-
         FlatLaf.registerCustomDefaultsSource("themes");
         Theme.apply(Theme.selected());
 
@@ -99,7 +104,6 @@ public final class Servicio {
             frame = new MainUI();
             frame.setVisible(true);
         });
-
     }
 
     private void setupSettingsFile() {
@@ -136,19 +140,18 @@ public final class Servicio {
             if (mode == BackupMode.ON_EXIT || mode == BackupMode.ON_START_AND_EXIT) {
                 DatabaseManager.backup();
             }
+
             BackupScheduler.stop();
-            DatabaseManager.disconnect();
-        } catch (SQLException e) {
-            logger.error(e.toString());
+            DatabaseConfig.close(); // yeni yapı: pool kapat
+
+        } catch (Exception e) {
+            logger.error("Kapatma sırasında hata: {}", e.toString());
         }
     }
 
     public static void main(String[] args) {
-
         LauncherAccessContext.allow();
-
         Servicio servicio = new Servicio(new File("."));
         servicio.run();
     }
 }
-
