@@ -70,12 +70,17 @@ public abstract class BaseDao<T, K> {
 
     public Optional<T> getByKey(K key) {
         String sql = "SELECT * FROM " + getTableName() + " WHERE " + getPrimaryKeyColumn() + " = ?";
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
             setKey(stmt, 1, key);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return Optional.of(mapRow(rs));
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapRow(rs));
+                }
             }
+
         } catch (SQLException e) {
             Servicio.getLogger().error("DB ERROR [GET BY KEY] {}", e.toString());
         }

@@ -5,7 +5,6 @@ import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.model.AddedPart;
 
 import java.sql.*;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,12 +84,19 @@ public class ServicePartDao extends BaseDao<AddedPart, Integer> {
     public List<AddedPart> getByServiceId(int serviceId) {
         List<AddedPart> parts = new ArrayList<>();
         String sql = "SELECT * FROM added_part WHERE service_id = ?";
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
             stmt.setInt(1, serviceId);
+
             ResultSet rs = stmt.executeQuery();
+
             while (rs.next()) {
                 parts.add(mapRow(rs));
             }
+
+            rs.close();
         } catch (SQLException e) {
             Servicio.getLogger().error("DB ERROR [GET PARTS BY SERVICE ID] {}", e.toString());
         }

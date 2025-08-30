@@ -2,12 +2,14 @@ package tr.cabro.servicio.database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import lombok.Getter;
 import tr.cabro.servicio.Servicio;
 
 import javax.sql.DataSource;
 
 public class DatabaseConfig {
     private static HikariDataSource dataSource;
+    @Getter
     private static DatabaseType dbType;
 
     public static void init(DatabaseType type) {
@@ -27,7 +29,7 @@ public class DatabaseConfig {
                 break;
         }
 
-        config.setMaximumPoolSize(10);
+        config.setMaximumPoolSize(200);
         config.setPoolName("Servicio-DB-Pool");
 
         dataSource = new HikariDataSource(config);
@@ -35,10 +37,6 @@ public class DatabaseConfig {
 
     public static DataSource getDataSource() {
         return dataSource;
-    }
-
-    public static DatabaseType getDbType() {
-        return dbType;
     }
 
     public static void close() {
