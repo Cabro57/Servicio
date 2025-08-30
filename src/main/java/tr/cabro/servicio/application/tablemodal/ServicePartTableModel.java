@@ -10,7 +10,7 @@ import java.util.List;
 
 public class ServicePartTableModel extends AbstractTableModel {
 
-    private final String[] columnNames = { "Seri No.", "Parça Adı", "Adet", "Satış Fiyatı", "Kaldır" };
+    private final String[] columnNames = { "Seri No.", "Parça Adı", "Adet", "Alış Fiyatı", "Satış Fiyatı", "Kaldır" };
 
     @Getter
     private final List<AddedPart> addedParts;
@@ -43,7 +43,8 @@ public class ServicePartTableModel extends AbstractTableModel {
             case 0: return part.getSerial_no();
             case 1: return part.getName();
             case 2: return part.getAmount();
-            case 3: return part.getSellingPrice();
+            case 3: return part.getPurchasePrice();
+            case 4: return part.getSellingPrice();
             default: return null;
         }
     }
@@ -81,6 +82,7 @@ public class ServicePartTableModel extends AbstractTableModel {
     public Class<?> getColumnClass(int columnIndex) {
         if (columnIndex == 2) return Integer.class;
         if (columnIndex == 3) return Double.class;
+        if (columnIndex == 4) return Double.class;
         return String.class;
     }
 
