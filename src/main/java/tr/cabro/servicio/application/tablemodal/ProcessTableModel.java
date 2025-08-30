@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Process;
-import tr.cabro.servicio.util.FormatUtils;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.List;
@@ -43,7 +43,7 @@ public class ProcessTableModel extends AbstractTableModel {
         Process row = processes.get(rowIndex);
         switch (columnIndex) {
             case 0: return row.getName();
-            case 1: return FormatUtils.formatPrice(row.getPrice());
+            case 1: return Format.formatPrice(row.getPrice());
             default: return null;
         }
     }

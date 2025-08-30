@@ -6,7 +6,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.SMenuBar;
 import tr.cabro.servicio.application.component.SearchField;
 import tr.cabro.servicio.application.listeners.WindowClosingEvent;
-import tr.cabro.servicio.icons.SVGIconUIColor;
+import tr.cabro.servicio.util.SVGIconUIColor;
 import tr.cabro.servicio.model.Customer;
 
 import javax.swing.*;
@@ -58,7 +58,7 @@ public class MainUI extends JFrame {
 
         customer_list_button.addActionListener(e -> showUI(new CustomerListUI()));
         part_edits_button.addActionListener(e -> showUI(new PartEditUI()));
-        record_service_button.addActionListener(e -> new ServiceEditUI().setVisible(true));
+        record_service_button.addActionListener(e -> showUI(new ServiceEditUI()));
 
 
         addWindowListener(new WindowClosingEvent());

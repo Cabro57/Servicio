@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.util.FormatUtils;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.Arrays;
@@ -40,9 +40,9 @@ public class CustomerTableModel extends AbstractTableModel {
             case 3: return customer.getBusiness_name();
             case 4: return customer.getId_no();
             case 5: return customer.getAddress();
-            case 6: return FormatUtils.formatPhoneNumber(customer.getPhone_number_1());
+            case 6: return Format.formatPhoneNumber(customer.getPhone_number_1());
             case 7: return customer.getType();
-            case 8: return FormatUtils.formatDate(customer.getCreated_at());
+            case 8: return Format.formatDate(customer.getCreated_at());
             default: return null;
         }
     }

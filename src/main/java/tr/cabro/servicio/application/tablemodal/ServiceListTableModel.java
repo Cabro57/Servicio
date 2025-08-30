@@ -5,7 +5,7 @@ import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.util.FormatUtils;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.table.AbstractTableModel;
 import java.time.LocalDateTime;
@@ -52,7 +52,7 @@ public class ServiceListTableModel extends AbstractTableModel {
             case 3: return service.getDevice_brand();
             case 4: return service.getDevice_model();
             case 5: return service.getDevice_serial();
-            case 6: return FormatUtils.formatPrice(calculateRemainingAmount(service));
+            case 6: return Format.formatPrice(calculateRemainingAmount(service));
             case 7: return service.getCreated_at();
             case 8: return service.getDelivery_at();
             case 9: return service.getService_status();

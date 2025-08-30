@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.ui;
 
-import com.formdev.flatlaf.extras.FlatSVGIcon;
-import tr.cabro.servicio.icons.SVGIconUIColor;
+import tr.cabro.servicio.util.SVGIconUIColor;
 
 import javax.swing.*;
 import java.awt.*;

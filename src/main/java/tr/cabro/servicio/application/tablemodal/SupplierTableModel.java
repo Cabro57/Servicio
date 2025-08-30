@@ -1,14 +1,11 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Supplier;
-import tr.cabro.servicio.util.FormatUtils;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.table.AbstractTableModel;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 public class SupplierTableModel extends AbstractTableModel {
 
@@ -40,9 +37,9 @@ public class SupplierTableModel extends AbstractTableModel {
             case 0: return selectedRows[rowIndex];
             case 1: return supplier.getBusiness_name();
             case 2: return supplier.getName();
-            case 3: return FormatUtils.formatPhoneNumber(supplier.getPhone());
+            case 3: return Format.formatPhoneNumber(supplier.getPhone());
             case 4: return supplier.getAddress();
-            case 5: return FormatUtils.formatDate(supplier.getCreated_at());
+            case 5: return Format.formatDate(supplier.getCreated_at());
             default: return null;
         }
     }

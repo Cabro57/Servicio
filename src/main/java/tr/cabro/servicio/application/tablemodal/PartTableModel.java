@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Part;
-import tr.cabro.servicio.util.FormatUtils;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.Arrays;
@@ -41,9 +41,9 @@ public class PartTableModel extends AbstractTableModel {
             case 4: return device_part.getDevice_type();
             case 5: return device_part.getModels();
             case 6: return device_part.getStock();
-            case 7: return FormatUtils.formatPrice(device_part.getPurchase_price());
-            case 8: return FormatUtils.formatPrice(device_part.getSale_price());
-            case 9: return FormatUtils.formatDate(device_part.getPurchase_date());
+            case 7: return Format.formatPrice(device_part.getPurchase_price());
+            case 8: return Format.formatPrice(device_part.getSale_price());
+            case 9: return Format.formatDate(device_part.getPurchase_date());
             default: return null;
         }
     }
