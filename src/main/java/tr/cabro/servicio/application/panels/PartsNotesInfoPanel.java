@@ -94,7 +94,8 @@ public class PartsNotesInfoPanel extends JPanel {
         final int COL_SERIAL = 0;
         final int COL_NAME = 1;
         final int COL_AMOUNT = 2;
-        final int COL_SALE_PRICE = 3;
+        final int COL_PURCHASE_PRICE = 3;
+        final int COL_SALE_PRICE = 4;
 
         EventCellInputChange eventCellInputChange = this::updateMaterialCost;
 
@@ -112,10 +113,14 @@ public class PartsNotesInfoPanel extends JPanel {
             }
         });
 
-        parts_table.getColumnModel().getColumn(COL_SALE_PRICE).setCellEditor(new PriceCellEditor(eventCellInputChange));
+        parts_table.getColumnModel().getColumn(COL_PURCHASE_PRICE).setCellEditor(new PriceCellEditor(eventCellInputChange, true));
+        parts_table.getColumnModel().getColumn(COL_PURCHASE_PRICE).setCellRenderer(new CurrencyTableCellRenderer());
+
+        parts_table.getColumnModel().getColumn(COL_SALE_PRICE).setCellEditor(new PriceCellEditor(eventCellInputChange, false));
         parts_table.getColumnModel().getColumn(COL_SALE_PRICE).setCellRenderer(new CurrencyTableCellRenderer());
 
-        parts_table.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+
+        parts_table.getColumnModel().getColumn(5).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onAction(int row) {
                 if (row != -1) {
@@ -125,7 +130,7 @@ public class PartsNotesInfoPanel extends JPanel {
                 }
             }
         }));
-        parts_table.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());
+        parts_table.getColumnModel().getColumn(5).setCellRenderer(new ActionButtonRenderer());
 
         parts_table.getColumnModel().getColumn(0).setMinWidth(100);
         parts_table.getColumnModel().getColumn(1).setPreferredWidth(60);
@@ -133,11 +138,12 @@ public class PartsNotesInfoPanel extends JPanel {
         parts_table.getColumnModel().getColumn(2).setMaxWidth(80);
         parts_table.getColumnModel().getColumn(3).setMinWidth(100);
         parts_table.getColumnModel().getColumn(3).setMaxWidth(100);
-        parts_table.getColumnModel().getColumn(4).setMaxWidth(50);
+        parts_table.getColumnModel().getColumn(4).setMinWidth(100);
+        parts_table.getColumnModel().getColumn(4).setMaxWidth(100);
+        parts_table.getColumnModel().getColumn(5).setMaxWidth(50);
 
         addTableDoubleClickListener();
-
-        ((SpinnerNumberModel) amount_spinner.getModel()).setMinimum(1);
+        amount_spinner.setModel(new SpinnerNumberModel(1, 1, 999, 1));
 
         // Arka planlar
         manual_add_panel.setBackground(null);

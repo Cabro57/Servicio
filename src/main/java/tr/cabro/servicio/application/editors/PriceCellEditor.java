@@ -18,10 +18,12 @@ public class PriceCellEditor extends DefaultCellEditor {
     private JTable table;
     private int row;
     private AddedPart item;
+    private boolean isPurchase; // true ise purchasePrice, false ise sellingPrice
 
-    public PriceCellEditor(EventCellInputChange event) {
+    public PriceCellEditor(EventCellInputChange event, boolean isPurchase) {
         super(new JCheckBox());
         this.event = event;
+        this.isPurchase = isPurchase;
         this.input = new JFormattedTextField();
 
         NumberFormat format = NumberFormat.getNumberInstance();
@@ -29,8 +31,8 @@ public class PriceCellEditor extends DefaultCellEditor {
         format.setMaximumFractionDigits(2);
 
         NumberFormatter formatter = new NumberFormatter(format);
-        formatter.setAllowsInvalid(false); // Geçersiz giriş engelle
-        formatter.setMinimum(0.0); // Negatif sayı olmasın
+        formatter.setAllowsInvalid(false);
+        formatter.setMinimum(0.0);
 
         this.input.setFormatterFactory(new DefaultFormatterFactory(formatter));
         this.input.setHorizontalAlignment(JTextField.RIGHT);
@@ -46,25 +48,20 @@ public class PriceCellEditor extends DefaultCellEditor {
         this.row = row;
         ServicePartTableModel tableModel = (ServicePartTableModel) table.getModel();
         this.item = tableModel.getAddedParts().get(row);
-        double qty = Double.parseDouble(value.toString());
-        input.setValue(qty);
+
+        double val = Double.parseDouble(value.toString());
+        input.setValue(val);
         input.setEnabled(false);
         enable();
         return input;
-
     }
 
     private void enable() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Thread.sleep(100);
-                    input.setEnabled(true);
-                } catch (Exception e) {
-
-                }
-            }
+        new Thread(() -> {
+            try {
+                Thread.sleep(100);
+                input.setEnabled(true);
+            } catch (Exception ignored) {}
         }).start();
     }
 
@@ -74,10 +71,17 @@ public class PriceCellEditor extends DefaultCellEditor {
     }
 
     private void inputChange() {
-        double qty = Double.parseDouble(input.getValue().toString());
-        if (qty != item.getSellingPrice()) {
-            item.setSellingPrice(qty);
-            event.inputChanged();
+        double val = Double.parseDouble(input.getValue().toString());
+        if (isPurchase) {
+            if (val != item.getPurchasePrice()) {
+                item.setPurchasePrice(val);
+                event.inputChanged();
+            }
+        } else {
+            if (val != item.getSellingPrice()) {
+                item.setSellingPrice(val);
+                event.inputChanged();
+            }
         }
     }
 }
