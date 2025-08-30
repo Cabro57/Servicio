@@ -2,10 +2,11 @@ package tr.cabro.servicio.application.ui;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.Getter;
+import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 import raven.datetime.DatePicker;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
-import tr.cabro.servicio.icons.SVGIconUIColor;
+import tr.cabro.servicio.util.SVGIconUIColor;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
@@ -117,15 +118,18 @@ public class PartEditUI extends JDialog {
         device_type_combo.setModel(deviceTypeComboBoxModel);
         loadDeviceTypes();
         device_type_combo.setSelectedItem(null);
+        AutoCompleteDecorator.decorate(device_type_combo);
 
         supplier_combo.setModel(supplierTypeComboBoxModel);
         loadSuppliers();
         supplier_combo.setSelectedItem(null);
+        AutoCompleteDecorator.decorate(supplier_combo);
 
         // DatePicker bağlantısı
         purchase_picker.setEditor(purchase_date_field);
 
-        ((SpinnerNumberModel) stock_spinner.getModel()).setMinimum(1);
+        stock_spinner.setModel(new SpinnerNumberModel(1, 0, Integer.MAX_VALUE, 1));
+        min_stock_spinner.setModel(new SpinnerNumberModel(0, 0, Integer.MAX_VALUE, 1));
 
         // Butonlar
         save_button.addActionListener(e -> part_save_cmd());
@@ -344,7 +348,7 @@ public class PartEditUI extends JDialog {
         device_type_combo.setSelectedItem(null);
         models_field.setText("");
         purchase_price_field.setValue(0.0);
-        stock_spinner.setValue(0);
+        stock_spinner.setValue(1);
         min_stock_spinner.setValue(0);
         warranty_period_spinner.getValue();
         purchase_picker.clearSelectedDate();
@@ -356,5 +360,6 @@ public class PartEditUI extends JDialog {
     private void createUIComponents() {
         purchase_price_field = new CurrencyField();
         sale_price_field = new CurrencyField();
+
     }
 }

@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.Getter;
+import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.FieldPopupEditor;
 import tr.cabro.servicio.settings.Settings;
@@ -60,7 +61,10 @@ public class DeviceInfoPanel extends JPanel {
         model_field.setPreferredSize(accessory_field.getPreferredSize());
 
         device_type_combo.setModel(deviceTypeComboBoxModel);
+        AutoCompleteDecorator.decorate(device_type_combo);
+
         brand_combo.setModel(brandComboBoxModel);
+        AutoCompleteDecorator.decorate(brand_combo);
 
         loadDeviceTypes();
 
