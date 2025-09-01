@@ -1,6 +1,5 @@
 package tr.cabro.servicio.application.ui;
 
-import tr.cabro.servicio.database.dao.ServiceDao;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.application.tablemodal.CustomerServiceRecordTableModel;
@@ -76,7 +75,7 @@ public class CustomerInfoUI extends  JDialog {
                         Service service = model.getService(row);
 
                         // Yeni bir pencere aç, örneğin:
-                        ServiceEditUI dialog = new ServiceEditUI(service);
+                        OldServiceEditUI dialog = new OldServiceEditUI(service);
                         dialog.setVisible(true);
                     }
                 }
