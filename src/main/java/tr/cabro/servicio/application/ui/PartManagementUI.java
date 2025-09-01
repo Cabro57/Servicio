@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.ui;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.application.renderer.AlignedRenderer;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.application.tablemodal.PartTableModel;
@@ -174,6 +175,7 @@ public class PartManagementUI extends JDialog {
 
         product_table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(product_table, columnAlignments));
         product_table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(product_table, 0));
+        product_table.getColumnModel().getColumn(5).setCellRenderer(new TooltipCellRenderer());
         product_table.getColumnModel().getColumn(6).setCellRenderer(new AlignedRenderer(product_table, 6, SwingConstants.CENTER));
 
         product_table.getColumnModel().getColumn(0).setMaxWidth(50);   // SELECT (checkbox)
