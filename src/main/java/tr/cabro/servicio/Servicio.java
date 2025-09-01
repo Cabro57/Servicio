@@ -70,10 +70,7 @@ public final class Servicio {
         try {
             setupSettingsFile();
 
-            // Yeni yapı: Connection pool başlat
             DatabaseConfig.init(DatabaseType.SQLite); // ileride MySQL’e de çevirebilirsin
-
-            // Migration çalıştır
             DatabaseInitializer.migrate();
 
         } catch (OkaeriException e) {
