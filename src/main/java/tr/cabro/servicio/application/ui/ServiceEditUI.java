@@ -1,50 +1,39 @@
 package tr.cabro.servicio.application.ui;
 
+import lombok.NonNull;
+import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import tr.cabro.servicio.application.panels.*;
-import tr.cabro.servicio.model.*;
+import tr.cabro.servicio.application.listeners.ServiceEditListener;
+import tr.cabro.servicio.application.ui.service.*;
 import tr.cabro.servicio.model.Process;
-import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.service.CustomerService;
+import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
 import java.awt.*;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 
 public class ServiceEditUI extends JDialog {
-    private JPanel main_panel;
-    private JPanel left_panel;
-    private JPanel right_panel;
-    private CustomerInfoPanel customer_info;
-    private DeviceInfoPanel device_info;
-    private FaultProcessInfoPanel fault_process_info;
-    private PriceInfoPanel price_info;
-    private WarrantyInfoPanel warranty_info;
-    private PartsNotesInfoPanel part_notes_info;
-    private StatusInfoPanel status_info;
-    private JPanel buttons_panel;
-    private JButton save_button;
-    private JButton update_button;
-    private JButton print_button;
-    private JButton deliver_button;
-    private JButton delete_button;
-    private JButton whatsapp_button;
 
-    private Service service;
+    private final ServiceContext context;
 
     private final RepairService repairService;
     private final PartService partService;
 
-    public ServiceEditUI(Service service) {
-        super((Frame) null, "", true);
-        this.service = service;
-        this.partService = ServiceManager.getPartService();
-        this.repairService = ServiceManager.getRepairService();
+    public ServiceEditUI(JFrame owner) {
+        super(owner, true);
 
+        context = new ServiceContext();
+
+        repairService = ServiceManager.getRepairService();
+        partService = ServiceManager.getPartService();
+
+        init();
+    }
+
+    private void init() {
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
         int screenWidth = screen_size.width;
         int screenHeight = screen_size.height;
@@ -66,30 +55,42 @@ public class ServiceEditUI extends JDialog {
         setSize(width, height);
         setLocationRelativeTo(null);
 
-        init();
-
-        if (service != null) {
-            fillForm();
-            save_button.setEnabled(false);
-        }
-        updateTitle();
-    }
-
-    public ServiceEditUI() {
-        this(null);
-    }
-
-    private void init() {
         initComponent();
 
-        save_button.addActionListener(e -> saveService());
-        update_button.addActionListener(e -> updateService());
-        deliver_button.addActionListener(e -> deliverCmd());
-        delete_button.addActionListener(e -> deleteService());
-        whatsapp_button.addActionListener(e -> sendWhatsAppMessage());
+        ServiceEditListener serviceEditListener = new ServiceEditListener() {
+            @Override
+            public void onPartChange(double price) {
+                price_info.setMaterialCost(price);
+            }
 
-        fault_process_info.getAction_taken_button().addActionListener(e -> {
-            String selectedDeviceType = (String) device_info.getDevice_type_combo().getSelectedItem();
+            @Override
+            public void onProcessAdded(String name, double price) {
+                price_info.addLaborCost(price);
+                fault_process_info.appendAction(name);
+            }
+
+            @Override
+            public void onProcessAdded(Process process) {
+                fault_process_info.appendAction(process.getName());
+                price_info.addLaborCost(process.getPrice());
+            }
+
+            @Override
+            public void onStatusChanged(String status) {
+
+            }
+        };
+
+        customer_info.setServicePanelListener(serviceEditListener);
+        device_info.setServicePanelListener(serviceEditListener);
+        price_info.setServicePanelListener(serviceEditListener);
+        warranty_info.setServicePanelListener(serviceEditListener);
+        fault_process_info.setServicePanelListener(serviceEditListener);
+        part_notes_info.setServicePanelListener(serviceEditListener);
+        status_info.setServicePanelListener(serviceEditListener);
+
+        fault_process_info.action_taken_button.addActionListener(e -> {
+            String selectedDeviceType = (String) device_info.deviceTypeComboBoxModel.getSelectedItem();
 
             if (selectedDeviceType == null || selectedDeviceType.isEmpty()) {
                 Toast.show(this, Toast.Type.WARNING, "Lütfen bir cihaz türü seçin!");
@@ -108,10 +109,17 @@ public class ServiceEditUI extends JDialog {
             }
         });
 
-        part_notes_info.addPartsChangeListener(totalMaterialCost -> price_info.setMaterialCost(totalMaterialCost));
+    }
+
+    public void setService(@NonNull Service service) {
+        this.context.setService(service);
+        fillForm();
+        save_button.setEnabled(false);
+        updateTitle();
     }
 
     private void updateTitle() {
+        Service service = context.getService();
         if (service == null || service.getId() == 0) {
             setTitle("Servis No: Yeni");
         } else {
@@ -120,20 +128,21 @@ public class ServiceEditUI extends JDialog {
     }
 
     private void fillForm() {
+        Service service = context.getService();
         customer_info.loadCustomer(service.getCustomer_id());
         customer_info.setRecordDate(service.getCreated_at());
         customer_info.setDeliverDate(service.getDelivery_at());
 
         device_info.setDeviceType(service.getDevice_type());
         device_info.setDeviceBrand(service.getDevice_brand());
-        device_info.setDeviceModel(service.getDevice_model());
-        device_info.setDeviceSerial(service.getDevice_serial());
-        device_info.setDeviceAccessory(service.getDevice_accessory());
-        device_info.setDevicePassword(service.getDevice_password());
+        device_info.model_field.setText(service.getDevice_model());
+        device_info.seri_no_field.setText(service.getDevice_serial());
+        device_info.accessory_field.setText(service.getDevice_accessory());
+        device_info.password_field.setText(service.getDevice_password());
 
-        fault_process_info.setReportedFault(service.getReported_fault());
-        fault_process_info.setDetectedFault(service.getDetected_fault());
-        fault_process_info.setActionTaken(service.getAction_taken());
+        fault_process_info.reported_fault_field.setText(service.getReported_fault());
+        fault_process_info.detected_fault_field.setText(service.getDetected_fault());
+        fault_process_info.action_taken_field.setText(service.getAction_taken());
 
         price_info.setLaborCost(service.getLabor_cost());
         price_info.setPaid(service.getPaid());
@@ -147,197 +156,101 @@ public class ServiceEditUI extends JDialog {
         status_info.setSelected(service.getService_status().getDisplayName());
     }
 
-    private void saveService() {
-        Service newService = collectForm();
-
-        if (repairService.saveService(newService, false)) {
-            List<AddedPart> addedParts = part_notes_info.getAddedParts();
-            for (AddedPart addedPart : addedParts) {
-                addedPart.setServiceId(newService.getId());
-                partService.addPartToService(addedPart);
-            }
-            Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla kaydedildi!");
-            this.service = newService;
-
-            fillForm();
-            updateTitle();
-            save_button.setEnabled(false);
-        } else {
-            Toast.show(this, Toast.Type.ERROR, "Servis kaydedilemedi!");
-        }
-    }
-
-    private void updateService() {
-        if (service == null) {
-            Toast.show(this, Toast.Type.WARNING, "Güncellenecek bir servis seçili değil!");
-            return;
-        }
-
-        Service updated = collectForm();
-        updated.setId(service.getId());
-
-        if (repairService.saveService(updated, true)) {
-            partService.deleteAllPartsFromService(service.getId());
-            List<AddedPart> addedParts = part_notes_info.getAddedParts();
-            for (AddedPart addedPart : addedParts) {
-                addedPart.setServiceId(updated.getId());
-                partService.addPartToService(addedPart);
-            }
-            Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla güncellendi!");
-            this.service = updated;
-
-            fillForm();
-            updateTitle();
-        } else {
-            Toast.show(this, Toast.Type.ERROR, "Servis güncellenemedi!");
-        }
-    }
-
-    private void deliverCmd() {
-        if (service == null) {
-            Toast.show(this, Toast.Type.ERROR, "Teslim edilecek bir servis seçili değil!");
-            return;
-        }
-
-        if (service.getService_status() == ServiceStatus.DELIVERED) {
-            Toast.show(this, Toast.Type.WARNING, "Bu Servis zaten teslim edilmiş.");
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Bu servisi teslim etmek istediğinize emin misiniz?",
-                "Teslim Onayı",
-                JOptionPane.YES_NO_OPTION
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        Service deliveredService = collectForm();
-        deliveredService.setId(service.getId());
-        deliveredService.setService_status(ServiceStatus.DELIVERED);
-        deliveredService.setDelivery_at(LocalDateTime.now());
-
-        if (repairService.saveService(deliveredService, true)) {
-            partService.deleteAllPartsFromService(service.getId());
-            List<AddedPart> addedParts = part_notes_info.getAddedParts();
-            for (AddedPart addedPart : addedParts) {
-                addedPart.setServiceId(deliveredService.getId());
-                partService.addPartToService(addedPart);
-            }
-
-            Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla teslim edildi!");
-            this.service = deliveredService;
-
-            fillForm();
-            updateTitle();
-        } else {
-            Toast.show(this, Toast.Type.ERROR, "Servis teslim edilemedi!");
-        }
-    }
-
-    private void sendWhatsAppMessage() {
-        if (service == null) {
-            Toast.show(this, Toast.Type.ERROR, "WhatsApp mesajı için bir servis seçili değil!");
-            return;
-        }
-
-        int customerId = customer_info.getCustomerId();
-        CustomerService customerService = ServiceManager.getCustomerService();
-        Optional<Customer> optionalCustomer = customerService.get(customerId);
-        if (!optionalCustomer.isPresent()) {
-            Toast.show(this, Toast.Type.ERROR, "Müşteri bilgisi bulunamadı!");
-            return;
-        }
-        Customer c = optionalCustomer.get();
-
-        String phone = c.getPhone_number_1();
-        if (phone == null || phone.trim().isEmpty()) {
-            Toast.show(this, Toast.Type.ERROR, "Müşteri için telefon numarası bulunamadı!");
-            return;
-        }
-
-        String message = "Merhaba, cihazınız (" + device_info.getDeviceBrand() + " " + device_info.getDeviceModel() +
-                ") servis kaydınız hakkında bilgi almak için bu mesajı iletmekteyiz.";
-        try {
-            String url = "https://wa.me/" + phone.replaceAll("\\D+", "") + "?text=" +
-                    java.net.URLEncoder.encode(message, "UTF-8");
-            Desktop.getDesktop().browse(new java.net.URI(url));
-        } catch (Exception e) {
-            Toast.show(this, Toast.Type.ERROR, "WhatsApp açılamadı: " + e.getMessage());
-        }
-    }
-
-    private void deleteService() {
-        if (service == null) {
-            Toast.show(this, Toast.Type.ERROR, "Silinecek bir servis seçili değil!");
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Bu servisi silmek istediğinize emin misiniz?\n" +
-                        "Servise bağlı parçalar da silinecek. Bu işlem geri alınamaz!",
-                "Servis Silme Onayı",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            partService.deleteAllPartsFromService(service.getId());
-            boolean deleted = repairService.deleteService(service.getId());
-
-            if (deleted) {
-                Toast.show(this, Toast.Type.SUCCESS, "Servis ve bağlı parçalar başarıyla silindi.");
-                dispose();
-            } else {
-                Toast.show(this, Toast.Type.ERROR, "Servis silinemedi!");
-            }
-        } catch (Exception ex) {
-            Toast.show(this, Toast.Type.ERROR, "Silme sırasında hata oluştu: " + ex.getMessage());
-        }
-    }
-
     private Service collectForm() {
-        Service s = new Service(
-                customer_info.getCustomerId(),
-                device_info.getDeviceType(),
-                device_info.getDeviceBrand(),
-                device_info.getDeviceModel()
-        );
+        Service service = context.getService();
+        if (service == null) {
+            service = new Service();
+        }
 
-        s.setCreated_at(customer_info.getRecordDate());
-        s.setDelivery_at(customer_info.getDeliverDate());
+        service.setCustomer_id(customer_info.getCustomerId());
+        service.setCreated_at(customer_info.getRecordDate());
+        service.setDelivery_at(customer_info.getDeliverDate());
 
-        s.setDevice_serial(device_info.getDeviceSerial());
-        s.setDevice_password(device_info.getDevicePassword());
-        s.setDevice_accessory(device_info.getDeviceAccessory());
+        service.setDevice_type((String) device_info.deviceTypeComboBoxModel.getSelectedItem());
+        service.setDevice_brand((String) device_info.brandComboBoxModel.getSelectedItem());
+        service.setDevice_model(device_info.model_field.getText());
+        service.setDevice_serial(device_info.seri_no_field.getText());
+        service.setDevice_password(device_info.password_field.getText());
+        service.setDevice_accessory(device_info.accessory_field.getText());
 
-        s.setLabor_cost(price_info.getLaborCost());
-        s.setPaid(price_info.getPaid());
-        s.setPayment_type(price_info.getPaymentType());
+        service.setLabor_cost(price_info.getLaborCost());
+        service.setPaid(price_info.getPaid());
+        service.setPayment_type(price_info.getPaymentType());
 
-        s.setWarranty_date(warranty_info.getWarrantyDate());
-        s.setMaintenance_date(warranty_info.getMaintenanceDate());
+        service.setWarranty_date(warranty_info.getWarrantyDate());
+        service.setMaintenance_date(warranty_info.getMaintenanceDate());
 
-        s.setReported_fault(fault_process_info.getReportedFault());
-        s.setDetected_fault(fault_process_info.getDetectedFault());
-        s.setAction_taken(fault_process_info.getActionTaken());
+        service.setReported_fault(fault_process_info.reported_fault_field.getText());
+        service.setDetected_fault(fault_process_info.detected_fault_field.getText());
+        service.setAction_taken(fault_process_info.action_taken_field.getText());
 
-        s.setService_status(status_info.getSelected());
+        service.setService_status(status_info.getSelected());
 
-        s.setNotes(part_notes_info.getNotes());
+        service.setNotes(part_notes_info.getNotes());
 
-        return s;
+        return service;
     }
 
     private void initComponent() {
-        setContentPane(main_panel);
+        setLayout(new MigLayout(
+                "fill, insets 10, gap 10", // wrap kullanmayacağız
+                "[grow, fill][grow, fill]",       // 2 sütun eşit genişlikte
+                "[fill]"                          // tek satır, tüm yükseklik paylaşılacak
+        ));
+
+        customer_info = new CustomerInfoPanel(context);
+        device_info = new DeviceInfoPanel(context);
+        fault_process_info = new FaultProcessInfoPanel(context);
+        warranty_info = new WarrantyInfoPanel(context);
+        part_notes_info = new PartsNotesInfoPanel(context);
+        price_info = new PriceInfoPanel(context);
+        status_info = new StatusInfoPanel(context);
+
+        save_button = new JButton("Kaydet");
+        update_button = new JButton("Güncelle");
+        print_button = new JButton("Yazdır");
+        deliver_button = new JButton("Teslim Et");
+        delete_button = new JButton("Sil");
+        whatsapp_button = new JButton("Whatsapp");
+
+        JPanel left_panel = new JPanel(new MigLayout("insets 0, fill, wrap"));
+        left_panel.add(customer_info, "growx");
+        left_panel.add(device_info, "growx");
+        left_panel.add(price_info, "growx");
+        left_panel.add(warranty_info, "grow");
+
+        JPanel right_panel = new JPanel(new MigLayout("insets 0, fill, wrap"));
+        right_panel.add(fault_process_info, "growx, top");
+        right_panel.add(part_notes_info, "growx, top");
+        right_panel.add(status_info, "growx, top");
+
+        JPanel buttons_panel = new JPanel(new MigLayout("insets 0, fill", "", "[50:5%:]"));
+        buttons_panel.add(save_button, "grow");
+        buttons_panel.add(update_button, "grow");
+        buttons_panel.add(print_button, "grow");
+        buttons_panel.add(deliver_button, "grow");
+        buttons_panel.add(delete_button, "grow");
+        buttons_panel.add(whatsapp_button, "grow");
+
+        add(left_panel, "cell 0 0, grow, push, sg group1");
+        add(right_panel, "cell 1 0, grow, push, sg group1");
+        add(buttons_panel, "cell 1 1, grow, push");
+
     }
+
+
+    private CustomerInfoPanel customer_info;
+    private DeviceInfoPanel device_info;
+    private FaultProcessInfoPanel fault_process_info;
+    private PriceInfoPanel price_info;
+    private WarrantyInfoPanel warranty_info;
+    private PartsNotesInfoPanel part_notes_info;
+    private StatusInfoPanel status_info;
+
+    private JButton save_button;
+    private JButton update_button;
+    private JButton print_button;
+    private JButton deliver_button;
+    private JButton delete_button;
+    private JButton whatsapp_button;
 }
