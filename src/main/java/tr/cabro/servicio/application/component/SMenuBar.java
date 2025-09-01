@@ -23,7 +23,7 @@ public class SMenuBar extends JMenuBar {
         // Service
         JMenuItem new_service = new JMenuItem("Yeni Servis");
         new_service.addActionListener(e -> {
-            ServiceEditUI dialog = new ServiceEditUI();
+            ServiceEditUI dialog = new ServiceEditUI(null);
             dialog.setVisible(true);
         });
         service.add(new_service);

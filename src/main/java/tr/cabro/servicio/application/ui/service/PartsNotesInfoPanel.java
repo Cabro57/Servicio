@@ -49,6 +49,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
         new_part_add_button.addActionListener(e -> newPartCmd());
         manual_add_button.addActionListener(e -> manualAddPart());
 
+        tableModel = new ServicePartTableModel(null);
         tableModel.addPriceChangeListener(this::updateMaterialCost);
         parts_table.setModel(tableModel);
 
@@ -286,38 +287,45 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
         JScrollPane table_scroll = new JScrollPane(parts_table);
 
-        JPanel manual_add_panel = new JPanel(new MigLayout("insets 5", "[pref!][100!][pref!][100!][pref!][50!][pref!]", "[][]"));
+        JPanel manual_add_panel = new JPanel(new MigLayout("debug, insets 5", "[grow][grow]", "[grow, fill][grow, fill]"));
         manual_add_panel.setBorder(BorderFactory.createTitledBorder("Manuel Parça Ekle"));
+        manual_add_panel.setBackground(null);
 
-        JPanel manual_content_panel = new JPanel(new MigLayout("insets 0", "[pref!][100!][pref!][100!]", "[]"));
+        JPanel content_panel1 = new JPanel(new MigLayout("debug, insets 0", "[][fill, grow][][fill, grow]", "[fill]"));
+        content_panel1.setBackground(null);
+
         series_no_field = new JTextField();
         part_name_field = new JTextField();
+
+        JPanel content_panel2 = new JPanel(new MigLayout("debug, insets 0", "", ""));
+        content_panel2.setBackground(null);
 
         purchase_price_field = new CurrencyField();
         sale_price_field = new CurrencyField();
         amount_spinner = new JSpinner(new SpinnerNumberModel(1, 1, 999, 1));
+
         manual_add_button = new JButton("Ekle");
 
-
-        notes_field = new JTextArea(3, 20);
+        notes_field = new JTextArea();
         notes_field.setLineWrap(true);
         notes_field.setWrapStyleWord(true);
         JScrollPane notes_scroll = new JScrollPane(notes_field);
 
-        manual_content_panel.add(new JLabel("Seri No:"));
-        manual_content_panel.add(series_no_field, "growx");
-        manual_content_panel.add(new JLabel("Parça Adı:"));
-        manual_content_panel.add(part_name_field, "growx");
+        content_panel1.add(new JLabel("Seri No:"));
+        content_panel1.add(series_no_field, "growx");
+        content_panel1.add(new JLabel("Parça Adı:"));
+        content_panel1.add(part_name_field, "growx");
 
-        manual_add_panel.add(new JLabel("Alış Fiyatı:"));
-        manual_add_panel.add(purchase_price_field, "growx");
-        manual_add_panel.add(new JLabel("Satış Fiyatı:"));
-        manual_add_panel.add(sale_price_field, "growx");
-        manual_add_panel.add(new JLabel("Adet:"));
-        manual_add_panel.add(amount_spinner, "growx");
-        manual_add_panel.add(manual_add_button, "spany 2, wrap");
+        content_panel2.add(new JLabel("Alış Fiyatı:"));
+        content_panel2.add(purchase_price_field, "growx");
+        content_panel2.add(new JLabel("Satış Fiyatı:"));
+        content_panel2.add(sale_price_field, "growx");
+        content_panel2.add(new JLabel("Adet:"));
+        content_panel2.add(amount_spinner, "growx");
 
-        manual_add_panel.add(manual_content_panel, "span 6, growx, wrap");
+        manual_add_panel.add(content_panel1, "cell 0 0, growx");
+        manual_add_panel.add(manual_add_button, "cell 1 0 1 2, grow");
+        manual_add_panel.add(content_panel2, "cell 0 1, growx");
 
         add(title, "span 3, align left, gapbottom 10, wrap");
         add(product_search_field, "growx, split 3");
@@ -332,7 +340,6 @@ public class PartsNotesInfoPanel extends ServicePanel {
     JScrollPane table_scroll;
     JTable parts_table;
     JLabel notes_label;
-    JPanel part_search_panel;
     JButton new_part_add_button;
     JTextField product_search_field;
     JTextArea notes_field;
@@ -349,5 +356,4 @@ public class PartsNotesInfoPanel extends ServicePanel {
     JLabel amount_label;
     JLabel part_name_label;
     JTextField part_name_field;
-    JPanel manual_content_panel;
 }

@@ -58,7 +58,7 @@ public class MainUI extends JFrame {
 
         customer_list_button.addActionListener(e -> showUI(new CustomerListUI()));
         part_edits_button.addActionListener(e -> showUI(new PartEditUI()));
-        record_service_button.addActionListener(e -> showUI(new ServiceEditUI()));
+        record_service_button.addActionListener(e -> showUI(new ServiceEditUI(this)));
 
 
         addWindowListener(new WindowClosingEvent());

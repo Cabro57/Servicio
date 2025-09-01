@@ -233,7 +233,8 @@ public class ServiceListUI extends JDialog {
 
                     Service service = tableModel.getService(modelRow);
 
-                    ServiceEditUI dialog = new ServiceEditUI(service);
+                    ServiceEditUI dialog = new ServiceEditUI(null);
+                    dialog.setService(service);
                     dialog.setVisible(true);
 
                     int serviceId = service.getId();
