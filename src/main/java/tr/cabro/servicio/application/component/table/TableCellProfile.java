@@ -14,9 +14,6 @@ public class TableCellProfile extends javax.swing.JPanel {
                 + "foreground:$Label.disabledForeground");
     }
 
-
-    // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel lbLocation;
     private javax.swing.JLabel lbName;
-    // End of variables declaration//GEN-END:variables
 }

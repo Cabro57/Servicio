@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.component.table;
+package tr.cabro.servicio.application.renderer;
 
 import java.awt.Component;
 import javax.swing.JLabel;

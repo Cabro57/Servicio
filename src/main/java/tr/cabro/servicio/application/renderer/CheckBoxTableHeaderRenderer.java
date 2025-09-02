@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.component.table;
+package tr.cabro.servicio.application.renderer;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;

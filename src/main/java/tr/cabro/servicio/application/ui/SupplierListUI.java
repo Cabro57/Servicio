@@ -2,9 +2,9 @@ package tr.cabro.servicio.application.ui;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.component.table.CheckBoxTableHeaderRenderer;
-import tr.cabro.servicio.application.component.table.ProfileTableRenderer;
-import tr.cabro.servicio.application.component.table.TableHeaderAlignment;
+import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
+import tr.cabro.servicio.application.renderer.ProfileTableRenderer;
+import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.SupplierService;

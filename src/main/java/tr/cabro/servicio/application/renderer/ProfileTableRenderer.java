@@ -1,5 +1,6 @@
-package tr.cabro.servicio.application.component.table;
+package tr.cabro.servicio.application.renderer;
 
+import tr.cabro.servicio.application.component.table.TableCellProfile;
 import tr.cabro.servicio.model.Customer;
 
 import java.awt.Component;
