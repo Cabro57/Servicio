@@ -285,7 +285,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
         manual_add_button = new JButton("Ekle");
 
-        notes_field = new JTextArea();
+        notes_field = new JTextArea(3, 0);
         notes_field.setLineWrap(true);
         notes_field.setWrapStyleWord(true);
         JScrollPane notes_scroll = new JScrollPane(notes_field);

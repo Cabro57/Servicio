@@ -109,6 +109,10 @@ public class ServiceEditUI extends JDialog {
     private void saveService() {
         Service newService = collectForm();
 
+        if (newService.getService_status().equals(ServiceStatus.DELIVERED)) {
+            if (newService.getDelivery_at() == null) newService.setDelivery_at(LocalDateTime.now());
+        }
+
         if (repairService.save(newService, false)) {
             boolean partsSuccess = processAddedParts(newService.getId(), part_notes_info.getAddedParts(), false);
 
@@ -132,6 +136,10 @@ public class ServiceEditUI extends JDialog {
         }
 
         Service updated = collectForm();
+
+        if (updated.getService_status().equals(ServiceStatus.DELIVERED)) {
+            if (updated.getDelivery_at() == null) updated.setDelivery_at(LocalDateTime.now());
+        }
 
         if (repairService.save(updated, true)) {
             boolean removeSuccess = repairService.removeParts(service.getId());
@@ -311,7 +319,7 @@ public class ServiceEditUI extends JDialog {
 
         Customer customer = customer_info.selectedCustomer;
         if (customer != null) {
-            service.setCustomer_id(customer_info.selectedCustomer.getID());
+            service.setCustomer_id(customer.getID());
         }
 
         service.setCreated_at(customer_info.getRecordDate());
