@@ -130,7 +130,7 @@ public class PartManagementUI extends JDialog {
 
         if (confirm == JOptionPane.YES_OPTION) {
             for (Part p : ps) {
-                service.deletePart(p);
+                service.delete(p);
             }
             refreshProductTable();
         }
@@ -157,7 +157,7 @@ public class PartManagementUI extends JDialog {
     }
 
     private void refreshProductTable() {
-        PartTableModel model = new PartTableModel(service.getAllParts());
+        PartTableModel model = new PartTableModel(service.getAll());
         product_table.setModel(model);
 
         Integer[] columnAlignments = {

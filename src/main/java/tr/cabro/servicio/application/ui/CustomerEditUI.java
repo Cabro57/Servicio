@@ -10,20 +10,18 @@ import java.awt.*;
 
 public class CustomerEditUI extends JDialog {
     private JPanel main_panel;
-    private JButton save_button;
-    private JButton cancel_button;
-    private JTextField business_name_field;
     private JLabel business_name_label;
+    private JTextField business_name_field;
     private JLabel name_label;
     private JTextField name_field;
     private JLabel surname_label;
     private JTextField surname_field;
-    private JTextField phone_1_field;
     private JLabel phone_1_label;
-    private JTextField phone_2_field;
+    private JTextField phone_1_field;
     private JLabel phone_2_label;
-    private JTextField address_field;
+    private JTextField phone_2_field;
     private JLabel address_label;
+    private JTextField address_field;
     private JLabel email_label;
     private JTextField email_field;
     private JLabel customer_type_label;
@@ -32,6 +30,9 @@ public class CustomerEditUI extends JDialog {
     private JTextField notes_field;
     private JLabel id_no_label;
     private JTextField id_no_field;
+
+    private JButton save_button;
+    private JButton cancel_button;
 
     @Getter
     private boolean confirmed = false;
@@ -92,6 +93,7 @@ public class CustomerEditUI extends JDialog {
     }
 
     private boolean validateForm() {
+
         if (name_field.getText().trim().isEmpty()) {
             showValidationError("Lütfen müşteri adını giriniz.");
             name_field.requestFocus();

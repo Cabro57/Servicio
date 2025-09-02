@@ -15,6 +15,7 @@ import tr.cabro.servicio.application.tablemodal.ServicePartTableModel;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.service.PartService;
+import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
@@ -51,14 +52,14 @@ public class PartsNotesInfoPanel extends JPanel {
     private JTextField part_name_field;
     private JPanel manual_content_panel;
 
-    private final PartService partService;
+    private final RepairService partService;
     private ServicePartTableModel tableModel;
     private final List<PartsChangeListener> partsChangeListeners = new ArrayList<>();
 
     private int serviceId = 0;
 
     public PartsNotesInfoPanel() {
-        this.partService = ServiceManager.getPartService();
+        this.partService = ServiceManager.getRepairService();
         initUI();
         add(main_panel);
     }
@@ -85,7 +86,7 @@ public class PartsNotesInfoPanel extends JPanel {
         manual_add_button.addActionListener(e -> manualAddPart());
 
         // Tablo modeli ve görünümü
-        tableModel = new ServicePartTableModel(partService.getPartsByServiceId(serviceId));
+        tableModel = new ServicePartTableModel(partService.getParts(serviceId));
         tableModel.addPriceChangeListener(this::updateMaterialCost);
         parts_table.setModel(tableModel);
         parts_table.setRowHeight(30);
@@ -175,7 +176,7 @@ public class PartsNotesInfoPanel extends JPanel {
                 }
 
                 if (!exists) {
-                    AddedPart addedPart = new AddedPart(part.getBarcode(), 1, part.getSale_price(), serviceId);
+                    AddedPart addedPart = new AddedPart(part.getBarcode(), 1, part.getSale_price());
                     addedPart.setName(part.getName());
                     addedPart.setPurchasePrice(part.getPurchase_price());
                     addedPart.setAddedDate(LocalDateTime.now());
@@ -222,7 +223,7 @@ public class PartsNotesInfoPanel extends JPanel {
             return;
         }
 
-        AddedPart newPart = new AddedPart("", amount, sellingPrice, serviceId);
+        AddedPart newPart = new AddedPart("", amount, sellingPrice);
         newPart.setName(partName);
         newPart.setSerial_no(serialNo);
         newPart.setPurchasePrice(purchasePrice);
@@ -297,7 +298,7 @@ public class PartsNotesInfoPanel extends JPanel {
 
     public void setServiceId(int serviceId) {
         this.serviceId = serviceId;
-        List<AddedPart> addedParts = partService.getPartsByServiceId(serviceId);
+        List<AddedPart> addedParts = partService.getParts(serviceId);
         tableModel.setParts(addedParts);
         updateMaterialCost();
     }

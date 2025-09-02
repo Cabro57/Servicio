@@ -6,7 +6,6 @@ import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.editors.*;
 import tr.cabro.servicio.application.events.EventCellInputChange;
-import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.ServicePanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
@@ -15,9 +14,6 @@ import tr.cabro.servicio.application.ui.PartEditUI;
 import tr.cabro.servicio.application.ui.PartSearchUI;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Part;
-import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.service.PartService;
-import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
@@ -31,13 +27,10 @@ import java.util.List;
 
 public class PartsNotesInfoPanel extends ServicePanel {
 
-    private final PartService partService;
-
     public ServicePartTableModel tableModel;
 
     public PartsNotesInfoPanel(ServiceContext context) {
         super(context);
-        this.partService = ServiceManager.getPartService();
         init();
     }
 
@@ -83,14 +76,11 @@ public class PartsNotesInfoPanel extends ServicePanel {
         parts_table.getColumnModel().getColumn(COL_SALE_PRICE).setCellRenderer(new CurrencyTableCellRenderer());
 
 
-        parts_table.getColumnModel().getColumn(5).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
-            @Override
-            public void onAction(int row) {
-                if (row != -1) {
-                    tableModel.getAddedParts().remove(row);
-                    tableModel.fireTableRowsDeleted(row, row);
-                    updateMaterialCost();
-                }
+        parts_table.getColumnModel().getColumn(5).setCellEditor(new ActionButtonEditor(row -> {
+            if (row != -1) {
+                tableModel.getAddedParts().remove(row);
+                tableModel.fireTableRowsDeleted(row, row);
+                updateMaterialCost();
             }
         }));
         parts_table.getColumnModel().getColumn(5).setCellRenderer(new ActionButtonRenderer());
@@ -135,8 +125,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
                 }
 
                 if (!exists) {
-                    Service service = context.getService();
-                    AddedPart addedPart = new AddedPart(part.getBarcode(), 1, part.getSale_price(), service.getId());
+                    AddedPart addedPart = new AddedPart(part.getBarcode(), 1, part.getSale_price());
                     addedPart.setName(part.getName());
                     addedPart.setPurchasePrice(part.getPurchase_price());
                     addedPart.setAddedDate(LocalDateTime.now());
@@ -183,8 +172,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
             return;
         }
 
-        Service service = context.getService();
-        AddedPart newPart = new AddedPart("", amount, sellingPrice, service.getId());
+        AddedPart newPart = new AddedPart("", amount, sellingPrice);
         newPart.setName(partName);
         newPart.setSerial_no(serialNo);
         newPart.setPurchasePrice(purchasePrice);
@@ -239,10 +227,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
     }
 
     public void setAddedParts(List<AddedPart> parts) {
-        for (AddedPart part : parts) {
-            tableModel.addAddedPart(part);
-        }
-        tableModel.fireTableDataChanged();
+        tableModel.setParts(parts);
         updateMaterialCost();
     }
 
@@ -252,12 +237,6 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
     public void setNotes(String notes) {
         notes_field.setText(notes);
-    }
-
-    public void setServiceId(int serviceId) {
-        List<AddedPart> addedParts = partService.getPartsByServiceId(serviceId);
-        tableModel.setParts(addedParts);
-        updateMaterialCost();
     }
 
     private void initComponent() {
@@ -287,17 +266,17 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
         JScrollPane table_scroll = new JScrollPane(parts_table);
 
-        JPanel manual_add_panel = new JPanel(new MigLayout("debug, insets 5", "[grow][grow]", "[grow, fill][grow, fill]"));
+        JPanel manual_add_panel = new JPanel(new MigLayout("insets 5", "[grow][grow]", "[grow, fill][grow, fill]"));
         manual_add_panel.setBorder(BorderFactory.createTitledBorder("Manuel Parça Ekle"));
         manual_add_panel.setBackground(null);
 
-        JPanel content_panel1 = new JPanel(new MigLayout("debug, insets 0", "[][fill, grow][][fill, grow]", "[fill]"));
+        JPanel content_panel1 = new JPanel(new MigLayout("insets 0", "[][fill, grow][][fill, grow]", "[fill]"));
         content_panel1.setBackground(null);
 
         series_no_field = new JTextField();
         part_name_field = new JTextField();
 
-        JPanel content_panel2 = new JPanel(new MigLayout("debug, insets 0", "", ""));
+        JPanel content_panel2 = new JPanel(new MigLayout("insets 0", "", ""));
         content_panel2.setBackground(null);
 
         purchase_price_field = new CurrencyField();
@@ -337,23 +316,17 @@ public class PartsNotesInfoPanel extends ServicePanel {
         add(notes_scroll, "growx, growy, wrap");
     }
 
-    JScrollPane table_scroll;
     JTable parts_table;
-    JLabel notes_label;
     JButton new_part_add_button;
     JTextField product_search_field;
     JTextArea notes_field;
     JButton part_add_button;
+
+    // Manual Part
+    JTextField part_name_field;
     JTextField series_no_field;
+    JFormattedTextField sale_price_field;
     JFormattedTextField purchase_price_field;
     JSpinner amount_spinner;
-    JFormattedTextField sale_price_field;
-    JPanel manual_add_panel;
-    JLabel series_no_label;
     JButton manual_add_button;
-    JLabel purchase_price_label;
-    JLabel sale_price_label;
-    JLabel amount_label;
-    JLabel part_name_label;
-    JTextField part_name_field;
 }

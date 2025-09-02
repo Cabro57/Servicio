@@ -127,14 +127,14 @@ public class ImportManager {
                     p.setSupplier_id(newSupplierId);
                 }
 
-                Part existing = partService.getPartByBarcode(p.getBarcode());
+                Part existing = partService.get(p.getBarcode());
                 if (existing != null) {
                     if (existing.getSupplier_id() == p.getSupplier_id()
                             && existing.getDevice_type().equalsIgnoreCase(p.getDevice_type())
                             && existing.getModels().equalsIgnoreCase(p.getModels())) {
 
                         existing.setStock(existing.getStock() + p.getStock());
-                        partService.savePart(existing, true);
+                        partService.save(existing, true);
                         logLine("[Parça] Mevcut barkod bulundu, stok arttırıldı: " + p.getBarcode() + " -> Yeni stok: " + existing.getStock());
                         partIdMap.put(p.getOldId(), existing.getBarcode());
                         partStockUpdated++;
@@ -148,7 +148,7 @@ public class ImportManager {
                     }
                 }
 
-                partService.savePart(p, false);
+                partService.save(p, false);
                 partIdMap.put(p.getOldId(), p.getBarcode());
                 partAdded++;
             }
@@ -168,7 +168,7 @@ public class ImportManager {
                 }
                 s.setCustomer_id(newCustomerId);
                 int oldServiceId = s.getId();
-                boolean success = serviceService.saveService(s, false);
+                boolean success = serviceService.save(s, false);
                 if (success) {
                     serviceIdMap.put(oldServiceId, s.getId());
                     logLine("[Servis] Eklendi: ID " + oldServiceId + " -> " + s.getId());
@@ -198,14 +198,14 @@ public class ImportManager {
 
                 ap.setServiceId(newServiceId);
                 ap.setBarcode(newBarcode);
-                Part part = partService.getPartByBarcode(newBarcode);
+                Part part = partService.get(newBarcode);
                 ap.setName(part.getName());
 
                 if (oldSerial != null && !oldSerial.isEmpty()) {
                     ap.setSerial_no(oldSerial);
                 }
 
-                partService.addPartToService(ap);
+                serviceService.addPart(newServiceId, ap);
                 logLine("[Eklenen Parça] Servise eklendi: ServisID " + newServiceId + ", Barkod: " + newBarcode);
                 addedPartsCount++;
             }
@@ -217,12 +217,12 @@ public class ImportManager {
             for (Map.Entry<Integer, Integer> entry : serviceIdMap.entrySet()) {
                 int oldId = entry.getKey();
                 int newId = entry.getValue();
-                Service service = serviceService.getServiceById(newId).orElse(null);
+                Service service = serviceService.get(newId).orElse(null);
                 if (service != null && ServiceStatus.DELIVERED.equals(service.getService_status())) {
                     double labor = service.getLabor_cost();
-                    double parts = partService.getTotalPartsCostForService(newId);
+                    double parts = serviceService.getTotalPartsCostForService(newId);
                     service.setPaid(labor + parts);
-                    serviceService.saveService(service, true);
+                    serviceService.save(service, true);
                     logLine("[Servis] Borç sıfırlandı: YeniID " + newId + ", Toplam = " + (labor + parts));
                 }
             }

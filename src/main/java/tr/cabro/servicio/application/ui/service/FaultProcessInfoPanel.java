@@ -54,6 +54,7 @@ public class FaultProcessInfoPanel extends ServicePanel {
 
         action_taken_label = new JLabel("Yapılan İşlem:");
         action_taken_field = new JTextField();
+        action_taken_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
         action_taken_button = new JButton("Seç");
 

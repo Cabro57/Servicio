@@ -139,19 +139,4 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         }
         return services;
     }
-
-    public List<Service> getServicesByStatus(String status) {
-        String sql = "SELECT * FROM services WHERE service_status = ?";
-        try (PreparedStatement ps = DatabaseManager.getConnection().prepareStatement(sql)) {
-            ps.setString(1, status);
-            ResultSet rs = ps.executeQuery();
-            List<Service> list = new ArrayList<>();
-            while (rs.next()) {
-                list.add(mapRow(rs)); // mapRow senin Service nesnesini oluşturan metodun
-            }
-            return list;
-        } catch (SQLException e) {
-            throw new RuntimeException("Servis durumu sorgulanırken hata oluştu: " + status, e);
-        }
-    }
 }

@@ -50,14 +50,12 @@ public class ServiceListUI extends JDialog {
     private InfoBox debt_box;
 
     private final RepairService repairService;
-    private final PartService partService;
     private TableRowSorter<ServiceListTableModel> sorter;
 
     public ServiceListUI() {
         super((Frame) null, "Servis Kayıtları", true);
 
         this.repairService = ServiceManager.getRepairService();
-        this.partService = ServiceManager.getPartService();
 
         Dimension screen_size = Toolkit.getDefaultToolkit().getScreenSize();
         int width = (int) (screen_size.width * 0.8);
@@ -113,17 +111,17 @@ public class ServiceListUI extends JDialog {
     }
 
     private void loadInfoBox() {
-        List<Service> services = repairService.getAllServices();
+        List<Service> services = repairService.getAll();
         int total = services.size();
         if (total == 0) total = 1; // % hesaplamada 0 bölme hatasını önlemek için
 
         // Her durumun sayısını çekiyoruz
-        int tamirde = repairService.getServicesByStatus("Tamirde").size();
-        int hazir = repairService.getServicesByStatus("Hazır").size();
-        int baskaServiste = repairService.getServicesByStatus("Başka Serviste").size();
-        int teslimEdilen = repairService.getServicesByStatus("Teslim edildi").size();
-        int iade = repairService.getServicesByStatus("İade").size();
-        int parcaBekleyen = repairService.getServicesByStatus("Parça Bekliyor").size();
+        int tamirde = repairService.getAll("Tamirde").size();
+        int hazir = repairService.getAll("Hazır").size();
+        int baskaServiste = repairService.getAll("Başka Serviste").size();
+        int teslimEdilen = repairService.getAll("Teslim edildi").size();
+        int iade = repairService.getAll("İade").size();
+        int parcaBekleyen = repairService.getAll("Parça Bekliyor").size();
         int borcuOlanlar = calculateRemainingAmount(services);
 
         // Her InfoBox’a Content (metin şablonu) ve Value (maksimum ve mevcut değer) veriyoruz
@@ -164,7 +162,7 @@ public class ServiceListUI extends JDialog {
     }
 
     private void refreshTable() {
-        ServiceListTableModel model = new ServiceListTableModel(repairService.getAllServices());
+        ServiceListTableModel model = new ServiceListTableModel(repairService.getAll());
         table.setModel(model);
 
         initFilters();
@@ -238,7 +236,7 @@ public class ServiceListUI extends JDialog {
                     dialog.setVisible(true);
 
                     int serviceId = service.getId();
-                    service = repairService.getServiceById(serviceId).orElse(null);
+                    service = repairService.get(serviceId).orElse(null);
 
                     if (service == null) {
                         tableModel.removeServiceById(serviceId);
@@ -256,7 +254,7 @@ public class ServiceListUI extends JDialog {
         int result = 0;
         for (Service service : services) {
             double labor = service.getLabor_cost();
-            double parts = partService.getTotalPartsCostForService(service.getId());
+            double parts = repairService.getTotalPartsCostForService(service.getId());
             double paid = service.getPaid();
             double total = (labor + parts) - paid;
 

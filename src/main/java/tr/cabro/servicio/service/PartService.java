@@ -13,16 +13,14 @@ import java.util.Optional;
 public class PartService {
 
     private final PartDao partDao;
-    private final ServicePartDao servicePartDao;
 
     public PartService() {
         this.partDao = new PartDao();
-        this.servicePartDao = new ServicePartDao();
     }
 
     // --- PART işlemleri ---
 
-    public boolean savePart(Part part, boolean update) {
+    public boolean save(Part part, boolean update) {
         try {
             if (!update) {
                 if (partDao.isBarcodeExists(part.getBarcode())) {
@@ -40,11 +38,11 @@ public class PartService {
         }
     }
 
-    public boolean deletePart(Part part) {
+    public boolean delete(Part part) {
         return partDao.delete(part.getBarcode());
     }
 
-    public boolean deletePartByBarcode(String barcode) {
+    public boolean delete(String barcode) {
         try {
             partDao.delete(barcode);
             return true;
@@ -54,7 +52,7 @@ public class PartService {
         }
     }
 
-    public List<Part> getAllParts() {
+    public List<Part> getAll() {
         try {
             return partDao.getAll();
         } catch (Exception e) {
@@ -63,7 +61,7 @@ public class PartService {
         }
     }
 
-    public Part getPartByBarcode(String barcode) {
+    public Part get(String barcode) {
         try {
             Optional<Part> part = partDao.getByKey(barcode);
             return part.orElse(null); // eğer varsa döner, yoksa null
@@ -86,106 +84,59 @@ public class PartService {
         return !partDao.isBarcodeExists(barcode);
     }
 
-    // --- ADDED PART (service_parts) işlemleri ---
-
-    public boolean addPartToService(AddedPart addedPart) {
+    public boolean increaseStock(String barcode, int amount) {
         try {
-            servicePartDao.create(addedPart);
-
-            Optional<Part> optionalPart = partDao.getByKey(addedPart.getBarcode());
-            optionalPart.ifPresent(part -> {
-                int newStock = part.getStock() - addedPart.getAmount();
-                part.setStock(Math.max(newStock, 0)); // Negatif stok önlenir
-                partDao.updateStock(part.getBarcode(), part.getStock());
-            });
-
+            Part part = get(barcode);
+            if (part == null) {
+                Servicio.getLogger().warn("PART NOT FOUND [INCREASE STOCK] Barcode: {}", barcode);
+                return false;
+            }
+            part.setStock(part.getStock() + amount);
+            partDao.update(part);
             return true;
         } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [ADD PART TO SERVICE] {}", String.valueOf(e));
+            Servicio.getLogger().error("SERVICE ERROR [INCREASE STOCK] {}", String.valueOf(e));
             return false;
         }
     }
 
-    public boolean updateAddedPart(AddedPart updated) {
-        try {
-            Optional<AddedPart> optionalOriginal = servicePartDao.getByKey(updated.getId());
-            if (!optionalOriginal.isPresent()) return false;
-
-            AddedPart original = optionalOriginal.get();
-            int fark = updated.getAmount() - original.getAmount(); // pozitifse stok eksilir
-
-            servicePartDao.update(updated);
-
-            Optional<Part> optionalPart = partDao.getByKey(updated.getBarcode());
-            optionalPart.ifPresent(part -> {
-                int newStock = part.getStock() - fark;
-                part.setStock(Math.max(newStock, 0));
-                partDao.updateStock(part.getBarcode(), part.getStock());
-            });
-
-            return true;
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [UPDATE ADDED PART] {}", String.valueOf(e));
-            return false;
-        }
+    public boolean increaseStock(AddedPart part) {
+        return increaseStock(part.getBarcode(), part.getAmount());
     }
 
-    public boolean deleteAddedPart(AddedPart addedPart) {
+    public boolean decreaseStock(String barcode, int amount) {
         try {
-            servicePartDao.delete(addedPart.getId());
-
-            Optional<Part> optionalPart = partDao.getByKey(addedPart.getBarcode());
-            optionalPart.ifPresent(part -> {
-                part.setStock(part.getStock() + addedPart.getAmount());
-                partDao.updateStock(part.getBarcode(), part.getStock());
-            });
-
-            return true;
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [DELETE ADDED PART] {}", String.valueOf(e));
-            return false;
-        }
-    }
-
-    public boolean deleteAllPartsFromService(int serviceId) {
-        try {
-            List<AddedPart> addedParts = servicePartDao.getByServiceId(serviceId);
-
-            for (AddedPart addedPart : addedParts) {
-                Optional<Part> optionalPart = partDao.getByKey(addedPart.getBarcode());
-                optionalPart.ifPresent(part -> {
-                    part.setStock(part.getStock() + addedPart.getAmount());
-                    partDao.updateStock(part.getBarcode(), part.getStock());
-                });
+            Part part = get(barcode);
+            if (part == null) {
+                Servicio.getLogger().warn("PART NOT FOUND [DECREASE STOCK] Barcode: {}", barcode);
+                return false;
             }
 
-            return servicePartDao.deleteByServiceId(serviceId);
+            int newStock = part.getStock() - amount;
+            part.setStock(newStock);
+            partDao.update(part);
+
+            // Eğer stok 0’ın altına düştüyse uyarı logla
+            if (newStock < 0) {
+                Servicio.getLogger().error("STOCK NEGATIVE! [Barcode: {}, NewStock: {}]",
+                        barcode, newStock);
+            }
+
+            // Eğer min stok altına düştüyse ayrıca uyarı logla
+            if (newStock <= part.getMinStock()) {
+                Servicio.getLogger().warn("STOCK BELOW MINIMUM! [Barcode: {}, Current: {}, Min: {}]",
+                        barcode, newStock, part.getMinStock());
+            }
+
+            return true;
         } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [DELETE PARTS BY SERVICE ID] {}", String.valueOf(e));
+            Servicio.getLogger().error("SERVICE ERROR [DECREASE STOCK] {}", String.valueOf(e));
             return false;
         }
     }
 
-    public double getTotalPartsCostForService(int serviceId) {
-        try {
-            List<AddedPart> addedParts = servicePartDao.getByServiceId(serviceId);
-            double total = 0;
-            for (AddedPart ap : addedParts) {
-                total += ap.getTotal(); // fiyat * adet
-            }
-            return total;
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [GET TOTAL PARTS COST] {}", String.valueOf(e));
-            return 0.0;
-        }
+    public boolean decreaseStock(AddedPart part) {
+        return decreaseStock(part.getBarcode(), part.getAmount());
     }
 
-    public List<AddedPart> getPartsByServiceId(int serviceId) {
-        try {
-            return servicePartDao.getByServiceId(serviceId);
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [GET PARTS BY SERVICE ID] {}", String.valueOf(e));
-            return Collections.emptyList();
-        }
-    }
 }

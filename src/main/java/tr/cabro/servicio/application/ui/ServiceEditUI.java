@@ -3,32 +3,32 @@ package tr.cabro.servicio.application.ui;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.listeners.ServiceEditListener;
 import tr.cabro.servicio.application.ui.service.*;
+import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.Process;
-import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
 import java.awt.*;
+import java.time.LocalDateTime;
+import java.util.List;
 
 public class ServiceEditUI extends JDialog {
 
     private final ServiceContext context;
 
     private final RepairService repairService;
-    private final PartService partService;
 
     public ServiceEditUI(JFrame owner) {
-        super(owner, true);
+        super(owner, "Servis No: Yeni", true);
 
         context = new ServiceContext();
 
         repairService = ServiceManager.getRepairService();
-        partService = ServiceManager.getPartService();
 
         init();
     }
@@ -89,33 +89,138 @@ public class ServiceEditUI extends JDialog {
         part_notes_info.setServicePanelListener(serviceEditListener);
         status_info.setServicePanelListener(serviceEditListener);
 
-        fault_process_info.action_taken_button.addActionListener(e -> {
-            String selectedDeviceType = (String) device_info.deviceTypeComboBoxModel.getSelectedItem();
+        save_button.addActionListener(e -> saveService());
+        update_button.addActionListener(e -> updateService());
+        delete_button.addActionListener(e -> deleteService());
+        deliver_button.addActionListener(e -> deliverService());
 
-            if (selectedDeviceType == null || selectedDeviceType.isEmpty()) {
-                Toast.show(this, Toast.Type.WARNING, "Lütfen bir cihaz türü seçin!");
-                return;
-            }
-
-            ProcessSelectedUI processSelectedUI = new ProcessSelectedUI(selectedDeviceType);
-            processSelectedUI.setModal(true);
-            processSelectedUI.setVisible(true);
-
-            Process process = processSelectedUI.getSelectedProcess();
-
-            if (process != null) {
-                price_info.addLaborCost(process.getPrice());
-                fault_process_info.appendAction(process.getName());
-            }
-        });
+        fault_process_info.action_taken_button.addActionListener(e -> onActionTaken());
 
     }
 
     public void setService(@NonNull Service service) {
         this.context.setService(service);
+        this.context.setParts(repairService.getParts(service.getId()));
         fillForm();
         save_button.setEnabled(false);
         updateTitle();
+    }
+
+    private void saveService() {
+        Service newService = collectForm();
+
+        if (repairService.save(newService, false)) {
+            boolean partsSuccess = processAddedParts(newService.getId(), part_notes_info.getAddedParts(), false);
+
+            if (partsSuccess) {
+                Toast.show(this, Toast.Type.SUCCESS, "Servis ve parçalar başarıyla kaydedildi!");
+            } else {
+                Toast.show(this, Toast.Type.WARNING, "Servis kaydedildi, fakat bazı parçalar eklenemedi veya stok güncellenemedi!");
+            }
+
+            setService(newService);
+        } else {
+            Toast.show(this, Toast.Type.ERROR, "Servis kaydedilemedi!");
+        }
+    }
+
+    private void updateService() {
+        Service service = context.getService();
+        if (service == null) {
+            Toast.show(this, Toast.Type.WARNING, "Güncellenecek bir servis seçili değil!");
+            return;
+        }
+
+        Service updated = collectForm();
+
+        if (repairService.save(updated, true)) {
+            boolean removeSuccess = repairService.removeParts(service.getId());
+
+            boolean addSuccess = processAddedParts(updated.getId(), part_notes_info.getAddedParts(), false);
+
+            if (removeSuccess && addSuccess) {
+                Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla güncellendi!");
+            } else {
+                Toast.show(this, Toast.Type.WARNING, "Servis güncellendi, fakat bazı stok işlemleri hatalı olabilir!");
+            }
+
+            setService(updated);
+        } else {
+            Toast.show(this, Toast.Type.ERROR, "Servis güncellenemedi!");
+        }
+    }
+
+    private void deleteService() {
+        Service service = context.getService();
+        if (service == null) {
+            Toast.show(this, Toast.Type.ERROR, "Silinecek bir servis seçili değil!");
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Bu servisi silmek istediğinize emin misiniz?\n" +
+                        "Servise bağlı parçalar da silinecek. Bu işlem geri alınamaz!",
+                "Servis Silme Onayı",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        try {
+            boolean partsRemoved = repairService.removeParts(service.getId());
+            boolean deleted = repairService.delete(service.getId());
+
+            if (partsRemoved && deleted) {
+                Toast.show(this, Toast.Type.SUCCESS, "Servis ve bağlı parçalar başarıyla silindi.");
+                dispose();
+            } else if (!partsRemoved && deleted) {
+                Toast.show(this, Toast.Type.WARNING, "Servis silindi, fakat bazı parçalar veya stok işlemleri hatalı olabilir!");
+                dispose();
+            } else {
+                Toast.show(this, Toast.Type.ERROR, "Servis silinemedi!");
+            }
+        } catch (Exception ex) {
+            Toast.show(this, Toast.Type.ERROR, "Silme sırasında hata oluştu: " + ex.getMessage());
+        }
+    }
+
+    private void deliverService() {
+        Service service = context.getService();
+
+        if (service == null) {
+            Toast.show(this, Toast.Type.ERROR, "Teslim edilecek bir servis seçili değil!");
+            return;
+        }
+
+        if (service.getService_status() == ServiceStatus.DELIVERED) {
+            Toast.show(this, Toast.Type.WARNING, "Bu Servis zaten teslim edilmiş.");
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Bu servisi teslim etmek istediğinize emin misiniz?",
+                "Teslim Onayı",
+                JOptionPane.YES_NO_OPTION
+        );
+
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        context.getService().setService_status(ServiceStatus.DELIVERED);
+        if (customer_info.getDeliverDate() == null) {
+            context.getService().setDelivery_at(LocalDateTime.now());
+        } else {
+            context.getService().setDelivery_at(customer_info.getDeliverDate());
+        }
+
+        fillForm();
+        repairService.save(context.getService(), true);
+
+        Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla teslim edildi!");
     }
 
     private void updateTitle() {
@@ -127,9 +232,51 @@ public class ServiceEditUI extends JDialog {
         }
     }
 
+    private void onActionTaken() {
+        String selectedDeviceType = (String) device_info.deviceTypeComboBoxModel.getSelectedItem();
+
+        if (selectedDeviceType == null || selectedDeviceType.isEmpty()) {
+            Toast.show(this, Toast.Type.WARNING, "Lütfen bir cihaz türü seçin!");
+            return;
+        }
+
+        ProcessSelectedUI processSelectedUI = new ProcessSelectedUI(selectedDeviceType);
+        processSelectedUI.setModal(true);
+        processSelectedUI.setVisible(true);
+
+        Process process = processSelectedUI.getSelectedProcess();
+
+        if (process != null) {
+            price_info.addLaborCost(process.getPrice());
+            fault_process_info.appendAction(process.getName());
+        }
+    }
+
+    private boolean processAddedParts(int serviceId, List<AddedPart> parts, boolean isRemove) {
+        boolean success = true;
+        if (parts == null || parts.isEmpty()) return true;
+
+        for (AddedPart part : parts) {
+            boolean result;
+            if (isRemove) {
+                result = repairService.removePart(part);
+            } else {
+                result = repairService.addPart(serviceId, part);
+            }
+
+            if (!result) {
+                Servicio.getLogger().warn("PART PROCESS FAILED [ServiceId: {}, PartId: {}]",
+                        serviceId, part.getId());
+                success = false;
+            }
+        }
+
+        return success;
+    }
+
     private void fillForm() {
         Service service = context.getService();
-        customer_info.loadCustomer(service.getCustomer_id());
+        customer_info.setCustomer(service.getCustomer_id());
         customer_info.setRecordDate(service.getCreated_at());
         customer_info.setDeliverDate(service.getDelivery_at());
 
@@ -150,7 +297,7 @@ public class ServiceEditUI extends JDialog {
         warranty_info.setWarrantyDate(service.getWarranty_date());
         warranty_info.setMaintenanceDate(service.getMaintenance_date());
 
-        part_notes_info.setServiceId(service.getId());
+        part_notes_info.setAddedParts(context.getParts());
         part_notes_info.setNotes(service.getNotes());
 
         status_info.setSelected(service.getService_status().getDisplayName());
@@ -162,7 +309,11 @@ public class ServiceEditUI extends JDialog {
             service = new Service();
         }
 
-        service.setCustomer_id(customer_info.getCustomerId());
+        Customer customer = customer_info.selectedCustomer;
+        if (customer != null) {
+            service.setCustomer_id(customer_info.selectedCustomer.getID());
+        }
+
         service.setCreated_at(customer_info.getRecordDate());
         service.setDelivery_at(customer_info.getDeliverDate());
 
@@ -249,8 +400,8 @@ public class ServiceEditUI extends JDialog {
 
     private JButton save_button;
     private JButton update_button;
-    private JButton print_button;
     private JButton deliver_button;
+    private JButton print_button;
     private JButton delete_button;
     private JButton whatsapp_button;
 }

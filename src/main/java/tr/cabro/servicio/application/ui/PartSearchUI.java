@@ -92,7 +92,7 @@ public class PartSearchUI extends JDialog {
     }
 
     private void refreshProductTable() {
-        partTableModel = new SearchPartTableModel(service.getAllParts());
+        partTableModel = new SearchPartTableModel(service.getAll());
         product_table.setModel(partTableModel);
 
         sorter = new TableRowSorter<>(partTableModel);

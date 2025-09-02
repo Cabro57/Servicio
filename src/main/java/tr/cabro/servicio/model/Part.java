@@ -25,7 +25,7 @@ public class Part {
     private double purchase_price; // Alış Fiyatı
     private double sale_price; // Satış Fiyatı
     private int stock; // Stok miktarı
-    private int min_stock; // Minimum Stok Miktarı
+    private int minStock; // Minimum Stok Miktarı
 
     private int warranty_period; // Garanti Süresi
 

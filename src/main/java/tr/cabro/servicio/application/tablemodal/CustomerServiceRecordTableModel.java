@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.PartService;
+import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 
@@ -13,7 +14,7 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
     private final String[] columnsNames = { "#", "Ürün", "Ücret", "Durum", "Kayıt Tarihi" };
     private final List<Service> services;
 
-    private final PartService partService = ServiceManager.getPartService();
+    private final RepairService repairService = ServiceManager.getRepairService();
 
     public CustomerServiceRecordTableModel(List<Service> services) {
         this.services = services;
@@ -71,7 +72,7 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
 
     private double calculateRemainingAmount(Service service) {
         double labor = service.getLabor_cost();
-        double parts = partService.getTotalPartsCostForService(service.getId());
+        double parts = repairService.getTotalPartsCostForService(service.getId());
         double paid = service.getPaid();
         return (labor + parts) - paid;
     }

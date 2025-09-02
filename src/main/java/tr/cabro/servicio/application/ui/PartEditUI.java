@@ -140,7 +140,7 @@ public class PartEditUI extends JDialog {
     private void part_save_cmd() {
         if (validateForm()) {
             Part partToSave = getPartFromForm();
-            boolean success = partService.savePart(partToSave, updated);
+            boolean success = partService.save(partToSave, updated);
 
             if (success) {
                 barcode_info.setText("[Barkod Numarası Bekleniyor]");
@@ -165,7 +165,7 @@ public class PartEditUI extends JDialog {
                 "Bu ürünü silmek istediğinize emin misiniz?",
                 "Ürünü Sil", JOptionPane.YES_NO_OPTION);
         if (result == JOptionPane.YES_OPTION) {
-            boolean success = partService.deletePartByBarcode(barcode);
+            boolean success = partService.delete(barcode);
             if (success) {
                 situation_label.setText("Durum: Ürün başarıyla silindi.");
                 situation_label.setForeground(Color.RED);
@@ -242,7 +242,7 @@ public class PartEditUI extends JDialog {
         purchase_price_field.setValue(part.getPurchase_price());
         sale_price_field.setValue(part.getSale_price());
         stock_spinner.setValue(part.getStock());
-        min_stock_spinner.setValue(part.getMin_stock());
+        min_stock_spinner.setValue(part.getMinStock());
         warranty_period_spinner.setValue(part.getWarranty_period());
         if (part.getPurchase_date() != null)
             purchase_picker.setSelectedDate(part.getPurchase_date());
@@ -273,7 +273,7 @@ public class PartEditUI extends JDialog {
         p.setPurchase_price((Double) purchase_price_field.getValue());
         p.setSale_price((Double) sale_price_field.getValue());
         p.setStock((Integer) stock_spinner.getValue());
-        p.setMin_stock((Integer) min_stock_spinner.getValue());
+        p.setMinStock((Integer) min_stock_spinner.getValue());
         p.setWarranty_period((Integer) warranty_period_spinner.getValue());
         p.setPurchase_date(purchase_picker.getSelectedDate());
         p.setDescription(description_area.getText().trim());
@@ -324,7 +324,7 @@ public class PartEditUI extends JDialog {
             return;
         }
 
-        Part existingPart = partService.getPartByBarcode(barcode);
+        Part existingPart = partService.get(barcode);
 
         if (existingPart != null) {
             updated = true;

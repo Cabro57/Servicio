@@ -21,11 +21,10 @@ public class AddedPart {
 
     private LocalDateTime addedDate;
 
-    public AddedPart(String barcode, int amount, double price, int serviceId) {
+    public AddedPart(String barcode, int amount, double price) {
         this.barcode = barcode;
         this.amount = amount;
         this.sellingPrice = price;
-        this.serviceId = serviceId;
     }
 
     public AddedPart() {}

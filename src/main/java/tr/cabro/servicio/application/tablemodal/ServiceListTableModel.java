@@ -102,7 +102,7 @@ public class ServiceListTableModel extends AbstractTableModel {
 
     private double calculateRemainingAmount(Service service) {
         double labor = service.getLabor_cost();
-        double parts = ServiceManager.getPartService().getTotalPartsCostForService(service.getId());
+        double parts = ServiceManager.getRepairService().getTotalPartsCostForService(service.getId());
         double paid = service.getPaid();
         return (labor + parts) - paid;
     }

@@ -11,6 +11,7 @@ import tr.cabro.servicio.application.panels.ServicePanel;
 import tr.cabro.servicio.application.ui.CustomerEditUI;
 import tr.cabro.servicio.application.ui.CustomerSearchUI;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.application.context.ServiceContext;
@@ -19,8 +20,11 @@ import javax.swing.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Optional;
 
 public class CustomerInfoPanel extends ServicePanel {
+
+    public Customer selectedCustomer;
 
     public CustomerInfoPanel(ServiceContext context) {
         super(context);
@@ -30,24 +34,22 @@ public class CustomerInfoPanel extends ServicePanel {
     private void init() {
         initComponent();
 
-        customer_field.addActionListener(e -> {
-            String s = customer_field.getText().trim();
-            CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
-            customerSearchUI.setModal(true);
-            customerSearchUI.setVisible(true);
+        customer_field.addActionListener(e -> onSetCustomer());
 
-            Customer cs = customerSearchUI.getSelectedCustomer();
+        recordDatePicker = new DatePicker();
+        recordDatePicker.setEditor(record_date_field);
+        recordDatePicker.setSelectedDate(LocalDate.now());
+        recordTimePicker = new TimePicker();
 
-            if (cs != null) {
-                setCustomer(cs);
-            }
-        });
+        deliverDatePicker = new DatePicker();
+        deliverDatePicker.setEditor(deliver_date_field);
+        deliverTimePicker = new TimePicker();
 
-        customer_button.addActionListener(e -> new_customer_cmd());
+        customer_button.addActionListener(e -> newCustomerCmd());
 
     }
 
-    private void new_customer_cmd() {
+    private void newCustomerCmd() {
         CustomerEditUI customerEditUI = new CustomerEditUI(null);
         customerEditUI.setModal(true);
         customerEditUI.setVisible(true);
@@ -68,22 +70,33 @@ public class CustomerInfoPanel extends ServicePanel {
         }
     }
 
-    public int getCustomerId() {
-        return selected_customer != null ? selected_customer.getID() : -1;
+    public void onSetCustomer() {
+        String s = customer_field.getText().trim();
+        CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
+        customerSearchUI.setModal(true);
+        customerSearchUI.setVisible(true);
+
+        Customer cs = customerSearchUI.getSelectedCustomer();
+
+        if (cs != null) {
+            setCustomer(cs);
+        }
     }
 
-    public void loadCustomer(int customerId) {
+    public void setCustomer(int serviceId) {
         CustomerService service = ServiceManager.getCustomerService();
-        service.get(customerId).ifPresent(this::setCustomer);
+        Optional<Customer> customer = service.get(serviceId);
+
+        customer.ifPresent(this::setCustomer);
     }
 
     public void setCustomer(Customer customer) {
-        this.selected_customer = customer;
+        this.selectedCustomer = customer;
         if (customer != null) {
             customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, customer.getType().getIcon(22, 22));
             customer_field.setText(customer.toString());
         } else {
-            customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icon/customer.svg", 22, 22));
+            customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, CustomerType.NORMAL.getIcon(22, 22));
             customer_field.setText("");
         }
     }
@@ -97,11 +110,6 @@ public class CustomerInfoPanel extends ServicePanel {
     }
 
     public void setRecordDate(LocalDateTime dateTime) {
-        if (dateTime == null) {
-            recordDatePicker.clearSelectedDate();
-            return;
-        }
-
         recordTimePicker.setSelectedTime(dateTime.toLocalTime());
         recordDatePicker.setSelectedDate(dateTime.toLocalDate());
     }
@@ -114,10 +122,8 @@ public class CustomerInfoPanel extends ServicePanel {
         return LocalDateTime.of(date, time);
     }
 
-
     public void setDeliverDate(LocalDateTime dateTime) {
         if (dateTime == null) return;
-
         deliverTimePicker.setSelectedTime(dateTime.toLocalTime());
         deliverDatePicker.setSelectedDate(dateTime.toLocalDate());
     }
@@ -145,17 +151,13 @@ public class CustomerInfoPanel extends ServicePanel {
 
         record_date_label = new JLabel("Kayıt Tarihi: ");
         record_date_field = new JFormattedTextField();
-        recordDatePicker = new DatePicker();
-        recordDatePicker.setEditor(record_date_field);
-        recordTimePicker = new TimePicker();
 
         deliver_date_label = new JLabel("Teslim Tarihi:");
         deliver_date_field = new JFormattedTextField();
-        deliverDatePicker = new DatePicker();
-        deliverDatePicker.setEditor(deliver_date_field);
-        deliverTimePicker = new TimePicker();
 
         JPanel date_panel = new JPanel(new MigLayout("insets 0, fillx", "[][grow][][grow]", "[]"));
+        date_panel.setBackground(null);
+
         date_panel.add(record_date_label);
         date_panel.add(record_date_field, "growx");
         date_panel.add(deliver_date_label);
@@ -181,6 +183,4 @@ public class CustomerInfoPanel extends ServicePanel {
     TimePicker recordTimePicker;
     DatePicker deliverDatePicker;
     TimePicker deliverTimePicker;
-
-    Customer selected_customer;
 }

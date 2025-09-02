@@ -50,7 +50,7 @@ public class PartDao extends BaseDao<Part, String> {
         stmt.setDouble(7, entity.getPurchase_price());
         stmt.setDouble(8, entity.getSale_price());
         stmt.setInt(9, entity.getStock());
-        stmt.setInt(10, entity.getMin_stock());
+        stmt.setInt(10, entity.getMinStock());
         stmt.setInt(11, entity.getWarranty_period());
         stmt.setString(12, entity.getPurchase_date() != null ? entity.getPurchase_date().format(dateFormatter) : null);
         stmt.setString(13, entity.getDescription());
@@ -67,7 +67,7 @@ public class PartDao extends BaseDao<Part, String> {
         stmt.setDouble(6, entity.getPurchase_price());
         stmt.setDouble(7, entity.getSale_price());
         stmt.setInt(8, entity.getStock());
-        stmt.setInt(9, entity.getMin_stock());
+        stmt.setInt(9, entity.getMinStock());
         stmt.setInt(10, entity.getWarranty_period());
         stmt.setString(11, entity.getPurchase_date() != null ? entity.getPurchase_date().format(dateFormatter) : null);
         stmt.setString(12, entity.getDescription());
@@ -87,7 +87,7 @@ public class PartDao extends BaseDao<Part, String> {
         p.setPurchase_price(rs.getDouble("purchase_price"));
         p.setSale_price(rs.getDouble("sale_price"));
         p.setStock(rs.getInt("stock"));
-        p.setMin_stock(rs.getInt("min_stock"));
+        p.setMinStock(rs.getInt("min_stock"));
         p.setWarranty_period(rs.getInt("warranty_period"));
 
         String dateStr = rs.getString("purchase_date");

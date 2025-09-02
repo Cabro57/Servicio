@@ -92,9 +92,6 @@ public class ServicePartTableModel extends AbstractTableModel {
                 .sum();
     }
 
-    /**
-     * Aynı barkod varsa yeni satır eklemek yerine adetini artırır.
-     */
     public void addAddedPart(AddedPart addedPart) {
         // Eğer barcode boş değilse, aynı barkodlu parçaları birleştir
         if (addedPart.getBarcode() != null && !addedPart.getBarcode().isEmpty()) {

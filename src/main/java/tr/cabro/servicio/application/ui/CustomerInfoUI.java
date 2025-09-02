@@ -62,7 +62,7 @@ public class CustomerInfoUI extends  JDialog {
 
             // Hizmet kayıtları çek ve tabloya bas
             RepairService service = ServiceManager.getRepairService();
-            List<Service> services = service.getServicesByCustomerId(customer.getID());
+            List<Service> services = service.getAll(customer.getID());
             CustomerServiceRecordTableModel model = new CustomerServiceRecordTableModel(services);
             table.setModel(model);
 
@@ -75,7 +75,8 @@ public class CustomerInfoUI extends  JDialog {
                         Service service = model.getService(row);
 
                         // Yeni bir pencere aç, örneğin:
-                        OldServiceEditUI dialog = new OldServiceEditUI(service);
+                        ServiceEditUI dialog = new ServiceEditUI(null);
+                        dialog.setService(service);
                         dialog.setVisible(true);
                     }
                 }
