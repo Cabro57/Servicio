@@ -36,6 +36,8 @@ public class CustomerInfoPanel extends ServicePanel {
 
         customer_field.addActionListener(e -> onSetCustomer());
 
+        customer_button.addActionListener(e -> onSetNewCustomer());
+
         recordDatePicker = new DatePicker();
         recordDatePicker.setEditor(record_date_field);
         recordDatePicker.setSelectedDate(LocalDate.now());
@@ -45,11 +47,10 @@ public class CustomerInfoPanel extends ServicePanel {
         deliverDatePicker.setEditor(deliver_date_field);
         deliverTimePicker = new TimePicker();
 
-        customer_button.addActionListener(e -> newCustomerCmd());
 
     }
 
-    private void newCustomerCmd() {
+    private void onSetNewCustomer() {
         CustomerEditUI customerEditUI = new CustomerEditUI(null);
         customerEditUI.setModal(true);
         customerEditUI.setVisible(true);
