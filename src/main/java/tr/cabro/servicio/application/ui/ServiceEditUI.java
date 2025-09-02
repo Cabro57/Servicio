@@ -5,7 +5,7 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.listeners.ServiceEditListener;
-import tr.cabro.servicio.application.ui.service.*;
+import tr.cabro.servicio.application.panels.service.*;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.Process;
 import tr.cabro.servicio.service.RepairService;

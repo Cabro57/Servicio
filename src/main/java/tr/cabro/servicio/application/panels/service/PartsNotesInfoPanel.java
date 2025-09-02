@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.ui.service;
+package tr.cabro.servicio.application.panels.service;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
