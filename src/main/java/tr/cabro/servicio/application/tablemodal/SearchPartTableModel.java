@@ -9,7 +9,7 @@ import java.util.List;
 
 public class SearchPartTableModel extends AbstractTableModel {
 
-    private final String[] columnsNames = { "SELECT", "Barkod", "Marka", "Ürün Adı", "Stok", "Alış Fiyatı", "Satış Fiyatı" };
+    private final String[] columnsNames = { "SELECT", "Barkod", "Marka", "Ürün Adı", "Cihaz Türü", "Uyumlu Model", "Stok", "Alış Fiyatı", "Satış Fiyatı" };
     private final List<Part> parts;
     private final Boolean[] selectedRows;
 
@@ -38,9 +38,11 @@ public class SearchPartTableModel extends AbstractTableModel {
             case 1: return device_part.getBarcode();
             case 2: return device_part.getBrand();
             case 3: return device_part.getName();
-            case 4: return device_part.getStock();
-            case 5: return Format.formatPrice(device_part.getPurchase_price());
-            case 6: return Format.formatPrice(device_part.getSale_price());
+            case 4: return device_part.getDevice_type();
+            case 5: return device_part.getModels();
+            case 6: return device_part.getStock();
+            case 7: return Format.formatPrice(device_part.getPurchase_price());
+            case 8: return Format.formatPrice(device_part.getSale_price());
             default: return null;
         }
     }
