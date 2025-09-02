@@ -7,6 +7,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
 import tr.cabro.servicio.application.renderer.ProfileTableRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.service.PartService;
@@ -111,6 +112,10 @@ public class PartSearchUI extends JDialog {
         product_table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(product_table, columnAlignments));
         product_table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(product_table, 0));
         product_table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(product_table));
+        product_table.getColumnModel().getColumn(3).setCellRenderer(new TooltipCellRenderer());
+        product_table.getColumnModel().getColumn(4).setCellRenderer(new TooltipCellRenderer());
+        product_table.getColumnModel().getColumn(5).setCellRenderer(new TooltipCellRenderer());
+
 
         product_table.getColumnModel().getColumn(0).setMaxWidth(50);
         product_table.getColumnModel().getColumn(1).setPreferredWidth(220);
