@@ -6,7 +6,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.SMenuBar;
 import tr.cabro.servicio.application.component.SearchField;
 import tr.cabro.servicio.application.listeners.WindowClosingEvent;
-import tr.cabro.servicio.util.SVGIconUIColor;
+import tr.cabro.servicio.application.util.SVGIconUIColor;
 import tr.cabro.servicio.model.Customer;
 
 import javax.swing.*;

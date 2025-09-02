@@ -9,7 +9,7 @@ import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.CustomerTableRenderer;
 import tr.cabro.servicio.application.renderer.ServiceStatusTableRenderer;
 import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
-import tr.cabro.servicio.util.SVGIconUIColor;
+import tr.cabro.servicio.application.util.SVGIconUIColor;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;

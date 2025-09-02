@@ -1,4 +1,4 @@
-package tr.cabro.servicio.util;
+package tr.cabro.servicio.application.util;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.ColorFunctions;

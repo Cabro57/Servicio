@@ -1,6 +1,6 @@
 package tr.cabro.servicio.application.ui;
 
-import tr.cabro.servicio.util.SVGIconUIColor;
+import tr.cabro.servicio.application.util.SVGIconUIColor;
 
 import javax.swing.*;
 import java.awt.*;

@@ -6,7 +6,7 @@ import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 import raven.datetime.DatePicker;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
-import tr.cabro.servicio.util.SVGIconUIColor;
+import tr.cabro.servicio.application.util.SVGIconUIColor;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
