@@ -5,17 +5,12 @@ import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 import com.formdev.flatlaf.util.FontUtils;
 import com.formdev.flatlaf.util.UIScale;
 import eu.okaeri.configs.ConfigManager;
-import eu.okaeri.configs.exception.OkaeriException;
 import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.application.ui.MainUI;
-import tr.cabro.servicio.database.BackupScheduler;
-import tr.cabro.servicio.database.DatabaseConfig;
-import tr.cabro.servicio.database.DatabaseInitializer;
-import tr.cabro.servicio.database.DatabaseManager;
-import tr.cabro.servicio.database.DatabaseType;
+import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.BackupMode;
 import tr.cabro.servicio.settings.Settings;
 import tr.cabro.servicio.settings.Theme;
@@ -23,132 +18,121 @@ import tr.cabro.servicio.settings.Theme;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.io.InputStream;
+import java.util.Properties;
 
 public final class Servicio {
 
-    @Getter
-    private final File dataFolder;
+    @Getter private static Servicio instance;
+    @Getter private static Settings settings;
+    @Getter private final File dataFolder;
+    @Getter private MainUI frame;
+    @Getter private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
 
-    @Getter
-    private static Servicio instance;
-
-    @Getter
-    private static Settings settings;
-
-    @Getter
-    private MainUI frame;
-
-    @Getter
-    private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
-
-    private boolean isBeingRun = false;
+    private boolean running = false;
     private String appVersion;
 
-    public Servicio(File dataFolder) {
+    public Servicio(File baseFolder) {
         if (!LauncherAccessContext.isAllowed()) {
             throw new SecurityException("Bu uygulama sadece launcher tarafından çalıştırılabilir.");
         }
 
         instance = this;
-        this.dataFolder = new File(dataFolder, ".servicio");
-        if (!this.dataFolder.exists()) {
-            if (this.dataFolder.mkdirs()) logger.info("Dosya oluşturuldu!");
+        this.dataFolder = new File(baseFolder, ".servicio");
+        if (!this.dataFolder.exists() && this.dataFolder.mkdirs()) {
+            logger.info("Data folder created at {}", this.dataFolder.getAbsolutePath());
         }
 
-        onLoad();
+        initSettings();
+        initDatabase();
     }
 
     public void run() {
-        if (!isBeingRun) {
-            logger.info("Uygulama Çalıştırılıyor!");
-            isBeingRun = true;
-            onRun();
-        }
-    }
+        if (running) return;
+        running = true;
+        logger.info("Uygulama Çalıştırılıyor!");
 
-    public void onLoad() {
-        try {
-            setupSettingsFile();
-
-            DatabaseConfig.init(DatabaseType.SQLite); // ileride MySQL’e de çevirebilirsin
-            DatabaseInitializer.migrate();
-
-        } catch (OkaeriException e) {
-            logger.error("Config yükleme hatası: {}", e.toString());
-        } catch (Exception e) {
-            logger.error("Veritabanı başlatma hatası: {}", e.toString());
-        }
-    }
-
-    private void onRun() {
-        BackupMode mode = settings.getBackup().getMode();
-        if (mode == BackupMode.ON_START || mode == BackupMode.ON_START_AND_EXIT) {
-            DatabaseManager.backup();
-        }
-
+        runBackupIfNeeded(BackupMode.ON_START, BackupMode.ON_START_AND_EXIT);
         BackupScheduler.start();
+        setupUI();
+        launchMainUI();
+    }
 
+    private void initSettings() {
+        settings = ConfigManager.create(Settings.class, cfg -> {
+            cfg.withConfigurer(new JsonGsonConfigurer())
+                    .withBindFile(new File(getDataFolder(), "config.json"))
+                    .withRemoveOrphans(true)
+                    .saveDefaults()
+                    .load(true);
+        });
+    }
+
+    private void initDatabase() {
+        try {
+            DatabaseConfig.init(DatabaseType.SQLite);
+            DatabaseInitializer.migrate();
+        } catch (Exception e) {
+            logger.error("Veritabanı başlatma hatası", e);
+        }
+    }
+
+    private void setupUI() {
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("themes");
         Theme.apply(Theme.selected());
 
-        UIScale.getUserScaleFactor();
         int scaledFontSize = UIScale.scale(12);
-
         UIManager.put("defaultFont", FontUtils.getCompositeFont(FlatRobotoFont.FAMILY, Font.PLAIN, scaledFontSize));
+    }
 
+    private void launchMainUI() {
         EventQueue.invokeLater(() -> {
             frame = new MainUI();
             frame.setVisible(true);
         });
     }
 
-    private void setupSettingsFile() {
-        settings = ConfigManager.create(Settings.class, (it) -> {
-            it.withConfigurer(new JsonGsonConfigurer());
-            it.withBindFile(new File(getDataFolder(), "config.json"));
-            it.withRemoveOrphans(true);
-            it.saveDefaults();
-            it.load(true);
-        });
+    private void runBackupIfNeeded(BackupMode... modes) {
+        BackupMode mode = settings.getBackup().getMode();
+        for (BackupMode m : modes) {
+            if (mode == m) {
+                DatabaseManager.backup();
+                break;
+            }
+        }
+    }
+
+    public void disable() {
+        try {
+            settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
+            settings.save();
+
+            frame.closeApplication();
+            runBackupIfNeeded(BackupMode.ON_EXIT, BackupMode.ON_START_AND_EXIT);
+
+            BackupScheduler.stop();
+            DatabaseConfig.close();
+        } catch (Exception e) {
+            logger.error("Kapatma sırasında hata", e);
+        }
     }
 
     public String getAppVersion() {
-        if (appVersion == null) {
-            try {
-                java.util.Properties props = new java.util.Properties();
-                props.load(Servicio.class.getResourceAsStream("/version.properties"));
-                appVersion = props.getProperty("version", "v0.0.0");
-            } catch (Exception e) {
-                appVersion = "v0.0.0";
-            }
+        if (appVersion != null) return appVersion;
+
+        try (InputStream is = Servicio.class.getResourceAsStream("/version.properties")) {
+            Properties props = new Properties();
+            props.load(is);
+            appVersion = props.getProperty("version", "v0.0.0");
+        } catch (Exception e) {
+            appVersion = "v0.0.0";
         }
         return appVersion;
     }
 
-    public void disable() {
-        settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
-        settings.save();
-
-        frame.closeApplication();
-
-        try {
-            BackupMode mode = settings.getBackup().getMode();
-            if (mode == BackupMode.ON_EXIT || mode == BackupMode.ON_START_AND_EXIT) {
-                DatabaseManager.backup();
-            }
-
-            BackupScheduler.stop();
-            DatabaseConfig.close(); // yeni yapı: pool kapat
-
-        } catch (Exception e) {
-            logger.error("Kapatma sırasında hata: {}", e.toString());
-        }
-    }
-
     public static void main(String[] args) {
         LauncherAccessContext.allow();
-        Servicio servicio = new Servicio(new File("."));
-        servicio.run();
+        new Servicio(new File(".")).run();
     }
 }
