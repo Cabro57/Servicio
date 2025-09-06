@@ -50,30 +50,6 @@ public class ServicePartTableModel extends AbstractTableModel {
     }
 
     @Override
-    public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
-        AddedPart part = addedParts.get(rowIndex);
-        boolean changed = false;
-
-        if (columnIndex == 0) {
-            if (aValue == null) return;
-            String serial = aValue.toString().trim();
-            part.setSerial_no(serial);
-            changed = true;
-            fireTableCellUpdated(rowIndex, columnIndex);
-        } else if (columnIndex == 1) {
-            if (aValue == null) return;
-            String name = aValue.toString().trim();
-            part.setName(name);
-            changed = true;
-            fireTableCellUpdated(rowIndex, columnIndex);
-        }
-
-        if (changed) {
-            notifyPriceChange();
-        }
-    }
-
-    @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
         return true;
     }

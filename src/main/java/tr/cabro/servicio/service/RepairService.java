@@ -96,8 +96,10 @@ public class RepairService {
             boolean b = servicePartDao.create(part);
             if(!b) return false;
 
-            PartService partService = ServiceManager.getPartService();
-            b = partService.increaseStock(part);
+            if (!part.getBarcode().isEmpty()) {
+                PartService partService = ServiceManager.getPartService();
+                b = partService.increaseStock(part);
+            }
 
             return b;
         } catch (Exception e) {
@@ -114,8 +116,10 @@ public class RepairService {
             b = servicePartDao.delete(part.getId());
             if (!b) return false;
 
-            PartService partService = ServiceManager.getPartService();
-            b = partService.decreaseStock(part);
+            if (!part.getBarcode().isEmpty()) {
+                PartService partService = ServiceManager.getPartService();
+                b = partService.decreaseStock(part);
+            }
 
             return b;
 
@@ -133,7 +137,6 @@ public class RepairService {
             }
 
             boolean allSuccess = true;
-            PartService partService = ServiceManager.getPartService();
 
             for (AddedPart part : parts) {
                 boolean deleted = servicePartDao.delete(part.getId());
@@ -144,11 +147,14 @@ public class RepairService {
                     continue;
                 }
 
-                boolean stockUpdated = partService.decreaseStock(part);
-                if (!stockUpdated) {
-                    Servicio.getLogger().warn("FAILED TO DECREASE STOCK [ServiceId: {}, PartId: {}, Barcode: {}]",
-                            serviceId, part.getId(), part.getBarcode());
-                    allSuccess = false;
+                if (!part.getBarcode().isEmpty()) {
+                    PartService partService = ServiceManager.getPartService();
+                    boolean stockUpdated = partService.decreaseStock(part);
+                    if (!stockUpdated) {
+                        Servicio.getLogger().warn("FAILED TO DECREASE STOCK [ServiceId: {}, PartId: {}, Barcode: {}]",
+                                serviceId, part.getId(), part.getBarcode());
+                        allSuccess = false;
+                    }
                 }
             }
 
