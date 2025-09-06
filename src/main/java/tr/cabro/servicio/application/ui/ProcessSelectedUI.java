@@ -3,15 +3,13 @@ package tr.cabro.servicio.application.ui;
 import lombok.Getter;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.model.Process;
-import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.application.tablemodal.ProcessTableModel;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class ProcessSelectedUI extends JDialog {
     private JPanel contentPane;
@@ -34,13 +32,11 @@ public class ProcessSelectedUI extends JDialog {
         setLocationRelativeTo(null);
 
         // İşlemleri ayarlardan çek ve liste hazırla
-        Settings settings = Servicio.getSettings();
-        Map<String, Double> processesMap = settings.getProcess(deviceType);
-        List<Process> processList = new ArrayList<>();
-        processesMap.forEach((name, price) -> processList.add(new Process(name, price)));
+        DeviceSettings settings = Servicio.getDeviceSettings();
+        List<Process> processes = settings.getProcesses(deviceType);
 
         // Tablo modeli
-        ProcessTableModel tableModel = new ProcessTableModel(processList);
+        ProcessTableModel tableModel = new ProcessTableModel(processes);
         process.setModel(tableModel);
 
 

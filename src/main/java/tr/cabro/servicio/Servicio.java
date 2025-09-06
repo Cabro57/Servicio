@@ -12,6 +12,9 @@ import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.application.ui.MainUI;
 import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.BackupMode;
+import tr.cabro.servicio.model.Process;
+import tr.cabro.servicio.settings.DeviceSettings;
+import tr.cabro.servicio.settings.LegacySettings;
 import tr.cabro.servicio.settings.Settings;
 import tr.cabro.servicio.settings.Theme;
 
@@ -19,12 +22,17 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
+import java.util.List;
 
 public final class Servicio {
 
     @Getter private static Servicio instance;
     @Getter private static Settings settings;
+    @Getter private static DeviceSettings deviceSettings;
     @Getter private final File dataFolder;
     @Getter private MainUI frame;
     @Getter private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
@@ -59,13 +67,52 @@ public final class Servicio {
     }
 
     private void initSettings() {
-        settings = ConfigManager.create(Settings.class, cfg -> {
+        File configFile = new File(getDataFolder(), "config.json");
+        File deviceFile = new File(getDataFolder(), "device_config.json");
+
+        LegacySettings legacy = ConfigManager.create(LegacySettings.class, cfg -> {
             cfg.withConfigurer(new JsonGsonConfigurer())
-                    .withBindFile(new File(getDataFolder(), "config.json"))
+                    .withBindFile(configFile)
+                    .withRemoveOrphans(false)
+                    .saveDefaults()
+                    .load(true);
+        });
+
+        deviceSettings = ConfigManager.create(DeviceSettings.class, cfg -> {
+            cfg.withConfigurer(new JsonGsonConfigurer())
+                    .withBindFile(deviceFile)
                     .withRemoveOrphans(true)
                     .saveDefaults()
                     .load(true);
         });
+
+        settings = ConfigManager.create(Settings.class, cfg -> {
+            cfg.withConfigurer(new JsonGsonConfigurer())
+                    .withBindFile(configFile)
+                    .withRemoveOrphans(true)
+                    .saveDefaults()
+                    .load(true);
+        });
+
+        if (!settings.isDeviceMigrated()) {
+            deviceSettings.setTypes(new ArrayList<>(legacy.getDevice_types()));
+            deviceSettings.setBrands(new HashMap<>(legacy.getDevice_brands()));
+            Map<String, List<Process>> processes = new HashMap<>();
+            for (Map.Entry<String, Map<String, Double>> entry : legacy.getDevice_process().entrySet()) {
+                String type = entry.getKey();
+                Map<String, Double> processMap = entry.getValue();
+                List<Process> list = new ArrayList<>();
+                for (Map.Entry<String, Double> p : processMap.entrySet()) {
+                    list.add(new Process(p.getKey(), "", p.getValue())); // comment boş
+                }
+                processes.put(type, list);
+            }
+            deviceSettings.setProcesses(processes);
+            deviceSettings.save();
+            settings.setDeviceMigrated(true);
+            settings.save();
+            logger.info("DeviceSettings eski config.json'dan taşındı -> device_config.json");
+        }
     }
 
     private void initDatabase() {
@@ -107,6 +154,7 @@ public final class Servicio {
         try {
             settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
             settings.save();
+            deviceSettings.save();
 
             frame.closeApplication();
             runBackupIfNeeded(BackupMode.ON_EXIT, BackupMode.ON_START_AND_EXIT);

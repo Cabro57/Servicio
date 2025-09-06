@@ -12,7 +12,7 @@ import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.SupplierService;
-import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
@@ -283,8 +283,8 @@ public class PartEditUI extends JDialog {
 
     private void loadDeviceTypes() {
         deviceTypeComboBoxModel.removeAllElements();
-        Settings settings = Servicio.getSettings();
-        List<String> types = settings.getDevice_types();
+        DeviceSettings settings = Servicio.getDeviceSettings();
+        List<String> types = settings.getTypes();
         for (String type : types) {
             deviceTypeComboBoxModel.addElement(type);
         }

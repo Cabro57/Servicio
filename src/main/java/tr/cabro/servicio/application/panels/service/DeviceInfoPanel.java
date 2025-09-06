@@ -6,7 +6,7 @@ import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.FieldPopupEditor;
 import tr.cabro.servicio.application.panels.ServicePanel;
-import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
@@ -44,8 +44,8 @@ public class DeviceInfoPanel extends ServicePanel {
 
     private void loadDeviceTypes() {
         deviceTypeComboBoxModel.removeAllElements();
-        Settings settings = Servicio.getSettings();
-        List<String> types = settings.getDevice_types();
+        DeviceSettings settings = Servicio.getDeviceSettings();
+        List<String> types = settings.getTypes();
         for (String type : types) {
             deviceTypeComboBoxModel.addElement(type);
         }
@@ -54,7 +54,7 @@ public class DeviceInfoPanel extends ServicePanel {
     private void loadBrands(String typeName) {
         brandComboBoxModel.removeAllElements();
         if (typeName != null) {
-            Settings settings = Servicio.getSettings();
+            DeviceSettings settings = Servicio.getDeviceSettings();
             List<String> brands = settings.getBrands(typeName);
             for (String brand : brands) {
                 brandComboBoxModel.addElement(brand);
@@ -110,9 +110,9 @@ public class DeviceInfoPanel extends ServicePanel {
         add(title, "span 4, align left, gapbottom 10");
 
         add(device_type_label);
-        add(device_type_combo);
+        add(device_type_combo, "sg combos");
         add(brand_label);
-        add(brand_combo);
+        add(brand_combo, "sg combos");
         add(model_label);
         add(model_field);
         add(seri_no_label);

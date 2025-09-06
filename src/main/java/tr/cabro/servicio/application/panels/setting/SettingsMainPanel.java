@@ -1,5 +1,6 @@
-package tr.cabro.servicio.application.panels;
+package tr.cabro.servicio.application.panels.setting;
 
+import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.Theme;
 
@@ -8,16 +9,15 @@ import java.util.Set;
 
 public class SettingsMainPanel extends JPanel {
     private JComboBox<String> theme_combo;
-    private JPanel main_panel;
     private JPanel theme_panel;
 
     public SettingsMainPanel() {
         init();
-
-        add(main_panel);
     }
 
     private void init() {
+        initComponent();
+
         loadThemes();
     }
 
@@ -40,5 +40,27 @@ public class SettingsMainPanel extends JPanel {
                 Servicio.getSettings().getTemplate().setSelected_theme(selected_theme);
             }
         });
+    }
+
+    private void initComponent() {
+        setLayout(new MigLayout("fillx,insets 5,gapy 10", "[grow]", "[][][][grow]"));
+
+        JPanel theme_panel = new JPanel(new MigLayout("fillx,insets 5", "[grow]", "[]"));
+        theme_panel.setBorder(BorderFactory.createTitledBorder("Tema"));
+
+        theme_combo = new JComboBox<>();
+        theme_panel.add(theme_combo, "growx");
+
+        add(theme_panel, "growx, wrap");
+
+        JPanel message_panel = new JPanel(new MigLayout("fill,insets 5"));
+        message_panel.setBorder(BorderFactory.createTitledBorder("Mesaj Şablonları"));
+
+        add(message_panel, "growx, wrap");
+
+        JPanel extra_panel = new JPanel(new MigLayout("fill,insets 5"));
+        add(extra_panel, "growx, wrap");
+
+        add(new JLabel(), "pushy,growy");
     }
 }

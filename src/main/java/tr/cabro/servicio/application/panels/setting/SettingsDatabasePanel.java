@@ -1,7 +1,8 @@
-package tr.cabro.servicio.application.panels;
+package tr.cabro.servicio.application.panels.setting;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
+import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.BackupScheduler;
 import tr.cabro.servicio.database.DatabaseManager;
@@ -9,35 +10,23 @@ import tr.cabro.servicio.model.BackupMode;
 import tr.cabro.servicio.settings.Settings;
 
 import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
 public class SettingsDatabasePanel extends JPanel {
-    private JTextField folder_path_field;
-    private JComboBox<BackupMode> periods_combo;
-    private JList<String> backups_list;
-    private JLabel folder_path_label;
-    private JLabel period_label;
-    private JLabel backups_label;
-    private JLabel next_backup_label; // <-- Yeni: Sonraki backup zamanı
-    private JScrollPane list_scroll;
-    private JPanel main_panel;
-    private JButton backup_now_button;
-    private JButton rollback_button;
-    private JSpinner interval_spinner;
 
     private final Settings settings;
 
     public SettingsDatabasePanel() {
         this.settings = Servicio.getSettings();
         init();
-        add(main_panel);
     }
 
     private void init() {
-        main_panel.setBackground(null);
+        initComponent();
 
         // === Klasör seçici ===
         JButton chooser_folder_button = new JButton(new FlatSVGIcon("icon/folder.svg"));
@@ -143,4 +132,63 @@ public class SettingsDatabasePanel extends JPanel {
         DatabaseManager.restoreBackup(backupFile);
         JOptionPane.showMessageDialog(this, "Yedek geri yüklendi.", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
     }
+
+    private void initComponent() {
+        setLayout(new MigLayout("insets 10, fillx, wrap 2", "[pref!][grow]"));
+
+        // --- Klasör seçici ---
+        JLabel folder_label = new JLabel("Yedekleme Klasörü:");
+        folder_path_field = new JTextField(settings.getBackup().getPath());
+        JButton chooser_folder_button = new JButton(new FlatSVGIcon("icon/folder.svg"));
+        folder_path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooser_folder_button);
+
+        add(folder_label);
+        add(folder_path_field, "growx, wrap");
+
+        // --- Periyot seçimi ---
+        JLabel period_label = new JLabel("Yedekleme Periyodu:");
+        periods_combo = new JComboBox<>(BackupMode.values());
+
+        backup_now_button = new JButton("Şimdi Yedekle");
+
+        JLabel interval_label = new JLabel("Aralık:");
+        interval_spinner = new JSpinner(new SpinnerNumberModel(1, 1, 365, 1));
+
+        add(period_label);
+        add(periods_combo, "growx, split 2");
+        add(backup_now_button, "wrap");
+        add(interval_label);
+        add(interval_spinner, "growx, wrap");
+
+        // --- Sonraki yedek bilgisi ---
+        next_backup_label = new JLabel("Planlanmış yedekleme yok");
+        add(next_backup_label, "span 2, wrap");
+
+        add(new JSeparator(JSeparator.HORIZONTAL), "span 2, growx, pushx, wrap");
+
+        // --- Yedekleme listesi ---
+        JLabel backups_label = new JLabel("Yedekler:");
+        backups_label.setFont(backups_label.getFont().deriveFont(Font.BOLD));
+        backups_list = new JList<>();
+        JScrollPane list_scroll = new JScrollPane(backups_list);
+
+        add(backups_label, "span 2, wrap");
+        add(list_scroll, "span 2, push, grow, wrap");
+
+        // --- Butonlar ---
+        rollback_button = new JButton("Seçili Yedeği Geri Yükle");
+
+        add(rollback_button, "span 2, growx, wrap");
+    }
+
+    private JTextField folder_path_field;
+    private JComboBox<BackupMode> periods_combo;
+    private JList<String> backups_list;
+    private JLabel folder_path_label;
+    private JLabel period_label;
+    private JLabel backups_label;
+    private JLabel next_backup_label;
+    private JButton backup_now_button;
+    private JButton rollback_button;
+    private JSpinner interval_spinner;
 }

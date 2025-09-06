@@ -11,7 +11,7 @@ import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.service.PartService;
-import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.application.tablemodal.SearchPartTableModel;
 
 import javax.swing.*;
@@ -229,8 +229,8 @@ public class PartSearchUI extends JDialog {
     private void loadDeviceTypes() {
         deviceTypeComboBoxModel.removeAllElements();
         deviceTypeComboBoxModel.addElement("(Tümü)"); // <--- Tümünü göster seçeneği
-        Settings settings = Servicio.getSettings();
-        List<String> types = settings.getDevice_types();
+        DeviceSettings settings = Servicio.getDeviceSettings();
+        List<String> types = settings.getTypes();
         for (String type : types) {
             deviceTypeComboBoxModel.addElement(type);
         }
