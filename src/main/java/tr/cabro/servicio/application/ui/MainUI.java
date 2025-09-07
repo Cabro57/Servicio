@@ -14,7 +14,6 @@ import java.awt.*;
 
 public class MainUI extends JFrame {
 
-    private JPanel main_panel;
     private  SearchField search_field;
     private JButton customer_list_button;
     private JButton part_edits_button;
@@ -65,7 +64,7 @@ public class MainUI extends JFrame {
     }
 
     private void initComponent() {
-        main_panel = new JPanel(new MigLayout(
+        setLayout(new MigLayout(
                 "insets 10, fillx, filly", // wrap 5 -> 5 sütun sonra satır atla
                 "[][center][][][][]",   // 5 sütun, hepsi eşit büyüyebilir
                 "[6%::12%]10[grow]"                        // Üst satır sabit, alt satır boşluğu doldurur
@@ -80,18 +79,16 @@ public class MainUI extends JFrame {
         second_hand_device.setEnabled(false);
 
         // Arama kutusu tüm genişliği kaplasın
-        main_panel.add(search_field, "grow, pushx, width 21%:24%:");
+        add(search_field, "grow, pushx, width 21%:24%:");
 
         // Ayraç
-        main_panel.add(new JSeparator(JSeparator.VERTICAL), "growy, pushy, width 3::");
+        add(new JSeparator(JSeparator.VERTICAL), "growy, pushy, width 3::");
 
         // Butonlar yan yana, hepsi eşit genişlikte
-        main_panel.add(customer_list_button, "grow, pushx");
-        main_panel.add(part_edits_button, "grow, pushx");
-        main_panel.add(record_service_button, "grow, pushx");
-        main_panel.add(second_hand_device, "grow, pushx");
-
-        setContentPane(main_panel);
+        add(customer_list_button, "grow, pushx");
+        add(part_edits_button, "grow, pushx");
+        add(record_service_button, "grow, pushx");
+        add(second_hand_device, "grow, pushx");
     }
 
     private void showUI(JDialog dialog) {
