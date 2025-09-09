@@ -353,6 +353,8 @@ public class ServiceEditUI extends JDialog {
         Customer customer = customer_info.selectedCustomer;
         if (customer != null) {
             service.setCustomer_id(customer.getID());
+        } else {
+            service.setCustomer_id(-1);
         }
 
         service.setCreated_at(customer_info.getRecordDate());
