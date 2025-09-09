@@ -12,8 +12,8 @@ import java.text.NumberFormat;
 
 public class PriceCellEditor extends DefaultCellEditor {
 
-    private EventCellInputChange event;
-    private JFormattedTextField input;
+    private final EventCellInputChange event;
+    private final JFormattedTextField input;
 
     private JTable table;
     private int row;

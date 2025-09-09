@@ -61,7 +61,7 @@ public class NameCellEditor extends DefaultCellEditor {
 
     private void inputChange() {
         String qty = input.getText();
-        if (qty.equals(item.getName())) {
+        if (!qty.equals(item.getName())) {
             item.setName(qty);
         }
     }

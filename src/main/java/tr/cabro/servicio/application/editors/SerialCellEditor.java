@@ -56,7 +56,7 @@ public class SerialCellEditor extends DefaultCellEditor {
 
     private void inputChange() {
         String qty = input.getText();
-        if (qty.equals(item.getSerial_no())) {
+        if (!qty.equals(item.getSerial_no())) {
             item.setSerial_no(qty);
         }
     }
