@@ -14,13 +14,14 @@ public class CurrencyField extends JFormattedTextField {
 
     public CurrencyField() {
         super(createFormatter());
-        this.setColumns(10);
         this.setValue(0.0);
 
-        FlatSVGIcon icon = new FlatSVGIcon("icon/lira-symbol.svg", 12, 12);
-        Color newcolor = UIManager.getColor("MenuItem.foreground");
-        icon.setColorFilter(new FlatSVGIcon.ColorFilter(c -> newcolor));
-        this.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, new JLabel(icon));
+//        FlatSVGIcon icon = new FlatSVGIcon("icon/lira-symbol.svg", 12, 12);
+//        Color newcolor = UIManager.getColor("MenuItem.foreground");
+//        icon.setColorFilter(new FlatSVGIcon.ColorFilter(c -> newcolor));
+        JLabel label = new JLabel("₺");
+        label.putClientProperty(FlatClientProperties.STYLE, "border:0,5,0,5;");
+        putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, label);
 
         // Focus geldiğinde tüm yazıyı seç
         this.addFocusListener(new FocusAdapter() {
