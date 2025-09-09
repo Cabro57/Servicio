@@ -16,9 +16,6 @@ public class CurrencyField extends JFormattedTextField {
         super(createFormatter());
         this.setValue(0.0);
 
-//        FlatSVGIcon icon = new FlatSVGIcon("icon/lira-symbol.svg", 12, 12);
-//        Color newcolor = UIManager.getColor("MenuItem.foreground");
-//        icon.setColorFilter(new FlatSVGIcon.ColorFilter(c -> newcolor));
         JLabel label = new JLabel("₺");
         label.putClientProperty(FlatClientProperties.STYLE, "border:0,5,0,5;");
         putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, label);
