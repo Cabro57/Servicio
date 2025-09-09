@@ -30,17 +30,7 @@ public class SettingsDatabasePanel extends JPanel {
 
         // === Klasör seçici ===
         JButton chooser_folder_button = new JButton(new FlatSVGIcon("icon/folder.svg"));
-        chooser_folder_button.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser(settings.getBackup().getPath());
-            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                String path = chooser.getSelectedFile().getAbsolutePath() + "\\backups";
-                folder_path_field.setText(path);
-                settings.getBackup().setPath(path);
-                refreshBackupList();
-                settings.save();
-            }
-        });
+        chooser_folder_button.addActionListener(e -> onFolderChooser());
 
         folder_path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooser_folder_button);
         folder_path_field.setText(settings.getBackup().getPath());
@@ -131,6 +121,18 @@ public class SettingsDatabasePanel extends JPanel {
         File backupFile = new File(settings.getBackup().getPath(), selected);
         DatabaseManager.restoreBackup(backupFile);
         JOptionPane.showMessageDialog(this, "Yedek geri yüklendi.", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void onFolderChooser() {
+        JFileChooser chooser = new JFileChooser(settings.getBackup().getPath());
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String path = chooser.getSelectedFile().getAbsolutePath();
+            folder_path_field.setText(path);
+            settings.getBackup().setPath(path);
+            refreshBackupList();
+            settings.save();
+        }
     }
 
     private void initComponent() {
