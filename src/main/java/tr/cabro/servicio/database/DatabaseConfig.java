@@ -29,7 +29,7 @@ public class DatabaseConfig {
                 break;
         }
 
-        config.setMaximumPoolSize(200);
+        config.setMaximumPoolSize(Servicio.getSettings().getDatabase().getMaximumPoolSize());
         config.setPoolName("Servicio-DB-Pool");
 
         dataSource = new HikariDataSource(config);

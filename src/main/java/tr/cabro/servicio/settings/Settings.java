@@ -1,6 +1,7 @@
 package tr.cabro.servicio.settings;
 
 import eu.okaeri.configs.OkaeriConfig;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import tr.cabro.servicio.Servicio;
@@ -45,5 +46,12 @@ public class Settings extends OkaeriConfig {
             themes.put("macOS Light v3", "com.formdev.flatlaf.themes.FlatMacLightLaf");
             themes.put("macOS Dark v3", "com.formdev.flatlaf.themes.FlatMacDarkLaf");
         }
+    }
+
+    private Database database = new Database();
+
+    @Getter @Setter
+    public static class Database extends OkaeriConfig {
+        private int MaximumPoolSize = 200;
     }
 }
