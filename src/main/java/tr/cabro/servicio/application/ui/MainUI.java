@@ -110,13 +110,13 @@ public class MainUI extends JFrame {
             return;
         }
 
-        JPanel panel = new JPanel(new BorderLayout(15, 5));
+        JPanel panel = new JPanel(new MigLayout("wrap,insets 0"));
 
         JLabel label = new JLabel("Çıkmak istediğinizden emin misiniz?");
-        panel.add(label, BorderLayout.NORTH);
+        panel.add(label, "wrap");
 
-        JCheckBox dontAskAgain = new JCheckBox("Bir daha sorma");
-        panel.add(dontAskAgain, BorderLayout.CENTER);
+        JCheckBox donTAskAgain = new JCheckBox("Bir daha sorma");
+        panel.add(donTAskAgain, "wrap");
 
 
         Object[] options = {"Evet", "Hayır"};
@@ -124,7 +124,7 @@ public class MainUI extends JFrame {
         int choice = JOptionPane.showOptionDialog(
                 this,
                 panel,
-                "",
+                "Çıkışı Onayla",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE,
                 null, // Varsayılan simge (null)
@@ -133,7 +133,7 @@ public class MainUI extends JFrame {
         );
 
         if (choice == JOptionPane.YES_OPTION) {
-            if (dontAskAgain.isSelected()) {
+            if (donTAskAgain.isSelected()) {
                 Servicio.getSettings().setConfirmExitDialog(true);
                 Servicio.getSettings().save();
             }
