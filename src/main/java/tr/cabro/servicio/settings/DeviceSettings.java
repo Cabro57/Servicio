@@ -79,6 +79,33 @@ public class DeviceSettings extends OkaeriConfig {
         return false;
     }
 
+    public boolean addProcess(String typeName, Process process) {
+        return addProcess(typeName, process.getName(), process.getComment(), process.getPrice());
+    }
+
+    public boolean updateProcess(String typeName, String oldName, Process newProcess) {
+        List<Process> list = processes.get(typeName);
+        if (list == null) return false;
+
+        for (int i = 0; i < list.size(); i++) {
+            Process p = list.get(i);
+            if (p.getName().equalsIgnoreCase(oldName)) {
+                // aynı isimle başka process var mı kontrol et
+                boolean exists = list.stream()
+                        .anyMatch(proc -> !proc.getName().equalsIgnoreCase(oldName)
+                                && proc.getName().equalsIgnoreCase(newProcess.getName()));
+                if (exists) {
+                    return false; // aynı isimli başka kayıt varsa güncellenmez
+                }
+
+                // güncelle
+                list.set(i, newProcess);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean removeProcess(String typeName, String processName) {
         List<Process> list = processes.get(typeName);
         if (list != null && list.removeIf(p -> p.getName().equalsIgnoreCase(processName))) {

@@ -2,15 +2,19 @@ package tr.cabro.servicio.application.ui;
 
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
+import raven.modal.ModalDialog;
 import raven.modal.Toast;
+import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.listeners.ServiceEditListener;
+import tr.cabro.servicio.application.panels.ProcessSelectedPanel;
 import tr.cabro.servicio.application.panels.service.*;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.Process;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.application.context.ServiceContext;
+import tr.cabro.servicio.settings.DeviceSettings;
 
 import javax.swing.*;
 import java.awt.*;
@@ -241,6 +245,7 @@ public class ServiceEditUI extends JDialog {
     }
 
     private void onActionTaken() {
+        final String id = "processSelected";
         String selectedDeviceType = (String) device_info.deviceTypeComboBoxModel.getSelectedItem();
 
         if (selectedDeviceType == null || selectedDeviceType.isEmpty()) {
@@ -248,16 +253,44 @@ public class ServiceEditUI extends JDialog {
             return;
         }
 
-        ProcessSelectedUI processSelectedUI = new ProcessSelectedUI(selectedDeviceType);
-        processSelectedUI.setModal(true);
-        processSelectedUI.setVisible(true);
+        ProcessSelectedPanel panel = new ProcessSelectedPanel();
 
-        Process process = processSelectedUI.getSelectedProcess();
+        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Tamam", 0),
+                new SimpleModalBorder.Option("İptal", 2)
+        };
 
-        if (process != null) {
-            price_info.addLaborCost(process.getPrice());
-            fault_process_info.appendAction(process.getName());
-        }
+        ModalDialog.showModal(this, new SimpleModalBorder(panel, "İşlem Seç", options,
+            (controller, action) -> {
+                if (action == SimpleModalBorder.OPENED) {
+
+                    DeviceSettings settings = Servicio.getDeviceSettings();
+                    List<Process> processes = settings.getProcesses(selectedDeviceType);
+                    panel.setProcess(processes);
+
+                    panel.setOnProcessDoubleClick(process -> {
+                        price_info.addLaborCost(process.getPrice());
+                        fault_process_info.appendAction(process.getName());
+                        controller.close();
+                    });
+
+                } else if (action == SimpleModalBorder.OK_OPTION) {
+                    List<Process> selected = panel.getSelectedProcesses();
+                    if (selected == null || selected.isEmpty()) {
+                        Toast.show(ServiceEditUI.this, Toast.Type.WARNING, "Lütfen en az bir işlem seçin!");
+                        return;
+                    }
+
+                    for (Process p : selected) {
+                        price_info.addLaborCost(p.getPrice());
+                        fault_process_info.appendAction(p.getName());
+                    }
+
+                    Toast.show(ServiceEditUI.this, Toast.Type.SUCCESS, selected.size() + " işlem eklendi!");
+                }
+
+            }),
+        id);
     }
 
     private boolean processAddedParts(int serviceId, List<AddedPart> parts, boolean isRemove) {

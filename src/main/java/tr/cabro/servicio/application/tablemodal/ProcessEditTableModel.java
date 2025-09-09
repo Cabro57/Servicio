@@ -7,12 +7,12 @@ import javax.swing.table.AbstractTableModel;
 import java.util.Arrays;
 import java.util.List;
 
-public class ProcessTableModel extends AbstractTableModel {
-    private final String[] columnsNames = { "SELECT", "İşlem Adı", "Fiyat" };
+public class ProcessEditTableModel extends AbstractTableModel {
+    private final String[] columnsNames = { "SELECT", "İşlem Adı", "Açıklama", "Fiyat" };
     private final List<Process> processes;
     private Boolean[] selectedRows;
 
-    public ProcessTableModel(List<Process> processes) {
+    public ProcessEditTableModel(List<Process> processes) {
         this.processes = processes;
         this.selectedRows = new Boolean[processes.size()];
         Arrays.fill(selectedRows, false);
@@ -34,8 +34,9 @@ public class ProcessTableModel extends AbstractTableModel {
 
         switch (columnIndex) {
             case 0: return selectedRows[rowIndex];
-            case 1: return process;
-            case 2: return Format.formatPrice(process.getPrice());
+            case 1: return process.getName();
+            case 2: return process.getComment();
+            case 3: return Format.formatPrice(process.getPrice());
             default: return null;
         }
     }
@@ -62,8 +63,6 @@ public class ProcessTableModel extends AbstractTableModel {
     public Class<?> getColumnClass(int columnIndex) {
         if (columnIndex == 0) {
             return Boolean.class;
-        } else if (columnIndex == 1) {
-            return Process.class;
         }
         return String.class;
     }
