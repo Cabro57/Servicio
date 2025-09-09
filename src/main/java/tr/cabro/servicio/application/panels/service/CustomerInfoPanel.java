@@ -35,6 +35,10 @@ public class CustomerInfoPanel extends ServicePanel {
         initComponent();
 
         customer_field.addActionListener(e -> onSetCustomer());
+        customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_CLEAR_CALLBACK, (Runnable) () -> {
+            if (selectedCustomer != null) selectedCustomer = null;
+            customer_field.setText("");
+        });
 
         customer_button.addActionListener(e -> onSetNewCustomer());
 
