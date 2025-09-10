@@ -14,6 +14,7 @@ import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.SupplierService;
 import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Validator;
+import tr.cabro.servicio.util.barcode.BarcodeGenerator;
 
 import javax.swing.*;
 import java.awt.*;
@@ -105,7 +106,8 @@ public class PartEditUI extends JDialog {
         generate_barcode_button.setToolTipText("Rastgele barkod üret");
         generate_barcode_button.addActionListener(e -> {
             if (barcode_field.isEditable()) {
-                String randomBarcode = generateRandomBarcode();
+                BarcodeGenerator generator = new BarcodeGenerator(Servicio.getSettings().getBarcode());
+                String randomBarcode = generator.generate();
                 barcode_field.setText(randomBarcode);
                 handleBarcodeInput(randomBarcode);
             }
@@ -296,15 +298,6 @@ public class PartEditUI extends JDialog {
         for (Supplier supplier : suppliers) {
             supplierTypeComboBoxModel.addElement(supplier);
         }
-    }
-
-    private String generateRandomBarcode() {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 8; i++) {
-            int digit = (i == 0) ? (1 + (int) (Math.random() * 9)) : (int) (Math.random() * 10);
-            sb.append(digit);
-        }
-        return sb.toString();
     }
 
     public void loadPartByBarcode(String barcode) {

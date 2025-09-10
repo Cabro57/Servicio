@@ -19,7 +19,7 @@ public class BarcodeGenerator {
             sb.append(config.getPrefix()).append(config.getSeparator());
         }
         if (config.isUseDate()) {
-            String date = new SimpleDateFormat("yyyyMMdd").format(new Date());
+            String date = new SimpleDateFormat(config.getDateFormatter()).format(new Date());
             sb.append(date).append(config.getSeparator());
         }
         sb.append(String.format("%0" + config.getNumberLength() + "d", lastNumber));

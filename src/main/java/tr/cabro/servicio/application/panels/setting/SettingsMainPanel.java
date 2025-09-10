@@ -1,8 +1,10 @@
 package tr.cabro.servicio.application.panels.setting;
 
 import net.miginfocom.swing.MigLayout;
+import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.Theme;
+import tr.cabro.servicio.util.barcode.BarcodeConfig;
 
 import javax.swing.*;
 import java.util.Set;
@@ -17,6 +19,7 @@ public class SettingsMainPanel extends JPanel {
 
     private void init() {
         initComponent();
+        initBarcode();
 
         loadThemes();
     }
@@ -42,6 +45,43 @@ public class SettingsMainPanel extends JPanel {
         });
     }
 
+    private void initBarcode() {
+        BarcodeConfig config = Servicio.getSettings().getBarcode();
+
+        prefix.setText(config.getPrefix());
+        length.setValue(config.getNumberLength());
+        separator.setText(config.getSeparator());
+
+        useDate.setSelected(config.isUseDate());
+        useDate.addActionListener(e -> {
+            if (useDate.isSelected()) {
+                dateFormatter.setText(config.getDateFormatter());
+                dateFormatter.setEditable(true);
+            } else {
+                dateFormatter.setEditable(false);
+            }
+        });
+
+        if (!useDate.isSelected()) {
+            dateFormatter.setEditable(false);
+        }
+
+        barcodeUpdate.addActionListener(e -> {
+            config.setPrefix(prefix.getText());
+            config.setNumberLength((Integer) length.getValue());
+            config.setSeparator(separator.getText());
+
+            config.setUseDate(useDate.isSelected());
+            config.setDateFormatter(dateFormatter.getText());
+
+            Servicio.getSettings().setBarcode(config);
+            Servicio.getSettings().save();
+
+            Toast.show(this, Toast.Type.SUCCESS, "Başarılı şekilde barkod ayarları güncellendi.");
+        });
+
+    }
+
     private void initComponent() {
         setLayout(new MigLayout("fillx,insets 5,gapy 10", "[grow]", "[][][][grow]"));
 
@@ -58,9 +98,37 @@ public class SettingsMainPanel extends JPanel {
 
         add(message_panel, "growx, wrap");
 
+        JPanel barcode_panel = new JPanel(new MigLayout("fill,insets 5", "[fill][fill][fill]", "[][][]"));
+        barcode_panel.setBorder(BorderFactory.createTitledBorder("Barkod Ayarları"));
+
+        prefix = new JTextField();
+        length = new JSpinner();
+        separator = new JTextField();
+
+        useDate = new JCheckBox("Tarih Kullanılsın mı?");
+        dateFormatter = new JTextField();
+
+        barcodeUpdate = new JButton("Güncelle");
+
+        barcode_panel.add(prefix, "grow, push");
+        barcode_panel.add(length, "push");
+        barcode_panel.add(separator, "wrap, push");
+        barcode_panel.add(dateFormatter, "span 3, split 2");
+        barcode_panel.add(useDate, "wrap");
+        barcode_panel.add(barcodeUpdate,"span 3, grow");
+
+        add(barcode_panel, "growx, wrap");
+
         JPanel extra_panel = new JPanel(new MigLayout("fill,insets 5"));
         add(extra_panel, "growx, wrap");
 
         add(new JLabel(), "pushy,growy");
     }
+
+    private JTextField prefix;
+    private JSpinner length;
+    private JTextField separator;
+    private JCheckBox useDate;
+    private JTextField dateFormatter;
+    private JButton barcodeUpdate;
 }
