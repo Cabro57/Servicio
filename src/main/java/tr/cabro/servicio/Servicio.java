@@ -9,12 +9,12 @@ import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tr.cabro.servicio.application.listeners.InactivityListener;
 import tr.cabro.servicio.application.ui.MainUI;
+import tr.cabro.servicio.application.ui.PIN;
 import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.BackupMode;
-import tr.cabro.servicio.model.Process;
 import tr.cabro.servicio.settings.DeviceSettings;
-import tr.cabro.servicio.settings.LegacySettings;
 import tr.cabro.servicio.settings.Settings;
 import tr.cabro.servicio.settings.Theme;
 
@@ -22,11 +22,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
-import java.util.List;
 
 public final class Servicio {
 
@@ -36,6 +32,7 @@ public final class Servicio {
     @Getter private final File dataFolder;
     @Getter private MainUI frame;
     @Getter private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
+    @Getter private static InactivityListener inactivityListener;
 
     private boolean running = false;
     private String appVersion;
@@ -46,6 +43,7 @@ public final class Servicio {
         }
 
         instance = this;
+
         this.dataFolder = new File(baseFolder, ".servicio");
         if (!this.dataFolder.exists() && this.dataFolder.mkdirs()) {
             logger.info("Data folder created at {}", this.dataFolder.getAbsolutePath());
@@ -53,6 +51,8 @@ public final class Servicio {
 
         initSettings();
         initDatabase();
+
+        inactivityListener = new InactivityListener();
     }
 
     public void run() {
@@ -63,20 +63,12 @@ public final class Servicio {
         runBackupIfNeeded(BackupMode.ON_START, BackupMode.ON_START_AND_EXIT);
         BackupScheduler.start();
         setupUI();
-        launchMainUI();
+        EventQueue.invokeLater(this::launchMainUI);
     }
 
     private void initSettings() {
         File configFile = new File(getDataFolder(), "config.json");
         File deviceFile = new File(getDataFolder(), "device_config.json");
-
-        LegacySettings legacy = ConfigManager.create(LegacySettings.class, cfg -> {
-            cfg.withConfigurer(new JsonGsonConfigurer())
-                    .withBindFile(configFile)
-                    .withRemoveOrphans(false)
-                    .saveDefaults()
-                    .load(true);
-        });
 
         deviceSettings = ConfigManager.create(DeviceSettings.class, cfg -> {
             cfg.withConfigurer(new JsonGsonConfigurer())
@@ -93,26 +85,6 @@ public final class Servicio {
                     .saveDefaults()
                     .load(true);
         });
-
-        if (!settings.isDeviceMigrated()) {
-            deviceSettings.setTypes(new ArrayList<>(legacy.getDevice_types()));
-            deviceSettings.setBrands(new HashMap<>(legacy.getDevice_brands()));
-            Map<String, List<Process>> processes = new HashMap<>();
-            for (Map.Entry<String, Map<String, Double>> entry : legacy.getDevice_process().entrySet()) {
-                String type = entry.getKey();
-                Map<String, Double> processMap = entry.getValue();
-                List<Process> list = new ArrayList<>();
-                for (Map.Entry<String, Double> p : processMap.entrySet()) {
-                    list.add(new Process(p.getKey(), "", p.getValue())); // comment boş
-                }
-                processes.put(type, list);
-            }
-            deviceSettings.setProcesses(processes);
-            deviceSettings.save();
-            settings.setDeviceMigrated(true);
-            settings.save();
-            logger.info("DeviceSettings eski config.json'dan taşındı -> device_config.json");
-        }
     }
 
     private void initDatabase() {
@@ -134,10 +106,10 @@ public final class Servicio {
     }
 
     private void launchMainUI() {
-        EventQueue.invokeLater(() -> {
-            frame = new MainUI();
-            frame.setVisible(true);
-        });
+        frame = new MainUI();
+        frame.setVisible(true);
+
+        PIN.showDialog();
     }
 
     private void runBackupIfNeeded(BackupMode... modes) {
@@ -155,6 +127,7 @@ public final class Servicio {
             settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
             settings.save();
             deviceSettings.save();
+            inactivityListener.stop();
 
             frame.closeApplication();
             runBackupIfNeeded(BackupMode.ON_EXIT, BackupMode.ON_START_AND_EXIT);

@@ -31,6 +31,15 @@ public class Settings extends OkaeriConfig {
 
     }
 
+    private PinConfig pinConfig = new PinConfig();
+
+    @Getter @Setter
+    public static class PinConfig extends OkaeriConfig {
+
+        private int pin = 1234;
+        private int timeout = 1;
+    }
+
     private BarcodeConfig barcode = new BarcodeConfig();
 
     @Getter @Setter

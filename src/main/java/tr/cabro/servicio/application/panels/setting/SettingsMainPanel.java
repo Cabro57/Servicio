@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.panels.setting;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.settings.Settings;
 import tr.cabro.servicio.settings.Theme;
 import tr.cabro.servicio.util.barcode.BarcodeConfig;
 
@@ -10,8 +11,6 @@ import javax.swing.*;
 import java.util.Set;
 
 public class SettingsMainPanel extends JPanel {
-    private JComboBox<String> theme_combo;
-    private JPanel theme_panel;
 
     public SettingsMainPanel() {
         init();
@@ -20,6 +19,7 @@ public class SettingsMainPanel extends JPanel {
     private void init() {
         initComponent();
         initBarcode();
+        initPin();
 
         loadThemes();
     }
@@ -82,6 +82,24 @@ public class SettingsMainPanel extends JPanel {
 
     }
 
+    private void initPin() {
+        Settings.PinConfig config = Servicio.getSettings().getPinConfig();
+
+        pinField.setValue(config.getPin());
+        timeoutSpinner.setValue(config.getTimeout());
+
+        pinUpdate.addActionListener(e -> {
+            config.setPin((Integer) pinField.getValue());
+            config.setTimeout((Integer) timeoutSpinner.getValue());
+
+            Servicio.getSettings().setPinConfig(config);
+            Servicio.getSettings().save();
+
+            Servicio.getLogger().info("Pin ayarları güncellendi.");
+            Toast.show(this, Toast.Type.SUCCESS, "Pin ayarları güncellendi");
+        });
+    }
+
     private void initComponent() {
         setLayout(new MigLayout("fillx,insets 5,gapy 10", "[grow]", "[][][][grow]"));
 
@@ -119,10 +137,27 @@ public class SettingsMainPanel extends JPanel {
 
         add(barcode_panel, "growx, wrap");
 
+        JPanel pin_panel = new JPanel(new MigLayout("fill,insets 5", "[fill][fill][fill]", "[][][]"));
+        pin_panel.setBorder(BorderFactory.createTitledBorder("Pin Ayarları"));
+
+        pinField = new JFormattedTextField();
+
+        timeoutSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 60, 1));
+
+        pinUpdate = new JButton("Pin Güncelle");
+
+        pin_panel.add(new JLabel("Pin: "));
+        pin_panel.add(pinField, "grow, push");
+        pin_panel.add(new JLabel("Süre: "));
+        pin_panel.add(timeoutSpinner, "grow, push, wrap");
+        pin_panel.add(pinUpdate, "growx, pushx, span 4");
+
+        add(pin_panel, "growx, wrap");
+
         JPanel extra_panel = new JPanel(new MigLayout("fill,insets 5"));
         add(extra_panel, "growx, wrap");
 
-        add(new JLabel(), "pushy,growy");
+        add(new JLabel(), "pushy, growy");
     }
 
     private JTextField prefix;
@@ -131,4 +166,8 @@ public class SettingsMainPanel extends JPanel {
     private JCheckBox useDate;
     private JTextField dateFormatter;
     private JButton barcodeUpdate;
+    private JButton pinUpdate;
+    private JSpinner timeoutSpinner;
+    private JFormattedTextField pinField;
+    private JComboBox<String> theme_combo;
 }
