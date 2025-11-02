@@ -99,10 +99,6 @@ public class PartService {
         }
     }
 
-    public boolean increaseStock(AddedPart part) {
-        return increaseStock(part.getBarcode(), part.getAmount());
-    }
-
     public boolean decreaseStock(String barcode, int amount) {
         try {
             Part part = get(barcode);
@@ -132,10 +128,6 @@ public class PartService {
             Servicio.getLogger().error("SERVICE ERROR [DECREASE STOCK] {}", String.valueOf(e));
             return false;
         }
-    }
-
-    public boolean decreaseStock(AddedPart part) {
-        return decreaseStock(part.getBarcode(), part.getAmount());
     }
 
 }

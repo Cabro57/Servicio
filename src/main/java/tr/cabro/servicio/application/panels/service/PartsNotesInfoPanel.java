@@ -3,25 +3,22 @@ package tr.cabro.servicio.application.panels.service;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.component.CurrencyField;
+import raven.modal.ModalDialog;
+import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.editors.*;
-import tr.cabro.servicio.application.events.EventCellInputChange;
+import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.panels.PartSearchPanel;
 import tr.cabro.servicio.application.panels.ServicePanel;
+import tr.cabro.servicio.application.panels.edit.PartEditPanel;
+import tr.cabro.servicio.application.panels.edit.ServicePartEditPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
-import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ServicePartTableModel;
-import tr.cabro.servicio.application.ui.PartEditUI;
-import tr.cabro.servicio.application.ui.PartSearchUI;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,187 +37,155 @@ public class PartsNotesInfoPanel extends ServicePanel {
         // Buton eventleri
         part_add_button.addActionListener(e -> addPartsCmd());
         new_part_add_button.addActionListener(e -> newPartCmd());
-        manual_add_button.addActionListener(e -> manualAddPart());
 
         tableModel = new ServicePartTableModel(null);
         tableModel.addPriceChangeListener(this::updateMaterialCost);
         parts_table.setModel(tableModel);
 
-        // Kolon düzenlemeleri - kolon indekslerini değişken olarak tutmak iyi olur
-        final int COL_SERIAL = 0;
-        final int COL_NAME = 1;
-        final int COL_AMOUNT = 2;
-        final int COL_PURCHASE_PRICE = 3;
-        final int COL_SALE_PRICE = 4;
+        parts_table.setFocusable(false);
 
-        EventCellInputChange eventCellInputChange = this::updateMaterialCost;
-
-        parts_table.getColumnModel().getColumn(COL_SERIAL).setCellEditor(new SerialCellEditor());
-
-        parts_table.getColumnModel().getColumn(COL_NAME).setCellEditor(new NameCellEditor());
-
-        parts_table.getColumnModel().getColumn(COL_AMOUNT).setCellEditor(new AmountCellEditor(eventCellInputChange));
-        parts_table.getColumnModel().getColumn(COL_AMOUNT).setCellRenderer(new DefaultTableCellRenderer() {
+        parts_table.getColumnModel().getColumn(3).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                setHorizontalAlignment(SwingConstants.CENTER);
-                return this;
+            public void onEdit(int row) {
+                AddedPart data = tableModel.getAddedParts().get(row);
+                if (data == null) return;
+
+                final String id = "ServicePartEdit";
+                ServicePartEditPanel panel = new ServicePartEditPanel();
+
+                SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                        new SimpleModalBorder.Option("Tamam", 0),
+                        new SimpleModalBorder.Option("İptal", 2)
+                };
+
+                ModalDialog.showModal(getParent(), new SimpleModalBorder(
+                        panel, "Servis Parça Formu", options,
+                        (controller, action) -> {
+                            if (action == SimpleModalBorder.OPENED) {
+                                panel.populateFormWith(data);
+                            } else if (action == SimpleModalBorder.OK_OPTION) {
+                                AddedPart update = panel.getDataIfValid();
+
+                                if (update == null) {
+                                    controller.consume();
+                                    return;
+                                }
+
+                                tableModel.getAddedParts().set(row, update);
+                                tableModel.fireTableRowsUpdated(row, row);
+
+                            }
+                        }
+                ), id);
             }
-        });
 
-        parts_table.getColumnModel().getColumn(COL_PURCHASE_PRICE).setCellEditor(new PriceCellEditor(eventCellInputChange, true));
-        parts_table.getColumnModel().getColumn(COL_PURCHASE_PRICE).setCellRenderer(new CurrencyTableCellRenderer());
+            @Override
+            public void onDelete(int row) {
+                if (row != -1) {
+                    tableModel.getAddedParts().remove(row);
+                    tableModel.fireTableRowsDeleted(row, row);
+                    updateMaterialCost();
+                }
+            }
 
-        parts_table.getColumnModel().getColumn(COL_SALE_PRICE).setCellEditor(new PriceCellEditor(eventCellInputChange, false));
-        parts_table.getColumnModel().getColumn(COL_SALE_PRICE).setCellRenderer(new CurrencyTableCellRenderer());
+            @Override
+            public void onView(int row) {
 
-
-        parts_table.getColumnModel().getColumn(5).setCellEditor(new ActionButtonEditor(row -> {
-            if (row != -1) {
-                tableModel.getAddedParts().remove(row);
-                tableModel.fireTableRowsDeleted(row, row);
-                updateMaterialCost();
             }
         }));
-        parts_table.getColumnModel().getColumn(5).setCellRenderer(new ActionButtonRenderer());
+        parts_table.getColumnModel().getColumn(3).setCellRenderer(new ActionButtonRenderer());
 
-        parts_table.getColumnModel().getColumn(0).setMinWidth(100);
+        parts_table.getColumnModel().getColumn(0).setMinWidth(90);
         parts_table.getColumnModel().getColumn(1).setPreferredWidth(60);
-        parts_table.getColumnModel().getColumn(2).setMinWidth(80);
-        parts_table.getColumnModel().getColumn(2).setMaxWidth(80);
-        parts_table.getColumnModel().getColumn(3).setMinWidth(100);
-        parts_table.getColumnModel().getColumn(3).setMaxWidth(100);
-        parts_table.getColumnModel().getColumn(4).setMinWidth(100);
-        parts_table.getColumnModel().getColumn(4).setMaxWidth(100);
-        parts_table.getColumnModel().getColumn(5).setMaxWidth(50);
+        parts_table.getColumnModel().getColumn(3).setMaxWidth(110);
+        parts_table.getColumnModel().getColumn(3).setMinWidth(110);
 
-        addTableDoubleClickListener();
-        amount_spinner.setModel(new SpinnerNumberModel(1, 1, 999, 1));
+//        parts_table.getColumnModel().addColumnModelListener(new javax.swing.event.TableColumnModelListener() {
+//            @Override
+//            public void columnMarginChanged(javax.swing.event.ChangeEvent e) {
+//                for (int i = 0; i < parts_table.getColumnCount(); i++) {
+//                    int width = parts_table.getColumnModel().getColumn(i).getWidth();
+//                    System.out.println("Column " + i + " width: " + width);
+//                }
+//            }
+//
+//            @Override public void columnAdded(javax.swing.event.TableColumnModelEvent e) {}
+//            @Override public void columnRemoved(javax.swing.event.TableColumnModelEvent e) {}
+//            @Override public void columnMoved(javax.swing.event.TableColumnModelEvent e) {}
+//            @Override public void columnSelectionChanged(javax.swing.event.ListSelectionEvent e) {}
+//        });
+
 
     }
 
     private void newPartCmd() {
-        PartEditUI dialog = new PartEditUI();
-        dialog.setModal(true);
-        dialog.setVisible(true);
+        final String id = "PartNew";
+        PartEditPanel panel = new PartEditPanel();
+
+        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Tamam", 0),
+                new SimpleModalBorder.Option("İptal", 2)
+        };
+
+        ModalDialog.showModal(this, new SimpleModalBorder(
+                        panel, "Parça Formu", options,
+                        (controller, action) -> {
+                            if (action == SimpleModalBorder.OPENED) {
+                                panel.clearForm();
+
+                            } else if (action == SimpleModalBorder.OK_OPTION) {
+                                Part updated = panel.getDataIfValid();
+
+                                if (updated == null) {
+                                    controller.consume();
+                                    return;
+                                }
+
+                                AddedPart newPart = new AddedPart(updated);
+
+                                tableModel.addAddedPart(newPart);
+                                tableModel.fireTableDataChanged();
+                                updateMaterialCost();
+                            }
+                        })
+                , id);
     }
 
     private void addPartsCmd() {
-        PartSearchUI productSearchUI = new PartSearchUI();
-        productSearchUI.setModal(true);
-        productSearchUI.setVisible(true);
+        final String id = "PartAdd";
+        PartSearchPanel panel = new PartSearchPanel();
 
-        List<Part> selectedParts = productSearchUI.getSelectedParts();
-        if (selectedParts != null && !selectedParts.isEmpty()) {
-            for (Part part : selectedParts) {
-                boolean exists = false;
+        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Tamam", 0),
+                new SimpleModalBorder.Option("İptal", 2)
+        };
 
-                for (AddedPart existing : tableModel.getAddedParts()) {
-                    if (existing.getBarcode().equals(part.getBarcode())) {
-                        existing.setAmount(existing.getAmount() + 1);
-                        exists = true;
-                        break;
+        ModalDialog.showModal(this, new SimpleModalBorder(
+            panel, "Parça Tablosu", options,
+                (controller, action) -> {
+                    if (action == SimpleModalBorder.OPENED) {
+                        panel.getSelected().clear();
+
+                    } else if (action == SimpleModalBorder.OK_OPTION) {
+                        List<Part> parts = panel.getSelected();
+                        if (parts != null && !parts.isEmpty()) {
+                            for (Part part : parts) {
+                                AddedPart addedPart = new AddedPart(part);
+                                tableModel.addAddedPart(addedPart);
+                            }
+
+                            tableModel.fireTableDataChanged();
+                            updateMaterialCost();
+                        }
                     }
-                }
-
-                if (!exists) {
-                    AddedPart addedPart = new AddedPart(part.getBarcode(), 1, part.getSale_price());
-                    addedPart.setName(part.getName());
-                    addedPart.setPurchasePrice(part.getPurchase_price());
-                    addedPart.setAddedDate(LocalDateTime.now());
-                    tableModel.addAddedPart(addedPart);
-                }
-            }
-
-            tableModel.fireTableDataChanged();
-            updateMaterialCost();
-        }
-    }
-
-    private void manualAddPart() {
-        String serialNo = series_no_field.getText().trim();
-        String partName = part_name_field.getText().trim();
-
-        if (partName.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Parça ismi boş olamaz.", "Hata", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        double sellingPrice;
-        try {
-            Object val = sale_price_field.getValue();
-            if (val instanceof Number) {
-                sellingPrice = ((Number) val).doubleValue();
-            } else {
-                sellingPrice = Double.parseDouble(sale_price_field.getText().trim());
-            }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Geçerli bir satış fiyatı giriniz.", "Hata", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        double purchasePrice = 0.0;
-        Object purchaseVal = purchase_price_field.getValue();
-        if (purchaseVal instanceof Number) {
-            purchasePrice = ((Number) purchaseVal).doubleValue();
-        }
-
-        int amount = (Integer) amount_spinner.getValue();
-        if (amount <= 0) {
-            JOptionPane.showMessageDialog(this, "Adet 0 veya negatif olamaz.", "Hata", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        AddedPart newPart = new AddedPart("", amount, sellingPrice);
-        newPart.setName(partName);
-        newPart.setSerial_no(serialNo);
-        newPart.setPurchasePrice(purchasePrice);
-
-        tableModel.addAddedPart(newPart);
-        tableModel.fireTableDataChanged();
-        updateMaterialCost();
-
-        // Formu temizle
-        series_no_field.setText("");
-        purchase_price_field.setValue(0.0);
-        sale_price_field.setValue(0.0);
-        amount_spinner.setValue(1);
-        part_name_field.setText("");
+                })
+        , id);
     }
 
     private void updateMaterialCost() {
         double total = tableModel.getTotalPrice();
         listener.onPartChange(total);
     }
-
-    private void addTableDoubleClickListener() {
-        parts_table.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                if (e.getClickCount() == 2 && !parts_table.getSelectionModel().isSelectionEmpty()) {
-                    int viewRow = parts_table.getSelectedRow();
-                    int modelRow = parts_table.convertRowIndexToModel(viewRow);
-                    AddedPart addedPart = tableModel.getAddedParts().get(modelRow);
-
-                    int result = JOptionPane.showConfirmDialog(
-                            PartsNotesInfoPanel.this,
-                            "Seçili parçayı silmek istediğinize emin misiniz?",
-                            "Parça Sil",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.WARNING_MESSAGE
-                    );
-
-                    if (result == JOptionPane.YES_OPTION) {
-                        tableModel.removeAddedPart(addedPart);
-                        tableModel.fireTableDataChanged();
-                        updateMaterialCost();
-                    }
-                }
-            }
-        });
-    }
-
 
     public List<AddedPart> getAddedParts() {
         return new ArrayList<>(tableModel.getAddedParts());
@@ -251,13 +216,12 @@ public class PartsNotesInfoPanel extends ServicePanel {
         product_search_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Eklenen ürünlerde ara...");
         product_search_field.putClientProperty(FlatClientProperties.STYLE_CLASS, "serviceSearchField");
 
-        FlatSVGIcon searchIcon = new FlatSVGIcon("icon/search.svg");
+        FlatSVGIcon searchIcon = new FlatSVGIcon("icons/search.svg", 0.4f);
         JButton searchButton = new JButton(searchIcon);
         searchButton.setMargin(new Insets(1, 1, 1, 2));
         product_search_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, searchButton);
 
         part_add_button = new JButton("Parça Ekle");
-
 
         new_part_add_button = new JButton("Yeni Parça Ekle");
 
@@ -266,52 +230,25 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
         JScrollPane table_scroll = new JScrollPane(parts_table);
 
-        JPanel manual_add_panel = new JPanel(new MigLayout("insets 5", "[grow][grow]", "[grow, fill][grow, fill]"));
-        manual_add_panel.setBorder(BorderFactory.createTitledBorder("Manuel Parça Ekle"));
-        manual_add_panel.setBackground(null);
+        parts_table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
+                "height:30; hoverBackground:null; pressedBackground:null; separatorColor:$TableHeader.background; font:bold;");
+        parts_table.putClientProperty(FlatClientProperties.STYLE,
+                "rowHeight:25; showHorizontalLines:true; intercellSpacing:0,1; selectionBackground:$TableHeader.hoverBackground; selectionForeground:$Table.foreground;");
 
-        JPanel content_panel1 = new JPanel(new MigLayout("insets 0", "[][fill, grow][][fill, grow]", "[fill]"));
-        content_panel1.setBackground(null);
+        table_scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE,
+                "trackArc:999; trackInsets:3,3,3,3; thumbInsets:3,3,3,3; background:$Table.background;");
 
-        series_no_field = new JTextField();
-        part_name_field = new JTextField();
-
-        JPanel content_panel2 = new JPanel(new MigLayout("insets 0", "", ""));
-        content_panel2.setBackground(null);
-
-        purchase_price_field = new CurrencyField();
-        sale_price_field = new CurrencyField();
-        amount_spinner = new JSpinner(new SpinnerNumberModel(1, 1, 999, 1));
-
-        manual_add_button = new JButton("Ekle");
 
         notes_field = new JTextArea(3, 0);
         notes_field.setLineWrap(true);
         notes_field.setWrapStyleWord(true);
         JScrollPane notes_scroll = new JScrollPane(notes_field);
 
-        content_panel1.add(new JLabel("Seri No:"));
-        content_panel1.add(series_no_field, "growx");
-        content_panel1.add(new JLabel("Parça Adı:"));
-        content_panel1.add(part_name_field, "growx");
-
-        content_panel2.add(new JLabel("Alış Fiyatı:"));
-        content_panel2.add(purchase_price_field, "growx");
-        content_panel2.add(new JLabel("Satış Fiyatı:"));
-        content_panel2.add(sale_price_field, "growx");
-        content_panel2.add(new JLabel("Adet:"));
-        content_panel2.add(amount_spinner, "growx");
-
-        manual_add_panel.add(content_panel1, "cell 0 0, growx");
-        manual_add_panel.add(manual_add_button, "cell 1 0 1 2, grow");
-        manual_add_panel.add(content_panel2, "cell 0 1, growx");
-
         add(title, "span 3, align left, gapbottom 10, wrap");
         add(product_search_field, "growx, split 3");
         add(part_add_button, "gapleft 5");
         add(new_part_add_button, "gapleft 5, wrap");
         add(table_scroll, "grow, wrap");
-        add(manual_add_panel, "growx, wrap");
         add(new JLabel("Notlar:"), "aligny top, split 2");
         add(notes_scroll, "growx, growy, wrap");
     }
@@ -321,12 +258,4 @@ public class PartsNotesInfoPanel extends ServicePanel {
     JTextField product_search_field;
     JTextArea notes_field;
     JButton part_add_button;
-
-    // Manual Part
-    JTextField part_name_field;
-    JTextField series_no_field;
-    JFormattedTextField sale_price_field;
-    JFormattedTextField purchase_price_field;
-    JSpinner amount_spinner;
-    JButton manual_add_button;
 }

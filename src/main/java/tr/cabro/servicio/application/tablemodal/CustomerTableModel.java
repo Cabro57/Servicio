@@ -35,7 +35,7 @@ public class CustomerTableModel extends AbstractTableModel {
 
         switch (columnIndex) {
             case 0: return selectedRows[rowIndex];
-            case 1: return customer.getID();
+            case 1: return customer.getId();
             case 2: return customer.getName() + " " + customer.getSurname();
             case 3: return customer.getBusiness_name();
             case 4: return customer.getId_no();
@@ -83,7 +83,7 @@ public class CustomerTableModel extends AbstractTableModel {
     }
 
     public int getCustomerID(int rowIndex) {
-        return getCustomer(rowIndex).getID();
+        return getCustomer(rowIndex).getId();
     }
 
     public List<Customer> getSelectedCustomers() {

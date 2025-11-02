@@ -69,7 +69,7 @@ public class PartDao extends BaseDao<Part, String> {
         stmt.setInt(8, entity.getStock());
         stmt.setInt(9, entity.getMinStock());
         stmt.setInt(10, entity.getWarranty_period());
-        stmt.setString(11, entity.getPurchase_date() != null ? entity.getPurchase_date().format(dateFormatter) : null);
+        stmt.setString(11, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
         stmt.setString(12, entity.getDescription());
         stmt.setString(13, entity.getCreated_at().format(dateTimeFormatter));
         stmt.setString(14, entity.getBarcode());
@@ -153,6 +153,14 @@ public class PartDao extends BaseDao<Part, String> {
         } catch (SQLException e) {
             Servicio.getLogger().error("DB ERROR [UPDATE STOCK] {}", String.valueOf(e));
         }
+    }
+
+    private String dateToStr(LocalDateTime date) {
+        return date != null ? date.toString() : null;
+    }
+
+    private LocalDateTime strToDate(String dateStr) {
+        return (dateStr != null) ? LocalDateTime.parse(dateStr) : null;
     }
 
 }

@@ -29,7 +29,7 @@ public class SettingsDatabasePanel extends JPanel {
         initComponent();
 
         // === Klasör seçici ===
-        JButton chooser_folder_button = new JButton(new FlatSVGIcon("icon/folder.svg"));
+        JButton chooser_folder_button = new JButton(new FlatSVGIcon("icons/folder.svg"));
         chooser_folder_button.addActionListener(e -> onFolderChooser());
 
         folder_path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooser_folder_button);
@@ -141,7 +141,7 @@ public class SettingsDatabasePanel extends JPanel {
         // --- Klasör seçici ---
         JLabel folder_label = new JLabel("Yedekleme Klasörü:");
         folder_path_field = new JTextField(settings.getBackup().getPath());
-        JButton chooser_folder_button = new JButton(new FlatSVGIcon("icon/folder.svg"));
+        JButton chooser_folder_button = new JButton(new FlatSVGIcon("icons/folder.svg"));
         folder_path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooser_folder_button);
 
         add(folder_label);

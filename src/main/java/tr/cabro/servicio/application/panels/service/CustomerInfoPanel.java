@@ -5,11 +5,8 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.DatePicker;
 import raven.datetime.TimePicker;
-import raven.modal.Toast;
 import tr.cabro.servicio.application.component.SearchField;
 import tr.cabro.servicio.application.panels.ServicePanel;
-import tr.cabro.servicio.application.ui.CustomerEditUI;
-import tr.cabro.servicio.application.ui.CustomerSearchUI;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
@@ -34,13 +31,13 @@ public class CustomerInfoPanel extends ServicePanel {
     private void init() {
         initComponent();
 
-        customer_field.addActionListener(e -> onSetCustomer());
+//        customer_field.addActionListener(e -> onSetCustomer());
         customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_CLEAR_CALLBACK, (Runnable) () -> {
             if (selectedCustomer != null) selectedCustomer = null;
             customer_field.setText("");
         });
 
-        customer_button.addActionListener(e -> onSetNewCustomer());
+//        customer_button.addActionListener(e -> onSetNewCustomer());
 
         recordDatePicker = new DatePicker();
         recordDatePicker.setEditor(record_date_field);
@@ -54,39 +51,41 @@ public class CustomerInfoPanel extends ServicePanel {
 
     }
 
-    private void onSetNewCustomer() {
-        CustomerEditUI customerEditUI = new CustomerEditUI(null);
-        customerEditUI.setModal(true);
-        customerEditUI.setVisible(true);
+//    private void onSetNewCustomer() {
+//        CustomerEditUI customerEditUI = new CustomerEditUI(null);
+//        customerEditUI.setModal(true);
+//        customerEditUI.setVisible(true);
+//
+//        if (customerEditUI.isConfirmed()) {
+//            Customer customer = customerEditUI.getCustomerFromForm();
+//            if (customer != null) {
+//                CustomerService service = ServiceManager.getCustomerService();
+//                boolean savedCustomer = service.save(customer, false);
+//
+//                if (savedCustomer) {
+//                    setCustomer(customer);
+//                    Toast.show(CustomerInfoPanel.this, Toast.Type.SUCCESS, "Müşteri başarıyla kaydedildi!");
+//                } else {
+//                    Toast.show(this, Toast.Type.ERROR, "Müşteri kaydedilemedi!");
+//                }
+//            }
+//        }
+//    }
 
-        if (customerEditUI.isConfirmed()) {
-            Customer customer = customerEditUI.getCustomerFromForm();
-            if (customer != null) {
-                CustomerService service = ServiceManager.getCustomerService();
-                boolean savedCustomer = service.save(customer, false);
-
-                if (savedCustomer) {
-                    setCustomer(customer);
-                    Toast.show(CustomerInfoPanel.this, Toast.Type.SUCCESS, "Müşteri başarıyla kaydedildi!");
-                } else {
-                    Toast.show(this, Toast.Type.ERROR, "Müşteri kaydedilemedi!");
-                }
-            }
-        }
-    }
-
-    public void onSetCustomer() {
-        String s = customer_field.getText().trim();
-        CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
-        customerSearchUI.setModal(true);
-        customerSearchUI.setVisible(true);
-
-        Customer cs = customerSearchUI.getSelectedCustomer();
-
-        if (cs != null) {
-            setCustomer(cs);
-        }
-    }
+//    public void onSetCustomer() {
+//        String s = customer_field.getText().trim();
+//
+//
+//        CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
+//        customerSearchUI.setModal(true);
+//        customerSearchUI.setVisible(true);
+//
+//        Customer cs = customerSearchUI.getSelectedCustomer();
+//
+//        if (cs != null) {
+//            setCustomer(cs);
+//        }
+//    }
 
     public void setCustomer(int serviceId) {
         CustomerService service = ServiceManager.getCustomerService();
@@ -145,7 +144,7 @@ public class CustomerInfoPanel extends ServicePanel {
         title.setHorizontalAlignment(SwingConstants.LEFT);
 
         customer_field = new SearchField();
-        customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icon/customer.svg", 22, 22));
+        customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icons/customer.svg", 22, 22));
         customer_field.putClientProperty(FlatClientProperties.STYLE_CLASS, "serviceSearchField");
         customer_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Müşteri adı, telefon, veya TC kimlik no yazıp ENTER tuşuna basın");
         customer_field.setFont(customer_field.getFont().deriveFont(16f));

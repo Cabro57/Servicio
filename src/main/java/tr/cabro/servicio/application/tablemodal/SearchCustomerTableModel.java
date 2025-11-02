@@ -66,7 +66,7 @@ public class SearchCustomerTableModel extends AbstractTableModel {
     }
 
     public int getCustomerID(int rowIndex) {
-        return getCustomer(rowIndex).getID();
+        return getCustomer(rowIndex).getId();
     }
 
     public List<Customer> getSelectedCustomers() {

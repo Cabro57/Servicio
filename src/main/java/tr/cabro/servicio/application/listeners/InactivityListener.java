@@ -2,7 +2,6 @@ package tr.cabro.servicio.application.listeners;
 
 import lombok.Getter;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.ui.PIN;
 
 import javax.swing.Timer;
 import java.awt.*;
@@ -16,7 +15,7 @@ public class InactivityListener implements AWTEventListener, ActionListener {
     @Getter private final int timeoutMilliseconds;
 
     public InactivityListener() {
-        int timeoutMin = Servicio.getSettings().getPinConfig().getTimeout();
+        int timeoutMin = Servicio.getSettings().getPin().getTimeout();
         timeoutMilliseconds = timeoutMin * 60 * 1000;
         timer = new Timer(timeoutMilliseconds, this);
         timer.setRepeats(false);
@@ -40,7 +39,5 @@ public class InactivityListener implements AWTEventListener, ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         stop();
-
-        PIN.showDialog();
     }
 }

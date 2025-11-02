@@ -52,7 +52,6 @@ public class ActionButton extends JButton {
         }
 
         g2.setColor(fillColor);
-        g2.setColor(fillColor);
         g2.fillRect(x, y, size, size);
         g2.dispose();
         super.paintComponent(grphcs);

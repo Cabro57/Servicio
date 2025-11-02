@@ -9,14 +9,13 @@ import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import raven.modal.utils.DemoPreferences;
 import tr.cabro.servicio.application.listeners.InactivityListener;
-import tr.cabro.servicio.application.ui.MainUI;
-import tr.cabro.servicio.application.ui.PIN;
+import tr.cabro.servicio.application.MainUI;
 import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.BackupMode;
 import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.settings.Settings;
-import tr.cabro.servicio.settings.Theme;
 
 import javax.swing.*;
 import java.awt.*;
@@ -62,6 +61,7 @@ public final class Servicio {
 
         runBackupIfNeeded(BackupMode.ON_START, BackupMode.ON_START_AND_EXIT);
         BackupScheduler.start();
+        DemoPreferences.init();
         setupUI();
         EventQueue.invokeLater(this::launchMainUI);
     }
@@ -99,7 +99,7 @@ public final class Servicio {
     private void setupUI() {
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("themes");
-        Theme.apply(Theme.selected());
+        DemoPreferences.setupLaf();
 
         int scaledFontSize = UIScale.scale(12);
         UIManager.put("defaultFont", FontUtils.getCompositeFont(FlatRobotoFont.FAMILY, Font.PLAIN, scaledFontSize));
@@ -109,7 +109,6 @@ public final class Servicio {
         frame = new MainUI();
         frame.setVisible(true);
 
-        PIN.showDialog();
     }
 
     private void runBackupIfNeeded(BackupMode... modes) {

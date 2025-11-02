@@ -1,12 +1,21 @@
 package tr.cabro.servicio.service;
 
+import org.jfree.data.time.TimeTableXYDataset;
+import org.jfree.data.xy.TableXYDataset;
+import org.jfree.data.time.Month;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.dao.ServiceDao;
 import tr.cabro.servicio.database.dao.ServicePartDao;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
+import tr.cabro.servicio.util.DashboardStats;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -96,11 +105,6 @@ public class RepairService {
             boolean b = servicePartDao.create(part);
             if(!b) return false;
 
-            if (!part.getBarcode().isEmpty()) {
-                PartService partService = ServiceManager.getPartService();
-                b = partService.increaseStock(part);
-            }
-
             return b;
         } catch (Exception e) {
             Servicio.getLogger().error("SERVICE ERROR [ADD PART TO SERVICE] {}", String.valueOf(e));
@@ -115,11 +119,6 @@ public class RepairService {
 
             b = servicePartDao.delete(part.getId());
             if (!b) return false;
-
-            if (!part.getBarcode().isEmpty()) {
-                PartService partService = ServiceManager.getPartService();
-                b = partService.decreaseStock(part);
-            }
 
             return b;
 
@@ -144,18 +143,8 @@ public class RepairService {
                     Servicio.getLogger().warn("FAILED TO DELETE ADDED PART [ServiceId: {}, PartId: {}]",
                             serviceId, part.getId());
                     allSuccess = false;
-                    continue;
                 }
 
-                if (!part.getBarcode().isEmpty()) {
-                    PartService partService = ServiceManager.getPartService();
-                    boolean stockUpdated = partService.decreaseStock(part);
-                    if (!stockUpdated) {
-                        Servicio.getLogger().warn("FAILED TO DECREASE STOCK [ServiceId: {}, PartId: {}, Barcode: {}]",
-                                serviceId, part.getId(), part.getBarcode());
-                        allSuccess = false;
-                    }
-                }
             }
 
             return allSuccess;
@@ -186,5 +175,91 @@ public class RepairService {
             Servicio.getLogger().error("SERVICE ERROR [GET PARTS BY SERVICE ID] {}", String.valueOf(e));
             return Collections.emptyList();
         }
+    }
+
+    public DashboardStats getDashboardStats() {
+        String sql = "";
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("db/queries/service_summary.sql")) {
+            if (in == null) {
+                throw new IOException("Kaynak bulunamadı: db/queries/service_summary.sql");
+            }
+            byte[] bytes = new byte[in.available()];
+            int read = in.read(bytes);
+            if (read <= 0) {
+                throw new IOException("Kaynak okunamadı: db/queries/service_summary.sql");
+            }
+            sql = new String(bytes, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            Servicio.getLogger().error("SQL dosyası okunamadı: {}", e.getMessage());
+            return null;
+        }
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            if (rs.next()) {
+                return new DashboardStats(
+                        rs.getLong("toplam_servis"),
+                        rs.getLong("bu_ay_servis"),
+                        rs.getDouble("bu_ay_servis_orani"),
+
+                        rs.getDouble("toplam_gelir"),
+                        rs.getDouble("bu_ay_gelir"),
+                        rs.getDouble("bu_ay_gelir_orani"),
+
+                        rs.getDouble("toplam_gider"),
+                        rs.getDouble("bu_ay_gider"),
+                        rs.getDouble("bu_ay_gider_orani"),
+
+                        rs.getDouble("toplam_kar"),
+                        rs.getDouble("bu_ay_kar"),
+                        rs.getDouble("bu_ay_kar_orani")
+                );
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Veri yüklenemedi: " + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    public TableXYDataset getTimeSeriesDataset() {
+        TimeTableXYDataset dataset = new TimeTableXYDataset();
+        String seriesIncome = "Gelir";
+        String seriesExpense = "Gider";
+
+        String sql =
+                "SELECT ay, toplam_gelir, toplam_gider " +
+                        "FROM (" +
+                        "  SELECT strftime('%Y-%m', created_at) AS ay, SUM(labor_cost) AS toplam_gelir, 0 AS toplam_gider " +
+                        "  FROM services GROUP BY strftime('%Y-%m', created_at) " +
+                        "  UNION ALL " +
+                        "  SELECT strftime('%Y-%m', created_at) AS ay, " +
+                        "         SUM(sale_price * amount) AS toplam_gelir, " +
+                        "         SUM(purchase_price * amount) AS toplam_gider " +
+                        "  FROM added_part GROUP BY strftime('%Y-%m', created_at)" +
+                        ") GROUP BY ay ORDER BY ay;";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                String[] parts = rs.getString("ay").split("-");
+                int year = Integer.parseInt(parts[0]);
+                int month = Integer.parseInt(parts[1]);
+
+                double income = rs.getDouble("toplam_gelir");
+                double expense = rs.getDouble("toplam_gider");
+
+                dataset.add(new Month(month, year), income, seriesIncome);
+                dataset.add(new Month(month, year), expense, seriesExpense);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Zaman serisi verisi okunamadı: " + e.getMessage(), e);
+        }
+
+        return dataset;
     }
 }

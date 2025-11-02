@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.tablemodal;
 import lombok.Getter;
 import tr.cabro.servicio.application.listeners.PriceChangeListener;
 import tr.cabro.servicio.model.AddedPart;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import java.util.List;
 
 public class ServicePartTableModel extends AbstractTableModel {
 
-    private final String[] columnNames = { "Seri No.", "Parça Adı", "Adet", "Alış Fiyatı", "Satış Fiyatı", "Kaldır" };
+    private final String[] columnNames = { "Parça", "Adet", "Satış Fiyatı", "" };
 
     @Getter
     private final List<AddedPart> addedParts;
@@ -40,25 +41,20 @@ public class ServicePartTableModel extends AbstractTableModel {
     public Object getValueAt(int rowIndex, int columnIndex) {
         AddedPart part = addedParts.get(rowIndex);
         switch (columnIndex) {
-            case 0: return part.getSerial_no();
-            case 1: return part.getName();
-            case 2: return part.getAmount();
-            case 3: return part.getPurchasePrice();
-            case 4: return part.getSellingPrice();
+            case 0: return part.getName();
+            case 1: return part.getAmount();
+            case 2: return Format.formatPrice(part.getSellingPrice());
             default: return null;
         }
     }
 
     @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return true;
+        return columnIndex == 3;
     }
 
     @Override
     public Class<?> getColumnClass(int columnIndex) {
-        if (columnIndex == 2) return Integer.class;
-        if (columnIndex == 3) return Double.class;
-        if (columnIndex == 4) return Double.class;
         return String.class;
     }
 
@@ -68,21 +64,8 @@ public class ServicePartTableModel extends AbstractTableModel {
                 .sum();
     }
 
-    public void addAddedPart(AddedPart addedPart) {
-        // Eğer barcode boş değilse, aynı barkodlu parçaları birleştir
-        if (addedPart.getBarcode() != null && !addedPart.getBarcode().isEmpty()) {
-            for (int i = 0; i < addedParts.size(); i++) {
-                AddedPart existing = addedParts.get(i);
-                if (addedPart.getBarcode().equals(existing.getBarcode())) {
-                    existing.setAmount(existing.getAmount() + addedPart.getAmount());
-                    fireTableRowsUpdated(i, i);
-                    return;
-                }
-            }
-        }
-
-        // Eğer barcode boş ise (manuel parça) veya hiç eşleşme bulunamadıysa yeni satır ekle
-        addedParts.add(addedPart);
+    public void addAddedPart(AddedPart data) {
+        addedParts.add(data);
         fireTableRowsInserted(addedParts.size() - 1, addedParts.size() - 1);
     }
 

@@ -21,7 +21,7 @@ public class FieldPopupEditor {
 
     public FieldPopupEditor(JTextField targetField) {
         this.targetField = targetField;
-        FlatSVGIcon icon = new FlatSVGIcon("icon/resize-full.svg", 16, 16);
+        FlatSVGIcon icon = new FlatSVGIcon("icons/resize-full.svg", 16, 16);
         Color newcolor = UIManager.getColor("MenuItem.foreground");
         icon.setColorFilter(new FlatSVGIcon.ColorFilter(c -> newcolor));
         this.triggerButton = new JButton(icon);

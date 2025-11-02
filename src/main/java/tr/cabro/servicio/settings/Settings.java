@@ -1,20 +1,17 @@
 package tr.cabro.servicio.settings;
 
 import eu.okaeri.configs.OkaeriConfig;
-import lombok.Data;
+import eu.okaeri.configs.annotation.Variable;
 import lombok.Getter;
 import lombok.Setter;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.model.BackupMode;
-import tr.cabro.servicio.util.barcode.BarcodeConfig;
 
-import java.util.*;
 
 @Getter
 @Setter
 public class Settings extends OkaeriConfig {
 
-    private Template template = new Template();
     private String path = "";
     private boolean full_size = false;
     private boolean deviceMigrated = false;
@@ -31,7 +28,7 @@ public class Settings extends OkaeriConfig {
 
     }
 
-    private PinConfig pinConfig = new PinConfig();
+    private PinConfig pin = new PinConfig();
 
     @Getter @Setter
     public static class PinConfig extends OkaeriConfig {
@@ -40,22 +37,8 @@ public class Settings extends OkaeriConfig {
         private int timeout = 1;
     }
 
-    private BarcodeConfig barcode = new BarcodeConfig();
-
-    @Getter @Setter
-    public static class Template extends OkaeriConfig {
-        private String selected_theme = "Light";
-        private Map<String, String> themes = new HashMap<>();
-
-        private Template() {
-            themes.put("Light", "com.formdev.flatlaf.FlatLightLaf");
-            themes.put("Dark", "com.formdev.flatlaf.FlatDarkLaf");
-            themes.put("IntelliJ", "com.formdev.flatlaf.FlatIntelliJLaf");
-            themes.put("Darcula", "com.formdev.flatlaf.FlatDarculaLaf");
-            themes.put("macOS Light v3", "com.formdev.flatlaf.themes.FlatMacLightLaf");
-            themes.put("macOS Dark v3", "com.formdev.flatlaf.themes.FlatMacDarkLaf");
-        }
-    }
+    @Variable("barcode_prefix")
+    private String barcodePrefix = "123456";
 
     private Database database = new Database();
 

@@ -60,7 +60,7 @@ public class CustomerDao extends BaseDao<Customer, Integer> {
         stmt.setString(9, c.getType().getDisplayName());
         stmt.setString(10, c.getNote());
         stmt.setString(11, c.getCreated_at() != null ? c.getCreated_at().format(formatter) : null);
-        stmt.setInt(12, c.getID());
+        stmt.setInt(12, c.getId());
     }
 
     @Override
@@ -84,7 +84,7 @@ public class CustomerDao extends BaseDao<Customer, Integer> {
 
     @Override
     protected void setGeneratedId(Customer entity, int id) {
-        entity.setID(id);
+        entity.setId(id);
     }
 
     @Override

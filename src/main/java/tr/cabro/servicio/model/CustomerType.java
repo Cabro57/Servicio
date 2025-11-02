@@ -7,12 +7,12 @@ import java.util.Arrays;
 
 @Getter
 public enum CustomerType {
-    NORMAL("Normal", "icon/customer.svg"),
-    DIKKAT("Dikkat Et", "icon/attention.svg"),
-    IS_YAPMA("İş Yapma", "icon/not_work.svg"),
-    ESNAF("Esnaf", "icon/esnaf.svg"),
-    BAYI("Bayi", "icon/business.svg"),
-    PROBLEMLI("Problemli", "icon/problematic.svg");
+    NORMAL("Normal", "icons/customer.svg"),
+    DIKKAT("Dikkat Et", "icons/attention.svg"),
+    IS_YAPMA("İş Yapma", "icons/not_work.svg"),
+    ESNAF("Esnaf", "icons/esnaf.svg"),
+    BAYI("Bayi", "icons/business.svg"),
+    PROBLEMLI("Problemli", "icons/problematic.svg");
 
     private final String displayName;
     private final String iconPath;

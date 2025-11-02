@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Getter @Setter
 public class Customer {
-    private int ID;
+    private int Id;
     private String business_name;
     private String name;
     private String surname;
@@ -25,8 +25,8 @@ public class Customer {
 
     }
 
-    public Customer (int ID, String name, String surname) {
-        this.ID = ID;
+    public Customer (int Id, String name, String surname) {
+        this.Id = Id;
         this.name = name;
         this.surname = surname;
     }

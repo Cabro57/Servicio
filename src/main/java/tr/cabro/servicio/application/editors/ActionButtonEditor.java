@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.editors;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.application.component.ActionButton;
+import tr.cabro.servicio.application.component.PanelAction;
 import tr.cabro.servicio.application.events.TableActionEvent;
 
 import javax.swing.*;
@@ -18,9 +19,10 @@ public class ActionButtonEditor extends DefaultCellEditor {
 
     @Override
     public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-        ActionButton button = new ActionButton(new FlatSVGIcon("icon/delete.svg"));
-        button.addActionListener(e -> event.onAction(row));
+        PanelAction action = new PanelAction();
+        action.initEvent(event, row);
+        action.setBackground(table.getSelectionBackground());
 
-        return button;
+        return action;
     }
 }

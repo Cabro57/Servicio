@@ -7,12 +7,12 @@ import java.util.Arrays;
 
 @Getter
 public enum ServiceStatus {
-    UNDER_REPAIR("Tamirde", "icon/under_repair.svg"),
-    READY("Hazır", "icon/ready.svg"),
-    ANOTHER_SERVICE("Başka Serviste", "icon/another_service.svg"),
-    DELIVERED("Teslim edildi", "icon/delivered.svg"),
-    RETURN("İade", "icon/return.svg"),
-    WAITING_FOR_PART("Parça Bekliyor", "icon/waiting_for_part.svg");
+    UNDER_REPAIR("Tamirde", "icons/under_repair.svg"),
+    READY("Hazır", "icons/ready.svg"),
+    ANOTHER_SERVICE("Başka Serviste", "icons/another_service.svg"),
+    DELIVERED("Teslim edildi", "icons/delivered.svg"),
+    RETURN("İade", "icons/return.svg"),
+    WAITING_FOR_PART("Parça Bekliyor", "icons/waiting_for_part.svg");
 
     private final String displayName;
     private final String iconPath;

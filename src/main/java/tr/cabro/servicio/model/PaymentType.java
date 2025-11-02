@@ -7,10 +7,10 @@ import java.util.Arrays;
 
 @Getter
 public enum PaymentType {
-    CASH("Nakit", "icon/cash.svg"),
-    CARD("Banka/Kredi Kartı", "icon/card.svg"),
-    TRANSFER("Banka Havale/EFT", "icon/transfer.svg"),
-    ON_ACCOUNT("Veresiye", "icon/on_account.svg");
+    CASH("Nakit", "icons/cash.svg"),
+    CARD("Banka/Kredi Kartı", "icons/card.svg"),
+    TRANSFER("Banka Havale/EFT", "icons/transfer.svg"),
+    ON_ACCOUNT("Veresiye", "icons/on_account.svg");
 
     private final String displayName;
     private final String iconPath;

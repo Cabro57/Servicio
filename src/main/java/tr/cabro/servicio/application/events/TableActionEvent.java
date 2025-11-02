@@ -2,5 +2,9 @@ package tr.cabro.servicio.application.events;
 
 public interface TableActionEvent {
 
-    void onAction(int row);
+    public void onEdit(int row);
+
+    public void onDelete(int row);
+
+    public void onView(int row);
 }

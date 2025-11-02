@@ -5,11 +5,17 @@ import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.model.AddedPart;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ServicePartDao extends BaseDao<AddedPart, Integer> {
+
+    private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
 
     @Override
     protected String getTableName() {
@@ -23,52 +29,72 @@ public class ServicePartDao extends BaseDao<AddedPart, Integer> {
 
     @Override
     protected String getInsertSQL() {
-        return "INSERT INTO added_part (service_id, barcode, series_no, name, amount, purchase_price, selling_price, added_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        return "INSERT INTO added_part (" +
+                "service_id, series_no, brand, name, supplier_id, device_type, model, amount, " +
+                "purchase_price, sale_price, warranty_period, purchase_date, description, created_at" +
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     }
 
     @Override
     protected String getUpdateSQL() {
-        return "UPDATE added_part SET service_id=?, barcode=?, series_no=?, name=?, amount=?, purchase_price=?, selling_price=?, added_date=? WHERE id=?";
+        return "UPDATE added_part SET " +
+                "service_id=?, series_no=?, brand=?, name=?, supplier_id=?, device_type=?, model=?, " +
+                "amount=?, purchase_price=?, sale_price=?, warranty_period=?, purchase_date=?, description=?, created_at=? " +
+                "WHERE id=?";
     }
 
     @Override
     protected void fillInsertStatement(PreparedStatement stmt, AddedPart entity) throws SQLException {
         stmt.setInt(1, entity.getServiceId());
-        stmt.setString(2, entity.getBarcode());
-        stmt.setString(3, entity.getSerial_no());
+        stmt.setString(2, entity.getSerial_no());
+        stmt.setString(3, entity.getBrand());
         stmt.setString(4, entity.getName());
-        stmt.setInt(5, entity.getAmount());
-        stmt.setDouble(6, entity.getPurchasePrice());
-        stmt.setDouble(7, entity.getSellingPrice());
-        stmt.setString(8, dateToStr(entity.getAddedDate()));
+        stmt.setObject(5, entity.getSupplier_id(), Types.INTEGER);
+        stmt.setString(6, entity.getDevice_type());
+        stmt.setString(7, entity.getModels());
+        stmt.setInt(8, entity.getAmount());
+        stmt.setDouble(9, entity.getPurchasePrice());
+        stmt.setDouble(10, entity.getSellingPrice());
+        stmt.setObject(11, entity.getWarranty_period(), Types.INTEGER);
+        stmt.setString(12, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
+        stmt.setString(13, entity.getDescription());
+        stmt.setString(14, dateToStr(entity.getCreated_at()));
     }
 
     @Override
     protected void fillUpdateStatement(PreparedStatement stmt, AddedPart entity) throws SQLException {
-        stmt.setInt(1, entity.getServiceId());
-        stmt.setString(2, entity.getBarcode());
-        stmt.setString(3, entity.getSerial_no());
-        stmt.setString(4, entity.getName());
-        stmt.setInt(5, entity.getAmount());
-        stmt.setDouble(6, entity.getPurchasePrice());
-        stmt.setDouble(7, entity.getSellingPrice());
-        stmt.setString(8, dateToStr(entity.getAddedDate()));
-        stmt.setInt(9, entity.getId());
+        fillInsertStatement(stmt, entity);
+        stmt.setInt(15, entity.getId());
     }
 
     @Override
     protected AddedPart mapRow(ResultSet rs) throws SQLException {
-        AddedPart part = new AddedPart();
-        part.setId(rs.getInt("id"));
-        part.setServiceId(rs.getInt("service_id"));
-        part.setBarcode(rs.getString("barcode"));
-        part.setSerial_no(rs.getString("series_no"));
-        part.setName(rs.getString("name"));
-        part.setAmount(rs.getInt("amount"));
-        part.setSellingPrice(rs.getDouble("selling_price"));
-        part.setPurchasePrice(rs.getDouble("purchase_price"));
-        part.setAddedDate(strToDate(rs.getString("added_date")));
-        return part;
+        AddedPart ap = new AddedPart();
+        ap.setId(rs.getInt("id"));
+        ap.setServiceId(rs.getInt("service_id"));
+        ap.setSerial_no(rs.getString("series_no"));
+        ap.setBrand(rs.getString("brand"));
+        ap.setName(rs.getString("name"));
+        ap.setSupplier_id(rs.getInt("supplier_id"));
+        ap.setDevice_type(rs.getString("device_type"));
+        ap.setModels(rs.getString("model"));
+        ap.setAmount(rs.getInt("amount"));
+        ap.setPurchasePrice(rs.getDouble("purchase_price"));
+        ap.setSellingPrice(rs.getDouble("sale_price"));
+        ap.setWarranty_period(rs.getInt("warranty_period"));
+
+        String dateStr = rs.getString("purchase_date");
+        if (dateStr != null && !dateStr.isEmpty()) {
+            ap.setPurchase_date(LocalDate.parse(dateStr));
+        }
+        ap.setDescription(rs.getString("description"));
+
+        String createdAtStr = rs.getString("created_at");
+        if (createdAtStr != null && !createdAtStr.isEmpty()) {
+            ap.setCreated_at(LocalDateTime.parse(createdAtStr));
+        }
+
+        return ap;
     }
 
     @Override
@@ -91,11 +117,9 @@ public class ServicePartDao extends BaseDao<AddedPart, Integer> {
             stmt.setInt(1, serviceId);
 
             ResultSet rs = stmt.executeQuery();
-
             while (rs.next()) {
                 parts.add(mapRow(rs));
             }
-
             rs.close();
         } catch (SQLException e) {
             Servicio.getLogger().error("DB ERROR [GET PARTS BY SERVICE ID] {}", e.toString());

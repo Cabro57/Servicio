@@ -10,14 +10,11 @@ import java.time.format.DateTimeFormatter;
 @Getter @Setter
 public class Part {
 
-    private int oldId; // Geçici bir çözüm için id
-
     private String barcode; // Ürün kodu ya da barkod
 
     private String brand; // Ürün Markası
     private String name; // Ürün Adı
     private int supplier_id; // Tedarikçi
-    private String supplier_name; // Geçici bir çözüm için
 
     private String device_type; // Ürün Cihaz Türü
     private String models; // Ürün uyumlu modelleri
