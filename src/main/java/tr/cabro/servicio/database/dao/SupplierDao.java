@@ -4,11 +4,8 @@ import tr.cabro.servicio.model.Supplier;
 
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 public class SupplierDao extends BaseDao<Supplier, Integer> {
-
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     @Override
     protected String getTableName() {
@@ -43,7 +40,7 @@ public class SupplierDao extends BaseDao<Supplier, Integer> {
         stmt.setString(7, s.getPhone());
         stmt.setString(8, s.getAddress());
         stmt.setString(9, s.getNotes());
-        stmt.setString(10, s.getCreated_at() != null ? s.getCreated_at().format(formatter) : null);
+        stmt.setString(10, s.getCreated_at() != null ? s.getCreated_at().toString() : null);
     }
 
     @Override
@@ -57,7 +54,7 @@ public class SupplierDao extends BaseDao<Supplier, Integer> {
         stmt.setString(7, s.getPhone());
         stmt.setString(8, s.getAddress());
         stmt.setString(9, s.getNotes());
-        stmt.setString(10, s.getCreated_at() != null ? s.getCreated_at().format(formatter) : null);
+        stmt.setString(10, s.getCreated_at() != null ? s.getCreated_at().toString() : null);
         stmt.setInt(11, s.getId());
     }
 
@@ -77,7 +74,7 @@ public class SupplierDao extends BaseDao<Supplier, Integer> {
 
         String createdAtStr = rs.getString("created_at");
         if (createdAtStr != null) {
-            s.setCreated_at(LocalDateTime.parse(createdAtStr, formatter));
+            s.setCreated_at(LocalDateTime.parse(createdAtStr));
         }
         return s;
     }

@@ -1,53 +1,44 @@
-WITH service_data AS (
+WITH part_summary AS (
     SELECT
-        COUNT(*) AS total_services,
-        SUM(labor_cost) AS total_labor_income
-    FROM services
-),
-month_service_data AS (
-    SELECT
-        COUNT(*) AS month_services,
-        SUM(labor_cost) AS month_labor_income
-    FROM services
-    WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
-),
-part_data AS (
-    SELECT
-        SUM(purchase_price * amount) AS total_cost,
-        SUM(sale_price * amount) AS total_income
+        service_id,
+        SUM(sale_price * amount) AS part_income,
+        SUM(purchase_price * amount) AS part_expense
     FROM added_part
+    GROUP BY service_id
 ),
-month_part_data AS (
+monthly_data AS (
     SELECT
-        SUM(purchase_price * amount) AS month_cost,
-        SUM(sale_price * amount) AS month_income
-    FROM added_part
-    WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
+        strftime('%Y-%m', s.created_at) AS month,
+        COUNT(DISTINCT s.id) AS service_count,
+        SUM(s.labor_cost) AS service_income,
+        SUM(ps.part_income) AS part_income,
+        SUM(ps.part_expense) AS part_expense
+    FROM services s
+    LEFT JOIN part_summary ps ON ps.service_id = s.id
+    WHERE s.created_at IS NOT NULL
+    GROUP BY strftime('%Y-%m', s.created_at)
+),
+calc AS (
+    SELECT
+        md.month,
+        md.service_count,
+        ROUND(((md.service_count - COALESCE(prev.service_count, 0)) * 100.0 /
+               NULLIF(prev.service_count, 0)), 2) AS service_change_rate,
+        (md.service_income + md.part_income) AS total_revenue,
+        ROUND((((md.service_income + md.part_income) -
+                COALESCE(prev.service_income + prev.part_income, 0)) * 100.0 /
+                NULLIF(prev.service_income + prev.part_income, 0)), 2) AS revenue_change_rate,
+        md.part_expense AS total_expense,
+        ROUND(((md.part_expense - COALESCE(prev.part_expense, 0)) * 100.0 /
+               NULLIF(prev.part_expense, 0)), 2) AS expense_change_rate,
+        ((md.service_income + md.part_income) - md.part_expense) AS total_profit,
+        ROUND(((((md.service_income + md.part_income) - md.part_expense) -
+                COALESCE((prev.service_income + prev.part_income) - prev.part_expense, 0)) * 100.0 /
+                NULLIF((prev.service_income + prev.part_income) - prev.part_expense, 0)), 2) AS profit_change_rate
+    FROM monthly_data md
+    LEFT JOIN monthly_data prev
+        ON prev.month = strftime('%Y-%m', date(md.month || '-01', '-1 month'))
 )
-SELECT
-    -- Servis sayıları
-    sd.total_services AS toplam_servis,
-    msd.month_services AS bu_ay_servis,
-    ROUND((msd.month_services * 100.0 / sd.total_services), 2) AS bu_ay_servis_orani,
-
-    -- Gelir
-    (sd.total_labor_income + pd.total_income) AS toplam_gelir,
-    (msd.month_labor_income + mpd.month_income) AS bu_ay_gelir,
-    ROUND(((msd.month_labor_income + mpd.month_income) * 100.0 /
-           (sd.total_labor_income + pd.total_income)), 2) AS bu_ay_gelir_orani,
-
-    -- Gider
-    pd.total_cost AS toplam_gider,
-    mpd.month_cost AS bu_ay_gider,
-    ROUND((mpd.month_cost * 100.0 / pd.total_cost), 2) AS bu_ay_gider_orani,
-
-    -- Kâr
-    ((sd.total_labor_income + pd.total_income) - pd.total_cost) AS toplam_kar,
-    ((msd.month_labor_income + mpd.month_income) - mpd.month_cost) AS bu_ay_kar,
-    ROUND((((msd.month_labor_income + mpd.month_income) - mpd.month_cost) * 100.0 /
-           ((sd.total_labor_income + pd.total_income) - pd.total_cost)), 2) AS bu_ay_kar_orani
-
-FROM service_data sd
-CROSS JOIN month_service_data msd
-CROSS JOIN part_data pd
-CROSS JOIN month_part_data mpd;
+SELECT *
+FROM calc
+ORDER BY month;

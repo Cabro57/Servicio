@@ -31,13 +31,10 @@ public class CustomerInfoPanel extends ServicePanel {
     private void init() {
         initComponent();
 
-//        customer_field.addActionListener(e -> onSetCustomer());
         customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_CLEAR_CALLBACK, (Runnable) () -> {
             if (selectedCustomer != null) selectedCustomer = null;
             customer_field.setText("");
         });
-
-//        customer_button.addActionListener(e -> onSetNewCustomer());
 
         recordDatePicker = new DatePicker();
         recordDatePicker.setEditor(record_date_field);
@@ -50,42 +47,6 @@ public class CustomerInfoPanel extends ServicePanel {
 
 
     }
-
-//    private void onSetNewCustomer() {
-//        CustomerEditUI customerEditUI = new CustomerEditUI(null);
-//        customerEditUI.setModal(true);
-//        customerEditUI.setVisible(true);
-//
-//        if (customerEditUI.isConfirmed()) {
-//            Customer customer = customerEditUI.getCustomerFromForm();
-//            if (customer != null) {
-//                CustomerService service = ServiceManager.getCustomerService();
-//                boolean savedCustomer = service.save(customer, false);
-//
-//                if (savedCustomer) {
-//                    setCustomer(customer);
-//                    Toast.show(CustomerInfoPanel.this, Toast.Type.SUCCESS, "Müşteri başarıyla kaydedildi!");
-//                } else {
-//                    Toast.show(this, Toast.Type.ERROR, "Müşteri kaydedilemedi!");
-//                }
-//            }
-//        }
-//    }
-
-//    public void onSetCustomer() {
-//        String s = customer_field.getText().trim();
-//
-//
-//        CustomerSearchUI customerSearchUI = new CustomerSearchUI(s);
-//        customerSearchUI.setModal(true);
-//        customerSearchUI.setVisible(true);
-//
-//        Customer cs = customerSearchUI.getSelectedCustomer();
-//
-//        if (cs != null) {
-//            setCustomer(cs);
-//        }
-//    }
 
     public void setCustomer(int serviceId) {
         CustomerService service = ServiceManager.getCustomerService();
@@ -114,6 +75,7 @@ public class CustomerInfoPanel extends ServicePanel {
     }
 
     public void setRecordDate(LocalDateTime dateTime) {
+        if (dateTime == null) return;
         recordTimePicker.setSelectedTime(dateTime.toLocalTime());
         recordDatePicker.setSelectedDate(dateTime.toLocalDate());
     }

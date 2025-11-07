@@ -4,6 +4,8 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
+import org.jfree.data.time.Month;
+import org.jfree.data.time.TimeTableXYDataset;
 import raven.modal.component.ToolBarSelection;
 import raven.modal.component.chart.*;
 import raven.modal.component.chart.themes.ColorThemes;
@@ -12,8 +14,9 @@ import raven.modal.component.chart.utils.ToolBarTimeSeriesChartRenderer;
 import raven.modal.component.dashboard.CardBox;
 import raven.modal.system.Form;
 import raven.modal.utils.SystemForm;
+import tr.cabro.servicio.reports.ServiceFinanceRecord;
+import tr.cabro.servicio.reports.ServiceFinanceReport;
 import tr.cabro.servicio.service.RepairService;
-import tr.cabro.servicio.util.DashboardStats;
 
 import javax.swing.*;
 import java.awt.*;
@@ -47,34 +50,54 @@ public class FormDashboard extends Form {
     private void loadData() {
         // load data card
         RepairService repairService = new RepairService();
-        DashboardStats stats = repairService.getDashboardStats();
+        ServiceFinanceReport report = repairService.getDashboardStats();
+
+        // Son ay
+        ServiceFinanceRecord current = report.getLatestMonth();
+        if (current == null) return;
 
         cardBox.setValueAt(0,
-                String.format("%,d", stats.getTotalServices()),
-                String.format("Bu ay %,d servis açıldı", stats.getCurrentMonthServices()),
-                String.format("%.1f%%", stats.getServiceChangePercent()),
-                stats.getServiceChangePercent() >= 0);
+                String.format("%,d", report.getTotalServiceCount()),
+                String.format("Bu ay %,d servis açıldı", current.getServiceCount()),
+                String.format("%.1f%%", current.getServiceChangeRate()),
+                current.getServiceChangeRate() >= 0);
 
         cardBox.setValueAt(1,
-                String.format("₺%,.2f", stats.getTotalIncome()),
-                String.format("Bu ay ₺%,.2f tahsil edildi", stats.getIncomeThisMonth()),
-                String.format("%.1f%%", stats.getIncomeChangePercent()),
-                stats.getIncomeChangePercent() >= 0);
+                String.format("₺%,.2f", report.getTotalRevenue()),
+                String.format("Bu ay ₺%,.2f tahsil edildi", current.getTotalRevenue()),
+                String.format("%.1f%%", current.getRevenueChangeRate()),
+                current.getRevenueChangeRate() >= 0);
 
         cardBox.setValueAt(2,
-                String.format("₺%,.2f", stats.getTotalExpense()),
-                String.format("Bu ay ₺%,.2f harcandı", stats.getExpenseThisMonth()),
-                String.format("%.1f%%", stats.getExpenseChangePercent()),
-                stats.getExpenseChangePercent() <= 0); // gider artışı olumsuzdur
+                String.format("₺%,.2f", report.getTotalExpense()),
+                String.format("Bu ay ₺%,.2f harcandı", current.getTotalExpense()),
+                String.format("%.1f%%", current.getExpenseChangeRate()),
+                current.getExpenseChangeRate() <= 0); // gider artışı olumsuzdur
 
         cardBox.setValueAt(3,
-                String.format("₺%,.2f", stats.getTotalProfit()),
-                String.format("Bu ay ₺%,.2f kâr elde edildi", stats.getProfitThisMonth()),
-                String.format("%.1f%%", stats.getProfitChangePercent()),
-                stats.getProfitChangePercent() >= 0);
+                String.format("₺%,.2f", report.getTotalProfit()),
+                String.format("Bu ay ₺%,.2f kâr elde edildi", current.getTotalProfit()),
+                String.format("%.1f%%", current.getProfitChangeRate()),
+                current.getProfitChangeRate() >= 0);
 
         // load data chart
-        timeSeriesChart.setDataset(repairService.getTimeSeriesDataset());
+        // Grafik (gelir-gider serisi)
+        TimeTableXYDataset dataset = new TimeTableXYDataset();
+        String incomeSeries = "Gelir";
+        String expenseSeries = "Gider";
+
+        for (ServiceFinanceRecord rec : report.getMonthlyRows()) {
+            if (rec.getMonth() == null || rec.getTotalRevenue() == null) continue;
+
+            String[] parts = rec.getMonth().split("-");
+            int year = Integer.parseInt(parts[0]);
+            int month = Integer.parseInt(parts[1]);
+
+            dataset.add(new Month(month, year), rec.getTotalRevenue(), incomeSeries);
+            dataset.add(new Month(month, year), rec.getTotalExpense(), expenseSeries);
+        }
+
+        timeSeriesChart.setDataset(dataset);
     }
 
     private void createTitle() {

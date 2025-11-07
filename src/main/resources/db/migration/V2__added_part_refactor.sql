@@ -55,9 +55,42 @@ SELECT
     p.warranty_period,
     p.purchase_date,
     p.description,
-    COALESCE(ap.added_date, p.created_at)
+    COALESCE(ap.added_date, p.created_at, CURRENT_TIMESTAMP)
 FROM added_part_old ap
 LEFT JOIN part p ON ap.barcode = p.barcode;
 
 -- 4. Eski tabloyu sil
 DROP TABLE added_part_old;
+
+-- 5. created_at formatını yyyy-MM-ddTHH:mm:ss biçimine dönüştür
+UPDATE added_part
+SET created_at = REPLACE(created_at, ' ', 'T')
+WHERE created_at LIKE '% %';
+
+UPDATE part
+SET created_at = REPLACE(created_at, ' ', 'T')
+WHERE created_at LIKE '% %';
+
+UPDATE suppliers
+SET created_at =
+    CASE
+        WHEN created_at LIKE '__/__/____%' THEN
+            substr(created_at, 7, 4) || '-' || substr(created_at, 4, 2) || '-' || substr(created_at, 1, 2) ||
+            'T' || substr(created_at, 12)
+        WHEN created_at LIKE '% %' THEN
+            REPLACE(created_at, ' ', 'T')
+        ELSE
+            created_at
+    END;
+
+UPDATE customers
+SET created_at =
+    CASE
+        WHEN created_at LIKE '__/__/____%' THEN
+            substr(created_at, 7, 4) || '-' || substr(created_at, 4, 2) || '-' || substr(created_at, 1, 2) ||
+            'T' || substr(created_at, 12)
+        WHEN created_at LIKE '% %' THEN
+            REPLACE(created_at, ' ', 'T')
+        ELSE
+            created_at
+    END;

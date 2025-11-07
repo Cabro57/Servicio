@@ -4,7 +4,6 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
-import raven.modal.Toast;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import raven.modal.utils.SystemForm;
@@ -40,6 +39,11 @@ public class FormServices extends Form {
         this.service = ServiceManager.getRepairService();
 
         init();
+    }
+
+    @Override
+    public void formRefresh() {
+        refreshTable();
     }
 
     private void init() {
@@ -205,19 +209,8 @@ public class FormServices extends Form {
                     Service selected = tableModel.getService(modelRow);
                     FormCreateService form = new FormCreateService();
                     form.setService(selected);
-                    Drawer.setSelectedItemClass(form.getClass());
                     FormManager.showForm(form);
-
-                    int serviceId = selected.getId();
-                    selected = service.get(serviceId).orElse(null);
-
-                    if (selected == null) {
-                        tableModel.removeServiceById(serviceId);
-                        Toast.show(FormServices.this, Toast.Type.SUCCESS, "Servis ve bağlı parçalar başarıyla silindi.");
-                        return;
-                    }
-
-                    tableModel.updateService(selected);
+                    Drawer.setSelectedItemClass(form.getClass());
                 }
             }
         });

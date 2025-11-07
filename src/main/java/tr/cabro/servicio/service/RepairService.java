@@ -10,7 +10,8 @@ import tr.cabro.servicio.database.dao.ServicePartDao;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
-import tr.cabro.servicio.util.DashboardStats;
+import tr.cabro.servicio.reports.ServiceFinanceRecord;
+import tr.cabro.servicio.reports.ServiceFinanceReport;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -177,7 +178,7 @@ public class RepairService {
         }
     }
 
-    public DashboardStats getDashboardStats() {
+    public ServiceFinanceReport getDashboardStats() {
         String sql = "";
         try (InputStream in = getClass().getClassLoader().getResourceAsStream("db/queries/service_summary.sql")) {
             if (in == null) {
@@ -194,33 +195,31 @@ public class RepairService {
             return null;
         }
 
+        ServiceFinanceReport report = new ServiceFinanceReport();
+
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
-            if (rs.next()) {
-                return new DashboardStats(
-                        rs.getLong("toplam_servis"),
-                        rs.getLong("bu_ay_servis"),
-                        rs.getDouble("bu_ay_servis_orani"),
 
-                        rs.getDouble("toplam_gelir"),
-                        rs.getDouble("bu_ay_gelir"),
-                        rs.getDouble("bu_ay_gelir_orani"),
-
-                        rs.getDouble("toplam_gider"),
-                        rs.getDouble("bu_ay_gider"),
-                        rs.getDouble("bu_ay_gider_orani"),
-
-                        rs.getDouble("toplam_kar"),
-                        rs.getDouble("bu_ay_kar"),
-                        rs.getDouble("bu_ay_kar_orani")
-                );
+            while (rs.next()) {
+                ServiceFinanceRecord record = new ServiceFinanceRecord();
+                record.setMonth(rs.getString("month"));
+                record.setServiceCount(rs.getInt("service_count"));
+                record.setServiceChangeRate(rs.getDouble("service_change_rate"));
+                record.setTotalRevenue(rs.getDouble("total_revenue"));
+                record.setRevenueChangeRate(rs.getDouble("revenue_change_rate"));
+                record.setTotalExpense(rs.getDouble("total_expense"));
+                record.setExpenseChangeRate(rs.getDouble("expense_change_rate"));
+                record.setTotalProfit(rs.getDouble("total_profit"));
+                record.setProfitChangeRate(rs.getDouble("profit_change_rate"));
+                report.add(record);
             }
+
         } catch (SQLException e) {
-            throw new RuntimeException("Veri yüklenemedi: " + e.getMessage(), e);
+            e.printStackTrace();
         }
-        return null;
+        return report;
     }
 
     public TableXYDataset getTimeSeriesDataset() {

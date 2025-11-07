@@ -7,14 +7,10 @@ import tr.cabro.servicio.model.Part;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PartDao extends BaseDao<Part, String> {
-
-    private static final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Override
     protected String getTableName() {
@@ -52,9 +48,9 @@ public class PartDao extends BaseDao<Part, String> {
         stmt.setInt(9, entity.getStock());
         stmt.setInt(10, entity.getMinStock());
         stmt.setInt(11, entity.getWarranty_period());
-        stmt.setString(12, entity.getPurchase_date() != null ? entity.getPurchase_date().format(dateFormatter) : null);
+        stmt.setString(12, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
         stmt.setString(13, entity.getDescription());
-        stmt.setString(14, entity.getCreated_at().format(dateTimeFormatter));
+        stmt.setString(14, entity.getCreated_at().toString());
     }
 
     @Override
@@ -71,7 +67,7 @@ public class PartDao extends BaseDao<Part, String> {
         stmt.setInt(10, entity.getWarranty_period());
         stmt.setString(11, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
         stmt.setString(12, entity.getDescription());
-        stmt.setString(13, entity.getCreated_at().format(dateTimeFormatter));
+        stmt.setString(13, entity.getCreated_at().toString());
         stmt.setString(14, entity.getBarcode());
     }
 
@@ -92,14 +88,14 @@ public class PartDao extends BaseDao<Part, String> {
 
         String dateStr = rs.getString("purchase_date");
         if (dateStr != null && !dateStr.isEmpty()) {
-            p.setPurchase_date(LocalDate.parse(dateStr, dateFormatter));
+            p.setPurchase_date(LocalDate.parse(dateStr));
         }
 
         p.setDescription(rs.getString("description"));
 
         String createdAtStr = rs.getString("created_at");
         if (createdAtStr != null && !createdAtStr.isEmpty()) {
-            p.setCreated_at(LocalDateTime.parse(createdAtStr, dateTimeFormatter));
+            p.setCreated_at(LocalDateTime.parse(createdAtStr));
         }
 
         return p;
