@@ -3,7 +3,6 @@ package tr.cabro.servicio.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.Drawer;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import raven.modal.utils.SystemForm;
@@ -207,10 +206,9 @@ public class FormServices extends Form {
                     ServiceListTableModel tableModel = (ServiceListTableModel) table.getModel();
 
                     Service selected = tableModel.getService(modelRow);
-                    FormCreateService form = new FormCreateService();
+                    FormService form = new FormService();
                     form.setService(selected);
                     FormManager.showForm(form);
-                    Drawer.setSelectedItemClass(form.getClass());
                 }
             }
         });

@@ -57,6 +57,7 @@ public class DatabaseManager {
             switch (DatabaseConfig.getDbType()) {
                 case SQLite:
                     String dbPath = Servicio.getInstance().getDataFolder().getAbsolutePath() + "/database/database.db";
+                    DatabaseManager.getConnection().close();
                     DatabaseConfig.close();
                     Files.copy(backupFile.toPath(), new File(dbPath).toPath(), StandardCopyOption.REPLACE_EXISTING);
                     DatabaseConfig.init(DatabaseConfig.getDbType());

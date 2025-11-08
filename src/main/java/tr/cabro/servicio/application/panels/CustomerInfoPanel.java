@@ -4,7 +4,7 @@ import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.CustomerServiceRecordTableModel;
-import tr.cabro.servicio.forms.FormCreateService;
+import tr.cabro.servicio.forms.FormService;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.RepairService;
@@ -32,7 +32,7 @@ public class CustomerInfoPanel extends JPanel {
                     Service service = model.getService(row);
 
                     // Yeni bir pencere aç, örneğin:
-                    FormCreateService form = new FormCreateService();
+                    FormService form = new FormService();
                     form.setService(service);
                     FormManager.showForm(form);
                 }

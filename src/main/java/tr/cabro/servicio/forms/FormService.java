@@ -27,12 +27,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @SystemForm(name = "Yeni Servis", description = "Yeni bir servis kaydı açmak için kullanılabilir")
-public class FormCreateService extends Form {
+public class FormService extends Form {
 
     private final ServiceContext context;
     private final RepairService repairService;
 
-    public FormCreateService() {
+    public FormService() {
         context = new ServiceContext();
         repairService = ServiceManager.getRepairService();
 
@@ -258,7 +258,7 @@ public class FormCreateService extends Form {
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 List<tr.cabro.servicio.model.Process> selected = panel.getSelectedProcesses();
                                 if (selected == null || selected.isEmpty()) {
-                                    Toast.show(FormCreateService.this, Toast.Type.WARNING, "Lütfen en az bir işlem seçin!");
+                                    Toast.show(FormService.this, Toast.Type.WARNING, "Lütfen en az bir işlem seçin!");
                                     return;
                                 }
 
@@ -267,7 +267,7 @@ public class FormCreateService extends Form {
                                     fault_process_info.appendAction(p.getName());
                                 }
 
-                                Toast.show(FormCreateService.this, Toast.Type.SUCCESS, selected.size() + " işlem eklendi!");
+                                Toast.show(FormService.this, Toast.Type.SUCCESS, selected.size() + " işlem eklendi!");
                             }
 
                         }),

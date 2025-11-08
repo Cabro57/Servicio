@@ -125,7 +125,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 new Item("Ana Sayfa", "dashboard.svg", FormDashboard.class),
                 new Item("Servisler", "forms.svg")
                         .subMenu("Servis Kayıtları", FormServices.class)
-                        .subMenu("Servis Oluştur", FormCreateService.class),
+                        .subMenu("Servis Oluştur", FormService.class),
                 new Item("Müşteriler", "components.svg", FormCustomers.class),
                 new Item("Parçalar", "pack.svg", FormParts.class),
                 new Item("Tedarikçiler", "pack.svg", FormSuppliers.class),
