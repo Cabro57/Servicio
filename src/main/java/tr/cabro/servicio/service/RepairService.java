@@ -1,8 +1,5 @@
 package tr.cabro.servicio.service;
 
-import org.jfree.data.time.TimeTableXYDataset;
-import org.jfree.data.xy.TableXYDataset;
-import org.jfree.data.time.Month;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.dao.ServiceDao;
@@ -220,45 +217,5 @@ public class RepairService {
             e.printStackTrace();
         }
         return report;
-    }
-
-    public TableXYDataset getTimeSeriesDataset() {
-        TimeTableXYDataset dataset = new TimeTableXYDataset();
-        String seriesIncome = "Gelir";
-        String seriesExpense = "Gider";
-
-        String sql =
-                "SELECT ay, toplam_gelir, toplam_gider " +
-                        "FROM (" +
-                        "  SELECT strftime('%Y-%m', created_at) AS ay, SUM(labor_cost) AS toplam_gelir, 0 AS toplam_gider " +
-                        "  FROM services GROUP BY strftime('%Y-%m', created_at) " +
-                        "  UNION ALL " +
-                        "  SELECT strftime('%Y-%m', created_at) AS ay, " +
-                        "         SUM(sale_price * amount) AS toplam_gelir, " +
-                        "         SUM(purchase_price * amount) AS toplam_gider " +
-                        "  FROM added_part GROUP BY strftime('%Y-%m', created_at)" +
-                        ") GROUP BY ay ORDER BY ay;";
-
-        try (Connection conn = DatabaseManager.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                String[] parts = rs.getString("ay").split("-");
-                int year = Integer.parseInt(parts[0]);
-                int month = Integer.parseInt(parts[1]);
-
-                double income = rs.getDouble("toplam_gelir");
-                double expense = rs.getDouble("toplam_gider");
-
-                dataset.add(new Month(month, year), income, seriesIncome);
-                dataset.add(new Month(month, year), expense, seriesExpense);
-            }
-
-        } catch (SQLException e) {
-            throw new RuntimeException("Zaman serisi verisi okunamadı: " + e.getMessage(), e);
-        }
-
-        return dataset;
     }
 }
