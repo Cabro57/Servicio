@@ -9,7 +9,7 @@ public class DatabaseInitializer {
     public static void migrate() {
         try {
             Servicio.getLogger().info("Migration öncesi yedek alınıyor...");
-            DatabaseManager.backup();
+            DatabaseManager.backup("pre-migrate-backup");
 
             Flyway flyway = Flyway.configure()
                     .dataSource(DatabaseConfig.getDataSource())
