@@ -19,13 +19,17 @@ public class DatabaseManager {
     }
 
     /** Fiziksel backup alma */
-    public static void backup() {
+    public static void backup(String fileName) {
         try {
             String backupDir = Servicio.getSettings().getBackup().getPath();
             Files.createDirectories(new File(backupDir).toPath());
 
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss"));
-            String backupFile = backupDir + File.separator + timestamp;
+            // Dosya adı boşsa timestamp oluştur
+            if (fileName == null || fileName.trim().isEmpty()) {
+                fileName = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss"));
+            }
+
+            String backupFile = backupDir + File.separator + fileName;
 
             switch (DatabaseConfig.getDbType()) {
                 case SQLite:
@@ -45,6 +49,10 @@ public class DatabaseManager {
         } catch (Exception e) {
             Servicio.getLogger().error("Backup hatası: {}", e.getMessage());
         }
+    }
+
+    public static void backup() {
+        backup(null);
     }
 
     /** Backup geri yükleme */
