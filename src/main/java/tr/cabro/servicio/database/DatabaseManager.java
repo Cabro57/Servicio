@@ -34,6 +34,10 @@ public class DatabaseManager {
             switch (DatabaseConfig.getDbType()) {
                 case SQLite:
                     backupFile += ".db";
+                    File targetFile = new File(backupFile);
+                    if (targetFile.exists()) {
+                        Files.delete(targetFile.toPath());
+                    }
                     try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
                         stmt.execute("VACUUM INTO '" + backupFile.replace("\\", "/") + "'");
                     }

@@ -35,11 +35,11 @@ public class MainUI extends JFrame {
         addWindowListener(new WindowClosingEvent());
     }
 
-    public void closeApplication() {
+    public boolean closeApplication() {
 
         if (Servicio.getSettings().isConfirmExitDialog()) {
-            System.exit(0);
-            return;
+            //System.exit(0);
+            return true;
         }
 
         JPanel panel = new JPanel(new MigLayout("wrap,insets 0"));
@@ -70,8 +70,10 @@ public class MainUI extends JFrame {
                 Servicio.getSettings().save();
             }
 
-            System.exit(1);
+            //System.exit(1);
+            return true;
         }
+        return false;
     }
 
 }

@@ -122,17 +122,22 @@ public final class Servicio {
     }
 
     public void disable() {
+        if (!frame.closeApplication()) {
+            return;
+        }
+
         try {
             settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
             settings.save();
             deviceSettings.save();
             inactivityListener.stop();
 
-            frame.closeApplication();
             runBackupIfNeeded(BackupMode.ON_EXIT, BackupMode.ON_START_AND_EXIT);
 
             BackupScheduler.stop();
             DatabaseConfig.close();
+
+            System.exit(0);
         } catch (Exception e) {
             logger.error("Kapatma sırasında hata", e);
         }
