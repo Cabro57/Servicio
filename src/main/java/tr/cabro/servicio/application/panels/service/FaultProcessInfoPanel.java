@@ -62,7 +62,7 @@ public class FaultProcessInfoPanel extends ServicePanel {
         add(customer_complaint_label);
         add(reported_fault_field, "growx, span 2");
         add(detected_fault_label);
-        add(detected_fault_field, "growx, span 2");
+        add(detected_fault_field, "growx 0, span 2");
         add(action_taken_label);
         add(action_taken_field, "growx");
         add(action_taken_button, "align right");

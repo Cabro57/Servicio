@@ -38,7 +38,6 @@ public class MainUI extends JFrame {
     public boolean closeApplication() {
 
         if (Servicio.getSettings().isConfirmExitDialog()) {
-            //System.exit(0);
             return true;
         }
 
@@ -70,7 +69,6 @@ public class MainUI extends JFrame {
                 Servicio.getSettings().save();
             }
 
-            //System.exit(1);
             return true;
         }
         return false;

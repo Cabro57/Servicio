@@ -6,7 +6,7 @@
 
     <groupId>tr.cabro.servicio</groupId>
     <artifactId>Servicio</artifactId>
-    <version>2.0-beta.5</version>
+    <version>2.0-beta.6</version>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

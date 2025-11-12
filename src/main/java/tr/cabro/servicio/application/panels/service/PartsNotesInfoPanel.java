@@ -99,23 +99,6 @@ public class PartsNotesInfoPanel extends ServicePanel {
         parts_table.getColumnModel().getColumn(1).setPreferredWidth(60);
         parts_table.getColumnModel().getColumn(3).setMaxWidth(110);
         parts_table.getColumnModel().getColumn(3).setMinWidth(110);
-
-//        parts_table.getColumnModel().addColumnModelListener(new javax.swing.event.TableColumnModelListener() {
-//            @Override
-//            public void columnMarginChanged(javax.swing.event.ChangeEvent e) {
-//                for (int i = 0; i < parts_table.getColumnCount(); i++) {
-//                    int width = parts_table.getColumnModel().getColumn(i).getWidth();
-//                    System.out.println("Column " + i + " width: " + width);
-//                }
-//            }
-//
-//            @Override public void columnAdded(javax.swing.event.TableColumnModelEvent e) {}
-//            @Override public void columnRemoved(javax.swing.event.TableColumnModelEvent e) {}
-//            @Override public void columnMoved(javax.swing.event.TableColumnModelEvent e) {}
-//            @Override public void columnSelectionChanged(javax.swing.event.ListSelectionEvent e) {}
-//        });
-
-
     }
 
     private void newPartCmd() {

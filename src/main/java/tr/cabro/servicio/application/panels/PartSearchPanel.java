@@ -224,16 +224,6 @@ public class PartSearchPanel extends JPanel {
         // Tablo alanı
         productTable = new JTable();
         add(new JScrollPane(productTable), "grow, push");
-
-//        // Alt panel: butonlar
-//        JPanel bottomPanel = new JPanel(new MigLayout("insets 0, gap 10", "[grow][][100!]", "[]"));
-//        cancelButton = new JButton("İptal");
-//        addButton = new JButton("Seçilenleri Ekle");
-//
-//        bottomPanel.add(new JLabel(), "growx"); // boşluk (spacer)
-//        bottomPanel.add(cancelButton, "w 100!");
-//        bottomPanel.add(addButton, "w 150!");
-//        add(bottomPanel, "growx");
     }
 
     private JButton allPartsButton;
@@ -242,6 +232,4 @@ public class PartSearchPanel extends JPanel {
     private JComboBox<String> deviceTypeCombo;
     private JTextField searchField;
     private JTable productTable;
-    private JButton addButton;
-    private JButton cancelButton;
 }

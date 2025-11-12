@@ -50,11 +50,7 @@ public class SearchCustomerTableModel extends AbstractTableModel {
 
     @Override
     public Class<?> getColumnClass(int columnIndex) {
-        switch (columnIndex) {
-            case 0: return String.class;
-            case 1: return String.class;
-            default: return String.class;
-        }
+        return String.class;
     }
 
     public Customer getCustomer(int rowIndex) {

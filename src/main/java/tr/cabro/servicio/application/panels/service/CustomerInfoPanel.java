@@ -5,8 +5,13 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.DatePicker;
 import raven.datetime.TimePicker;
+import raven.modal.ModalDialog;
+import raven.modal.Toast;
+import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.component.SearchField;
+import tr.cabro.servicio.application.panels.SearchCustomerPanel;
 import tr.cabro.servicio.application.panels.ServicePanel;
+import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
@@ -23,8 +28,13 @@ public class CustomerInfoPanel extends ServicePanel {
 
     public Customer selectedCustomer;
 
+    private final CustomerService service;
+
     public CustomerInfoPanel(ServiceContext context) {
         super(context);
+
+        service = ServiceManager.getCustomerService();
+
         init();
     }
 
@@ -34,6 +44,60 @@ public class CustomerInfoPanel extends ServicePanel {
         customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_CLEAR_CALLBACK, (Runnable) () -> {
             if (selectedCustomer != null) selectedCustomer = null;
             customer_field.setText("");
+        });
+
+        customer_field.addActionListener(e -> {
+            final String id = "CustomerSelect";
+            SearchCustomerPanel panel = new SearchCustomerPanel();
+
+            ModalDialog.showModal(this, new SimpleModalBorder(
+                            panel, "Parça Formu", null,
+                            (controller, action) -> {
+                                if (action == SimpleModalBorder.OPENED) {
+                                    panel.setOnCustomerSelected(customer -> {
+                                        setCustomer(customer);
+                                        ModalDialog.closeModal("CustomerSelect");
+                                    });
+                                }
+                            })
+                    , id);
+        });
+
+        customer_button.addActionListener(e -> {
+            final String id = "CustomerNew";
+            CustomerEditPanel panel = new CustomerEditPanel();
+
+            SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                    new SimpleModalBorder.Option("Tamam", 0),
+                    new SimpleModalBorder.Option("İptal", 2)
+            };
+
+            ModalDialog.showModal(this, new SimpleModalBorder(
+                            panel, "Müşteri Formu", options,
+                            (controller, action) -> {
+                                if (action == SimpleModalBorder.OPENED) {
+                                    panel.clearForm();
+
+                                } else if (action == SimpleModalBorder.OK_OPTION) {
+                                    Customer customer = panel.getDataIfValid();
+                                    if (customer == null) {
+                                        controller.consume();
+                                        return;
+                                    }
+
+                                    customer.setCreated_at(LocalDateTime.now());
+                                    boolean added = service.save(customer, false);
+
+                                    if (added) {
+                                        Toast.show(this, Toast.Type.SUCCESS, customer.getName() + " başarıyla eklendi.");
+                                    } else {
+                                        Toast.show(this, Toast.Type.WARNING, customer.getName() + " zaten mevcut.");
+                                    }
+
+                                    setCustomer(customer);
+                                }
+                            })
+                    , id);
         });
 
         recordDatePicker = new DatePicker();
@@ -49,7 +113,6 @@ public class CustomerInfoPanel extends ServicePanel {
     }
 
     public void setCustomer(int serviceId) {
-        CustomerService service = ServiceManager.getCustomerService();
         Optional<Customer> customer = service.get(serviceId);
 
         customer.ifPresent(this::setCustomer);
