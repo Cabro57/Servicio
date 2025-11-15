@@ -38,6 +38,6 @@ public class AllForms {
     }
 
     public static void formInit(Form form) {
-        SwingUtilities.invokeLater(() -> form.formInit());
+        SwingUtilities.invokeLater(form::formInit);
     }
 }

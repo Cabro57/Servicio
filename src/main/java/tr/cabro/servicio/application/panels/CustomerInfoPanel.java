@@ -32,8 +32,7 @@ public class CustomerInfoPanel extends JPanel {
                     Service service = model.getService(row);
 
                     // Yeni bir pencere aç, örneğin:
-                    FormService form = new FormService();
-                    form.setService(service);
+                    FormService form = new FormService(service);
                     FormManager.showForm(form);
                 }
             }

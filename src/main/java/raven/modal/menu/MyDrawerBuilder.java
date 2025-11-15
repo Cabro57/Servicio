@@ -7,11 +7,9 @@ import raven.extras.AvatarIcon;
 import raven.modal.drawer.DrawerPanel;
 import raven.modal.drawer.item.Item;
 import raven.modal.drawer.item.MenuItem;
-import raven.modal.drawer.menu.MenuAction;
-import raven.modal.drawer.menu.MenuEvent;
 import raven.modal.drawer.menu.MenuOption;
 import raven.modal.drawer.menu.MenuStyle;
-import raven.modal.drawer.renderer.DrawerStraightDotLineStyle;
+import raven.modal.drawer.renderer.DrawerNoneLineStyle;
 import raven.modal.drawer.simple.SimpleDrawerBuilder;
 import raven.modal.drawer.simple.footer.LightDarkButtonFooter;
 import raven.modal.drawer.simple.footer.SimpleFooterData;
@@ -27,7 +25,6 @@ import tr.cabro.servicio.forms.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.Arrays;
 
 public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
@@ -121,7 +118,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         // create simple menu option
         MenuOption simpleMenuOption = new MenuOption();
 
-        MenuItem items[] = new MenuItem[]{
+        MenuItem[] items = new MenuItem[]{
                 new Item("Ana Sayfa", "dashboard.svg", FormDashboard.class),
                 new Item("Servisler", "forms.svg")
                         .subMenu("Servis Kayıtları", FormServices.class)
@@ -141,8 +138,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 boolean isTopLevel = index.length == 1;
                 if (isTopLevel) {
                     // adjust item menu at the top level because it's contain icon
-                    menu.putClientProperty(FlatClientProperties.STYLE, "" +
-                            "margin:-1,0,-1,0;");
+                    menu.putClientProperty(FlatClientProperties.STYLE, "margin:-1,0,-1,0;");
                 }
             }
 
@@ -152,31 +148,28 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
             }
         });
 
-        simpleMenuOption.getMenuStyle().setDrawerLineStyleRenderer(new DrawerStraightDotLineStyle());
+        simpleMenuOption.getMenuStyle().setDrawerLineStyleRenderer(new DrawerNoneLineStyle());
         simpleMenuOption.setMenuValidation(new MyMenuValidation());
 
-        simpleMenuOption.addMenuEvent(new MenuEvent() {
-            @Override
-            public void selected(MenuAction action, int[] index) {
-                System.out.println("Drawer menu selected " + Arrays.toString(index));
-                Class<?> itemClass = action.getItem().getItemClass();
-                int i = index[0];
-                if (i == 6) {
-                    action.consume();
-                    FormManager.showAbout();
-                    return;
-                } else if (i == 7) {
-                    action.consume();
-                    FormManager.logout();
-                    return;
-                }
-                if (itemClass == null || !Form.class.isAssignableFrom(itemClass)) {
-                    action.consume();
-                    return;
-                }
-                Class<? extends Form> formClass = (Class<? extends Form>) itemClass;
-                FormManager.showForm(AllForms.getForm(formClass));
+        simpleMenuOption.addMenuEvent((action, index) -> {
+//                System.out.println("Drawer menu selected " + Arrays.toString(index));
+            Class<?> itemClass = action.getItem().getItemClass();
+            int i = index[0];
+            if (i == 6) {
+                action.consume();
+                FormManager.showAbout();
+                return;
+            } else if (i == 7) {
+                action.consume();
+                FormManager.logout();
+                return;
             }
+            if (itemClass == null || !Form.class.isAssignableFrom(itemClass)) {
+                action.consume();
+                return;
+            }
+            Class<? extends Form> formClass = (Class<? extends Form>) itemClass;
+            FormManager.showForm(AllForms.getForm(formClass));
         });
 
         simpleMenuOption.setMenus(items)
@@ -212,8 +205,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
     }
 
     private static String getDrawerBackgroundStyle() {
-        return "" +
-                "[light]background:tint($Panel.background,20%);" +
+        return "[light]background:tint($Panel.background,20%);" +
                 "[dark]background:tint($Panel.background,5%);";
     }
 }

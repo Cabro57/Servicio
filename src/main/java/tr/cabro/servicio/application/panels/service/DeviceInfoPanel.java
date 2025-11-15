@@ -120,7 +120,7 @@ public class DeviceInfoPanel extends ServicePanel {
         add(password_label);
         add(password_field, "sg combos");
         add(accessory_label);
-        add(accessory_field, "sg combos, growx 0");
+        add(accessory_field, "sg combos");
     }
 
     JLabel device_type_label;

@@ -23,6 +23,9 @@ import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
 
 import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,12 +35,20 @@ public class FormService extends Form {
     private final ServiceContext context;
     private final RepairService repairService;
 
-    public FormService() {
+    public FormService(Service service) {
         context = new ServiceContext();
         repairService = ServiceManager.getRepairService();
 
         init();
+        setService(service);
     }
+
+    public FormService() {
+        context = new ServiceContext();
+        repairService = ServiceManager.getRepairService();
+        init();
+    }
+
 
     private void init() {
         initComponent();
@@ -80,7 +91,6 @@ public class FormService extends Form {
         deliver_button.addActionListener(e -> deliverService());
 
         fault_process_info.action_taken_button.addActionListener(e -> onActionTaken());
-
     }
 
     public void setService(@NonNull Service service) {
@@ -154,29 +164,29 @@ public class FormService extends Form {
                 "Bu servisi silmek istediğinize emin misiniz?\n" +
                         "Servise bağlı parçalar da silinecek. Bu işlem geri alınamaz!", "Servis Silme Onayı",
                 SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-                    if (action == SimpleModalBorder.YES_OPTION) {
-                        try {
-                            boolean partsRemoved = repairService.removeParts(service.getId());
-                            boolean deleted = repairService.delete(service.getId());
+            if (action == SimpleModalBorder.YES_OPTION) {
+                try {
+                    boolean partsRemoved = repairService.removeParts(service.getId());
+                    boolean deleted = repairService.delete(service.getId());
 
-                            if (partsRemoved && deleted) {
-                                Toast.show(this, Toast.Type.SUCCESS, "Servis ve bağlı parçalar başarıyla silindi.");
-                            } else if (!partsRemoved && deleted) {
-                                Toast.show(this, Toast.Type.WARNING, "Servis silindi, fakat bazı parçalar veya stok işlemleri hatalı olabilir!");
-                            } else {
-                                Toast.show(this, Toast.Type.ERROR, "Servis silinemedi!");
-                            }
-
-                            FormServices form = new FormServices();
-                            form.refreshTable();
-                            Drawer.setSelectedItemClass(form.getClass());
-                            FormManager.showForm(form);
-
-                        } catch (Exception ex) {
-                            Toast.show(this, Toast.Type.ERROR, "Silme sırasında hata oluştu: " + ex.getMessage());
-                        }
+                    if (partsRemoved && deleted) {
+                        Toast.show(this, Toast.Type.SUCCESS, "Servis ve bağlı parçalar başarıyla silindi.");
+                    } else if (!partsRemoved && deleted) {
+                        Toast.show(this, Toast.Type.WARNING, "Servis silindi, fakat bazı parçalar veya stok işlemleri hatalı olabilir!");
+                    } else {
+                        Toast.show(this, Toast.Type.ERROR, "Servis silinemedi!");
                     }
-                }));
+
+                    FormServices form = new FormServices();
+                    form.refreshTable();
+                    Drawer.setSelectedItemClass(form.getClass());
+                    FormManager.showForm(form);
+
+                } catch (Exception ex) {
+                    Toast.show(this, Toast.Type.ERROR, "Silme sırasında hata oluştu: " + ex.getMessage());
+                }
+            }
+        }));
     }
 
     private void deliverService() {
@@ -381,10 +391,24 @@ public class FormService extends Form {
 
         //CONTENT
         JPanel content = new JPanel(
-                new MigLayout("wrap, fill", "fill")
+                new MigLayout("wrap, fillx", "[grow, fill]", "")
         );
+        content.setPreferredSize(null);
+
         JScrollPane scrollPane = new JScrollPane(content);
         scrollPane.getVerticalScrollBar().setUnitIncrement(24);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getViewport().addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                Dimension pref = content.getPreferredSize();
+                int vw = scrollPane.getViewport().getWidth();
+                if (pref.width != vw) {
+                    content.setPreferredSize(new Dimension(vw, pref.height));
+                    content.revalidate();
+                }
+            }
+        });
 
         customer_info = new CustomerInfoPanel(context);
         device_info = new DeviceInfoPanel(context);
@@ -394,13 +418,13 @@ public class FormService extends Form {
         price_info = new PriceInfoPanel(context);
         status_info = new StatusInfoPanel(context);
 
-        content.add(customer_info);
-        content.add(device_info);
-        content.add(price_info);
-        content.add(warranty_info);
-        content.add(fault_process_info);
-        content.add(part_notes_info);
-        content.add(status_info);
+        content.add(customer_info, "growx, tag help2");
+        content.add(device_info, "growx");
+        content.add(price_info, "growx");
+        content.add(warranty_info, "growx");
+        content.add(fault_process_info, "growx");
+        content.add(part_notes_info, "growx");
+        content.add(status_info, "growx");
 
         add(scrollPane);
 
@@ -441,3 +465,4 @@ public class FormService extends Form {
     private JButton delete_button;
     private JButton whatsapp_button;
 }
+

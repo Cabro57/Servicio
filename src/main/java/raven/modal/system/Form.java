@@ -3,7 +3,6 @@ package raven.modal.system;
 import javax.swing.*;
 
 public class Form extends JPanel {
-
     private LookAndFeel oldTheme = UIManager.getLookAndFeel();
 
     public Form() {

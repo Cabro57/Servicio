@@ -3,6 +3,7 @@ package tr.cabro.servicio.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
+import raven.modal.component.ToolBarSelection;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import raven.modal.utils.SystemForm;
@@ -12,6 +13,7 @@ import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
 import tr.cabro.servicio.application.util.SVGIconUIColor;
 import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.ServiceStatus;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 
@@ -142,8 +144,7 @@ public class FormServices extends Form {
                     ServiceListTableModel tableModel = (ServiceListTableModel) table.getModel();
 
                     Service selected = tableModel.getService(modelRow);
-                    FormService form = new FormService();
-                    form.setService(selected);
+                    FormService form = new FormService(selected);
                     FormManager.showForm(form);
                 }
             }
@@ -158,8 +159,6 @@ public class FormServices extends Form {
         List<RowSorter.SortKey> sortKeys = new ArrayList<>();
         sortKeys.add(new RowSorter.SortKey(7, SortOrder.DESCENDING));
         sorter.setSortKeys(sortKeys);
-
-
 
         // Durum filtreleri
         Map<JButton, String> statusFilters = new HashMap<>();
@@ -245,6 +244,10 @@ public class FormServices extends Form {
         toolBar.add(returnButton);
         toolBar.add(partWaitButton);
 
+        ToolBarSelection<ServiceStatus> toolBarSelection = new ToolBarSelection<>(ServiceStatus.values(), serviceStatus -> {
+            applyFilters(serviceStatus.getDisplayName(), searchField.getText());
+        });
+
         searchField = new JTextField();
 
         table = new JTable();
@@ -256,7 +259,7 @@ public class FormServices extends Form {
                         + "thumbInsets:3,3,3,3;"
                         + "background:$Table.background;");
 
-        tablePanel.add(toolBar, "span, growx");
+        tablePanel.add(toolBarSelection, "span, growx");
         tablePanel.add(searchField, "growx, span");
         tablePanel.add(tableScroll, "span, grow");
 
