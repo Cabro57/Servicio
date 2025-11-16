@@ -1,6 +1,8 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
@@ -16,8 +18,8 @@ public class ServiceListTableModel extends AbstractTableModel {
 
     private final String[] columnNames = { "#", "Müşteri", "Cihaz Türü", "Marka", "Model", "Seri No./IMEI", "Ücret", "Kayıt Tarih", "Teslim Tarihi", "Durum" };
 
-    @Getter
-    private final List<Service> services;
+    @Getter @Setter
+    private List<Service> services;
 
     public ServiceListTableModel(List<Service> services) {
         this.services = (services != null) ? services : new ArrayList<>();

@@ -10,7 +10,6 @@ import raven.modal.component.SimpleModalBorder;
 import raven.modal.simple.SimpleMessageModal;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
-import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.context.ServiceContext;
 import tr.cabro.servicio.application.listeners.ServiceEditListener;
@@ -29,7 +28,6 @@ import java.awt.event.ComponentEvent;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@SystemForm(name = "Yeni Servis", description = "Yeni bir servis kaydı açmak için kullanılabilir")
 public class FormService extends Form {
 
     private final ServiceContext context;

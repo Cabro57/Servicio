@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.tablemodal;
 
+import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.RepairService;
@@ -15,6 +16,10 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
     private final List<Service> services;
 
     private final RepairService repairService = ServiceManager.getRepairService();
+
+    public CustomerServiceRecordTableModel(Customer customer) {
+        this.services = repairService.getAll(customer.getId());
+    }
 
     public CustomerServiceRecordTableModel(List<Service> services) {
         this.services = services;
