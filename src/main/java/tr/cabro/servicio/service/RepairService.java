@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -81,6 +82,11 @@ public class RepairService {
 
         if (statusStr == null || statusStr.isEmpty() || statusStr.equalsIgnoreCase("ALL")) {
             return services;
+        } else if (statusStr.equalsIgnoreCase("OPEN")) {
+            return services.stream()
+                    .filter(service -> service.getService_status() != ServiceStatus.DELIVERED
+                            && service.getService_status() != ServiceStatus.RETURN)
+                    .collect(Collectors.toList());
         }
 
         ServiceStatus status;
@@ -218,4 +224,50 @@ public class RepairService {
         }
         return report;
     }
+
+    public boolean setDelivered(int serviceId) {
+        try {
+            Optional<Service> opt = serviceDao.getByKey(serviceId);
+            if (!opt.isPresent()) {
+                Servicio.getLogger().warn("SERVICE NOT FOUND [SET DELIVERED] id={}", serviceId);
+                return false;
+            }
+
+            Service service = opt.get();
+            service.setService_status(ServiceStatus.DELIVERED);
+            service.setDelivery_at(LocalDateTime.now());
+
+            boolean updated = serviceDao.update(service);
+
+            if (!updated) {
+                Servicio.getLogger().error("SERVICE UPDATE FAILED [SET DELIVERED] id={}", serviceId);
+                return false;
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            Servicio.getLogger().error("SERVICE ERROR [SET DELIVERED] {}", String.valueOf(e));
+            return false;
+        }
+    }
+
+    public List<Service> search(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAll();
+        }
+
+        // Aranacak alanlar (Service tablosundaki sütun isimleri varsayılmıştır)
+        // Bu alanlar 'Service' tablosunda aranacaktır.
+        String[] searchableColumns = {"device_serial", "device_brand", "device_model"};
+
+        try {
+            // NOT: ServiceDao sınıfında bu metotun (search) implementasyonu gereklidir.
+            return serviceDao.search(searchTerm.trim(), searchableColumns);
+        } catch (Exception ex) {
+            Servicio.getLogger().error("SERVICE ERROR [SEARCH]: {}", ex.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
 }

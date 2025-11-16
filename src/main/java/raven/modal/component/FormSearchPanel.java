@@ -12,6 +12,15 @@ import raven.modal.system.FormSearch;
 import raven.modal.utils.DemoPreferences;
 import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.application.util.SVGIconUIColor;
+import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.service.CustomerService;
+import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.searchableresult.CustomerSearchResult;
+import tr.cabro.servicio.util.searchableresult.ISearchableResult;
+import tr.cabro.servicio.util.searchableresult.ServiceSearchResult;
+import tr.cabro.servicio.util.searchableresult.StaticFormResult;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -24,10 +33,8 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 public class FormSearchPanel extends JPanel {
 
@@ -35,6 +42,9 @@ public class FormSearchPanel extends JPanel {
     private final int SEARCH_MAX_LENGTH = 50;
     private final Map<SystemForm, Class<? extends Form>> formsMap;
     private final List<Item> listItems = new ArrayList<>();
+
+    private javax.swing.Timer searchDebounceTimer;
+    private SwingWorker<Void, ISearchableResult> activeSearchWorker;
 
     public FormSearchPanel(Map<SystemForm, Class<? extends Form>> formsMap) {
         this.formsMap = formsMap;
@@ -81,6 +91,13 @@ public class FormSearchPanel extends JPanel {
                 }
             }
         });
+
+        searchDebounceTimer = new javax.swing.Timer(300, e -> {
+            // Kullanıcı yazmayı bıraktığında asıl aramayı başlat
+            performSearch(textSearch.getText().trim().toLowerCase());
+        });
+        searchDebounceTimer.setRepeats(false);
+
         textSearch.getDocument().addDocumentListener(new DocumentListener() {
             private String text;
 
@@ -100,42 +117,7 @@ public class FormSearchPanel extends JPanel {
             }
 
             private void search() {
-                String st = textSearch.getText().trim().toLowerCase(); // Convert search term to lowercase
-                if (!st.equals(text)) {
-                    text = st;
-                    panelResult.removeAll();
-                    listItems.clear();
-                    if (st.isEmpty()) {
-                        showRecentResult();
-                    } else {
-                        for (Map.Entry<SystemForm, Class<? extends Form>> entry : formsMap.entrySet()) {
-                            SystemForm s = entry.getKey();
-                            // Compare both name and description with lower cased search term
-                            if (s.name().toLowerCase().contains(st)
-                                    || s.description().toLowerCase().contains(st)
-                                    || checkTags(s.tags(), st)) {
-                                if (MyMenuValidation.validation(entry.getValue())) {
-                                    Item item = new Item(s, entry.getValue(), false, false);
-                                    checkComponentOrientation(item);
-                                    panelResult.add(item);
-                                    listItems.add(item);
-                                }
-                            }
-                        }
-                        if (!listItems.isEmpty()) {
-                            setSelected(0);
-                        } else {
-                            panelResult.add(createNoResult(st));
-                        }
-                        panelResult.repaint();
-                        updateLayout();
-                    }
-                }
-            }
-
-            private boolean checkTags(String[] tags, String st) {
-                if (tags.length == 0) return false;
-                return Arrays.stream(tags).anyMatch(s -> s.contains(st));
+                searchDebounceTimer.restart();
             }
         });
         textSearch.addKeyListener(new KeyAdapter() {
@@ -155,6 +137,102 @@ public class FormSearchPanel extends JPanel {
             }
         });
     }
+
+    private void performSearch(String st) {
+        // Önceki aramayı iptal et
+        if (activeSearchWorker != null && !activeSearchWorker.isDone()) {
+            activeSearchWorker.cancel(true);
+        }
+
+        panelResult.removeAll();
+        listItems.clear(); // Artık 'Item' değil, 'ISearchableResult' tutan Item'ları tutmalı
+
+        if (st.isEmpty()) {
+            showRecentResult(); // Sonuçları göster
+            updateLayout();
+            return;
+        }
+
+        // 4. Asenkron arama için SwingWorker
+        activeSearchWorker = new SwingWorker<Void, ISearchableResult>() {
+
+            @Override
+            protected Void doInBackground() throws Exception {
+                // 1. STATİK FORMLARI ARA (Lokal, Hızlı)
+                for (Map.Entry<SystemForm, Class<? extends Form>> entry : formsMap.entrySet()) {
+                    if (isCancelled()) return null;
+                    SystemForm s = entry.getKey();
+                    if (s.name().toLowerCase().contains(st)
+                        || s.description().toLowerCase().contains(st)
+                        || checkTags(s.tags(), st)) {
+                        if (MyMenuValidation.validation(entry.getValue())) {
+                            publish(new StaticFormResult(s, entry.getValue()));
+                        }
+                    }
+                }
+
+                RepairService repairService = ServiceManager.getRepairService();
+                List<Service> services = repairService.search(st);
+                for (Service service : services) {
+                    if (isCancelled()) return null;
+                    publish(new ServiceSearchResult(service));
+                }
+
+                CustomerService customerService = ServiceManager.getCustomerService();
+                List<Customer> customers = customerService.search(st);
+                for (Customer customer : customers) {
+                    if (isCancelled()) return null;
+                    publish(new CustomerSearchResult(customer));
+                }
+
+                // 2. VERİTABANINI ARA (Yavaş, Asenkron)
+                // ÖNEMLİ: Kendi veritabanı servislerinizi burada çağırın
+                // MusteriRepository repo = new MusteriRepository();
+                // List<Musteri> musteriler = repo.searchByName(st);
+                // for (Musteri musteri : musteriler) {
+                //     if (isCancelled()) return null;
+                //     publish(new MusteriSearchResult(musteri));
+                // }
+
+                // ...Aynı şeyi Ürünler, Servisler vb. için yapabilirsiniz...
+
+                return null;
+            }
+
+            @Override
+            protected void process(List<ISearchableResult> chunks) {
+                // publish() ile gönderilen sonuçlar anlık olarak buraya düşer
+                for (ISearchableResult result : chunks) {
+                    // Item sınıfınızın 'ISearchableResult' alacak şekilde
+                    // güncellenmesi gerekiyor (Bakınız Adım 5)
+                    Item item = new Item(result, false, false);
+                    checkComponentOrientation(item);
+                    panelResult.add(item);
+                    listItems.add(item);
+                }
+                if (!listItems.isEmpty() && getSelectedIndex() == -1) {
+                    setSelected(0);
+                }
+                updateLayout();
+            }
+
+            @Override
+            protected void done() {
+                // Arama bittiğinde
+                if (listItems.isEmpty()) {
+                    panelResult.add(createNoResult(st));
+                }
+                updateLayout();
+            }
+        };
+        activeSearchWorker.execute(); // Aramayı başlat
+    }
+
+    private boolean checkTags(String[] tags, String st) {
+        if (tags.length == 0) return false;
+        return Arrays.stream(tags).anyMatch(s -> s.contains(st));
+    }
+
 
     private void updateLayout() {
         Container container = SwingUtilities.getAncestorOfClass(ModalContainer.class, FormSearchPanel.this);
@@ -249,15 +327,35 @@ public class FormSearchPanel extends JPanel {
         if (recentSearch == null) {
             return null;
         }
+
         List<Item> list = new ArrayList<>();
         for (String s : recentSearch) {
-            Class<? extends Form> classForm = getClassForm(s);
-            if (MyMenuValidation.validation(classForm)) {
-                Item item = createRecentItem(s, favorite);
-                if (item != null) {
-                    list.add(item);
+
+            String[] sp = s.split(":");
+
+            if (sp[0].equals("STATIC")) {
+                Class<? extends Form> classForm = getClassForm(sp[1]);
+                if (MyMenuValidation.validation(classForm)) {
+                    Item item = createRecentItem(sp[1], favorite);
+                    if (item != null) {
+                        list.add(item);
+                    }
                 }
+            } else if (sp[0].equals("SERVICE")) {
+                Service service = ServiceManager.getRepairService().get(Integer.parseInt(sp[1])).get();
+                ServiceSearchResult result = new ServiceSearchResult(service);
+                Item item = new Item(result, true, favorite);
+
+                list.add(item);
+            } else if (sp[0].equals("CUSTOMER")) {
+                Customer customer = ServiceManager.getCustomerService().get(Integer.parseInt(sp[1])).get();
+                CustomerSearchResult result = new CustomerSearchResult(customer);
+                Item item = new Item(result, true, favorite);
+
+                list.add(item);
             }
+
+
         }
         return list;
     }
@@ -274,7 +372,7 @@ public class FormSearchPanel extends JPanel {
     private Item createRecentItem(String name, boolean favorite) {
         for (Map.Entry<SystemForm, Class<? extends Form>> entry : formsMap.entrySet()) {
             if (entry.getKey().name().equals(name)) {
-                return new Item(entry.getKey(), entry.getValue(), true, favorite);
+                return new Item(new StaticFormResult(entry.getKey(), entry.getValue()), true, favorite);
             }
         }
         return null;
@@ -335,19 +433,18 @@ public class FormSearchPanel extends JPanel {
 
     private class Item extends JButton {
 
-        private final SystemForm data;
-        private final Class<? extends Form> form;
+        private final ISearchableResult data;
         private final boolean isRecent;
         private final boolean isFavorite;
         private Component itemSource;
 
-        public Item(SystemForm data, Class<? extends Form> form, boolean isRecent, boolean isFavorite) {
-            this.data = data;
-            this.form = form;
+        public Item(ISearchableResult resultData, boolean isRecent, boolean isFavorite) {
+            this.data = resultData;
             this.isRecent = isRecent;
             this.isFavorite = isFavorite;
             init();
         }
+
 
         private void init() {
             setFocusable(false);
@@ -360,10 +457,10 @@ public class FormSearchPanel extends JPanel {
                     "focusWidth:0;" +
                     "innerFocusWidth:0;" +
                     "[light]selectedBackground:lighten($Button.selectedBackground,9%)");
-            JLabel labelDescription = new JLabel(data.description());
+            JLabel labelDescription = new JLabel(data.getDescription());
             labelDescription.putClientProperty(FlatClientProperties.STYLE, "" +
                     "foreground:$Label.disabledForeground;");
-            add(new JLabel(data.name()), "cell 0 0");
+            add(new JLabel(data.getDisplayName()), "cell 0 0");
             add(labelDescription, "cell 0 1");
             if (!isRecent) {
                 add(new JLabel(new FlatMenuArrowIcon()), "cell 1 0,span 1 2");
@@ -392,11 +489,13 @@ public class FormSearchPanel extends JPanel {
         }
 
         protected void showForm() {
-            ModalDialog.closeModal(FormSearch.ID);
-            Drawer.setSelectedItemClass(form);
-            if (!isFavorite) {
-                DemoPreferences.addRecentSearch(data.name(), false);
-            }
+//            ModalDialog.closeModal(FormSearch.ID);
+//            Drawer.setSelectedItemClass(form);
+//            if (!isFavorite) {
+//                DemoPreferences.addRecentSearch(data.name(), false);
+//            }
+
+            data.executeAction();
         }
 
         protected Component createRecentOption() {
@@ -445,7 +544,7 @@ public class FormSearchPanel extends JPanel {
         }
 
         protected void removeRecent() {
-            DemoPreferences.removeRecentSearch(data.name(), isFavorite);
+            DemoPreferences.removeRecentSearch(data.getUniqueId(), isFavorite);
             panelResult.remove(this);
             listItems.remove(this);
             if (listItems.isEmpty()) {
@@ -464,11 +563,11 @@ public class FormSearchPanel extends JPanel {
         }
 
         protected void addFavorite() {
-            DemoPreferences.addRecentSearch(data.name(), true);
+            DemoPreferences.addRecentSearch(data.getUniqueId(), true);
             int[] index = getFirstFavoriteIndex();
             panelResult.remove(this);
             listItems.remove(this);
-            Item item = new Item(data, form, isRecent, true);
+            Item item = new Item(data, isRecent, true);
             checkComponentOrientation(item);
             if (index == null) {
                 panelResult.add(createLabel("Favori"));

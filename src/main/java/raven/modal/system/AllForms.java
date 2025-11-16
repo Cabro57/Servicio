@@ -40,4 +40,13 @@ public class AllForms {
     public static void formInit(Form form) {
         SwingUtilities.invokeLater(form::formInit);
     }
+
+    public static boolean isSingletonForm(Form form) {
+        if (form == null) {
+            return false;
+        }
+        // 'formsMap' (Map<Class, Form>) içindeki 'value' (nesneler)
+        // arasında bu formun olup olmadığına bakar.
+        return getInstance().formsMap.containsValue(form);
+    }
 }

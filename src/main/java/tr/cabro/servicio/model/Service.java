@@ -56,4 +56,15 @@ public class Service {
     public Service() {}
 
 
+    public Device getDevice() {
+        Device device = new Device();
+
+        device.setSerial(device_serial);
+        device.setModel(device_model);
+        device.setBrand(device_brand);
+        device.setType(device_type);
+
+        return device;
+    }
+
 }

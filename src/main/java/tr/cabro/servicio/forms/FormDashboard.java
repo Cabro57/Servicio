@@ -14,6 +14,10 @@ import raven.modal.component.chart.utils.ToolBarTimeSeriesChartRenderer;
 import raven.modal.component.dashboard.CardBox;
 import raven.modal.system.Form;
 import raven.modal.utils.SystemForm;
+import raven.swingpack.JPagination;
+import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
+import tr.cabro.servicio.component.PaginationTable;
+import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.reports.ServiceFinanceRecord;
 import tr.cabro.servicio.reports.ServiceFinanceReport;
 import tr.cabro.servicio.service.RepairService;
@@ -23,6 +27,8 @@ import java.awt.*;
 
 @SystemForm(name = "Ana Sayfa", description = "gösterge paneli formu bazı ayrıntıları görüntüler")
 public class FormDashboard extends Form {
+
+    private final int LIMIT = 10;
 
     public FormDashboard() {
         init();
@@ -34,7 +40,7 @@ public class FormDashboard extends Form {
         createPanelLayout();
         createCard();
         createChart();
-        createOtherChart();
+        createServiceTable();
     }
 
     @Override
@@ -98,6 +104,9 @@ public class FormDashboard extends Form {
         }
 
         timeSeriesChart.setDataset(dataset);
+
+        paginationTable.setData(repairService.getAll("OPEN"));
+        paginationTable.showData();
     }
 
     private void createTitle() {
@@ -156,8 +165,12 @@ public class FormDashboard extends Form {
         panelLayout.add(panel);
     }
 
-    private void createOtherChart() {
-        JPanel panel = new JPanel(new MigLayout("fillx,gap 14", "[fill,300::]", "[300]"));
+    private void createServiceTable() {
+        JPanel panel = new JPanel(new MigLayout("gap 14,wrap,fillx", "[fill]"));
+
+        paginationTable = new PaginationTable<>();
+
+        panel.add(paginationTable);
         panelLayout.add(panel);
     }
 
@@ -165,10 +178,13 @@ public class FormDashboard extends Form {
         return new FlatSVGIcon(icon, 0.4f).setColorFilter(new FlatSVGIcon.ColorFilter(color1 -> color));
     }
 
+
     private JPanel panelLayout;
     private CardBox cardBox;
 
     private TimeSeriesChart timeSeriesChart;
+
+    private PaginationTable<Service> paginationTable;
 
     private class DashboardLayout implements LayoutManager {
 

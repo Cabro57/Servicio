@@ -5,6 +5,7 @@ import tr.cabro.servicio.database.dao.CustomerDao;
 import tr.cabro.servicio.model.Customer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,6 +54,24 @@ public class CustomerService {
         } catch (Exception ex) {
             Servicio.getLogger().error("CUSTOMER ERROR [GET ALL]: {}", ex.getMessage());
             return new ArrayList<>();
+        }
+    }
+
+    public List<Customer> search(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAll();
+        }
+
+        // Aranacak alanlar (Service tablosundaki sütun isimleri varsayılmıştır)
+        // Bu alanlar 'Service' tablosunda aranacaktır.
+        String[] searchableColumns = {"id_no", "name", "surname", "phone_number_1", "phone_number_2", "email", "business_name"};
+
+        try {
+            // NOT: ServiceDao sınıfında bu metotun (search) implementasyonu gereklidir.
+            return customerDao.search(searchTerm.trim(), searchableColumns);
+        } catch (Exception ex) {
+            Servicio.getLogger().error("SERVICE ERROR [SEARCH]: {}", ex.getMessage());
+            return Collections.emptyList();
         }
     }
 }

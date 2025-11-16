@@ -53,8 +53,8 @@ public class MainForm extends JPanel {
                 Drawer.toggleMenuOpenMode();
             }
         });
-        //buttonUndo.addActionListener(e -> FormManager.undo());
-        //buttonRedo.addActionListener(e -> FormManager.redo());
+        buttonUndo.addActionListener(e -> FormManager.undo());
+        buttonRedo.addActionListener(e -> FormManager.redo());
         buttonRefresh.addActionListener(e -> FormManager.refresh());
 
         toolBar.add(buttonDrawer);

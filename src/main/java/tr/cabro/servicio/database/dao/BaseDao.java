@@ -100,4 +100,53 @@ public abstract class BaseDao<T, K> {
         }
         return list;
     }
+
+    /**
+     * Belirtilen sütunlarda verilen arama terimini (LIKE operatoru ile) arar.
+     *
+     * @param searchTerm Arama yapılacak terim (örn: "ahmet")
+     * @param columns Aranacak veritabanı sütun adları (örn: {"name", "surname"})
+     * @return Bulunan varlıkların listesi
+     */
+    public List<T> search(String searchTerm, String[] columns) {
+        if (columns == null || columns.length == 0 || searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAll();
+        }
+
+        List<T> list = new ArrayList<>();
+        StringBuilder sqlBuilder = new StringBuilder("SELECT * FROM ")
+                .append(getTableName())
+                .append(" WHERE ");
+
+        // WHERE şartlarını oluştur (Örn: name LIKE ? OR surname LIKE ?)
+        for (int i = 0; i < columns.length; i++) {
+            sqlBuilder.append(columns[i]).append(" LIKE ?");
+            if (i < columns.length - 1) {
+                sqlBuilder.append(" OR ");
+            }
+        }
+
+        String sql = sqlBuilder.toString();
+        String likePattern = "%" + searchTerm.trim() + "%";
+
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            // PreparedStatement'ı doldur
+            for (int i = 0; i < columns.length; i++) {
+                // SQL indexleri 1'den başladığı için i + 1 kullanılır.
+                stmt.setString(i + 1, likePattern);
+            }
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRow(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            Servicio.getLogger().error("DB ERROR [SEARCH] in {} table: {}", getTableName(), e.toString());
+        }
+        return list;
+    }
 }

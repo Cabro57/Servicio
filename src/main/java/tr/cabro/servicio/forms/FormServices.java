@@ -7,8 +7,8 @@ import raven.modal.component.ToolBarSelection;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import raven.modal.utils.SystemForm;
-import tr.cabro.servicio.application.renderer.CustomerTableRenderer;
-import tr.cabro.servicio.application.renderer.ServiceStatusTableRenderer;
+import tr.cabro.servicio.application.renderer.CustomerTableCellRenderer;
+import tr.cabro.servicio.application.renderer.ServiceStatusTableCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
 import tr.cabro.servicio.application.util.SVGIconUIColor;
@@ -95,7 +95,7 @@ public class FormServices extends Form {
         };
 
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-        table.getColumnModel().getColumn(1).setCellRenderer(new CustomerTableRenderer());
+        table.getColumnModel().getColumn(1).setCellRenderer(new CustomerTableCellRenderer());
 
         table.getColumnModel().getColumn(7).setCellRenderer(new DefaultTableCellRenderer() {
             private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("tr", "TR"));
@@ -121,7 +121,7 @@ public class FormServices extends Form {
             }
         });
 
-        table.getColumnModel().getColumn(9).setCellRenderer(new ServiceStatusTableRenderer());
+        table.getColumnModel().getColumn(9).setCellRenderer(new ServiceStatusTableCellRenderer());
 
         table.getColumnModel().getColumn(0).setMaxWidth(50);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);
