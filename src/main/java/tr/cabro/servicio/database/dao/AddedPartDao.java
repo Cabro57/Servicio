@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ServicePartDao extends BaseDao<AddedPart, Integer> {
+public class AddedPartDao extends BaseDao<AddedPart, Integer> {
 
     @Override
     protected String getTableName() {
@@ -102,6 +102,63 @@ public class ServicePartDao extends BaseDao<AddedPart, Integer> {
         stmt.setInt(index, key);
     }
 
+    public boolean create(List<AddedPart> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return true;
+        }
+
+        String sql = getInsertSQL();
+        Connection conn = null;
+        PreparedStatement stmt = null;
+
+        try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false);
+
+            stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+
+            for (AddedPart entity : entities) {
+                fillInsertStatement(stmt, entity);
+
+                stmt.addBatch();
+            }
+
+            int[] updateCounts = stmt.executeBatch();
+
+            int totalInserted = 0;
+            for (int count : updateCounts) {
+                if (count == Statement.SUCCESS_NO_INFO || count >= 1) {
+                    totalInserted++;
+                }
+            }
+
+            conn.commit();
+
+            return totalInserted == entities.size();
+
+        } catch (SQLException e) {
+            Servicio.getLogger().error("DB ERROR [CREATE ADDED PART BATCH]: {}", e.toString());
+            // Hata durumunda rollback yapıyoruz.
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    Servicio.getLogger().error("DB ERROR [ROLLBACK FAILED]: {}", ex.toString());
+                }
+            }
+            return false;
+        } finally {
+            // Kaynakları kapatıp otomatik commit'i tekrar açıyoruz.
+            try {
+                if (stmt != null) stmt.close();
+                if (conn != null) conn.setAutoCommit(true);
+                if (conn != null) conn.close();
+            } catch (SQLException e) {
+                Servicio.getLogger().error("DB ERROR [RESOURCE CLOSE FAILED]: {}", e.toString());
+            }
+        }
+    }
+
     public List<AddedPart> getByServiceId(int serviceId) {
         List<AddedPart> parts = new ArrayList<>();
         String sql = "SELECT * FROM added_part WHERE service_id = ?";
@@ -124,8 +181,11 @@ public class ServicePartDao extends BaseDao<AddedPart, Integer> {
 
     public boolean deleteByServiceId(int serviceId) {
         String sql = "DELETE FROM " + getTableName() + " WHERE service_id = ?";
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
             stmt.setInt(1, serviceId);
+
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {

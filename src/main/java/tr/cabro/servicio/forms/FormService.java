@@ -107,7 +107,9 @@ public class FormService extends Form {
         }
 
         if (repairService.save(newService, false)) {
-            boolean partsSuccess = processAddedParts(newService.getId(), part_notes_info.getAddedParts(), false);
+
+
+            boolean partsSuccess = processAddedParts(newService.getId(), part_notes_info.getAddedParts());
 
             if (partsSuccess) {
                 Toast.show(this, Toast.Type.SUCCESS, "Servis ve parçalar başarıyla kaydedildi!");
@@ -137,12 +139,18 @@ public class FormService extends Form {
         if (repairService.save(updated, true)) {
             boolean removeSuccess = repairService.removeParts(service.getId());
 
-            boolean addSuccess = processAddedParts(updated.getId(), part_notes_info.getAddedParts(), false);
+            boolean addSuccess = processAddedParts(updated.getId(), part_notes_info.getAddedParts());
 
             if (removeSuccess && addSuccess) {
                 Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla güncellendi!");
+            } else if (!removeSuccess && addSuccess) {
+                // removeParts eğer silinecek parça yoksa bile 'true' dönecek şekilde ayarlandığı için
+                // buraya sadece silme işleminde SQL hatası oluşursa düşülmelidir.
+                Toast.show(this, Toast.Type.WARNING, "Servis güncellendi, ancak eski parçalar silinirken hata oluştu!");
+            } else if (removeSuccess && !addSuccess) {
+                Toast.show(this, Toast.Type.WARNING, "Servis güncellendi, ancak yeni parçalar toplu olarak eklenirken hata oluştu!");
             } else {
-                Toast.show(this, Toast.Type.WARNING, "Servis güncellendi, fakat bazı stok işlemleri hatalı olabilir!");
+                Toast.show(this, Toast.Type.WARNING, "Servis güncellendi, ancak parça işlemleri hatalı!");
             }
 
             setService(updated);
@@ -282,25 +290,18 @@ public class FormService extends Form {
                 id);
     }
 
-    private boolean processAddedParts(int serviceId, List<AddedPart> parts, boolean isRemove) {
-        boolean success = true;
+    private boolean processAddedParts(int serviceId, List<AddedPart> parts) {
         if (parts == null || parts.isEmpty()) return true;
 
-        for (AddedPart part : parts) {
-            boolean result;
-            if (isRemove) {
-                result = repairService.removePart(part);
-            } else {
-                result = repairService.addPart(serviceId, part);
-            }
+        // Tüm parçalara ait oldukları servis ID'sini atıyoruz.
+        parts.forEach(part -> part.setServiceId(serviceId));
 
-            if (!result) {
-                Servicio.getLogger().warn("PART PROCESS FAILED [ServiceId: {}, PartId: {}]",
-                        serviceId, part.getId());
-                success = false;
-            }
+        // repairService.addParts(List<AddedPart> parts) metodu Batch işlemi kullanacaktır.
+        boolean success = repairService.addParts(parts);
+
+        if (!success) {
+            Servicio.getLogger().warn("PART PROCESS FAILED [ServiceId: {}]", serviceId);
         }
-
         return success;
     }
 

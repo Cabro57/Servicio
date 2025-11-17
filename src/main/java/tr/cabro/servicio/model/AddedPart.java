@@ -1,12 +1,13 @@
 package tr.cabro.servicio.model;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Getter @Setter
+@Getter @Setter @NoArgsConstructor
 public class AddedPart {
 
     private int id;
@@ -28,8 +29,6 @@ public class AddedPart {
     private String description; // Açıklama - Ürün hakkında not
 
     private LocalDateTime created_at;
-
-    public AddedPart() {}
 
     public AddedPart(Part data, Integer amount) {
         this(data);

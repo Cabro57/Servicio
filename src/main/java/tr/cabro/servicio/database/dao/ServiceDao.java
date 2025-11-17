@@ -6,6 +6,7 @@ import tr.cabro.servicio.model.PaymentType;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
 
+import javax.xml.crypto.Data;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -125,17 +126,19 @@ public class ServiceDao extends BaseDao<Service, Integer> {
 
     public List<Service> getByCustomerId(int customerId) {
         List<Service> services = new ArrayList<>();
-        String sql = "SELECT id FROM " + getTableName() + " WHERE customer_id = ?";
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
+        String sql = "SELECT * FROM " + getTableName() + " WHERE customer_id = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
             stmt.setInt(1, customerId);
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    int serviceId = rs.getInt("id");
-                    getByKey(serviceId).ifPresent(services::add);
+                    services.add(mapRow(rs));
                 }
             }
         } catch (SQLException e) {
-            Servicio.getLogger().error(e.getMessage());
+            Servicio.getLogger().error("DB ERROR [GET BY CUSTOMER ID]: {}", e.getMessage());
         }
         return services;
     }

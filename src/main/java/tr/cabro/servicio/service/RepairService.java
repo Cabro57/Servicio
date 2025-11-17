@@ -3,7 +3,7 @@ package tr.cabro.servicio.service;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.dao.ServiceDao;
-import tr.cabro.servicio.database.dao.ServicePartDao;
+import tr.cabro.servicio.database.dao.AddedPartDao;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
@@ -24,11 +24,11 @@ import java.util.stream.Collectors;
 public class RepairService {
 
     private final ServiceDao serviceDao;
-    private final ServicePartDao servicePartDao;
+    private final AddedPartDao addedPartDao;
 
     public RepairService() {
         this.serviceDao = new ServiceDao();
-        this.servicePartDao = new ServicePartDao();
+        this.addedPartDao = new AddedPartDao();
     }
 
     public boolean save(Service service, boolean update) {
@@ -103,10 +103,9 @@ public class RepairService {
 
     // Service Part Methods
 
-    public boolean addPart(int serviceId, AddedPart part) {
+    public boolean addPart(AddedPart part) {
         try {
-            part.setServiceId(serviceId);
-            boolean b = servicePartDao.create(part);
+            boolean b = addedPartDao.create(part);
             if(!b) return false;
 
             return b;
@@ -116,12 +115,25 @@ public class RepairService {
         }
     }
 
+    public boolean addParts(List<AddedPart> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return true;
+        }
+
+        try {
+            return addedPartDao.create(parts);
+        } catch (Exception e) {
+            Servicio.getLogger().error("SERVICE ERROR [ADD PARTS BATCH TO SERVICE] {}", String.valueOf(e));
+            return false;
+        }
+    }
+
     public boolean removePart(AddedPart part) {
         try {
 
             boolean b;
 
-            b = servicePartDao.delete(part.getId());
+            b = addedPartDao.delete(part.getId());
             if (!b) return false;
 
             return b;
@@ -134,24 +146,13 @@ public class RepairService {
 
     public boolean removeParts(int serviceId) {
         try {
-            List<AddedPart> parts = servicePartDao.getByServiceId(serviceId);
-            if (parts == null || parts.isEmpty()) {
-                return true; // silinecek parça yok
+            boolean success = addedPartDao.deleteByServiceId(serviceId);
+            if (!success) {
+                return true;
             }
 
-            boolean allSuccess = true;
+            return true;
 
-            for (AddedPart part : parts) {
-                boolean deleted = servicePartDao.delete(part.getId());
-                if (!deleted) {
-                    Servicio.getLogger().warn("FAILED TO DELETE ADDED PART [ServiceId: {}, PartId: {}]",
-                            serviceId, part.getId());
-                    allSuccess = false;
-                }
-
-            }
-
-            return allSuccess;
         } catch (Exception e) {
             Servicio.getLogger().error("SERVICE ERROR [DELETE PARTS BY SERVICE ID] {}", String.valueOf(e));
             return false;
@@ -160,7 +161,7 @@ public class RepairService {
 
     public double getTotalPartsCostForService(int serviceId) {
         try {
-            List<AddedPart> addedParts = servicePartDao.getByServiceId(serviceId);
+            List<AddedPart> addedParts = addedPartDao.getByServiceId(serviceId);
             double total = 0;
             for (AddedPart ap : addedParts) {
                 total += ap.getTotal(); // fiyat * adet
@@ -174,7 +175,7 @@ public class RepairService {
 
     public List<AddedPart> getParts(int serviceId) {
         try {
-            return servicePartDao.getByServiceId(serviceId);
+            return addedPartDao.getByServiceId(serviceId);
         } catch (Exception e) {
             Servicio.getLogger().error("SERVICE ERROR [GET PARTS BY SERVICE ID] {}", String.valueOf(e));
             return Collections.emptyList();
@@ -257,8 +258,6 @@ public class RepairService {
             return getAll();
         }
 
-        // Aranacak alanlar (Service tablosundaki sütun isimleri varsayılmıştır)
-        // Bu alanlar 'Service' tablosunda aranacaktır.
         String[] searchableColumns = {"device_serial", "device_brand", "device_model"};
 
         try {
