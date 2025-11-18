@@ -83,22 +83,13 @@ public class PartService {
     }
 
     public boolean increaseStock(String barcode, int amount) {
-        try {
-            Part part = get(barcode);
-            if (part == null) {
-                Servicio.getLogger().warn("PART NOT FOUND [INCREASE STOCK] Barcode: {}", barcode);
-                return false;
-            }
-            part.setStock(part.getStock() + amount);
-            partDao.update(part);
-            return true;
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [INCREASE STOCK] {}", String.valueOf(e));
-            return false;
-        }
+        if (amount <= 0) return false;
+        return partDao.adjustStock(barcode, amount);
     }
 
     public boolean decreaseStock(String barcode, int amount) {
+        if (amount <= 0) return false;
+
         try {
             Part part = get(barcode);
             if (part == null) {
@@ -106,27 +97,37 @@ public class PartService {
                 return false;
             }
 
-            int newStock = part.getStock() - amount;
-            part.setStock(newStock);
-            partDao.update(part);
-
-            // Eğer stok 0’ın altına düştüyse uyarı logla
-            if (newStock < 0) {
-                Servicio.getLogger().error("STOCK NEGATIVE! [Barcode: {}, NewStock: {}]",
-                        barcode, newStock);
+            if (part.getStock() < amount) {
+                Servicio.getLogger().warn("INSUFFICIENT STOCK [Barcode: {}, Current: {}, Requested: {}]",
+                        barcode, part.getStock(), amount);
+                // Buradan false dönebilirsiniz isterseniz işlemi iptal etmek için
             }
 
-            // Eğer min stok altına düştüyse ayrıca uyarı logla
-            if (newStock <= part.getMinStock() && part.getMinStock() == 0) {
-                Servicio.getLogger().warn("STOCK BELOW MINIMUM! [Barcode: {}, Current: {}, Min: {}]",
-                        barcode, newStock, 0);
+            boolean success = partDao.adjustStock(barcode, -amount);
+
+            if (!success) return false;
+
+            int newStock = part.getStock() - amount;
+
+            if (newStock < 0) {
+                Servicio.getLogger().error("STOCK NEGATIVE! [Barcode: {}, NewStock: {}]", barcode, newStock);
+            }
+
+            if (part.getMinStock() > 0 && newStock <= part.getMinStock()) {
+                Servicio.getLogger().warn("STOCK CRITICAL! [Barcode: {}, Current: {}, Min: {}]",
+                        barcode, newStock, part.getMinStock());
             }
 
             return true;
         } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [DECREASE STOCK] {}", String.valueOf(e));
+            Servicio.getLogger().error("SERVICE ERROR [DECREASE STOCK] {}", e.getMessage());
             return false;
         }
+    }
+
+    public List<Part> search(String searchTerm) {
+
+        return Collections.emptyList();
     }
 
 }

@@ -139,6 +139,19 @@ public class PartDao extends BaseDao<Part, String> {
         return list;
     }
 
+    public boolean adjustStock(String barcode, int amount) {
+        String sql = "UPDATE part SET stock = stock + ? WHERE barcode = ?";
+        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
+            stmt.setInt(1, amount);
+            stmt.setString(2, barcode);
+            int rows = stmt.executeUpdate();
+            return rows > 0;
+        } catch (SQLException e) {
+            Servicio.getLogger().error("DB ERROR [ADJUST STOCK] {}", e.getMessage());
+            return false;
+        }
+    }
+
     public void updateStock(String barcode, int newStock) {
         // Basit JDBC güncellemesi
         String sql = "UPDATE part SET stock = ? WHERE barcode = ?";
@@ -149,14 +162,6 @@ public class PartDao extends BaseDao<Part, String> {
         } catch (SQLException e) {
             Servicio.getLogger().error("DB ERROR [UPDATE STOCK] {}", String.valueOf(e));
         }
-    }
-
-    private String dateToStr(LocalDateTime date) {
-        return date != null ? date.toString() : null;
-    }
-
-    private LocalDateTime strToDate(String dateStr) {
-        return (dateStr != null) ? LocalDateTime.parse(dateStr) : null;
     }
 
 }
