@@ -26,9 +26,11 @@ public class RepairService {
     private final ServiceDao serviceDao;
     private final AddedPartDao addedPartDao;
 
-    public RepairService() {
-        this.serviceDao = new ServiceDao();
-        this.addedPartDao = new AddedPartDao();
+    private static String DASHBOARD_SQL = null;
+
+    public RepairService(ServiceDao serviceDao, AddedPartDao addedPartDao) {
+        this.serviceDao = serviceDao;
+        this.addedPartDao = addedPartDao;
     }
 
     public boolean save(Service service, boolean update) {
@@ -183,26 +185,15 @@ public class RepairService {
     }
 
     public ServiceFinanceReport getDashboardStats() {
-        String sql = "";
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("db/queries/service_summary.sql")) {
-            if (in == null) {
-                throw new IOException("Kaynak bulunamadı: db/queries/service_summary.sql");
-            }
-            byte[] bytes = new byte[in.available()];
-            int read = in.read(bytes);
-            if (read <= 0) {
-                throw new IOException("Kaynak okunamadı: db/queries/service_summary.sql");
-            }
-            sql = new String(bytes, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            Servicio.getLogger().error("SQL dosyası okunamadı: {}", e.getMessage());
-            return null;
+        if (DASHBOARD_SQL == null || DASHBOARD_SQL.isEmpty()) {
+            Servicio.getLogger().error("Dashboard SQL yüklenemediği için rapor oluşturulamadı.");
+            return new ServiceFinanceReport();
         }
 
         ServiceFinanceReport report = new ServiceFinanceReport();
 
         try (Connection conn = DatabaseManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
+             PreparedStatement ps = conn.prepareStatement(DASHBOARD_SQL);
              ResultSet rs = ps.executeQuery()) {
 
 
@@ -221,7 +212,7 @@ public class RepairService {
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            Servicio.getLogger().error("DB ERROR [DASHBOARD STATS]: {}", e.getMessage());
         }
         return report;
     }
@@ -266,6 +257,26 @@ public class RepairService {
         } catch (Exception ex) {
             Servicio.getLogger().error("SERVICE ERROR [SEARCH]: {}", ex.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    private void loadDashboardSql() {
+        if (DASHBOARD_SQL != null) return;
+
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream("db/queries/service_summary.sql")) {
+            if (in == null) {
+                Servicio.getLogger().error("Kaynak bulunamadı: db/queries/service_summary.sql");
+                return;
+            }
+            byte[] bytes = new byte[in.available()];
+            int read = in.read(bytes);
+            if (read <= 0) {
+                Servicio.getLogger().error("Kaynak boş veya okunamadı: db/queries/service_summary.sql");
+                return;
+            }
+            DASHBOARD_SQL = new String(bytes, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            Servicio.getLogger().error("SQL dosyası yüklenirken hata: {}", e.getMessage());
         }
     }
 

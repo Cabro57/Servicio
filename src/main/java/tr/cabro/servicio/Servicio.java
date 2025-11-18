@@ -14,6 +14,7 @@ import tr.cabro.servicio.application.listeners.InactivityListener;
 import tr.cabro.servicio.application.MainUI;
 import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.BackupMode;
+import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.settings.Settings;
 
@@ -50,6 +51,8 @@ public final class Servicio {
 
         initSettings();
         initDatabase();
+
+        ServiceManager.initialize();
 
         inactivityListener = new InactivityListener();
     }

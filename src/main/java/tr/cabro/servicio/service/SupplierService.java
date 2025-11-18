@@ -12,8 +12,8 @@ public class SupplierService {
 
     private final SupplierDao supplierDao;
 
-    public SupplierService() {
-        this.supplierDao = new SupplierDao();
+    public SupplierService(SupplierDao supplierDao) {
+        this.supplierDao = supplierDao;
     }
 
     public boolean save(Supplier supplier, boolean update) {

@@ -13,8 +13,8 @@ public class CustomerService {
 
     private final CustomerDao customerDao;
 
-    public CustomerService() {
-        this.customerDao = new CustomerDao();
+    public CustomerService(CustomerDao customerDao) {
+        this.customerDao = customerDao;
     }
 
     public boolean save(Customer customer, boolean update) {

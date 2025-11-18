@@ -2,7 +2,6 @@ package tr.cabro.servicio.service;
 
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.dao.PartDao;
-import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Part;
 
 import java.util.Collections;
@@ -13,8 +12,8 @@ public class PartService {
 
     private final PartDao partDao;
 
-    public PartService() {
-        this.partDao = new PartDao();
+    public PartService(PartDao partDao) {
+        this.partDao = partDao;
     }
 
     // --- PART işlemleri ---
@@ -120,7 +119,7 @@ public class PartService {
             // Eğer min stok altına düştüyse ayrıca uyarı logla
             if (newStock <= part.getMinStock() && part.getMinStock() == 0) {
                 Servicio.getLogger().warn("STOCK BELOW MINIMUM! [Barcode: {}, Current: {}, Min: {}]",
-                        barcode, newStock, part.getMinStock());
+                        barcode, newStock, 0);
             }
 
             return true;
