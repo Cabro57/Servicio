@@ -15,7 +15,7 @@ public class Settings extends OkaeriConfig {
     private String path = "";
     private boolean full_size = false;
     private boolean deviceMigrated = false;
-    private boolean confirmExitDialog = false;
+    private boolean skipExitConfirmation = false;
 
     private BackupSettings backup = new BackupSettings();
 

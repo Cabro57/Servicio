@@ -35,12 +35,18 @@ public class DatabaseManager {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl("jdbc:sqlite:" + dbPath);
         config.setPoolName("Servicio-SQLite-Pool");
-        config.setMaximumPoolSize(1); // SQLite için tek bağlantı genellikle en sağlıklısıdır
+        config.setMaximumPoolSize(5); // SQLite için tek bağlantı genellikle en sağlıklısıdır
+
+        config.setConnectionTimeout(30000);
+
+        config.setLeakDetectionThreshold(2000);
 
         // Performans Ayarları (WAL Modu)
         config.addDataSourceProperty("journal_mode", "WAL");
         config.addDataSourceProperty("synchronous", "NORMAL");
         config.addDataSourceProperty("foreign_keys", "true");
+
+        config.addDataSourceProperty("busy_timeout", "30000");
 
         dataSource = new HikariDataSource(config);
 

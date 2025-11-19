@@ -22,8 +22,8 @@ public abstract class BaseDao<T, K> {
     protected abstract void setKey(PreparedStatement stmt, int index, K key) throws SQLException;
 
     public boolean create(T entity) {
-        try (PreparedStatement stmt = DatabaseManager.getConnection()
-                .prepareStatement(getInsertSQL(), Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(getInsertSQL(), Statement.RETURN_GENERATED_KEYS)) {
 
             fillInsertStatement(stmt, entity);
 
@@ -48,7 +48,9 @@ public abstract class BaseDao<T, K> {
     }
 
     public boolean update(T entity) {
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(getUpdateSQL())) {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(getUpdateSQL())) {
+
             fillUpdateStatement(stmt, entity);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -59,7 +61,9 @@ public abstract class BaseDao<T, K> {
 
     public boolean delete(K key) {
         String sql = "DELETE FROM " + getTableName() + " WHERE " + getPrimaryKeyColumn() + " = ?";
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
             setKey(stmt, 1, key);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -90,7 +94,8 @@ public abstract class BaseDao<T, K> {
     public List<T> getAll() {
         List<T> list = new ArrayList<>();
         String sql = "SELECT * FROM " + getTableName();
-        try (Statement stmt = DatabaseManager.getConnection().createStatement();
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 list.add(mapRow(rs));

@@ -39,21 +39,21 @@ public final class Servicio {
 
     public Servicio(File baseFolder) {
         if (!LauncherAccessContext.isAllowed()) {
-            throw new SecurityException("Bu uygulama sadece launcher tarafından çalıştırılabilir.");
+            throw new SecurityException("Erişim reddedildi: Sadece Launcher yetkilidir.");
         }
 
         instance = this;
 
         this.dataFolder = new File(baseFolder, ".servicio");
         if (!this.dataFolder.exists() && this.dataFolder.mkdirs()) {
-            logger.info("Data folder created at {}", this.dataFolder.getAbsolutePath());
+            logger.info("Veri klasörü oluşturuldu: {}", this.dataFolder.getAbsolutePath());
         }
 
         initSettings();
-
         DatabaseManager.initialize();
-
         ServiceManager.initialize();
+
+        DemoPreferences.init();
 
         inactivityListener = new InactivityListener();
     }
@@ -61,12 +61,18 @@ public final class Servicio {
     public void run() {
         if (running) return;
         running = true;
-        logger.info("Uygulama Çalıştırılıyor!");
+        logger.info("Servicio başlatılıyor (v{})...", getAppVersion());
 
+        // Açılış yedeği
         runBackupIfNeeded(BackupMode.ON_START, BackupMode.ON_START_AND_EXIT);
+
+        // Zamanlayıcıyı başlat
         BackupScheduler.start();
-        DemoPreferences.init();
+
+        // UI Hazırlığı
         setupUI();
+
+        // UI'ı EDT (Event Dispatch Thread) üzerinde başlat
         EventQueue.invokeLater(this::launchMainUI);
     }
 
@@ -95,7 +101,6 @@ public final class Servicio {
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("themes");
         DemoPreferences.setupLaf();
-
         int scaledFontSize = UIScale.scale(12);
         UIManager.put("defaultFont", FontUtils.getCompositeFont(FlatRobotoFont.FAMILY, Font.PLAIN, scaledFontSize));
     }
@@ -103,42 +108,48 @@ public final class Servicio {
     private void launchMainUI() {
         frame = new MainUI();
         frame.setVisible(true);
-
     }
 
     private void runBackupIfNeeded(BackupMode... modes) {
-        BackupMode mode = settings.getBackup().getMode();
+        BackupMode current = settings.getBackup().getMode();
         for (BackupMode m : modes) {
-            if (mode == m) {
+            if (current == m) {
                 DatabaseManager.backup();
                 break;
             }
         }
     }
 
-    public void disable() {
-        if (frame != null && !frame.closeApplication()) {
-            return;
-        }
-
+    public void shutdown() {
         try {
-            logger.info("Uygulama kapatılıyor...");
+            logger.info("Kapatma prosedürü başlatıldı...");
 
-            settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
+            // 1. UI Durumunu Kaydet
+            if (frame != null) {
+                settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
+                frame.dispose(); // Pencereyi yok et
+            }
+
+            // 2. Ayarları Diske Yaz
             settings.save();
             deviceSettings.save();
 
+            // 3. Arka plan işlemlerini durdur
             if (inactivityListener != null) inactivityListener.stop();
-
             BackupScheduler.stop();
 
+            // 4. Kapanış yedeği al
             runBackupIfNeeded(BackupMode.ON_EXIT, BackupMode.ON_START_AND_EXIT);
 
+            // 5. Veritabanını kapat
             DatabaseManager.shutdown();
 
+            logger.info("Güle güle!");
             System.exit(0);
+
         } catch (Exception e) {
-            logger.error("Kapatma sırasında hata oluştu", e);
+            logger.error("Kapatma sırasında kritik hata", e);
+            System.exit(1);
         }
     }
 
