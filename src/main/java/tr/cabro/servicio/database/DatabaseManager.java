@@ -1,9 +1,12 @@
 package tr.cabro.servicio.database;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.output.MigrateResult;
 import tr.cabro.servicio.Servicio;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
@@ -14,44 +17,98 @@ import java.time.format.DateTimeFormatter;
 
 public class DatabaseManager {
 
-    public static Connection getConnection() throws SQLException {
-        return DatabaseConfig.getDataSource().getConnection();
+    private static HikariDataSource dataSource;
+    private static final String DB_FILE_NAME = "database.db";
+
+    // --- BAŞLATMA VE AYARLAR (Config + Initializer Birleşimi) ---
+
+    public static void initialize() {
+        // 1. Klasör kontrolü
+        File dbFolder = new File(Servicio.getInstance().getDataFolder(), "database");
+        if (!dbFolder.exists()) dbFolder.mkdirs();
+
+        File dbFile = new File(dbFolder, DB_FILE_NAME);
+        boolean isFirstRun = !dbFile.exists();
+        String dbPath = dbFile.getAbsolutePath();
+
+        // 2. HikariCP Ayarları (SQLite Odaklı)
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:sqlite:" + dbPath);
+        config.setPoolName("Servicio-SQLite-Pool");
+        config.setMaximumPoolSize(1); // SQLite için tek bağlantı genellikle en sağlıklısıdır
+
+        // Performans Ayarları (WAL Modu)
+        config.addDataSourceProperty("journal_mode", "WAL");
+        config.addDataSourceProperty("synchronous", "NORMAL");
+        config.addDataSourceProperty("foreign_keys", "true");
+
+        dataSource = new HikariDataSource(config);
+
+        // 3. Migration (Flyway) ve İlk Yedek
+        try {
+            // Eğer veritabanı önceden varsa (ilk çalışma değilse), migration öncesi güvenlik yedeği al
+            if (!isFirstRun) {
+                Servicio.getLogger().info("Migration öncesi güvenlik yedeği alınıyor...");
+                backup("pre-migrate-" + System.currentTimeMillis());
+            }
+
+            Flyway flyway = Flyway.configure()
+                    .dataSource(dataSource)
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(true)
+                    .load();
+
+            MigrateResult result = flyway.migrate();
+
+            if (result.migrationsExecuted > 0) {
+                Servicio.getLogger().info("Migration tamamlandı. Versiyon: {} -> {}",
+                        result.initialSchemaVersion, result.targetSchemaVersion);
+            }
+
+        } catch (Exception e) {
+            Servicio.getLogger().error("Veritabanı başlatma hatası: {}", e.getMessage());
+            throw new RuntimeException(e);
+        }
     }
 
-    /** Fiziksel backup alma */
+    public static void shutdown() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+        }
+    }
+
+    public static Connection getConnection() throws SQLException {
+        if (dataSource == null || dataSource.isClosed()) initialize();
+        return dataSource.getConnection();
+    }
+
+    // --- YEDEKLEME VE GERİ YÜKLEME İŞLEMLERİ ---
+
     public static void backup(String fileName) {
         try {
             String backupDir = Servicio.getSettings().getBackup().getPath();
-            Files.createDirectories(new File(backupDir).toPath());
+            new File(backupDir).mkdirs();
 
-            // Dosya adı boşsa timestamp oluştur
             if (fileName == null || fileName.trim().isEmpty()) {
                 fileName = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss"));
             }
+            if (!fileName.endsWith(".db")) fileName += ".db";
 
-            String backupFile = backupDir + File.separator + fileName;
+            // Windows uyumluluğu için ters slaş düzeltmesi
+            String targetPath = new File(backupDir, fileName).getAbsolutePath().replace("\\", "/");
 
-            switch (DatabaseConfig.getDbType()) {
-                case SQLite:
-                    backupFile += ".db";
-                    File targetFile = new File(backupFile);
-                    if (targetFile.exists()) {
-                        Files.delete(targetFile.toPath());
-                    }
-                    try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
-                        stmt.execute("VACUUM INTO '" + backupFile.replace("\\", "/") + "'");
-                    }
-                    break;
+            try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
+                // Eğer aynı isimde dosya varsa önce onu siliyoruz ki VACUUM hata vermesin
+                File existingFile = new File(targetPath);
+                if (existingFile.exists()) existingFile.delete();
 
-                case MySQL:
-                    backupFile += ".sql";
-                    runProcess("mysqldump -uuser -ppass servicio -r " + backupFile);
-                    break;
+                // Canlı yedek alma komutu
+                stmt.execute("VACUUM INTO '" + targetPath + "'");
             }
+            Servicio.getLogger().info("Yedek alındı: {}", fileName);
 
-            Servicio.getLogger().info("Yedek alındı: {}", backupFile);
         } catch (Exception e) {
-            Servicio.getLogger().error("Backup hatası: {}", e.getMessage());
+            Servicio.getLogger().error("Yedekleme başarısız: {}", e.getMessage());
         }
     }
 
@@ -59,39 +116,31 @@ public class DatabaseManager {
         backup(null);
     }
 
-    /** Backup geri yükleme */
-    public static void restoreBackup(File backupFile) {
+    public static void restore(File backupFile) {
+        if (!backupFile.exists()) return;
+
+        Servicio.getLogger().warn("Geri yükleme başlatılıyor. Veritabanı kapatılıyor...");
+
         try {
-            if (!backupFile.exists()) {
-                throw new IllegalArgumentException("Yedek dosyası bulunamadı: " + backupFile.getAbsolutePath());
-            }
+            // 1. Havuzu kapat (Dosya kilidini kaldır)
+            shutdown();
 
-            switch (DatabaseConfig.getDbType()) {
-                case SQLite:
-                    String dbPath = Servicio.getInstance().getDataFolder().getAbsolutePath() + "/database/database.db";
-                    DatabaseManager.getConnection().close();
-                    DatabaseConfig.close();
-                    Files.copy(backupFile.toPath(), new File(dbPath).toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    DatabaseConfig.init(DatabaseConfig.getDbType());
-                    break;
+            // 2. Dosyayı kopyala
+            File dbFile = new File(Servicio.getInstance().getDataFolder() + "/database", DB_FILE_NAME);
+            Files.copy(backupFile.toPath(), dbFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-                case MySQL:
-                    runProcess("mysql -uuser -ppass servicio < " + backupFile.getAbsolutePath());
-                    break;
-            }
+            // 3. WAL artıklarını temizle (Database tutarlılığı için önemli)
+            new File(dbFile.getAbsolutePath() + "-wal").delete();
+            new File(dbFile.getAbsolutePath() + "-shm").delete();
 
-            Servicio.getLogger().info("Yedek geri yüklendi: {}", backupFile.getName());
+            // 4. Sistemi tekrar ayağa kaldır
+            initialize();
+            Servicio.getLogger().info("Geri yükleme başarılı: {}", backupFile.getName());
+
         } catch (Exception e) {
-            Servicio.getLogger().error("Restore hatası: {}", e.getMessage());
-            throw new RuntimeException("Restore başarısız: " + e.getMessage(), e);
-        }
-    }
-
-    private static void runProcess(String command) throws IOException, InterruptedException {
-        Process process = Runtime.getRuntime().exec(new String[] { "bash", "-c", command });
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new RuntimeException("Komut başarısız: " + command);
+            Servicio.getLogger().error("Geri yükleme kritik hata: {}", e.getMessage());
+            // Hata olsa bile sistemi tekrar açmayı dene
+            initialize();
         }
     }
 }

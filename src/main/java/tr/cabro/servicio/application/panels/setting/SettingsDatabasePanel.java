@@ -119,7 +119,7 @@ public class SettingsDatabasePanel extends JPanel {
         if (confirm != JOptionPane.YES_OPTION) return;
 
         File backupFile = new File(settings.getBackup().getPath(), selected);
-        DatabaseManager.restoreBackup(backupFile);
+        DatabaseManager.restore(backupFile);
         JOptionPane.showMessageDialog(this, "Yedek geri yüklendi.", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
     }
 

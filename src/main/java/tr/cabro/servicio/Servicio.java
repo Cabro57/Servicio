@@ -50,7 +50,8 @@ public final class Servicio {
         }
 
         initSettings();
-        initDatabase();
+
+        DatabaseManager.initialize();
 
         ServiceManager.initialize();
 
@@ -90,15 +91,6 @@ public final class Servicio {
         });
     }
 
-    private void initDatabase() {
-        try {
-            DatabaseConfig.init(DatabaseType.SQLite);
-            DatabaseInitializer.migrate();
-        } catch (Exception e) {
-            logger.error("Veritabanı başlatma hatası", e);
-        }
-    }
-
     private void setupUI() {
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("themes");
@@ -125,24 +117,28 @@ public final class Servicio {
     }
 
     public void disable() {
-        if (!frame.closeApplication()) {
+        if (frame != null && !frame.closeApplication()) {
             return;
         }
 
         try {
+            logger.info("Uygulama kapatılıyor...");
+
             settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
             settings.save();
             deviceSettings.save();
-            inactivityListener.stop();
+
+            if (inactivityListener != null) inactivityListener.stop();
+
+            BackupScheduler.stop();
 
             runBackupIfNeeded(BackupMode.ON_EXIT, BackupMode.ON_START_AND_EXIT);
 
-            BackupScheduler.stop();
-            DatabaseConfig.close();
+            DatabaseManager.shutdown();
 
             System.exit(0);
         } catch (Exception e) {
-            logger.error("Kapatma sırasında hata", e);
+            logger.error("Kapatma sırasında hata oluştu", e);
         }
     }
 
@@ -154,7 +150,7 @@ public final class Servicio {
             props.load(is);
             appVersion = props.getProperty("version", "v0.0.0");
         } catch (Exception e) {
-            appVersion = "v0.0.0";
+            appVersion = "dev-build";
         }
         return appVersion;
     }

@@ -5,88 +5,94 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.model.BackupMode;
 import tr.cabro.servicio.settings.Settings;
 
-import java.time.*;
-import java.util.concurrent.*;
+import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class BackupScheduler {
 
     private static ScheduledExecutorService scheduler;
     @Getter
-    private static LocalDateTime nextBackupTime; // Sonraki planlanan zaman
+    private static LocalDateTime nextBackupTime;
 
     public static void start() {
-        stop();
-        scheduler = Executors.newSingleThreadScheduledExecutor();
+        stop(); // Varsa eskiyi durdur
 
-        Settings.BackupSettings backupSettings = Servicio.getSettings().getBackup();
-        BackupMode mode = backupSettings.getMode();
+        Settings.BackupSettings settings = Servicio.getSettings().getBackup();
+        BackupMode mode = settings.getMode();
+        int interval = settings.getInterval();
 
-        if (isIntervalMode(mode)) {
-            scheduleNext(mode, backupSettings.getInterval());
-            Servicio.getLogger().info("BackupScheduler: {} modunda başlatıldı.", mode);
+        // Mod "KAPALI" veya "MANUEL" ise zamanlayıcıyı başlatma
+        if (mode == BackupMode.NONE) {
+            return;
         }
+
+        // Daemon thread kullanıyoruz (Uygulama kapanırken thread asılı kalmasın)
+        scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "Backup-Timer");
+            t.setDaemon(true);
+            return t;
+        });
+
+        scheduleNext(mode, interval);
+        Servicio.getLogger().info("Yedekleme zamanlayıcısı başlatıldı. Mod: {}", mode);
     }
 
     public static void stop() {
-        if (scheduler != null && !scheduler.isShutdown()) {
+        if (scheduler != null) {
             scheduler.shutdownNow();
+            scheduler = null;
         }
         nextBackupTime = null;
     }
 
     public static void restart() {
-        Servicio.getLogger().info("BackupScheduler: ayar değişti, yeniden başlatılıyor...");
         start();
     }
 
-    private static boolean isIntervalMode(BackupMode mode) {
-        return mode == BackupMode.EVERY_N_MINUTES ||
-                mode == BackupMode.EVERY_N_HOURS ||
-                mode == BackupMode.EVERY_N_DAYS ||
-                mode == BackupMode.EVERY_N_WEEKS ||
-                mode == BackupMode.EVERY_N_MONTHS;
-    }
-
     private static void scheduleNext(BackupMode mode, int interval) {
-        LocalDateTime next = nextAlignedTime(mode, interval);
-        nextBackupTime = next; // Sonraki zamanı kaydet
+        if (scheduler == null || scheduler.isShutdown()) return;
 
-        long delay = Duration.between(LocalDateTime.now(), next).toMillis();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime next = calculateNextTime(now, mode, interval);
+        nextBackupTime = next;
+
+        long delay = Duration.between(now, next).toMillis();
+        if (delay < 0) delay = 0; // Zaman senkronizasyon hatası olursa hemen çalıştır
 
         scheduler.schedule(() -> {
             try {
-                Servicio.getLogger().info("Planlanan yedekleme başlatıldı: {}", LocalDateTime.now());
+                Servicio.getLogger().info("Otomatik yedekleme çalışıyor...");
                 DatabaseManager.backup();
             } catch (Exception e) {
-                Servicio.getLogger().error("Planlanan yedekleme hatası: {}", e.getMessage());
+                Servicio.getLogger().error("Otomatik yedekleme hatası: {}", e.getMessage());
+            } finally {
+                // Görev bitince bir sonrakini planla (Recursive döngü)
+                scheduleNext(mode, interval);
             }
-            scheduleNext(mode, interval);
         }, delay, TimeUnit.MILLISECONDS);
     }
 
-    private static LocalDateTime nextAlignedTime(BackupMode mode, int interval) {
-        LocalDateTime now = LocalDateTime.now();
+    private static LocalDateTime calculateNextTime(LocalDateTime now, BackupMode mode, int interval) {
+        LocalDateTime base = now.withSecond(0).withNano(0);
+
         switch (mode) {
-            case EVERY_N_MINUTES: {
-                int minute = ((now.getMinute() / interval) + 1) * interval;
-                LocalDateTime aligned = now.withMinute(0).withSecond(0).plusMinutes(minute);
-                if (aligned.isBefore(now)) aligned = aligned.plusMinutes(interval);
-                return aligned;
-            }
-            case EVERY_N_HOURS: {
-                int hour = ((now.getHour() / interval) + 1) * interval;
-                LocalDateTime aligned = now.withHour(0).withMinute(0).withSecond(0).plusHours(hour);
-                if (aligned.isBefore(now)) aligned = aligned.plusHours(interval);
-                return aligned;
-            }
+            case EVERY_N_MINUTES:
+                // Modulo mantığı ile tam dakikayı bulur (Örn: 10 dk ise 12:00, 12:10, 12:20...)
+                return base.plusMinutes(interval - (base.getMinute() % interval));
+            case EVERY_N_HOURS:
+                return base.withMinute(0).plusHours(interval - (base.getHour() % interval));
             case EVERY_N_DAYS:
-                return now.withHour(0).withMinute(0).withSecond(0).plusDays(interval);
+                return base.withHour(0).withMinute(0).plusDays(interval);
             case EVERY_N_WEEKS:
-                return now.with(DayOfWeek.MONDAY).withHour(0).withMinute(0).withSecond(0).plusWeeks(interval);
+                return base.with(DayOfWeek.MONDAY).withHour(0).withMinute(0).plusWeeks(interval);
             case EVERY_N_MONTHS:
-                return now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).plusMonths(interval);
+                return base.withDayOfMonth(1).withHour(0).withMinute(0).plusMonths(interval);
             default:
-                throw new IllegalArgumentException("Zaman tabanlı olmayan mod: " + mode);
+                return now.plusMinutes(interval); // Fallback
         }
     }
 }

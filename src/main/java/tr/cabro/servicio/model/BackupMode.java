@@ -1,6 +1,7 @@
 package tr.cabro.servicio.model;
 
 public enum BackupMode {
+    NONE("Kapalı"),
     ON_START("Açılışta"),
     ON_EXIT("Kapanışta"),
     ON_START_AND_EXIT("Açılış ve Kapanışta"),
