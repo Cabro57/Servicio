@@ -88,7 +88,7 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         service.setPaid(rs.getDouble("paid"));
 
         try {
-            service.setPayment_type(PaymentType.valueOf(rs.getString("payment_type")));
+            service.setPayment_type(PaymentType.of(rs.getString("payment_type")));
         } catch (Exception e) { service.setPayment_type(PaymentType.CASH); }
 
         service.setWarranty_date(strToDate(rs.getString("warranty_date")));
@@ -99,7 +99,7 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         service.setUrgency_status(rs.getString("urgency_status"));
 
         try {
-            service.setService_status(ServiceStatus.valueOf(rs.getString("service_status")));
+            service.setService_status(ServiceStatus.of(rs.getString("service_status")));
         } catch (Exception e) { service.setService_status(ServiceStatus.UNDER_REPAIR); }
 
         service.setNotes(rs.getString("Notes"));

@@ -112,7 +112,7 @@ public class RepairService {
         }
 
         try {
-            ServiceStatus status = ServiceStatus.valueOf(statusStr.toUpperCase());
+            ServiceStatus status = ServiceStatus.of(statusStr.toUpperCase());
             return services.stream()
                     .filter(s -> s.getService_status() == status)
                     .collect(Collectors.toList());

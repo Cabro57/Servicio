@@ -159,7 +159,7 @@ public final class Servicio {
         try (InputStream is = Servicio.class.getResourceAsStream("/version.properties")) {
             Properties props = new Properties();
             props.load(is);
-            appVersion = props.getProperty("version", "v0.0.0");
+            appVersion = props.getProperty("version", "0.0.0");
         } catch (Exception e) {
             appVersion = "dev-build";
         }
