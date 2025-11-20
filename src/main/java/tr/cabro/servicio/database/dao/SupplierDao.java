@@ -1,21 +1,15 @@
 package tr.cabro.servicio.database.dao;
 
 import tr.cabro.servicio.model.Supplier;
-
 import java.sql.*;
 import java.time.LocalDateTime;
 
 public class SupplierDao extends BaseDao<Supplier, Integer> {
 
     @Override
-    protected String getTableName() {
-        return "suppliers";
-    }
-
+    protected String getTableName() { return "suppliers"; }
     @Override
-    protected String getPrimaryKeyColumn() {
-        return "id";
-    }
+    protected String getPrimaryKeyColumn() { return "id"; }
 
     @Override
     protected String getInsertSQL() {
@@ -25,37 +19,26 @@ public class SupplierDao extends BaseDao<Supplier, Integer> {
 
     @Override
     protected String getUpdateSQL() {
-        return "UPDATE suppliers SET name=?, business_name=?, id_no=?, tax_no=?, tax_office=?, email=?, phone=?, address=?, note=?, created_at=? " +
-                "WHERE id=?";
+        return "UPDATE suppliers SET name=?, business_name=?, id_no=?, tax_no=?, tax_office=?, email=?, phone=?, address=?, note=?, created_at=? WHERE id=?";
     }
 
     @Override
-    protected void fillInsertStatement(PreparedStatement stmt, Supplier s) throws SQLException {
-        stmt.setString(1, s.getName());
-        stmt.setString(2, s.getBusiness_name());
-        stmt.setString(3, s.getId_no());
-        stmt.setString(4, s.getTax_no());
-        stmt.setString(5, s.getTax_office());
-        stmt.setString(6, s.getEmail());
-        stmt.setString(7, s.getPhone());
-        stmt.setString(8, s.getAddress());
-        stmt.setString(9, s.getNotes());
-        stmt.setString(10, s.getCreated_at() != null ? s.getCreated_at().toString() : null);
-    }
+    protected void fillStatement(PreparedStatement stmt, Supplier entity, boolean isUpdate) throws SQLException {
+        int i = 1;
+        stmt.setString(i++, entity.getName());
+        stmt.setString(i++, entity.getBusiness_name());
+        stmt.setString(i++, entity.getId_no());
+        stmt.setString(i++, entity.getTax_no());
+        stmt.setString(i++, entity.getTax_office());
+        stmt.setString(i++, entity.getEmail());
+        stmt.setString(i++, entity.getPhone());
+        stmt.setString(i++, entity.getAddress());
+        stmt.setString(i++, entity.getNotes());
+        stmt.setString(i++, entity.getCreated_at() != null ? entity.getCreated_at().toString() : null);
 
-    @Override
-    protected void fillUpdateStatement(PreparedStatement stmt, Supplier s) throws SQLException {
-        stmt.setString(1, s.getName());
-        stmt.setString(2, s.getBusiness_name());
-        stmt.setString(3, s.getId_no());
-        stmt.setString(4, s.getTax_no());
-        stmt.setString(5, s.getTax_office());
-        stmt.setString(6, s.getEmail());
-        stmt.setString(7, s.getPhone());
-        stmt.setString(8, s.getAddress());
-        stmt.setString(9, s.getNotes());
-        stmt.setString(10, s.getCreated_at() != null ? s.getCreated_at().toString() : null);
-        stmt.setInt(11, s.getId());
+        if (isUpdate) {
+            stmt.setInt(i++, entity.getId());
+        }
     }
 
     @Override
@@ -71,10 +54,8 @@ public class SupplierDao extends BaseDao<Supplier, Integer> {
         s.setPhone(rs.getString("phone"));
         s.setAddress(rs.getString("address"));
         s.setNotes(rs.getString("note"));
-
-        String createdAtStr = rs.getString("created_at");
-        if (createdAtStr != null) {
-            s.setCreated_at(LocalDateTime.parse(createdAtStr));
+        if (rs.getString("created_at") != null) {
+            s.setCreated_at(LocalDateTime.parse(rs.getString("created_at")));
         }
         return s;
     }
@@ -82,10 +63,5 @@ public class SupplierDao extends BaseDao<Supplier, Integer> {
     @Override
     protected void setGeneratedId(Supplier s, int id) {
         s.setId(id);
-    }
-
-    @Override
-    protected void setKey(PreparedStatement stmt, int index, Integer key) throws SQLException {
-        stmt.setInt(index, key);
     }
 }

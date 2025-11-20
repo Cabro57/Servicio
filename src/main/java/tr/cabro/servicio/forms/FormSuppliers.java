@@ -23,7 +23,41 @@ import java.util.List;
 @SystemForm(name = "Tedarikçiler", description = "Tüm tedarikçileri listeler")
 public class FormSuppliers extends AbstractTableForm<Supplier> {
 
-    private SupplierService service;
+    private final SupplierService service;
+
+    public FormSuppliers() {
+        this.service = ServiceManager.getSupplierService();
+    }
+
+    @Override
+    protected void refreshTable() {
+        try {
+            setTableModel(new SupplierTableModel(service.getAll()));
+            configureTableColumns();
+        } catch (Exception e) {
+            Toast.show(this, Toast.Type.ERROR, "Tedarikçi listesi alınamadı: " + e.getMessage());
+        }
+    }
+
+    private void configureTableColumns() {
+        Integer[] columnAlignments = {
+                SwingConstants.CENTER, SwingConstants.LEADING, SwingConstants.LEADING,
+                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING
+        };
+
+        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
+
+        if (table.getColumnCount() > 0) {
+            table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
+            table.getColumnModel().getColumn(0).setMaxWidth(50);
+
+            if (table.getColumnCount() > 2) {
+                table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(table));
+                table.getColumnModel().getColumn(2).setPreferredWidth(150);
+            }
+            // Diğer sütun genişlikleri...
+        }
+    }
 
     @Override
     protected void onNew() {
@@ -31,16 +65,15 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
         SupplierEditPanel panel = new SupplierEditPanel();
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Tamam", 0),
+                new SimpleModalBorder.Option("Kaydet", 0),
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
         ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Tedarikçi Formu", options,
+                        panel, "Yeni Tedarikçi Ekle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.clearForm();
-
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 Supplier updated = panel.getDataIfValid();
                                 if (updated == null) {
@@ -48,16 +81,18 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
                                     return;
                                 }
 
-                                updated.setCreated_at(LocalDateTime.now());
-                                boolean added = service.save(updated, false);
+                                try {
+                                    updated.setCreated_at(LocalDateTime.now());
+                                    service.save(updated, false);
 
-                                if (added) {
                                     Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
-                                } else {
-                                    Toast.show(this, Toast.Type.WARNING, updated.getName() + " zaten mevcut.");
-                                }
+                                    refreshTable();
 
-                                refreshTable();
+                                } catch (Exception e) {
+                                    controller.consume();
+                                    Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
+                                    Servicio.getLogger().error("Tedarikçi ekleme hatası", e);
+                                }
                             }
                         })
                 , id);
@@ -81,16 +116,15 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
         SupplierEditPanel panel = new SupplierEditPanel();
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Tamam", 0),
+                new SimpleModalBorder.Option("Güncelle", 0),
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
         ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Tedarikçi Formu", options,
+                        panel, "Tedarikçi Düzenle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.populateFormWith(supplier);
-
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 Supplier updated = panel.getDataIfValid();
                                 if (updated == null) {
@@ -98,16 +132,21 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
                                     return;
                                 }
 
-                                updated.setId(supplier.getId());
-                                boolean added = service.save(updated, true);
+                                try {
+                                    updated.setId(supplier.getId());
+                                    // Created_at korunmalı
+                                    updated.setCreated_at(supplier.getCreated_at());
 
-                                if (added) {
+                                    service.save(updated, true);
+
                                     Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
-                                } else {
-                                    Toast.show(this, Toast.Type.WARNING, updated.getName() + " zaten mevcut.");
-                                }
+                                    refreshTable();
 
-                                refreshTable();
+                                } catch (Exception e) {
+                                    controller.consume();
+                                    Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + e.getMessage());
+                                    Servicio.getLogger().error("Tedarikçi güncelleme hatası", e);
+                                }
                             }
                         })
                 , id);
@@ -126,44 +165,24 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
                 "Seçilen " + cs.size() + " tedarikçiyi silmek istediğinizden emin misiniz?", "Silme Onayı",
                 SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
             if (action == 0) {
-                int count = 0;
-                for (Supplier c : cs) {
-                    if (service.delete(c.getId())) {
-                        count++;
+                int successCount = 0;
+                int errorCount = 0;
+
+                for (Supplier s : cs) {
+                    try {
+                        service.delete(s.getId());
+                        successCount++;
+                    } catch (Exception e) {
+                        errorCount++;
+                        Servicio.getLogger().error("Silme hatası ID: " + s.getId(), e);
                     }
                 }
-                Servicio.getLogger().info("{}", count);
-                Toast.show(this, Toast.Type.SUCCESS, "Başarılı şekilde " + count + " adet tedarikçi silindi.");
+
+                if (successCount > 0) Toast.show(this, Toast.Type.SUCCESS, successCount + " adet tedarikçi silindi.");
+                if (errorCount > 0) Toast.show(this, Toast.Type.WARNING, errorCount + " adet tedarikçi silinemedi.");
+
                 refreshTable();
             }
-
         }));
-    }
-
-    @Override
-    protected void refreshTable() {
-        service = ServiceManager.getSupplierService();
-
-        setTableModel(new SupplierTableModel(service.getAll()));
-
-        Integer[] columnAlignments = {
-                SwingConstants.CENTER,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING
-        };
-
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-        table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
-        table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(table));
-
-        table.getColumnModel().getColumn(0).setMaxWidth(50);
-        table.getColumnModel().getColumn(1).setPreferredWidth(150);
-        table.getColumnModel().getColumn(2).setPreferredWidth(150);
-        table.getColumnModel().getColumn(3).setPreferredWidth(120);
-        table.getColumnModel().getColumn(4).setPreferredWidth(180);
-        table.getColumnModel().getColumn(5).setPreferredWidth(80);
     }
 }

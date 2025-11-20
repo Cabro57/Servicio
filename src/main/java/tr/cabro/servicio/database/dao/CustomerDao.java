@@ -9,14 +9,9 @@ import java.time.LocalDateTime;
 public class CustomerDao extends BaseDao<Customer, Integer> {
 
     @Override
-    protected String getTableName() {
-        return "customers";
-    }
-
+    protected String getTableName() { return "customers"; }
     @Override
-    protected String getPrimaryKeyColumn() {
-        return "id";
-    }
+    protected String getPrimaryKeyColumn() { return "id"; }
 
     @Override
     protected String getInsertSQL() {
@@ -30,34 +25,23 @@ public class CustomerDao extends BaseDao<Customer, Integer> {
     }
 
     @Override
-    protected void fillInsertStatement(PreparedStatement stmt, Customer c) throws SQLException {
-        stmt.setString(1, c.getBusiness_name());
-        stmt.setString(2, c.getName());
-        stmt.setString(3, c.getSurname());
-        stmt.setString(4, c.getPhone_number_1());
-        stmt.setString(5, c.getPhone_number_2());
-        stmt.setString(6, c.getId_no());
-        stmt.setString(7, c.getAddress());
-        stmt.setString(8, c.getEmail());
-        stmt.setString(9, c.getType().getDisplayName());
-        stmt.setString(10, c.getNote());
-        stmt.setString(11, c.getCreated_at() != null ? c.getCreated_at().toString() : null);
-    }
+    protected void fillStatement(PreparedStatement stmt, Customer c, boolean isUpdate) throws SQLException {
+        int i = 1;
+        stmt.setString(i++, c.getBusiness_name());
+        stmt.setString(i++, c.getName());
+        stmt.setString(i++, c.getSurname());
+        stmt.setString(i++, c.getPhone_number_1());
+        stmt.setString(i++, c.getPhone_number_2());
+        stmt.setString(i++, c.getId_no());
+        stmt.setString(i++, c.getAddress());
+        stmt.setString(i++, c.getEmail());
+        stmt.setString(i++, c.getType().getDisplayName());
+        stmt.setString(i++, c.getNote());
+        stmt.setString(i++, c.getCreated_at() != null ? c.getCreated_at().toString() : null);
 
-    @Override
-    protected void fillUpdateStatement(PreparedStatement stmt, Customer c) throws SQLException {
-        stmt.setString(1, c.getBusiness_name());
-        stmt.setString(2, c.getName());
-        stmt.setString(3, c.getSurname());
-        stmt.setString(4, c.getPhone_number_1());
-        stmt.setString(5, c.getPhone_number_2());
-        stmt.setString(6, c.getId_no());
-        stmt.setString(7, c.getAddress());
-        stmt.setString(8, c.getEmail());
-        stmt.setString(9, c.getType().getDisplayName());
-        stmt.setString(10, c.getNote());
-        stmt.setString(11, c.getCreated_at() != null ? c.getCreated_at().toString() : null);
-        stmt.setInt(12, c.getId());
+        if (isUpdate) {
+            stmt.setInt(i++, c.getId());
+        }
     }
 
     @Override
@@ -72,8 +56,7 @@ public class CustomerDao extends BaseDao<Customer, Integer> {
         c.setType(CustomerType.of(rs.getString("status")));
         c.setNote(rs.getString("note"));
         if (rs.getString("created_at") != null) {
-            LocalDateTime date = LocalDateTime.parse(rs.getString("created_at"));
-            c.setCreated_at(date);
+            c.setCreated_at(LocalDateTime.parse(rs.getString("created_at")));
         }
         return c;
     }
@@ -81,10 +64,5 @@ public class CustomerDao extends BaseDao<Customer, Integer> {
     @Override
     protected void setGeneratedId(Customer entity, int id) {
         entity.setId(id);
-    }
-
-    @Override
-    protected void setKey(PreparedStatement stmt, int index, Integer key) throws SQLException {
-        stmt.setInt(index, key);
     }
 }

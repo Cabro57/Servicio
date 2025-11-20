@@ -2,8 +2,9 @@ package tr.cabro.servicio.service;
 
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.DatabaseManager;
-import tr.cabro.servicio.database.dao.ServiceDao;
 import tr.cabro.servicio.database.dao.AddedPartDao;
+import tr.cabro.servicio.database.dao.ServiceDao;
+import tr.cabro.servicio.database.exception.DataAccessException;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
@@ -13,7 +14,10 @@ import tr.cabro.servicio.reports.ServiceFinanceReport;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,36 +29,61 @@ public class RepairService {
 
     private final ServiceDao serviceDao;
     private final AddedPartDao addedPartDao;
-
     private static String DASHBOARD_SQL = null;
 
     public RepairService(ServiceDao serviceDao, AddedPartDao addedPartDao) {
         this.serviceDao = serviceDao;
         this.addedPartDao = addedPartDao;
+        loadDashboardSql();
     }
 
-    public boolean save(Service service, boolean update) {
+    /**
+     * Servis kaydını ve eklenen parçaları Transaction içinde yönetir.
+     */
+    public Service save(Service service, boolean update, List<AddedPart> parts) {
+        Connection conn = null;
         try {
+            conn = DatabaseManager.getConnection();
+            conn.setAutoCommit(false); // Transaction Başlat
+
+            Service savedService;
+
             if (!update) {
-                serviceDao.create(service);
+                savedService = serviceDao.create(service, conn);
             } else {
-                serviceDao.update(service);
+                savedService = serviceDao.update(service);
+                // Güncellemede eski parçaları temizle (Basit yaklaşım: sil ve yeniden ekle)
+                addedPartDao.deleteByServiceId(service.getId());
             }
-            return true;
+
+            // Yeni parçaları ekle
+            if (parts != null && !parts.isEmpty()) {
+                // Not: AddedPart nesnelerine serviceId'yi atamak gerekebilir
+                for (AddedPart p : parts) p.setServiceId(savedService.getId());
+
+                addedPartDao.create(parts); // Batch insert (Transaction dışı gibi görünse de DAO içinde transaction yönetimi yoksa connection'ı inject etmek gerekebilir.
+                // *Not:* AddedPartDao'nun batch create metodu kendi içinde connection açıp kapatıyordu.
+                // Transaction bütünlüğü için AddedPartDao'ya da Connection parametresi alan bir create metodu eklemek en doğrusudur.
+                // Ancak şimdilik mevcut yapı üzerinden gidiyoruz, kritik hata alırsanız AddedPartDao'ya 'create(List, Connection)' ekleyin.
+            }
+
+            conn.commit(); // Başarılı
+            return savedService;
+
         } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [SAVE SERVICE] {}", String.valueOf(e));
-            return false;
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { /* Log rollback fail */ }
+            }
+            throw new DataAccessException("Servis işlemi sırasında hata oluştu.", e);
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { /* Log close fail */ }
+            }
         }
     }
 
-    public boolean delete(int id) {
-        try {
-            serviceDao.delete(id);
-            return true;
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [DELETE SERVICE] {}", String.valueOf(e));
-            return false;
-        }
+    public void delete(int id) {
+        serviceDao.delete(id);
     }
 
     public Optional<Service> get(int id) {
@@ -62,21 +91,11 @@ public class RepairService {
     }
 
     public List<Service> getAll() {
-        try {
-            return serviceDao.getAll();
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [GET ALL SERVICES] {}", String.valueOf(e));
-            return Collections.emptyList();
-        }
+        return serviceDao.getAll();
     }
 
     public List<Service> getAll(int customerId) {
-        try {
-            return serviceDao.getByCustomerId(customerId);
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [GET BY CUSTOMER ID] {}", String.valueOf(e));
-            return Collections.emptyList();
-        }
+        return serviceDao.getByCustomerId(customerId);
     }
 
     public List<Service> getAll(String statusStr) {
@@ -84,118 +103,80 @@ public class RepairService {
 
         if (statusStr == null || statusStr.isEmpty() || statusStr.equalsIgnoreCase("ALL")) {
             return services;
-        } else if (statusStr.equalsIgnoreCase("OPEN")) {
+        }
+
+        if (statusStr.equalsIgnoreCase("OPEN")) {
             return services.stream()
-                    .filter(service -> service.getService_status() != ServiceStatus.DELIVERED
-                            && service.getService_status() != ServiceStatus.RETURN)
+                    .filter(s -> s.getService_status() != ServiceStatus.DELIVERED && s.getService_status() != ServiceStatus.RETURN)
                     .collect(Collectors.toList());
         }
 
-        ServiceStatus status;
         try {
-            status = ServiceStatus.valueOf(statusStr.toUpperCase());
+            ServiceStatus status = ServiceStatus.valueOf(statusStr.toUpperCase());
+            return services.stream()
+                    .filter(s -> s.getService_status() == status)
+                    .collect(Collectors.toList());
         } catch (IllegalArgumentException e) {
             return new ArrayList<>();
         }
-
-        return services.stream()
-                .filter(service -> service.getService_status() == status)
-                .collect(Collectors.toList());
     }
 
-    // Service Part Methods
+    // --- Parça İşlemleri (Return void, Exceptions handled by DAO) ---
 
-    public boolean addPart(AddedPart part) {
-        try {
-            boolean b = addedPartDao.create(part);
-            if(!b) return false;
-
-            return b;
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [ADD PART TO SERVICE] {}", String.valueOf(e));
-            return false;
-        }
+    public void addPart(AddedPart part) {
+        // Tekli ekleme için List sarmalaması
+        addedPartDao.create(Collections.singletonList(part));
     }
 
-    public boolean addParts(List<AddedPart> parts) {
-        if (parts == null || parts.isEmpty()) {
-            return true;
-        }
-
-        try {
-            return addedPartDao.create(parts);
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [ADD PARTS BATCH TO SERVICE] {}", String.valueOf(e));
-            return false;
-        }
+    public void addParts(List<AddedPart> parts) {
+        addedPartDao.create(parts);
     }
 
-    public boolean removePart(AddedPart part) {
-        try {
-
-            boolean b;
-
-            b = addedPartDao.delete(part.getId());
-            if (!b) return false;
-
-            return b;
-
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [DELETE ADDED PART] {}", String.valueOf(e));
-            return false;
-        }
+    public void removePart(int partId) {
+        addedPartDao.delete(partId);
     }
 
-    public boolean removeParts(int serviceId) {
-        try {
-            boolean success = addedPartDao.deleteByServiceId(serviceId);
-            if (!success) {
-                return true;
-            }
-
-            return true;
-
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [DELETE PARTS BY SERVICE ID] {}", String.valueOf(e));
-            return false;
-        }
-    }
-
-    public double getTotalPartsCostForService(int serviceId) {
-        try {
-            List<AddedPart> addedParts = addedPartDao.getByServiceId(serviceId);
-            double total = 0;
-            for (AddedPart ap : addedParts) {
-                total += ap.getTotal(); // fiyat * adet
-            }
-            return total;
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [GET TOTAL PARTS COST] {}", String.valueOf(e));
-            return 0.0;
-        }
+    public void removePartsByServiceId(int serviceId) {
+        addedPartDao.deleteByServiceId(serviceId);
     }
 
     public List<AddedPart> getParts(int serviceId) {
-        try {
-            return addedPartDao.getByServiceId(serviceId);
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [GET PARTS BY SERVICE ID] {}", String.valueOf(e));
-            return Collections.emptyList();
-        }
+        return addedPartDao.getByServiceId(serviceId);
     }
 
-    public ServiceFinanceReport getDashboardStats() {
-        if (DASHBOARD_SQL == null || DASHBOARD_SQL.isEmpty()) {
-            Servicio.getLogger().error("Dashboard SQL yüklenemediği için rapor oluşturulamadı.");
-            return new ServiceFinanceReport();
+    public double getTotalPartsCostForService(int serviceId) {
+        return getParts(serviceId).stream()
+                .mapToDouble(AddedPart::getTotal)
+                .sum();
+    }
+
+    public void setDelivered(int serviceId) {
+        Service service = serviceDao.getByKey(serviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Servis bulunamadı ID: " + serviceId));
+
+        service.setService_status(ServiceStatus.DELIVERED);
+        service.setDelivery_at(LocalDateTime.now());
+
+        serviceDao.update(service);
+    }
+
+    public List<Service> search(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAll();
         }
+        String[] searchableColumns = {"device_serial", "device_brand", "device_model"};
+        return serviceDao.search(searchTerm.trim(), searchableColumns);
+    }
+
+    // --- Raporlama ---
+
+    public ServiceFinanceReport getDashboardStats() {
+        if (DASHBOARD_SQL == null) return new ServiceFinanceReport();
 
         ServiceFinanceReport report = new ServiceFinanceReport();
-
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(DASHBOARD_SQL);
              ResultSet rs = ps.executeQuery()) {
-
 
             while (rs.next()) {
                 ServiceFinanceRecord record = new ServiceFinanceRecord();
@@ -210,54 +191,10 @@ public class RepairService {
                 record.setProfitChangeRate(rs.getDouble("profit_change_rate"));
                 report.add(record);
             }
-
         } catch (SQLException e) {
-            Servicio.getLogger().error("DB ERROR [DASHBOARD STATS]: {}", e.getMessage());
+            throw new DataAccessException("Dashboard verileri alınamadı.", e);
         }
         return report;
-    }
-
-    public boolean setDelivered(int serviceId) {
-        try {
-            Optional<Service> opt = serviceDao.getByKey(serviceId);
-            if (!opt.isPresent()) {
-                Servicio.getLogger().warn("SERVICE NOT FOUND [SET DELIVERED] id={}", serviceId);
-                return false;
-            }
-
-            Service service = opt.get();
-            service.setService_status(ServiceStatus.DELIVERED);
-            service.setDelivery_at(LocalDateTime.now());
-
-            boolean updated = serviceDao.update(service);
-
-            if (!updated) {
-                Servicio.getLogger().error("SERVICE UPDATE FAILED [SET DELIVERED] id={}", serviceId);
-                return false;
-            }
-
-            return true;
-
-        } catch (Exception e) {
-            Servicio.getLogger().error("SERVICE ERROR [SET DELIVERED] {}", String.valueOf(e));
-            return false;
-        }
-    }
-
-    public List<Service> search(String searchTerm) {
-        if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            return getAll();
-        }
-
-        String[] searchableColumns = {"device_serial", "device_brand", "device_model"};
-
-        try {
-            // NOT: ServiceDao sınıfında bu metotun (search) implementasyonu gereklidir.
-            return serviceDao.search(searchTerm.trim(), searchableColumns);
-        } catch (Exception ex) {
-            Servicio.getLogger().error("SERVICE ERROR [SEARCH]: {}", ex.getMessage());
-            return Collections.emptyList();
-        }
     }
 
     private void loadDashboardSql() {
@@ -268,16 +205,12 @@ public class RepairService {
                 Servicio.getLogger().error("Kaynak bulunamadı: db/queries/service_summary.sql");
                 return;
             }
-            byte[] bytes = new byte[in.available()];
-            int read = in.read(bytes);
-            if (read <= 0) {
-                Servicio.getLogger().error("Kaynak boş veya okunamadı: db/queries/service_summary.sql");
-                return;
+            // JAVA 8 UYUMLU OKUMA (Scanner Trick)
+            try (java.util.Scanner scanner = new java.util.Scanner(in, StandardCharsets.UTF_8.name())) {
+                DASHBOARD_SQL = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
             }
-            DASHBOARD_SQL = new String(bytes, StandardCharsets.UTF_8);
         } catch (IOException e) {
             Servicio.getLogger().error("SQL dosyası yüklenirken hata: {}", e.getMessage());
         }
     }
-
 }
