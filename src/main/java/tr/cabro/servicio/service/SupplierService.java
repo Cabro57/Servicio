@@ -1,10 +1,8 @@
 package tr.cabro.servicio.service;
 
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.dao.SupplierDao;
 import tr.cabro.servicio.model.Supplier;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,43 +14,23 @@ public class SupplierService {
         this.supplierDao = supplierDao;
     }
 
-    public boolean save(Supplier supplier, boolean update) {
-        try {
-            if (update) {
-                return supplierDao.update(supplier);
-            } else {
-                return supplierDao.create(supplier);
-            }
-        } catch (Exception e) {
-            Servicio.getLogger().error("SUPPLIER ERROR [SAVE]: {}", e.getMessage());
-            return false;
+    public Supplier save(Supplier supplier, boolean update) {
+        if (!update) {
+            return supplierDao.create(supplier);
+        } else {
+            return supplierDao.update(supplier);
         }
     }
 
-    public boolean delete(int id) {
-        try {
-            return supplierDao.delete(id);
-        } catch (Exception e) {
-            Servicio.getLogger().error("SUPPLIER ERROR [DELETE]: {}", e.getMessage());
-            return false;
-        }
+    public void delete(int id) {
+        supplierDao.delete(id);
     }
 
     public Optional<Supplier> get(int id) {
-        try {
-            return supplierDao.getByKey(id);
-        } catch (Exception e) {
-            Servicio.getLogger().error("SUPPLIER ERROR [GET]: {}", e.getMessage());
-            return Optional.empty();
-        }
+        return supplierDao.getByKey(id);
     }
 
     public List<Supplier> getAll() {
-        try {
-            return supplierDao.getAll();
-        } catch (Exception e) {
-            Servicio.getLogger().error("SUPPLIER ERROR [GET ALL]: {}", e.getMessage());
-            return Collections.emptyList();
-        }
+        return supplierDao.getAll();
     }
 }

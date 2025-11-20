@@ -25,18 +25,21 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         // Barkod kontrolü
         if (Validator.isEmpty(barcode_field.getText())) {
             showValidationError("Barkod boş olamaz.");
+            barcode_field.requestFocus();
             return false;
         }
 
         // Marka kontrolü
         if (Validator.isEmpty(brand_field.getText())) {
             showValidationError("Marka boş olamaz.");
+            brand_field.requestFocus();
             return false;
         }
 
         // Ürün adı kontrolü
         if (Validator.isEmpty(name_field.getText())) {
             showValidationError("Ürün adı boş olamaz.");
+            name_field.requestFocus();
             return false;
         }
 
@@ -48,14 +51,17 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         // Negatif sayı kontrolleri
         if (Validator.isNegative(purchasePrice)) {
             showValidationError("Alış fiyatı negatif olamaz.");
+            purchase_date_field.requestFocus();
             return false;
         }
         if (Validator.isNegative(stock)) {
             showValidationError("Stok negatif olamaz.");
+            stock_spinner.requestFocus();
             return false;
         }
         if (Validator.isNegative(minStock)) {
             showValidationError("Min stok negatif olamaz.");
+            min_stock_spinner.requestFocus();
             return false;
         }
 

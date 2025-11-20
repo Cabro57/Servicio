@@ -1,28 +1,25 @@
 package tr.cabro.servicio.database.dao;
 
-import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.database.DatabaseManager; // getByCustomerId için gerekli
+import tr.cabro.servicio.database.exception.DataAccessException;
 import tr.cabro.servicio.model.PaymentType;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
 
-import javax.xml.crypto.Data;
-import java.sql.*;
-import java.time.LocalDateTime;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ServiceDao extends BaseDao<Service, Integer> {
 
     @Override
-    protected String getTableName() {
-        return "services";
-    }
+    protected String getTableName() { return "services"; }
 
     @Override
-    protected String getPrimaryKeyColumn() {
-        return "id";
-    }
+    protected String getPrimaryKeyColumn() { return "id"; }
 
     @Override
     protected String getInsertSQL() {
@@ -45,37 +42,32 @@ public class ServiceDao extends BaseDao<Service, Integer> {
     }
 
     @Override
-    protected void fillInsertStatement(PreparedStatement stmt, Service entity) throws SQLException {
-        fillCommonFields(stmt, entity);
-    }
+    protected void fillStatement(PreparedStatement stmt, Service entity, boolean isUpdate) throws SQLException {
+        int i = 1;
+        stmt.setInt(i++, entity.getCustomer_id());
+        stmt.setString(i++, dateToStr(entity.getCreated_at()));
+        stmt.setString(i++, dateToStr(entity.getDelivery_at()));
+        stmt.setString(i++, entity.getDevice_type());
+        stmt.setString(i++, entity.getDevice_brand());
+        stmt.setString(i++, entity.getDevice_model());
+        stmt.setString(i++, entity.getDevice_serial());
+        stmt.setString(i++, entity.getDevice_password());
+        stmt.setString(i++, entity.getDevice_accessory());
+        stmt.setDouble(i++, entity.getLabor_cost());
+        stmt.setDouble(i++, entity.getPaid());
+        stmt.setString(i++, entity.getPayment_type().getDisplayName());
+        stmt.setString(i++, dateToStr(entity.getWarranty_date()));
+        stmt.setString(i++, dateToStr(entity.getMaintenance_date()));
+        stmt.setString(i++, entity.getReported_fault());
+        stmt.setString(i++, entity.getDetected_fault());
+        stmt.setString(i++, entity.getAction_taken());
+        stmt.setString(i++, entity.getUrgency_status());
+        stmt.setString(i++, entity.getService_status().getDisplayName());
+        stmt.setString(i++, entity.getNotes());
 
-    @Override
-    protected void fillUpdateStatement(PreparedStatement stmt, Service entity) throws SQLException {
-        fillCommonFields(stmt, entity);
-        stmt.setInt(21, entity.getId());
-    }
-
-    private void fillCommonFields(PreparedStatement stmt, Service entity) throws SQLException {
-        stmt.setInt(1, entity.getCustomer_id());
-        stmt.setString(2, dateToStr(entity.getCreated_at()));
-        stmt.setString(3, dateToStr(entity.getDelivery_at()));
-        stmt.setString(4, entity.getDevice_type());
-        stmt.setString(5, entity.getDevice_brand());
-        stmt.setString(6, entity.getDevice_model());
-        stmt.setString(7, entity.getDevice_serial());
-        stmt.setString(8, entity.getDevice_password());
-        stmt.setString(9, entity.getDevice_accessory());
-        stmt.setDouble(10, entity.getLabor_cost());
-        stmt.setDouble(11, entity.getPaid());
-        stmt.setString(12, entity.getPayment_type().getDisplayName());
-        stmt.setString(13, dateToStr(entity.getWarranty_date()));
-        stmt.setString(14, dateToStr(entity.getMaintenance_date()));
-        stmt.setString(15, entity.getReported_fault());
-        stmt.setString(16, entity.getDetected_fault());
-        stmt.setString(17, entity.getAction_taken());
-        stmt.setString(18, entity.getUrgency_status());
-        stmt.setString(19, entity.getService_status().getDisplayName());
-        stmt.setString(20, entity.getNotes());
+        if (isUpdate) {
+            stmt.setInt(i++, entity.getId());
+        }
     }
 
     @Override
@@ -94,14 +86,22 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         service.setDevice_accessory(rs.getString("device_accessory"));
         service.setLabor_cost(rs.getDouble("labor_cost"));
         service.setPaid(rs.getDouble("paid"));
-        service.setPayment_type(PaymentType.of(rs.getString("payment_type")));
+
+        try {
+            service.setPayment_type(PaymentType.valueOf(rs.getString("payment_type")));
+        } catch (Exception e) { service.setPayment_type(PaymentType.CASH); }
+
         service.setWarranty_date(strToDate(rs.getString("warranty_date")));
         service.setMaintenance_date(strToDate(rs.getString("maintenance_date")));
         service.setReported_fault(rs.getString("reported_fault"));
         service.setDetected_fault(rs.getString("detected_fault"));
         service.setAction_taken(rs.getString("action_taken"));
         service.setUrgency_status(rs.getString("urgency_status"));
-        service.setService_status(ServiceStatus.of(rs.getString("service_status")));
+
+        try {
+            service.setService_status(ServiceStatus.valueOf(rs.getString("service_status")));
+        } catch (Exception e) { service.setService_status(ServiceStatus.UNDER_REPAIR); }
+
         service.setNotes(rs.getString("Notes"));
         return service;
     }
@@ -111,19 +111,7 @@ public class ServiceDao extends BaseDao<Service, Integer> {
         entity.setId(id);
     }
 
-    @Override
-    protected void setKey(PreparedStatement stmt, int index, Integer key) throws SQLException {
-        stmt.setInt(index, key);
-    }
-
-    private String dateToStr(LocalDateTime date) {
-        return date != null ? date.toString() : null;
-    }
-
-    private LocalDateTime strToDate(String dateStr) {
-        return (dateStr != null) ? LocalDateTime.parse(dateStr) : null;
-    }
-
+    // Özel Metod: Hata fırlatır
     public List<Service> getByCustomerId(int customerId) {
         List<Service> services = new ArrayList<>();
         String sql = "SELECT * FROM " + getTableName() + " WHERE customer_id = ?";
@@ -133,12 +121,10 @@ public class ServiceDao extends BaseDao<Service, Integer> {
             stmt.setInt(1, customerId);
 
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    services.add(mapRow(rs));
-                }
+                while (rs.next()) services.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            Servicio.getLogger().error("DB ERROR [GET BY CUSTOMER ID]: {}", e.getMessage());
+            throw new DataAccessException("Müşteri servisleri getirilemedi: " + customerId, e);
         }
         return services;
     }

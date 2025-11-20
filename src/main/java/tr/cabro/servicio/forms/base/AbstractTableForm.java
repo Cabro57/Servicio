@@ -10,6 +10,9 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.regex.PatternSyntaxException;
 
 public abstract class AbstractTableForm<T> extends Form {
 
@@ -17,7 +20,7 @@ public abstract class AbstractTableForm<T> extends Form {
     protected JTable table;
     protected JScrollPane tableScroll;
     protected JPanel tablePanel;
-    protected JButton newButton, editButton, deleteButton;
+    protected JButton newButton, editButton, deleteButton, refreshButton; // Refresh butonu eklendi
     protected TableRowSorter<? extends TableModel> sorter;
 
     public AbstractTableForm() {
@@ -28,28 +31,37 @@ public abstract class AbstractTableForm<T> extends Form {
 
     @Override
     public void formInit() {
+        // Form ilk açıldığında verileri yükle
         refreshTable();
+        updateButtonStates(); // Başlangıçta buton durumlarını ayarla
     }
 
     @Override
     public void formRefresh() {
         refreshTable();
+        updateButtonStates();
     }
 
     private void initLayout() {
-        setLayout(new MigLayout("fill, insets 10, gap 10, wrap", "[grow][100!][100!][100!]", "[]10[grow]"));
+        // Layout iyileştirmesi: Butonları sağa yasladık ve 'sg' (size group) ile eşitledik.
+        setLayout(new MigLayout("fill, insets 10, gap 10, wrap", "[grow][][][][]", "[]10[grow]"));
 
         searchField = new JTextField();
         newButton = new JButton("Yeni");
         editButton = new JButton("Düzenle");
         deleteButton = new JButton("Sil");
+        refreshButton = new JButton(new FlatSVGIcon("icons/refresh.svg", 0.4f)); // İkon yolunuzu kontrol edin
 
         add(searchField, "growx");
-        add(newButton, "w 100!");
-        add(editButton, "w 100!");
-        add(deleteButton, "w 100!, wrap");
+        add(newButton, "sg btn, w 100!");   // 'sg btn': Hepsi aynı genişlikte olsun
+        add(editButton, "sg btn, w 100!");
+        add(deleteButton, "sg btn, w 100!");
+        add(refreshButton, "w 40!, wrap");  // Küçük kare refresh butonu
 
         table = new JTable();
+        // Tablo boşken gösterilecek placeholder (İsteğe bağlı)
+        // table.setFillsViewportHeight(true);
+
         tableScroll = new JScrollPane(table);
         tablePanel = new JPanel(new MigLayout("fill", "fill, grow", "fill, grow"));
         tablePanel.add(tableScroll, "");
@@ -73,32 +85,77 @@ public abstract class AbstractTableForm<T> extends Form {
         searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
         searchField.putClientProperty(FlatClientProperties.STYLE,
                 "arc:15; borderWidth:0; focusWidth:0; innerFocusWidth:0; margin:5,20,5,20; background:$Table.background");
+
+        // Butonlara ikon eklemek isterseniz buraya ekleyebilirsiniz
+        // newButton.setIcon(new FlatSVGIcon("icons/add.svg"));
     }
 
     private void attachListeners() {
+        // Arama dinleyicisi
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { applyFilter(); }
             public void removeUpdate(DocumentEvent e) { applyFilter(); }
             public void changedUpdate(DocumentEvent e) { applyFilter(); }
         });
 
+        // Buton aksiyonları
         newButton.addActionListener(e -> onNew());
         editButton.addActionListener(e -> onEdit());
         deleteButton.addActionListener(e -> onDelete());
+        refreshButton.addActionListener(e -> {
+            refreshTable();
+            updateButtonStates();
+        });
+
+        // Tablo seçim dinleyicisi (Butonları aktif/pasif yapmak için)
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateButtonStates();
+            }
+        });
+
+        // Çift tıklama ile düzenleme (UX İyileştirmesi)
+        table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) {
+                    onEdit(); // Çift tıklayınca düzenleme penceresini aç
+                }
+            }
+        });
+    }
+
+    /**
+     * Tablodan seçim yapılmadığında Düzenle ve Sil butonlarını pasif yapar.
+     */
+    protected void updateButtonStates() {
+        boolean hasSelection = table.getSelectedRow() != -1;
+        editButton.setEnabled(hasSelection);
+        deleteButton.setEnabled(hasSelection);
     }
 
     protected void applyFilter() {
         if (sorter == null) return;
         String text = searchField.getText().trim();
-        sorter.setRowFilter(text.isEmpty() ? null : RowFilter.regexFilter("(?i)" + text));
+
+        try {
+            // (?i) case-insensitive flag'idir.
+            sorter.setRowFilter(text.isEmpty() ? null : RowFilter.regexFilter("(?i)" + text));
+        } catch (PatternSyntaxException e) {
+            // Kullanıcı regex karakterleri (*, [, +) girdiğinde uygulama çökmemesi için
+            // Hatalı regex durumunda filtreyi temizle veya logla
+            // Opsiyonel: searchField kırmızı yapılabilir.
+        }
     }
 
     protected void setTableModel(TableModel model) {
         table.setModel(model);
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
+        updateButtonStates(); // Model değişince seçim sıfırlanır
     }
 
+    // Soyut metodlar
     protected abstract void refreshTable();
     protected abstract void onNew();
     protected abstract void onEdit();

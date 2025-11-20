@@ -1,7 +1,7 @@
 package tr.cabro.servicio.database.dao;
 
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.database.exception.DataAccessException;
 import tr.cabro.servicio.model.Part;
 
 import java.sql.*;
@@ -13,14 +13,9 @@ import java.util.List;
 public class PartDao extends BaseDao<Part, String> {
 
     @Override
-    protected String getTableName() {
-        return "part";
-    }
-
+    protected String getTableName() { return "part"; }
     @Override
-    protected String getPrimaryKeyColumn() {
-        return "barcode";
-    }
+    protected String getPrimaryKeyColumn() { return "barcode"; }
 
     @Override
     protected String getInsertSQL() {
@@ -36,39 +31,32 @@ public class PartDao extends BaseDao<Part, String> {
     }
 
     @Override
-    protected void fillInsertStatement(PreparedStatement stmt, Part entity) throws SQLException {
-        stmt.setString(1, entity.getBarcode());
-        stmt.setString(2, entity.getBrand());
-        stmt.setInt(3, entity.getSupplier_id());
-        stmt.setString(4, entity.getName());
-        stmt.setString(5, entity.getDevice_type());
-        stmt.setString(6, entity.getModels());
-        stmt.setDouble(7, entity.getPurchase_price());
-        stmt.setDouble(8, entity.getSale_price());
-        stmt.setInt(9, entity.getStock());
-        stmt.setInt(10, entity.getMinStock());
-        stmt.setInt(11, entity.getWarranty_period());
-        stmt.setString(12, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
-        stmt.setString(13, entity.getDescription());
-        stmt.setString(14, entity.getCreated_at().toString());
-    }
+    protected void fillStatement(PreparedStatement stmt, Part entity, boolean isUpdate) throws SQLException {
+        int i = 1;
+        // Barcode PK olduğu için insertte başta, update'de sonda olabilir ama
+        // burada insert statement'a göre PK başta tanımlanmış.
+        // BaseDao'dan gelen yapı gereği Insert SQL'de PK elle veriliyor.
+        if (!isUpdate) {
+            stmt.setString(i++, entity.getBarcode());
+        }
 
-    @Override
-    protected void fillUpdateStatement(PreparedStatement stmt, Part entity) throws SQLException {
-        stmt.setString(1, entity.getBrand());
-        stmt.setString(2, entity.getName());
-        stmt.setInt(3, entity.getSupplier_id());
-        stmt.setString(4, entity.getDevice_type());
-        stmt.setString(5, entity.getModels());
-        stmt.setDouble(6, entity.getPurchase_price());
-        stmt.setDouble(7, entity.getSale_price());
-        stmt.setInt(8, entity.getStock());
-        stmt.setInt(9, entity.getMinStock());
-        stmt.setInt(10, entity.getWarranty_period());
-        stmt.setString(11, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
-        stmt.setString(12, entity.getDescription());
-        stmt.setString(13, entity.getCreated_at().toString());
-        stmt.setString(14, entity.getBarcode());
+        stmt.setString(i++, entity.getBrand());
+        stmt.setInt(i++, entity.getSupplier_id());
+        stmt.setString(i++, entity.getName());
+        stmt.setString(i++, entity.getDevice_type());
+        stmt.setString(i++, entity.getModels());
+        stmt.setDouble(i++, entity.getPurchase_price());
+        stmt.setDouble(i++, entity.getSale_price());
+        stmt.setInt(i++, entity.getStock());
+        stmt.setInt(i++, entity.getMinStock());
+        stmt.setInt(i++, entity.getWarranty_period());
+        stmt.setString(i++, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
+        stmt.setString(i++, entity.getDescription());
+        stmt.setString(i++, entity.getCreated_at().toString());
+
+        if (isUpdate) {
+            stmt.setString(i++, entity.getBarcode());
+        }
     }
 
     @Override
@@ -90,37 +78,33 @@ public class PartDao extends BaseDao<Part, String> {
         if (dateStr != null && !dateStr.isEmpty()) {
             p.setPurchase_date(LocalDate.parse(dateStr));
         }
-
         p.setDescription(rs.getString("description"));
 
         String createdAtStr = rs.getString("created_at");
         if (createdAtStr != null && !createdAtStr.isEmpty()) {
             p.setCreated_at(LocalDateTime.parse(createdAtStr));
         }
-
         return p;
     }
 
     @Override
     protected void setGeneratedId(Part entity, int id) {
-
+        // String PK olduğu için burası boş
     }
 
-    @Override
-    protected void setKey(PreparedStatement stmt, int index, String key) throws SQLException {
-        stmt.setString(index, key);
-    }
+    // --- Özel Metodlar (Exception Fırlatacak Şekilde Güncellendi) ---
 
     public boolean isBarcodeExists(String barcode) {
         String sql = "SELECT COUNT(*) FROM " + getTableName() + " WHERE barcode = ?";
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, barcode);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return rs.getInt(1) > 0;
             }
         } catch (SQLException e) {
-            Servicio.getLogger().error("DB ERROR [CHECK BARCODE EXISTS] {}", String.valueOf(e));
+            throw new DataAccessException("Barkod kontrolü hatası: " + barcode, e);
         }
         return false;
     }
@@ -128,40 +112,30 @@ public class PartDao extends BaseDao<Part, String> {
     public List<Part> getProductsBelowMinStock() {
         List<Part> list = new ArrayList<>();
         String sql = "SELECT * FROM " + getTableName() + " WHERE stock < min_stock";
-        try (Statement stmt = DatabaseManager.getConnection().createStatement();
+        try (Connection conn = DatabaseManager.getConnection();
+             Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 list.add(mapRow(rs));
             }
         } catch (SQLException e) {
-            Servicio.getLogger().error("DB ERROR [GET BELOW MIN STOCK] {}", String.valueOf(e));
+            throw new DataAccessException("Kritik stok listesi alınamadı.", e);
         }
         return list;
     }
 
-    public boolean adjustStock(String barcode, int amount) {
+    public void adjustStock(String barcode, int amount) {
         String sql = "UPDATE part SET stock = stock + ? WHERE barcode = ?";
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, amount);
             stmt.setString(2, barcode);
             int rows = stmt.executeUpdate();
-            return rows > 0;
+            if (rows == 0) {
+                throw new DataAccessException("Stok güncellenemedi, ürün bulunamadı: " + barcode, null);
+            }
         } catch (SQLException e) {
-            Servicio.getLogger().error("DB ERROR [ADJUST STOCK] {}", e.getMessage());
-            return false;
+            throw new DataAccessException("Stok güncelleme hatası: " + barcode, e);
         }
     }
-
-    public void updateStock(String barcode, int newStock) {
-        // Basit JDBC güncellemesi
-        String sql = "UPDATE part SET stock = ? WHERE barcode = ?";
-        try (PreparedStatement stmt = DatabaseManager.getConnection().prepareStatement(sql)) {
-            stmt.setInt(1, newStock);
-            stmt.setString(2, barcode);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            Servicio.getLogger().error("DB ERROR [UPDATE STOCK] {}", String.valueOf(e));
-        }
-    }
-
 }

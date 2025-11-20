@@ -8,6 +8,7 @@ import raven.datetime.TimePicker;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.SearchField;
 import tr.cabro.servicio.application.panels.SearchCustomerPanel;
 import tr.cabro.servicio.application.panels.ServicePanel;
@@ -85,13 +86,13 @@ public class CustomerInfoPanel extends ServicePanel {
                                         return;
                                     }
 
-                                    customer.setCreated_at(LocalDateTime.now());
-                                    boolean added = service.save(customer, false);
-
-                                    if (added) {
+                                    try {
+                                        customer.setCreated_at(LocalDateTime.now());
+                                        service.save(customer, false);
                                         Toast.show(this, Toast.Type.SUCCESS, customer.getName() + " başarıyla eklendi.");
-                                    } else {
+                                    } catch (Exception ex) {
                                         Toast.show(this, Toast.Type.WARNING, customer.getName() + " zaten mevcut.");
+                                        Servicio.getLogger().error(customer.getName() + " zaten mevcut.", e);
                                     }
 
                                     setCustomer(customer);

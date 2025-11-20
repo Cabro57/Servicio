@@ -21,7 +21,14 @@ import java.util.List;
 @SystemForm(name = "Müşteriler", description = "Müşteri listesini gösterir.")
 public class FormCustomers extends AbstractTableForm<Customer> {
 
-    private CustomerService customerService;
+    private final CustomerService customerService;
+
+    public FormCustomers() {
+        // Servisi constructor'da almak daha güvenlidir
+        this.customerService = ServiceManager.getCustomerService();
+        // Tabloyu ilk açılışta doldur
+        // refreshTable(); // AbstractTableForm constructor'ında çağrılıyorsa buraya gerek yok
+    }
 
     @Override
     protected void onNew() {
@@ -29,33 +36,43 @@ public class FormCustomers extends AbstractTableForm<Customer> {
         CustomerEditPanel panel = new CustomerEditPanel();
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Tamam", 0),
+                new SimpleModalBorder.Option("Kaydet", 0), // "Tamam" yerine "Kaydet" daha anlamlı olabilir
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
         ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Müşteri Formu", options,
+                        panel, "Yeni Müşteri Ekle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.clearForm();
-
                             } else if (action == SimpleModalBorder.OK_OPTION) {
+                                // 1. Panelden veriyi al ve validasyonu kontrol et
                                 Customer updated = panel.getDataIfValid();
                                 if (updated == null) {
-                                    controller.consume();
+                                    controller.consume(); // Validasyon hatası varsa diyaloğu kapatma
                                     return;
                                 }
 
-                                updated.setCreated_at(LocalDateTime.now());
-                                boolean added = customerService.save(updated, false);
+                                // 2. İşlemi yap (TRY-CATCH İLE)
+                                try {
+                                    updated.setCreated_at(LocalDateTime.now());
 
-                                if (added) {
+                                    // Artık boolean dönmüyor, hata varsa exception fırlatıyor
+                                    customerService.save(updated, false);
+
+                                    // Hata yoksa burası çalışır
                                     Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
-                                } else {
-                                    Toast.show(this, Toast.Type.WARNING, updated.getName() + " zaten mevcut.");
-                                }
+                                    refreshTable();
+                                    // controller.consume() çağırmadığımız için diyalog otomatik kapanır.
 
-                                refreshTable();
+                                } catch (Exception e) {
+                                    // 3. Hata varsa yakala ve kullanıcıya göster
+                                    controller.consume(); // Hata olduğu için diyaloğu açık tut
+
+                                    // Service veya DAO'dan gelen gerçek hata mesajını gösteriyoruz
+                                    Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
+                                    Servicio.getLogger().error("Müşteri ekleme hatası", e);
+                                }
                             }
                         })
                 , id);
@@ -79,33 +96,40 @@ public class FormCustomers extends AbstractTableForm<Customer> {
         CustomerEditPanel panel = new CustomerEditPanel();
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Tamam", 0),
+                new SimpleModalBorder.Option("Güncelle", 0),
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
         ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Müşteri Formu", options,
+                        panel, "Müşteri Düzenle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.populateFormWith(customer);
-
                             } else if (action == SimpleModalBorder.OK_OPTION) {
+
                                 Customer updated = panel.getDataIfValid();
                                 if (updated == null) {
                                     controller.consume();
                                     return;
                                 }
 
-                                updated.setId(customer.getId());
-                                boolean added = customerService.save(updated, true);
+                                try {
+                                    // ID'yi koru
+                                    updated.setId(customer.getId());
+                                    // Created_at tarihini koru (değişmemeli)
+                                    updated.setCreated_at(customer.getCreated_at());
 
-                                if (added) {
+                                    // Service çağrısı
+                                    customerService.save(updated, true);
+
                                     Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
-                                } else {
-                                    Toast.show(this, Toast.Type.WARNING, updated.getName() + " zaten mevcut.");
-                                }
+                                    refreshTable();
 
-                                refreshTable();
+                                } catch (Exception e) {
+                                    controller.consume(); // Diyaloğu kapatma
+                                    Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + e.getMessage());
+                                    Servicio.getLogger().error("Müşteri güncelleme hatası", e);
+                                }
                             }
                         })
                 , id);
@@ -123,54 +147,70 @@ public class FormCustomers extends AbstractTableForm<Customer> {
         ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
                 "Seçilen " + cs.size() + " müşteriyi silmek istediğinizden emin misiniz?", "Silme Onayı",
                 SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-                    if (action == 0) {
-                        int count = 0;
-                        for (Customer c : cs) {
-                            if (customerService.delete(c.getId())) {
-                                count++;
-                            }
-                        }
-                        Servicio.getLogger().info("{}", count);
-                        Toast.show(this, Toast.Type.SUCCESS, "Başarılı şekilde " + count + " adet müşteri silindi.");
-                        refreshTable();
-                    }
+            if (action == 0) { // YES
+                int successCount = 0;
+                int errorCount = 0;
 
+                for (Customer c : cs) {
+                    try {
+                        // Yeni yapıda delete metodu void döner, hata varsa exception fırlatır
+                        customerService.delete(c.getId());
+                        successCount++;
+                    } catch (Exception e) {
+                        errorCount++;
+                        Servicio.getLogger().error("Silme hatası ID: " + c.getId(), e);
+                    }
+                }
+
+                if (successCount > 0) {
+                    Toast.show(this, Toast.Type.SUCCESS, successCount + " adet müşteri silindi.");
+                }
+
+                if (errorCount > 0) {
+                    Toast.show(this, Toast.Type.WARNING, errorCount + " adet müşteri silinemedi (Aktif işlem olabilir).");
+                }
+
+                refreshTable();
+            }
         }));
     }
 
     @Override
     protected void refreshTable() {
-        customerService = ServiceManager.getCustomerService();
+        // Veritabanı bağlantı hatası ihtimaline karşı try-catch
+        try {
+            List<Customer> allCustomers = customerService.getAll();
+            setTableModel(new CustomerTableModel(allCustomers));
+            configureTable(); // Sütun ayarlarını ayrı bir metoda aldım, daha temiz durur
+        } catch (Exception e) {
+            Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + e.getMessage());
+            Servicio.getLogger().error("Tablo yenileme hatası", e);
+        }
+    }
 
-        setTableModel(new CustomerTableModel(customerService.getAll()));
-
+    private void configureTable() {
         Integer[] columnAlignments = {
-                SwingConstants.CENTER,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING
+                SwingConstants.CENTER, SwingConstants.LEADING, SwingConstants.LEADING,
+                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
+                SwingConstants.LEADING, SwingConstants.LEADING
         };
 
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-        table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
-        table.getColumnModel().getColumn(1).setCellRenderer(new AlignedRenderer(table, 1, SwingConstants.CENTER));
-        table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(table));
-        table.getColumnModel().getColumn(7).setCellRenderer(new CustomerTypeTableRenderer());
+        // Index kontrolleri eklenebilir (IndexOutOfBounds yememek için)
+        if (table.getColumnCount() > 0) {
+            table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
+            table.getColumnModel().getColumn(0).setMaxWidth(50);
 
-        table.getColumnModel().getColumn(0).setMaxWidth(50);
-        table.getColumnModel().getColumn(1).setMaxWidth(40);
-        table.getColumnModel().getColumn(2).setPreferredWidth(150);
-        table.getColumnModel().getColumn(3).setPreferredWidth(120);
-        table.getColumnModel().getColumn(4).setPreferredWidth(100);
-        table.getColumnModel().getColumn(5).setPreferredWidth(180);
-        table.getColumnModel().getColumn(6).setPreferredWidth(100);
-        table.getColumnModel().getColumn(7).setPreferredWidth(80);
-        table.getColumnModel().getColumn(8).setPreferredWidth(80);
+            table.getColumnModel().getColumn(1).setCellRenderer(new AlignedRenderer(table, 1, SwingConstants.CENTER));
+            table.getColumnModel().getColumn(1).setMaxWidth(40);
 
+            table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(table));
+            table.getColumnModel().getColumn(2).setPreferredWidth(150);
+
+            // Diğer sütun genişlikleri...
+            if (table.getColumnCount() > 7) {
+                table.getColumnModel().getColumn(7).setCellRenderer(new CustomerTypeTableRenderer());
+            }
+        }
     }
-
 }

@@ -11,30 +11,35 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
     protected boolean validateForm() {
         // Ad alanı zorunlu
         if (Validator.isEmpty(name_field.getText())) {
-            JOptionPane.showMessageDialog(this, "Ad alanı boş olamaz!");
+            showValidationError("Ad alanı boş olamaz!");
+            name_field.requestFocus();
             return false;
         }
         // Firma adı zorunlu
         if (Validator.isEmpty(business_name_field.getText())) {
-            JOptionPane.showMessageDialog(this, "Firma adı boş olamaz!");
+            showValidationError("Firma adı boş olamaz!");
+            business_name_field.requestFocus();
             return false;
         }
         // Telefon doluysa geçerli uzunluk ve format
         String phone = phone_field.getText().trim();
         if (!Validator.isEmpty(phone) && (!Validator.isNumeric(phone) || !Validator.hasMinLength(phone, 10))) {
-            JOptionPane.showMessageDialog(this, "Telefon numarası sadece rakamlardan oluşmalı ve en az 10 haneli olmalı!");
+            showValidationError("Telefon numarası sadece rakamlardan oluşmalı ve en az 10 haneli olmalı!");
+            phone_field.requestFocus();
             return false;
         }
         // Kimlik numarası doluysa geçerli uzunluk
         String idNo = id_no_field.getText().trim();
         if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
-            JOptionPane.showMessageDialog(this, "Kimlik numarası 11 haneli ve sadece rakamlardan oluşmalı!");
+            showValidationError("Kimlik numarası 11 haneli ve sadece rakamlardan oluşmalı!");
+            id_no_field.requestFocus();
             return false;
         }
         // E-posta doluysa format kontrolü
         String email = email_field.getText().trim();
         if (!Validator.isEmpty(email) && !Validator.isValidEmail(email)) {
-            JOptionPane.showMessageDialog(this, "Geçerli bir e-posta adresi girin!");
+            showValidationError("Geçerli bir e-posta adresi girin!");
+            email_field.requestFocus();
             return false;
         }
 

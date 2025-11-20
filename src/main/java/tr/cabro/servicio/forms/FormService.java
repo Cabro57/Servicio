@@ -3,13 +3,11 @@ package tr.cabro.servicio.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.Drawer;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.simple.SimpleMessageModal;
 import raven.modal.system.Form;
-import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.context.ServiceContext;
 import tr.cabro.servicio.application.listeners.ServiceEditListener;
@@ -26,6 +24,7 @@ import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 public class FormService extends Form {
@@ -46,7 +45,6 @@ public class FormService extends Form {
         repairService = ServiceManager.getRepairService();
         init();
     }
-
 
     private void init() {
         initComponent();
@@ -91,6 +89,12 @@ public class FormService extends Form {
         fault_process_info.action_taken_button.addActionListener(e -> onActionTaken());
     }
 
+    @Override
+    public void formRefresh() {
+
+        clearForm();
+    }
+
     public void setService(@NonNull Service service) {
         this.context.setService(service);
         this.context.setParts(repairService.getParts(service.getId()));
@@ -102,24 +106,17 @@ public class FormService extends Form {
     private void saveService() {
         Service newService = collectForm();
 
-        if (newService.getService_status().equals(ServiceStatus.DELIVERED)) {
-            if (newService.getDelivery_at() == null) newService.setDelivery_at(LocalDateTime.now());
-        }
-
-        if (repairService.save(newService, false)) {
-
-
-            boolean partsSuccess = processAddedParts(newService.getId(), part_notes_info.getAddedParts());
-
-            if (partsSuccess) {
-                Toast.show(this, Toast.Type.SUCCESS, "Servis ve parçalar başarıyla kaydedildi!");
-            } else {
-                Toast.show(this, Toast.Type.WARNING, "Servis kaydedildi, fakat bazı parçalar eklenemedi veya stok güncellenemedi!");
+        try {
+            if (newService.getService_status().equals(ServiceStatus.DELIVERED)) {
+                if (newService.getDelivery_at() == null) newService.setDelivery_at(LocalDateTime.now());
             }
 
-            setService(newService);
-        } else {
-            Toast.show(this, Toast.Type.ERROR, "Servis kaydedilemedi!");
+            repairService.save(newService, false, part_notes_info.getAddedParts());
+            Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla oluşturuldu.");
+
+        } catch (Exception e) {
+            Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
+            Servicio.getLogger().error("Servis kayıt hatası", e);
         }
     }
 
@@ -132,30 +129,21 @@ public class FormService extends Form {
 
         Service updated = collectForm();
 
-        if (updated.getService_status().equals(ServiceStatus.DELIVERED)) {
-            if (updated.getDelivery_at() == null) updated.setDelivery_at(LocalDateTime.now());
-        }
+        try {
+            updated.setId(service.getId());
+            updated.setCreated_at(service.getCreated_at());
 
-        if (repairService.save(updated, true)) {
-            boolean removeSuccess = repairService.removeParts(service.getId());
-
-            boolean addSuccess = processAddedParts(updated.getId(), part_notes_info.getAddedParts());
-
-            if (removeSuccess && addSuccess) {
-                Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla güncellendi!");
-            } else if (!removeSuccess && addSuccess) {
-                // removeParts eğer silinecek parça yoksa bile 'true' dönecek şekilde ayarlandığı için
-                // buraya sadece silme işleminde SQL hatası oluşursa düşülmelidir.
-                Toast.show(this, Toast.Type.WARNING, "Servis güncellendi, ancak eski parçalar silinirken hata oluştu!");
-            } else if (removeSuccess && !addSuccess) {
-                Toast.show(this, Toast.Type.WARNING, "Servis güncellendi, ancak yeni parçalar toplu olarak eklenirken hata oluştu!");
-            } else {
-                Toast.show(this, Toast.Type.WARNING, "Servis güncellendi, ancak parça işlemleri hatalı!");
+            if (updated.getService_status().equals(ServiceStatus.DELIVERED)) {
+                if (updated.getDelivery_at() == null) updated.setDelivery_at(LocalDateTime.now());
             }
 
-            setService(updated);
-        } else {
-            Toast.show(this, Toast.Type.ERROR, "Servis güncellenemedi!");
+            repairService.save(updated, true, part_notes_info.getAddedParts());
+
+            Toast.show(this, Toast.Type.SUCCESS, "Servis güncellendi.");
+
+        } catch (Exception e) {
+            Toast.show(this, Toast.Type.ERROR, "Güncelleme hatası: " + e.getMessage());
+            Servicio.getLogger().error("Servis güncelleme hatası", e);
         }
     }
 
@@ -172,24 +160,12 @@ public class FormService extends Form {
                 SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
             if (action == SimpleModalBorder.YES_OPTION) {
                 try {
-                    boolean partsRemoved = repairService.removeParts(service.getId());
-                    boolean deleted = repairService.delete(service.getId());
+                    repairService.delete(service.getId());
+                    Toast.show(this, Toast.Type.SUCCESS, "Servis silindi.");
+                    clearForm();
 
-                    if (partsRemoved && deleted) {
-                        Toast.show(this, Toast.Type.SUCCESS, "Servis ve bağlı parçalar başarıyla silindi.");
-                    } else if (!partsRemoved && deleted) {
-                        Toast.show(this, Toast.Type.WARNING, "Servis silindi, fakat bazı parçalar veya stok işlemleri hatalı olabilir!");
-                    } else {
-                        Toast.show(this, Toast.Type.ERROR, "Servis silinemedi!");
-                    }
-
-                    FormServices form = new FormServices();
-                    form.refreshTable();
-                    Drawer.setSelectedItemClass(form.getClass());
-                    FormManager.showForm(form);
-
-                } catch (Exception ex) {
-                    Toast.show(this, Toast.Type.ERROR, "Silme sırasında hata oluştu: " + ex.getMessage());
+                } catch (Exception e) {
+                    Toast.show(this, Toast.Type.ERROR, "Silme hatası: " + e.getMessage());
                 }
             }
         }));
@@ -208,28 +184,20 @@ public class FormService extends Form {
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Bu servisi teslim etmek istediğinize emin misiniz?",
-                "Teslim Onayı",
-                JOptionPane.YES_NO_OPTION
-        );
+        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.DEFAULT,
+                "Servis No: " + service.getId() + "\nBu cihazı teslim etmek istediğinize emin misiniz?",
+                "Teslimat", SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
 
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
+                    if (action == 0) {
+                        try {
+                            repairService.setDelivered(service.getId());
+                            Toast.show(this, Toast.Type.SUCCESS, "Servis teslim edildi olarak işaretlendi.");
 
-        context.getService().setService_status(ServiceStatus.DELIVERED);
-        if (customer_info.getDeliverDate() == null) {
-            context.getService().setDelivery_at(LocalDateTime.now());
-        } else {
-            context.getService().setDelivery_at(customer_info.getDeliverDate());
-        }
-
-        fillForm();
-        repairService.save(context.getService(), true);
-
-        Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla teslim edildi!");
+                        } catch (Exception e) {
+                            Toast.show(this, Toast.Type.ERROR, "İşlem hatası: " + e.getMessage());
+                        }
+                    }
+        }));
     }
 
     private void updateTitle() {
@@ -288,21 +256,6 @@ public class FormService extends Form {
 
                         }),
                 id);
-    }
-
-    private boolean processAddedParts(int serviceId, List<AddedPart> parts) {
-        if (parts == null || parts.isEmpty()) return true;
-
-        // Tüm parçalara ait oldukları servis ID'sini atıyoruz.
-        parts.forEach(part -> part.setServiceId(serviceId));
-
-        // repairService.addParts(List<AddedPart> parts) metodu Batch işlemi kullanacaktır.
-        boolean success = repairService.addParts(parts);
-
-        if (!success) {
-            Servicio.getLogger().warn("PART PROCESS FAILED [ServiceId: {}]", serviceId);
-        }
-        return success;
     }
 
     private void fillForm() {
@@ -373,6 +326,38 @@ public class FormService extends Form {
         service.setNotes(part_notes_info.getNotes());
 
         return service;
+    }
+
+    private void clearForm() {
+        context.setService(new Service());
+        context.setParts(new ArrayList<>());
+        customer_info.setCustomer(-1);
+        customer_info.setRecordDate(LocalDateTime.now());
+        customer_info.setDeliverDate(null);
+
+        device_info.setDeviceType(null);
+        device_info.setDeviceBrand(null);
+        device_info.model_field.setText("");
+        device_info.seri_no_field.setText("");
+        device_info.accessory_field.setText("");
+        device_info.password_field.setText("");
+
+        fault_process_info.reported_fault_field.setText("");
+        fault_process_info.detected_fault_field.setText("");
+        fault_process_info.action_taken_field.setText("");
+
+        price_info.setLaborCost(0);
+        price_info.setPaid(0);
+
+        warranty_info.setWarrantyDate(null);
+        warranty_info.setMaintenanceDate(null);
+
+        part_notes_info.setAddedParts(null);
+        part_notes_info.setNotes("");
+
+        status_info.setSelected(null);
+
+        updateTitle();
     }
 
     private void initComponent() {

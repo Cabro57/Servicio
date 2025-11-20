@@ -21,12 +21,14 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         // Marka kontrolü
         if (Validator.isEmpty(brand_field.getText())) {
             showValidationError("Marka boş olamaz.");
+            brand_field.requestFocus();
             return false;
         }
 
         // Ürün adı kontrolü
         if (Validator.isEmpty(name_field.getText())) {
             showValidationError("Ürün adı boş olamaz.");
+            name_field.requestFocus();
             return false;
         }
 
@@ -37,10 +39,12 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         // Negatif sayı kontrolleri
         if (Validator.isNegative(purchasePrice)) {
             showValidationError("Alış fiyatı negatif olamaz.");
+            purchase_price_field.requestFocus();
             return false;
         }
         if (Validator.isNegative(stock)) {
             showValidationError("Stok negatif olamaz.");
+            amount_spinner.requestFocus();
             return false;
         }
 

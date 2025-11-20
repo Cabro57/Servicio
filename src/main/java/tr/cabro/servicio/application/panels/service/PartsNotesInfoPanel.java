@@ -71,6 +71,8 @@ public class PartsNotesInfoPanel extends ServicePanel {
                                     return;
                                 }
 
+                                update.setCreated_at(data.getCreated_at());
+
                                 tableModel.getAddedParts().set(row, update);
                                 tableModel.fireTableRowsUpdated(row, row);
 
@@ -103,7 +105,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
     private void newPartCmd() {
         final String id = "PartNew";
-        PartEditPanel panel = new PartEditPanel();
+        ServicePartEditPanel panel = new ServicePartEditPanel();
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Tamam", 0),
@@ -117,16 +119,15 @@ public class PartsNotesInfoPanel extends ServicePanel {
                                 panel.clearForm();
 
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Part updated = panel.getDataIfValid();
+                                AddedPart updated = panel.getDataIfValid();
 
                                 if (updated == null) {
                                     controller.consume();
                                     return;
                                 }
 
-                                AddedPart newPart = new AddedPart(updated);
 
-                                tableModel.addAddedPart(newPart);
+                                tableModel.addAddedPart(updated);
                                 tableModel.fireTableDataChanged();
                                 updateMaterialCost();
                             }
