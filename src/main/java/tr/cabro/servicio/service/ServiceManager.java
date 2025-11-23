@@ -1,32 +1,33 @@
 package tr.cabro.servicio.service;
 
 import lombok.Getter;
-import tr.cabro.servicio.database.dao.*;
+import org.jdbi.v3.core.Jdbi;
+import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.database.repository.*; // Önceki cevapta oluşturduğumuz Interface'ler
 
 public final class ServiceManager {
 
-    @Getter
-    private static PartService partService;
-
-    @Getter
-    private static RepairService repairService;
-
-    @Getter
-    private static CustomerService customerService;
-
-    @Getter
-    private static SupplierService supplierService;
+    @Getter private static PartService partService;
+    @Getter private static RepairService repairService;
+    @Getter private static CustomerService customerService;
+    @Getter private static SupplierService supplierService;
 
     public static void initialize() {
-        CustomerDao customerDao = new CustomerDao();
-        PartDao partDao = new PartDao();
-        ServiceDao serviceDao = new ServiceDao();
-        AddedPartDao addedPartDao = new AddedPartDao();
-        SupplierDao supplierDao = new SupplierDao();
+        // 1. JDBI Nesnesini Al
+        Jdbi jdbi = DatabaseManager.getJdbi();
 
-        customerService = new CustomerService(customerDao);
-        partService = new PartService(partDao);
-        repairService = new RepairService(serviceDao, addedPartDao);
-        supplierService = new SupplierService(supplierDao);
+        // 2. Repository'leri Oluştur (JDBI Interface Proxy'leri)
+        CustomerRepository customerRepo = jdbi.onDemand(CustomerRepository.class);
+        PartRepository partRepo = jdbi.onDemand(PartRepository.class);
+        RepairRepository repairRepo = jdbi.onDemand(RepairRepository.class);
+        SupplierRepository supplierRepo = jdbi.onDemand(SupplierRepository.class);
+
+        // 3. Servislere Enjekte Et (Constructor Injection)
+        // Artık Servisler veritabanı bağlantısını kendileri oluşturmuyor,
+        // dışarıdan "hazır repository" alıyorlar.
+        customerService = new CustomerService(customerRepo);
+        partService = new PartService(partRepo);
+        repairService = new RepairService(repairRepo);
+        supplierService = new SupplierService(supplierRepo);
     }
 }

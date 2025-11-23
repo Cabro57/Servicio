@@ -8,6 +8,7 @@ import raven.swingpack.JPagination;
 import tr.cabro.servicio.application.component.ServicePopup;
 import tr.cabro.servicio.application.renderer.*;
 import tr.cabro.servicio.application.tablemodal.OpenServiceTableModel;
+import tr.cabro.servicio.component.util.UIHelper;
 import tr.cabro.servicio.model.Service;
 
 import javax.swing.*;
@@ -105,11 +106,9 @@ public class PaginationTable<E> extends JPanel {
         // table scroll
         JScrollPane scrollPane = new JScrollPane(serviceTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        UIHelper.fixNestedScroll(scrollPane);
 
         // style
-        putClientProperty(FlatClientProperties.STYLE, "" +
-                "arc:0;" +
-                "background:$Table.background;");
         serviceTable.getTableHeader().putClientProperty(FlatClientProperties.STYLE, "" +
                 "height:35;" +
                 "hoverBackground:null;" +

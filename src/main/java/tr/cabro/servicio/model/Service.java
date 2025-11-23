@@ -11,46 +11,46 @@ public class Service {
     private int id;
 
     // Müşteri Bilgileri
-    private int customer_id;
-    private LocalDateTime created_at;
-    private LocalDateTime delivery_at;
+    private int customerId;
+    private LocalDateTime createdAt;
+    private LocalDateTime deliveryAt;
 
     // Cihaz Bilgileri
-    private String device_type; // Cihaz Türü
-    private String device_brand; // Marka
-    private String device_model; // Model
-    private String device_serial; // Seri numara / IMEI
-    private String device_password; // Şifre
-    private String device_accessory; // Aksesuar
+    private String deviceType; // Cihaz Türü
+    private String deviceBrand; // Marka
+    private String deviceModel; // Model
+    private String deviceSerial; // Seri numara / IMEI
+    private String devicePassword; // Şifre
+    private String deviceAccessory; // Aksesuar
 
     // Fiyat Bilgileri
     // private double material_cost; // Malzeme Ücretleri
-    private double labor_cost; // İşçilik Ücretleri
+    private double laborCost; // İşçilik Ücretleri
     private double paid; // Ödenen
-    private PaymentType payment_type; // Ödeme Türü
+    private PaymentType paymentType; // Ödeme Türü
 
     // Garanti Bakım Bilgileri
-    private LocalDateTime warranty_date;
-    private LocalDateTime maintenance_date;
+    private LocalDateTime warrantyDate;
+    private LocalDateTime maintenanceDate;
 
     // Arıza ve İşlem Bilgileri
-    private String reported_fault; // Bildirilen Arıza
-    private String detected_fault; // Tespit Edilen Arıza
-    private String action_taken; // Yapılan İşlem
+    private String reportedFault; // Bildirilen Arıza
+    private String detectedFault; // Tespit Edilen Arıza
+    private String actionTaken; // Yapılan İşlem
 
     // Parça Değişimi ve Notlar
     private String Notes;
 
     // Durum
-    private String urgency_status; // Aciliyet
-    private ServiceStatus service_status;
+    private String urgencyStatus; // Aciliyet
+    private ServiceStatus serviceStatus;
 
 
     public Service(int customer, String type, String brand, String model) {
-        this.customer_id = customer;
-        this.device_type = type;
-        this.device_brand = brand;
-        this.device_model = model;
+        this.customerId = customer;
+        this.deviceType = type;
+        this.deviceBrand = brand;
+        this.deviceModel = model;
     }
 
     public Service() {}
@@ -59,10 +59,10 @@ public class Service {
     public Device getDevice() {
         Device device = new Device();
 
-        device.setSerial(device_serial);
-        device.setModel(device_model);
-        device.setBrand(device_brand);
-        device.setType(device_type);
+        device.setSerial(deviceSerial);
+        device.setModel(deviceModel);
+        device.setBrand(deviceBrand);
+        device.setType(deviceType);
 
         return device;
     }

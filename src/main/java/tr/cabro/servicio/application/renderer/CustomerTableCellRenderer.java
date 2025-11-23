@@ -16,7 +16,15 @@ public class CustomerTableCellRenderer extends DefaultTableCellRenderer {
         if (value instanceof Customer) {
             Customer ct = (Customer) value;
             label.setText(ct.toString());
-            label.setIcon(ct.getType().getIcon());
+
+            // GÜVENLİK ÖNLEMİ: Type null ise varsayılan ikonu (NORMAL) kullan veya boş geç
+            if (ct.getType() != null) {
+                label.setIcon(ct.getType().getIcon());
+            } else {
+                // Veri hatası varsa varsayılan olarak NORMAL kabul et
+                label.setIcon(CustomerType.NORMAL.getIcon());
+            }
+
             label.setHorizontalTextPosition(SwingConstants.RIGHT);
             label.setIconTextGap(8);
         } else {

@@ -107,8 +107,8 @@ public class FormService extends Form {
         Service newService = collectForm();
 
         try {
-            if (newService.getService_status().equals(ServiceStatus.DELIVERED)) {
-                if (newService.getDelivery_at() == null) newService.setDelivery_at(LocalDateTime.now());
+            if (newService.getServiceStatus().equals(ServiceStatus.DELIVERED)) {
+                if (newService.getDeliveryAt() == null) newService.setDeliveryAt(LocalDateTime.now());
             }
 
             repairService.save(newService, false, part_notes_info.getAddedParts());
@@ -131,10 +131,10 @@ public class FormService extends Form {
 
         try {
             updated.setId(service.getId());
-            updated.setCreated_at(service.getCreated_at());
+            updated.setCreatedAt(service.getCreatedAt());
 
-            if (updated.getService_status().equals(ServiceStatus.DELIVERED)) {
-                if (updated.getDelivery_at() == null) updated.setDelivery_at(LocalDateTime.now());
+            if (updated.getServiceStatus().equals(ServiceStatus.DELIVERED)) {
+                if (updated.getDeliveryAt() == null) updated.setDeliveryAt(LocalDateTime.now());
             }
 
             repairService.save(updated, true, part_notes_info.getAddedParts());
@@ -179,7 +179,7 @@ public class FormService extends Form {
             return;
         }
 
-        if (service.getService_status() == ServiceStatus.DELIVERED) {
+        if (service.getServiceStatus() == ServiceStatus.DELIVERED) {
             Toast.show(this, Toast.Type.WARNING, "Bu Servis zaten teslim edilmiş.");
             return;
         }
@@ -260,31 +260,31 @@ public class FormService extends Form {
 
     private void fillForm() {
         Service service = context.getService();
-        customer_info.setCustomer(service.getCustomer_id());
-        customer_info.setRecordDate(service.getCreated_at());
-        customer_info.setDeliverDate(service.getDelivery_at());
+        customer_info.setCustomer(service.getCustomerId());
+        customer_info.setRecordDate(service.getCreatedAt());
+        customer_info.setDeliverDate(service.getDeliveryAt());
 
-        device_info.setDeviceType(service.getDevice_type());
-        device_info.setDeviceBrand(service.getDevice_brand());
-        device_info.model_field.setText(service.getDevice_model());
-        device_info.seri_no_field.setText(service.getDevice_serial());
-        device_info.accessory_field.setText(service.getDevice_accessory());
-        device_info.password_field.setText(service.getDevice_password());
+        device_info.setDeviceType(service.getDeviceType());
+        device_info.setDeviceBrand(service.getDeviceBrand());
+        device_info.model_field.setText(service.getDeviceModel());
+        device_info.seri_no_field.setText(service.getDeviceSerial());
+        device_info.accessory_field.setText(service.getDeviceAccessory());
+        device_info.password_field.setText(service.getDevicePassword());
 
-        fault_process_info.reported_fault_field.setText(service.getReported_fault());
-        fault_process_info.detected_fault_field.setText(service.getDetected_fault());
-        fault_process_info.action_taken_field.setText(service.getAction_taken());
+        fault_process_info.reported_fault_field.setText(service.getReportedFault());
+        fault_process_info.detected_fault_field.setText(service.getDetectedFault());
+        fault_process_info.action_taken_field.setText(service.getActionTaken());
 
-        price_info.setLaborCost(service.getLabor_cost());
+        price_info.setLaborCost(service.getLaborCost());
         price_info.setPaid(service.getPaid());
 
-        warranty_info.setWarrantyDate(service.getWarranty_date());
-        warranty_info.setMaintenanceDate(service.getMaintenance_date());
+        warranty_info.setWarrantyDate(service.getWarrantyDate());
+        warranty_info.setMaintenanceDate(service.getMaintenanceDate());
 
         part_notes_info.setAddedParts(context.getParts());
         part_notes_info.setNotes(service.getNotes());
 
-        status_info.setSelected(service.getService_status().getDisplayName());
+        status_info.setSelected(service.getServiceStatus().getDisplayName());
     }
 
     private Service collectForm() {
@@ -295,33 +295,33 @@ public class FormService extends Form {
 
         Customer customer = customer_info.selectedCustomer;
         if (customer != null) {
-            service.setCustomer_id(customer.getId());
+            service.setCustomerId(customer.getId());
         } else {
-            service.setCustomer_id(-1);
+            service.setCustomerId(-1);
         }
 
-        service.setCreated_at(customer_info.getRecordDate());
-        service.setDelivery_at(customer_info.getDeliverDate());
+        service.setCreatedAt(customer_info.getRecordDate());
+        service.setDeliveryAt(customer_info.getDeliverDate());
 
-        service.setDevice_type((String) device_info.deviceTypeComboBoxModel.getSelectedItem());
-        service.setDevice_brand((String) device_info.brandComboBoxModel.getSelectedItem());
-        service.setDevice_model(device_info.model_field.getText());
-        service.setDevice_serial(device_info.seri_no_field.getText());
-        service.setDevice_password(device_info.password_field.getText());
-        service.setDevice_accessory(device_info.accessory_field.getText());
+        service.setDeviceType((String) device_info.deviceTypeComboBoxModel.getSelectedItem());
+        service.setDeviceBrand((String) device_info.brandComboBoxModel.getSelectedItem());
+        service.setDeviceModel(device_info.model_field.getText());
+        service.setDeviceSerial(device_info.seri_no_field.getText());
+        service.setDevicePassword(device_info.password_field.getText());
+        service.setDeviceAccessory(device_info.accessory_field.getText());
 
-        service.setLabor_cost(price_info.getLaborCost());
+        service.setLaborCost(price_info.getLaborCost());
         service.setPaid(price_info.getPaid());
-        service.setPayment_type(price_info.getPaymentType());
+        service.setPaymentType(price_info.getPaymentType());
 
-        service.setWarranty_date(warranty_info.getWarrantyDate());
-        service.setMaintenance_date(warranty_info.getMaintenanceDate());
+        service.setWarrantyDate(warranty_info.getWarrantyDate());
+        service.setMaintenanceDate(warranty_info.getMaintenanceDate());
 
-        service.setReported_fault(fault_process_info.reported_fault_field.getText());
-        service.setDetected_fault(fault_process_info.detected_fault_field.getText());
-        service.setAction_taken(fault_process_info.action_taken_field.getText());
+        service.setReportedFault(fault_process_info.reported_fault_field.getText());
+        service.setDetectedFault(fault_process_info.detected_fault_field.getText());
+        service.setActionTaken(fault_process_info.action_taken_field.getText());
 
-        service.setService_status(status_info.getSelected());
+        service.setServiceStatus(status_info.getSelected());
 
         service.setNotes(part_notes_info.getNotes());
 

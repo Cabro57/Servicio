@@ -5,7 +5,6 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 @Getter @Setter
 public class Part {
@@ -14,32 +13,32 @@ public class Part {
 
     private String brand; // Ürün Markası
     private String name; // Ürün Adı
-    private int supplier_id; // Tedarikçi
+    private int supplierId; // Tedarikçi
 
-    private String device_type; // Ürün Cihaz Türü
+    private String deviceType; // Ürün Cihaz Türü
     private String models; // Ürün uyumlu modelleri
 
-    private double purchase_price; // Alış Fiyatı
-    private double sale_price; // Satış Fiyatı
+    private double purchasePrice; // Alış Fiyatı
+    private double salePrice; // Satış Fiyatı
     private int stock; // Stok miktarı
     private int minStock; // Minimum Stok Miktarı
 
-    private int warranty_period; // Garanti Süresi
+    private int warrantyPeriod; // Garanti Süresi
 
-    private LocalDate purchase_date; // Alınma Tarihi
+    private LocalDate purchaseDate; // Alınma Tarihi
     private String description; // Açıklama - Ürün hakkında not
 
-    private LocalDateTime created_at;
+    private LocalDateTime createdAt;
 
     public Part(String barcode, String brand, String name) {
         this.barcode = barcode;
         this.brand = brand;
         this.name = name;
-        this.created_at = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     public Part() {
-        this.created_at = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
     }
 
     @Override

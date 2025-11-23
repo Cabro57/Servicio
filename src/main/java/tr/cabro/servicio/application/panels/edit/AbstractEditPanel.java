@@ -20,12 +20,6 @@ public abstract class AbstractEditPanel<T> extends JPanel {
     protected abstract void initComponent();
 
     /**
-     * Form verilerini doğrular.
-     * @return geçerliyse true, değilse false
-     */
-    protected abstract boolean validateForm();
-
-    /**
      * Form alanlarından nesne oluşturur.
      * @return model nesnesi
      */
@@ -52,10 +46,7 @@ public abstract class AbstractEditPanel<T> extends JPanel {
     /**
      * Form geçerliyse nesneyi döndürür, değilse null.
      */
-    public T getDataIfValid() {
-        if (validateForm()) {
-            return collectFormData();
-        }
-        return null;
+    public T getData() {
+        return collectFormData();
     }
 }

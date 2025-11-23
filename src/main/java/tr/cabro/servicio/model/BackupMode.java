@@ -1,5 +1,8 @@
 package tr.cabro.servicio.model;
 
+import lombok.Getter;
+
+@Getter
 public enum BackupMode {
     NONE("Kapalı"),
     ON_START("Açılışta"),
@@ -11,15 +14,14 @@ public enum BackupMode {
     EVERY_N_WEEKS("Her n hafta da bir"),
     EVERY_N_MONTHS("Her n ay da bir");
 
-    private final String name;
+    private final String displayName;
 
-    BackupMode(String name) {
-        this.name = name;
+    BackupMode(String displayName) {
+        this.displayName = displayName;
     }
-
 
     @Override
     public String toString() {
-        return name;
+        return displayName;
     }
 }

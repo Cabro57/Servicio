@@ -4,7 +4,12 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlite3.SQLitePlugin;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.database.mapper.SQLiteDateMapper;
+import tr.cabro.servicio.database.mapper.SQLiteDateTimeMapper;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -12,6 +17,7 @@ import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -19,6 +25,7 @@ public class DatabaseManager {
 
     private static HikariDataSource dataSource;
     private static final String DB_FILE_NAME = "database.db";
+    private static Jdbi jdbi;
 
     // --- BAŞLATMA VE AYARLAR (Config + Initializer Birleşimi) ---
 
@@ -49,6 +56,14 @@ public class DatabaseManager {
         config.addDataSourceProperty("busy_timeout", "30000");
 
         dataSource = new HikariDataSource(config);
+
+        jdbi = Jdbi.create(dataSource);
+
+        // Gerekli eklentileri yükle
+        jdbi.installPlugin(new SqlObjectPlugin());
+        jdbi.installPlugin(new SQLitePlugin());
+        jdbi.registerColumnMapper(LocalDateTime.class, new SQLiteDateTimeMapper());
+        jdbi.registerColumnMapper(LocalDate.class, new SQLiteDateMapper());
 
         // 3. Migration (Flyway) ve İlk Yedek
         try {
@@ -86,6 +101,11 @@ public class DatabaseManager {
     public static Connection getConnection() throws SQLException {
         if (dataSource == null || dataSource.isClosed()) initialize();
         return dataSource.getConnection();
+    }
+
+    public static Jdbi getJdbi() {
+        if (jdbi == null) initialize();
+        return jdbi;
     }
 
     // --- YEDEKLEME VE GERİ YÜKLEME İŞLEMLERİ ---

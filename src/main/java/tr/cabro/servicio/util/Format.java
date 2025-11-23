@@ -25,11 +25,6 @@ public class Format {
     }
 
     public static String formatPhoneNumber(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.length() < 10) return phoneNumber;
-        return String.format("%s %s %s %s",
-                phoneNumber.substring(0, 3),
-                phoneNumber.substring(3, 6),
-                phoneNumber.substring(6, 8),
-                phoneNumber.substring(8, 10));
+        return PhoneHelper.formatForDisplay(phoneNumber);
     }
 }

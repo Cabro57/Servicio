@@ -2,17 +2,19 @@ package tr.cabro.servicio.model;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
+import org.jdbi.v3.core.enums.EnumByName;
 
 import java.util.Arrays;
 
 @Getter
+@EnumByName
 public enum CustomerType {
     NORMAL("Normal", "icons/customer.svg"),
-    DIKKAT("Dikkat Et", "icons/attention.svg"),
-    IS_YAPMA("İş Yapma", "icons/not_work.svg"),
-    ESNAF("Esnaf", "icons/esnaf.svg"),
-    BAYI("Bayi", "icons/business.svg"),
-    PROBLEMLI("Problemli", "icons/problematic.svg");
+    BE_CAREFUL("Dikkat Et", "icons/attention.svg"),
+    DOING_BUSINESS("İş Yapma", "icons/not_work.svg"),
+    SMALL_BUSINESS("Esnaf", "icons/esnaf.svg"),
+    DEALER("Bayi", "icons/business.svg"),
+    PROBLEM("Problemli", "icons/problematic.svg");
 
     private final String displayName;
     private final String iconPath;

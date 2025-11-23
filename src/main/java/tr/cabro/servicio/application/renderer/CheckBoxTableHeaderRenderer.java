@@ -33,7 +33,7 @@ public class CheckBoxTableHeaderRenderer extends JCheckBox implements TableCellR
 
     private void init() {
         putClientProperty(FlatClientProperties.STYLE, ""
-                + "background:$Table.background");
+                + "background:$TableHeader.background");
         setHorizontalAlignment(SwingConstants.CENTER);
 
         table.getTableHeader().addMouseListener(new MouseAdapter() {

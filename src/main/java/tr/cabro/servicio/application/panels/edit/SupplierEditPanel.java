@@ -1,77 +1,78 @@
 package tr.cabro.servicio.application.panels.edit;
 
 import net.miginfocom.swing.MigLayout;
+import tr.cabro.servicio.component.PhoneField;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 
 public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
-    @Override
-    protected boolean validateForm() {
-        // Ad alanı zorunlu
-        if (Validator.isEmpty(name_field.getText())) {
-            showValidationError("Ad alanı boş olamaz!");
-            name_field.requestFocus();
-            return false;
-        }
-        // Firma adı zorunlu
-        if (Validator.isEmpty(business_name_field.getText())) {
-            showValidationError("Firma adı boş olamaz!");
-            business_name_field.requestFocus();
-            return false;
-        }
-        // Telefon doluysa geçerli uzunluk ve format
-        String phone = phone_field.getText().trim();
-        if (!Validator.isEmpty(phone) && (!Validator.isNumeric(phone) || !Validator.hasMinLength(phone, 10))) {
-            showValidationError("Telefon numarası sadece rakamlardan oluşmalı ve en az 10 haneli olmalı!");
-            phone_field.requestFocus();
-            return false;
-        }
-        // Kimlik numarası doluysa geçerli uzunluk
-        String idNo = id_no_field.getText().trim();
-        if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
-            showValidationError("Kimlik numarası 11 haneli ve sadece rakamlardan oluşmalı!");
-            id_no_field.requestFocus();
-            return false;
-        }
-        // E-posta doluysa format kontrolü
-        String email = email_field.getText().trim();
-        if (!Validator.isEmpty(email) && !Validator.isValidEmail(email)) {
-            showValidationError("Geçerli bir e-posta adresi girin!");
-            email_field.requestFocus();
-            return false;
-        }
-
-        return true;
-    }
+//    @Override
+//    protected boolean validateForm() {
+//        // Ad alanı zorunlu
+//        if (Validator.isEmpty(name_field.getText())) {
+//            showValidationError("Ad alanı boş olamaz!");
+//            name_field.requestFocus();
+//            return false;
+//        }
+//        // Firma adı zorunlu
+//        if (Validator.isEmpty(business_name_field.getText())) {
+//            showValidationError("Firma adı boş olamaz!");
+//            business_name_field.requestFocus();
+//            return false;
+//        }
+//        // Telefon doluysa geçerli uzunluk ve format
+//        String phone = phone_field.getText().trim();
+//        if (!Validator.isEmpty(phone) && (!Validator.isNumeric(phone) || !Validator.hasMinLength(phone, 10))) {
+//            showValidationError("Telefon numarası sadece rakamlardan oluşmalı ve en az 10 haneli olmalı!");
+//            phone_field.requestFocus();
+//            return false;
+//        }
+//        // Kimlik numarası doluysa geçerli uzunluk
+//        String idNo = id_no_field.getText().trim();
+//        if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
+//            showValidationError("Kimlik numarası 11 haneli ve sadece rakamlardan oluşmalı!");
+//            id_no_field.requestFocus();
+//            return false;
+//        }
+//        // E-posta doluysa format kontrolü
+//        String email = email_field.getText().trim();
+//        if (!Validator.isEmpty(email) && !Validator.isValidEmail(email)) {
+//            showValidationError("Geçerli bir e-posta adresi girin!");
+//            email_field.requestFocus();
+//            return false;
+//        }
+//
+//        return true;
+//    }
 
     @Override
     protected Supplier collectFormData() {
         Supplier s = new Supplier();
         s.setName(name_field.getText().trim());
-        s.setBusiness_name(business_name_field.getText().trim());
-        s.setPhone(phone_field.getText().trim());
+        s.setBusinessName(business_name_field.getText().trim());
+        s.setPhone(phone_field.getNormalizedNumber());
         s.setAddress(address_field.getText().trim());
         s.setNotes(notes_field.getText().trim());
-        s.setId_no(id_no_field.getText().trim());
+        s.setIdNo(id_no_field.getText().trim());
         s.setEmail(email_field.getText().trim());
-        s.setTax_no(tax_no_field.getText().trim());
-        s.setTax_office(tax_office_field.getText().trim());
+        s.setTaxNo(tax_no_field.getText().trim());
+        s.setTaxOffice(tax_office_field.getText().trim());
         return s;
     }
 
     @Override
     public void populateFormWith(Supplier data) {
         name_field.setText(data.getName());
-        business_name_field.setText(data.getBusiness_name());
+        business_name_field.setText(data.getBusinessName());
         phone_field.setText(data.getPhone());
         address_field.setText(data.getAddress());
         notes_field.setText(data.getNotes());
-        id_no_field.setText(data.getId_no());
+        id_no_field.setText(data.getIdNo());
         email_field.setText(data.getEmail());
-        tax_no_field.setText(data.getTax_no());
-        tax_office_field.setText(data.getTax_office());
+        tax_no_field.setText(data.getTaxNo());
+        tax_office_field.setText(data.getTaxOffice());
     }
 
     @Override
@@ -127,7 +128,7 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
         formPanel.add(email_field, "growx");
 
         formPanel.add(label.apply("Telefon"));
-        phone_field = new JTextField();
+        phone_field = new PhoneField();
         formPanel.add(phone_field, "growx");
 
         formPanel.add(label.apply("Adres"));
@@ -142,7 +143,7 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
     }
 
     private JTextField business_name_field;
-    private JTextField phone_field;
+    private PhoneField phone_field;
     private JTextField address_field;
     private JTextArea notes_field;
     private JTextField name_field;

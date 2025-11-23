@@ -83,14 +83,14 @@ public class FormParts extends AbstractTableForm<Part> {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.clearForm();
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Part updated = panel.getDataIfValid();
+                                Part updated = panel.getData();
                                 if (updated == null) {
                                     controller.consume();
                                     return;
                                 }
 
                                 try {
-                                    updated.setCreated_at(LocalDateTime.now());
+                                    updated.setCreatedAt(LocalDateTime.now());
                                     // Service katmanında Exception yönetimi
                                     service.save(updated, false);
 
@@ -135,7 +135,7 @@ public class FormParts extends AbstractTableForm<Part> {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.populateFormWith(part);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Part updated = panel.getDataIfValid();
+                                Part updated = panel.getData();
                                 if (updated == null) {
                                     controller.consume();
                                     return;

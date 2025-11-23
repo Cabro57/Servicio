@@ -20,64 +20,64 @@ import java.util.Optional;
 
 public class PartEditPanel extends AbstractEditPanel<Part> {
 
-    @Override
-    protected boolean validateForm() {
-        // Barkod kontrolü
-        if (Validator.isEmpty(barcode_field.getText())) {
-            showValidationError("Barkod boş olamaz.");
-            barcode_field.requestFocus();
-            return false;
-        }
-
-        // Marka kontrolü
-        if (Validator.isEmpty(brand_field.getText())) {
-            showValidationError("Marka boş olamaz.");
-            brand_field.requestFocus();
-            return false;
-        }
-
-        // Ürün adı kontrolü
-        if (Validator.isEmpty(name_field.getText())) {
-            showValidationError("Ürün adı boş olamaz.");
-            name_field.requestFocus();
-            return false;
-        }
-
-        // Fiyat ve stok değerlerini al
-        double purchasePrice = (double) purchase_price_field.getValue();
-        int stock = (int) stock_spinner.getValue();
-        int minStock = (int) min_stock_spinner.getValue();
-
-        // Negatif sayı kontrolleri
-        if (Validator.isNegative(purchasePrice)) {
-            showValidationError("Alış fiyatı negatif olamaz.");
-            purchase_date_field.requestFocus();
-            return false;
-        }
-        if (Validator.isNegative(stock)) {
-            showValidationError("Stok negatif olamaz.");
-            stock_spinner.requestFocus();
-            return false;
-        }
-        if (Validator.isNegative(minStock)) {
-            showValidationError("Min stok negatif olamaz.");
-            min_stock_spinner.requestFocus();
-            return false;
-        }
-
-        // Minimum stok uyarısı
-        if (stock < minStock) {
-            int confirm = JOptionPane.showConfirmDialog(
-                    this,
-                    "Stok miktarı minimum stok seviyesinin altında. Devam etmek istiyor musunuz?",
-                    "Uyarı",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE
-            );
-            return confirm == JOptionPane.YES_OPTION;
-        }
-        return true;
-    }
+//    @Override
+//    protected boolean validateForm() {
+//        // Barkod kontrolü
+//        if (Validator.isEmpty(barcode_field.getText())) {
+//            showValidationError("Barkod boş olamaz.");
+//            barcode_field.requestFocus();
+//            return false;
+//        }
+//
+//        // Marka kontrolü
+//        if (Validator.isEmpty(brand_field.getText())) {
+//            showValidationError("Marka boş olamaz.");
+//            brand_field.requestFocus();
+//            return false;
+//        }
+//
+//        // Ürün adı kontrolü
+//        if (Validator.isEmpty(name_field.getText())) {
+//            showValidationError("Ürün adı boş olamaz.");
+//            name_field.requestFocus();
+//            return false;
+//        }
+//
+//        // Fiyat ve stok değerlerini al
+//        double purchasePrice = (double) purchase_price_field.getValue();
+//        int stock = (int) stock_spinner.getValue();
+//        int minStock = (int) min_stock_spinner.getValue();
+//
+//        // Negatif sayı kontrolleri
+//        if (Validator.isNegative(purchasePrice)) {
+//            showValidationError("Alış fiyatı negatif olamaz.");
+//            purchase_date_field.requestFocus();
+//            return false;
+//        }
+//        if (Validator.isNegative(stock)) {
+//            showValidationError("Stok negatif olamaz.");
+//            stock_spinner.requestFocus();
+//            return false;
+//        }
+//        if (Validator.isNegative(minStock)) {
+//            showValidationError("Min stok negatif olamaz.");
+//            min_stock_spinner.requestFocus();
+//            return false;
+//        }
+//
+//        // Minimum stok uyarısı
+//        if (stock < minStock) {
+//            int confirm = JOptionPane.showConfirmDialog(
+//                    this,
+//                    "Stok miktarı minimum stok seviyesinin altında. Devam etmek istiyor musunuz?",
+//                    "Uyarı",
+//                    JOptionPane.YES_NO_OPTION,
+//                    JOptionPane.WARNING_MESSAGE
+//            );
+//            return confirm == JOptionPane.YES_OPTION;
+//        }
+//        return true;
+//    }
 
     @Override
     protected Part collectFormData() {
@@ -91,17 +91,17 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         p.setBrand(brand);
         Supplier selectedSupplier = (Supplier) supplier_combo.getSelectedItem();
         if (selectedSupplier != null) {
-            p.setSupplier_id(selectedSupplier.getId());
+            p.setSupplierId(selectedSupplier.getId());
         }
         p.setName(name);
-        p.setDevice_type((String) device_type_combo.getSelectedItem());
+        p.setDeviceType((String) device_type_combo.getSelectedItem());
         p.setModels(models_field.getText().trim());
-        p.setPurchase_price((Double) purchase_price_field.getValue());
-        p.setSale_price((Double) sale_price_field.getValue());
+        p.setPurchasePrice((Double) purchase_price_field.getValue());
+        p.setSalePrice((Double) sale_price_field.getValue());
         p.setStock((Integer) stock_spinner.getValue());
         p.setMinStock((Integer) min_stock_spinner.getValue());
-        p.setWarranty_period((Integer) warranty_period_spinner.getValue());
-        p.setPurchase_date(purchase_picker.getSelectedDate());
+        p.setWarrantyPeriod((Integer) warranty_period_spinner.getValue());
+        p.setPurchaseDate(purchase_picker.getSelectedDate());
         p.setDescription(description_area.getText().trim());
 
         return p;
@@ -112,19 +112,19 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         barcode_field.setText(data.getBarcode());
         brand_field.setText(data.getBrand());
         name_field.setText(data.getName());
-        device_type_combo.setSelectedItem(data.getDevice_type());
+        device_type_combo.setSelectedItem(data.getDeviceType());
         models_field.setText(data.getModels());
-        purchase_price_field.setValue(data.getPurchase_price());
-        sale_price_field.setValue(data.getSale_price());
+        purchase_price_field.setValue(data.getPurchasePrice());
+        sale_price_field.setValue(data.getSalePrice());
         stock_spinner.setValue(data.getStock());
         min_stock_spinner.setValue(data.getMinStock());
-        warranty_period_spinner.setValue(data.getWarranty_period());
-        if (data.getPurchase_date() != null)
-            purchase_picker.setSelectedDate(data.getPurchase_date());
+        warranty_period_spinner.setValue(data.getWarrantyPeriod());
+        if (data.getPurchaseDate() != null)
+            purchase_picker.setSelectedDate(data.getPurchaseDate());
         description_area.setText(data.getDescription());
 
         // Supplier seçimi
-        Optional<Supplier> supplier = ServiceManager.getSupplierService().get(data.getSupplier_id());
+        Optional<Supplier> supplier = ServiceManager.getSupplierService().get(data.getSupplierId());
         supplier_combo.setSelectedItem(supplier.orElse(null));
     }
 
