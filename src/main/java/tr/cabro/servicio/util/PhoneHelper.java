@@ -1,5 +1,6 @@
 package tr.cabro.servicio.util;
 
+import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.google.i18n.phonenumbers.AsYouTypeFormatter; // YENİ
 import com.google.i18n.phonenumbers.NumberParseException;
 import com.google.i18n.phonenumbers.PhoneNumberUtil;
@@ -75,7 +76,7 @@ public class PhoneHelper {
         for (String region : phoneUtil.getSupportedRegions()) {
             int code = phoneUtil.getCountryCodeForRegion(region);
             String name = new Locale("", region).getDisplayCountry(new Locale("tr", "TR"));
-            String flag = getFlagEmoji(region);
+            FlatSVGIcon flag = getFlagEmoji(region);
             countries.add(new CountryCode(region, code, name, flag));
         }
         countries.sort(Comparator.comparing(CountryCode::getName));
@@ -88,10 +89,8 @@ public class PhoneHelper {
         return countries;
     }
 
-    private static String getFlagEmoji(String countryCode) {
-        int firstLetter = Character.codePointAt(countryCode, 0) - 0x41 + 0x1F1E6;
-        int secondLetter = Character.codePointAt(countryCode, 1) - 0x41 + 0x1F1E6;
-        return new String(Character.toChars(firstLetter)) + new String(Character.toChars(secondLetter));
+    private static FlatSVGIcon getFlagEmoji(String countryCode) {
+        return new FlatSVGIcon("icons/flags/" + countryCode + ".svg", 0.02f);
     }
 
     @Getter
@@ -99,9 +98,9 @@ public class PhoneHelper {
         private final String regionCode;
         private final int phoneCode;
         private final String name;
-        private final String flag;
+        private final FlatSVGIcon flag;
 
-        public CountryCode(String regionCode, int phoneCode, String name, String flag) {
+        public CountryCode(String regionCode, int phoneCode, String name, FlatSVGIcon flag) {
             this.regionCode = regionCode;
             this.phoneCode = phoneCode;
             this.name = name;

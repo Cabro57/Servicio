@@ -5,7 +5,6 @@ import tr.cabro.servicio.application.renderer.CustomerTypeRenderer;
 import tr.cabro.servicio.component.PhoneField;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.CustomerType;
-import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 
@@ -109,7 +108,7 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         addressField.setText("");
         emailField.setText("");
         notesField.setText("");
-        customerTypeBox.setSelectedIndex(-1);
+        customerTypeBox.setSelectedItem(CustomerType.NORMAL);
     }
 
     @Override
@@ -162,6 +161,7 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         formPanel.add(label.apply("Müşteri Tipi:"));
         customerTypeBox = new JComboBox<>();
         DefaultComboBoxModel<CustomerType> model = new DefaultComboBoxModel<>(CustomerType.values());
+        model.setSelectedItem(CustomerType.NORMAL);
         customerTypeBox.setModel(model);
         customerTypeBox.setRenderer(new CustomerTypeRenderer());
         formPanel.add(customerTypeBox, "growx");

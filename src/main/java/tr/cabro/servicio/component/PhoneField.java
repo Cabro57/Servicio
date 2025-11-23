@@ -199,8 +199,13 @@ public class PhoneField extends JFormattedTextField {
                 label.setFont(finalFont);
                 if (value instanceof PhoneHelper.CountryCode) {
                     PhoneHelper.CountryCode code = (PhoneHelper.CountryCode) value;
-                    if (index == -1) label.setText("+" + code.getPhoneCode());
-                    else label.setText(code.getFlag() + "  +" + code.getPhoneCode() + "  " + code.getName());
+                    if (index == -1) {
+                        label.setIcon(code.getFlag());
+                        label.setText("+" + code.getPhoneCode());
+                    } else {
+                        label.setIcon(code.getFlag());
+                        label.setText(" +" + code.getPhoneCode() + " " + code.getName());
+                    }
                 }
                 return label;
             }
