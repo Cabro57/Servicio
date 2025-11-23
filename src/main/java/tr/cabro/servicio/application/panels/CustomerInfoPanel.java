@@ -41,10 +41,10 @@ public class CustomerInfoPanel extends JPanel {
 
     public void setData(@NonNull Customer data) {
         customerName.setText(data.getName());
-        businessNameInfo.setText(data.getBusiness_name());
-        phoneNo1Info.setText(data.getPhone_number_1());
-        phoneNo2Info.setText(data.getPhone_number_2());
-        idNoInfo.setText(data.getId_no());
+        businessNameInfo.setText(data.getBusinessName());
+        phoneNo1Info.setText(data.getPhoneNumber1());
+        phoneNo2Info.setText(data.getPhoneNumber2());
+        idNoInfo.setText(data.getIdNo());
         emailInfo.setText(data.getEmail());
         addressInfo.setText(data.getAddress());
 

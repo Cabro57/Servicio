@@ -1,6 +1,5 @@
 package tr.cabro.servicio.database.dao;
 
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.exception.DataAccessException;
 import tr.cabro.servicio.model.AddedPart;
@@ -38,19 +37,19 @@ public class AddedPartDao extends BaseDao<AddedPart, Integer> {
     protected void fillStatement(PreparedStatement stmt, AddedPart entity, boolean isUpdate) throws SQLException {
         int i = 1;
         stmt.setInt(i++, entity.getServiceId());
-        stmt.setString(i++, entity.getSerial_no());
+        stmt.setString(i++, entity.getSerialNo());
         stmt.setString(i++, entity.getBrand());
         stmt.setString(i++, entity.getName());
-        stmt.setObject(i++, entity.getSupplier_id(), Types.INTEGER);
-        stmt.setString(i++, entity.getDevice_type());
+        stmt.setObject(i++, entity.getSupplierId(), Types.INTEGER);
+        stmt.setString(i++, entity.getDeviceType());
         stmt.setString(i++, entity.getModels());
         stmt.setInt(i++, entity.getAmount());
         stmt.setDouble(i++, entity.getPurchasePrice());
         stmt.setDouble(i++, entity.getSellingPrice());
-        stmt.setObject(i++, entity.getWarranty_period(), Types.INTEGER);
-        stmt.setString(i++, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
+        stmt.setObject(i++, entity.getWarrantyPeriod(), Types.INTEGER);
+        stmt.setString(i++, entity.getPurchaseDate() != null ? entity.getPurchaseDate().toString() : null);
         stmt.setString(i++, entity.getDescription());
-        stmt.setString(i++, dateToStr(entity.getCreated_at()));
+        stmt.setString(i++, dateToStr(entity.getCreatedAt()));
 
         if (isUpdate) {
             stmt.setInt(i++, entity.getId());
@@ -62,26 +61,26 @@ public class AddedPartDao extends BaseDao<AddedPart, Integer> {
         AddedPart ap = new AddedPart();
         ap.setId(rs.getInt("id"));
         ap.setServiceId(rs.getInt("service_id"));
-        ap.setSerial_no(rs.getString("series_no"));
+        ap.setSerialNo(rs.getString("series_no"));
         ap.setBrand(rs.getString("brand"));
         ap.setName(rs.getString("name"));
-        ap.setSupplier_id(rs.getInt("supplier_id"));
-        ap.setDevice_type(rs.getString("device_type"));
+        ap.setSupplierId(rs.getInt("supplier_id"));
+        ap.setDeviceType(rs.getString("device_type"));
         ap.setModels(rs.getString("model"));
         ap.setAmount(rs.getInt("amount"));
         ap.setPurchasePrice(rs.getDouble("purchase_price"));
         ap.setSellingPrice(rs.getDouble("sale_price"));
-        ap.setWarranty_period(rs.getInt("warranty_period"));
+        ap.setWarrantyPeriod(rs.getInt("warranty_period"));
 
         String dateStr = rs.getString("purchase_date");
         if (dateStr != null && !dateStr.isEmpty()) {
-            ap.setPurchase_date(LocalDate.parse(dateStr));
+            ap.setPurchaseDate(LocalDate.parse(dateStr));
         }
         ap.setDescription(rs.getString("description"));
 
         String createdAtStr = rs.getString("created_at");
         if (createdAtStr != null && !createdAtStr.isEmpty()) {
-            ap.setCreated_at(LocalDateTime.parse(createdAtStr));
+            ap.setCreatedAt(LocalDateTime.parse(createdAtStr));
         }
         return ap;
     }

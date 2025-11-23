@@ -232,7 +232,7 @@ public class FormCustomerDetail extends Form {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.populateFormWith(customer);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Customer updated = panel.getDataIfValid();
+                                Customer updated = panel.getData();
                                 if (updated == null) {
                                     controller.consume();
                                     return;

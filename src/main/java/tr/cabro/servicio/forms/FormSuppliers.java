@@ -75,7 +75,7 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.clearForm();
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Supplier updated = panel.getDataIfValid();
+                                Supplier updated = panel.getData();
                                 if (updated == null) {
                                     controller.consume();
                                     return;
@@ -126,7 +126,7 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.populateFormWith(supplier);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Supplier updated = panel.getDataIfValid();
+                                Supplier updated = panel.getData();
                                 if (updated == null) {
                                     controller.consume();
                                     return;

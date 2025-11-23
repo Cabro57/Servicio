@@ -2,7 +2,6 @@ package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
-import lombok.Getter;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
@@ -16,7 +15,6 @@ import tr.cabro.servicio.settings.DeviceSettings;
 
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;
-import java.util.ArrayList;
 import java.util.List;
 
 public class PartSearchPanel extends JPanel {
@@ -141,7 +139,7 @@ public class PartSearchPanel extends JPanel {
 
                 // Cihaz türü filtresi
                 if (selectedType != null && !selectedType.equals("(Tümü)") && !selectedType.isEmpty()) {
-                    if (!selectedType.equalsIgnoreCase(p.getDevice_type())) {
+                    if (!selectedType.equalsIgnoreCase(p.getDeviceType())) {
                         return false;
                     }
                 }

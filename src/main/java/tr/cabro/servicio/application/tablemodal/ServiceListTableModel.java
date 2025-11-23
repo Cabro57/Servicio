@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.tablemodal;
 
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
@@ -44,20 +43,20 @@ public class ServiceListTableModel extends AbstractTableModel {
     public Object getValueAt(int rowIndex, int columnIndex) {
         Service service = services.get(rowIndex);
 
-        Customer customer = ServiceManager.getCustomerService().get(service.getCustomer_id()).orElse(null);
+        Customer customer = ServiceManager.getCustomerService().get(service.getCustomerId()).orElse(null);
 
 
         switch (columnIndex) {
             case 0: return service.getId();
             case 1: return customer;
-            case 2: return service.getDevice_type();
-            case 3: return service.getDevice_brand();
-            case 4: return service.getDevice_model();
-            case 5: return service.getDevice_serial();
+            case 2: return service.getDeviceType();
+            case 3: return service.getDeviceBrand();
+            case 4: return service.getDeviceModel();
+            case 5: return service.getDeviceSerial();
             case 6: return Format.formatPrice(calculateRemainingAmount(service));
-            case 7: return service.getCreated_at();
-            case 8: return service.getDelivery_at();
-            case 9: return service.getService_status();
+            case 7: return service.getCreatedAt();
+            case 8: return service.getDeliveryAt();
+            case 9: return service.getServiceStatus();
             default: return null;
         }
     }
@@ -103,7 +102,7 @@ public class ServiceListTableModel extends AbstractTableModel {
     }
 
     private double calculateRemainingAmount(Service service) {
-        double labor = service.getLabor_cost();
+        double labor = service.getLaborCost();
         double parts = ServiceManager.getRepairService().getTotalPartsCostForService(service.getId());
         double paid = service.getPaid();
         return (labor + parts) - paid;

@@ -9,7 +9,6 @@ import tr.cabro.servicio.application.editors.*;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.PartSearchPanel;
 import tr.cabro.servicio.application.panels.ServicePanel;
-import tr.cabro.servicio.application.panels.edit.PartEditPanel;
 import tr.cabro.servicio.application.panels.edit.ServicePartEditPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.tablemodal.ServicePartTableModel;
@@ -64,14 +63,14 @@ public class PartsNotesInfoPanel extends ServicePanel {
                             if (action == SimpleModalBorder.OPENED) {
                                 panel.populateFormWith(data);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                AddedPart update = panel.getDataIfValid();
+                                AddedPart update = panel.getData();
 
                                 if (update == null) {
                                     controller.consume();
                                     return;
                                 }
 
-                                update.setCreated_at(data.getCreated_at());
+                                update.setCreatedAt(data.getCreatedAt());
 
                                 tableModel.getAddedParts().set(row, update);
                                 tableModel.fireTableRowsUpdated(row, row);
@@ -119,7 +118,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
                                 panel.clearForm();
 
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                AddedPart updated = panel.getDataIfValid();
+                                AddedPart updated = panel.getData();
 
                                 if (updated == null) {
                                     controller.consume();

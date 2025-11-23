@@ -4,7 +4,6 @@ import lombok.*;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.util.Format;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
@@ -40,14 +39,14 @@ public class OpenServiceTableModel extends AbstractTableModel {
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         Service service = data.get(rowIndex);
-        Customer customer = ServiceManager.getCustomerService().get(service.getCustomer_id()).orElse(null);
+        Customer customer = ServiceManager.getCustomerService().get(service.getCustomerId()).orElse(null);
 
         switch (columnIndex) {
             case 0: return customer;
             case 1: return service.getDevice();
             case 2: return calculateRemainingAmount(service);
-            case 3: return service.getService_status();
-            case 4: return service.getCreated_at();
+            case 3: return service.getServiceStatus();
+            case 4: return service.getCreatedAt();
             default: return null;
         }
     }
@@ -61,7 +60,7 @@ public class OpenServiceTableModel extends AbstractTableModel {
     }
 
     private double calculateRemainingAmount(Service service) {
-        double labor = service.getLabor_cost();
+        double labor = service.getLaborCost();
         double parts = ServiceManager.getRepairService().getTotalPartsCostForService(service.getId());
         double paid = service.getPaid();
         return (labor + parts) - paid;

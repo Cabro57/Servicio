@@ -20,7 +20,7 @@ public abstract class AbstractTableForm<T> extends Form {
     protected JTable table;
     protected JScrollPane tableScroll;
     protected JPanel tablePanel;
-    protected JButton newButton, editButton, deleteButton, refreshButton; // Refresh butonu eklendi
+    protected JButton newButton, editButton, deleteButton; // Refresh butonu eklendi
     protected TableRowSorter<? extends TableModel> sorter;
 
     public AbstractTableForm() {
@@ -33,13 +33,11 @@ public abstract class AbstractTableForm<T> extends Form {
     public void formInit() {
         // Form ilk açıldığında verileri yükle
         refreshTable();
-        updateButtonStates(); // Başlangıçta buton durumlarını ayarla
     }
 
     @Override
     public void formRefresh() {
         refreshTable();
-        updateButtonStates();
     }
 
     private void initLayout() {
@@ -50,13 +48,11 @@ public abstract class AbstractTableForm<T> extends Form {
         newButton = new JButton("Yeni");
         editButton = new JButton("Düzenle");
         deleteButton = new JButton("Sil");
-        refreshButton = new JButton(new FlatSVGIcon("icons/refresh.svg", 0.4f)); // İkon yolunuzu kontrol edin
 
         add(searchField, "growx");
         add(newButton, "sg btn, w 100!");   // 'sg btn': Hepsi aynı genişlikte olsun
         add(editButton, "sg btn, w 100!");
-        add(deleteButton, "sg btn, w 100!");
-        add(refreshButton, "w 40!, wrap");  // Küçük kare refresh butonu
+        add(deleteButton, "sg btn, w 100!, wrap");
 
         table = new JTable();
         // Tablo boşken gösterilecek placeholder (İsteğe bağlı)
@@ -102,17 +98,6 @@ public abstract class AbstractTableForm<T> extends Form {
         newButton.addActionListener(e -> onNew());
         editButton.addActionListener(e -> onEdit());
         deleteButton.addActionListener(e -> onDelete());
-        refreshButton.addActionListener(e -> {
-            refreshTable();
-            updateButtonStates();
-        });
-
-        // Tablo seçim dinleyicisi (Butonları aktif/pasif yapmak için)
-        table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                updateButtonStates();
-            }
-        });
 
         // Çift tıklama ile düzenleme (UX İyileştirmesi)
         table.addMouseListener(new MouseAdapter() {
@@ -123,15 +108,6 @@ public abstract class AbstractTableForm<T> extends Form {
                 }
             }
         });
-    }
-
-    /**
-     * Tablodan seçim yapılmadığında Düzenle ve Sil butonlarını pasif yapar.
-     */
-    protected void updateButtonStates() {
-        boolean hasSelection = table.getSelectedRow() != -1;
-        editButton.setEnabled(hasSelection);
-        deleteButton.setEnabled(hasSelection);
     }
 
     protected void applyFilter() {
@@ -152,7 +128,6 @@ public abstract class AbstractTableForm<T> extends Form {
         table.setModel(model);
         sorter = new TableRowSorter<>(model);
         table.setRowSorter(sorter);
-        updateButtonStates(); // Model değişince seçim sıfırlanır
     }
 
     // Soyut metodlar

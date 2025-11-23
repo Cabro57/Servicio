@@ -36,9 +36,9 @@ public class SearchCustomerTableModel extends AbstractTableModel {
         switch (columnIndex) {
             case 0: return customer.getType();
             case 1: return customer.getName() + " " + customer.getSurname();
-            case 2: return customer.getBusiness_name();
-            case 3: return Format.formatPhoneNumber(customer.getPhone_number_1());
-            case 4: return customer.getId_no();
+            case 2: return customer.getBusinessName();
+            case 3: return Format.formatPhoneNumber(customer.getPhoneNumber1());
+            case 4: return customer.getIdNo();
             default: return null;
         }
     }

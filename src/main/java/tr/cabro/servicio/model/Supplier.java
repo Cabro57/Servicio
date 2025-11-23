@@ -11,10 +11,10 @@ public class Supplier {
     private int id;
 
     private String name;
-    private String business_name;
-    private String id_no;
-    private String tax_no;
-    private String tax_office;
+    private String businessName;
+    private String idNo;
+    private String taxNo;
+    private String taxOffice;
     private String email;
     private String phone;
     private String address;
@@ -22,10 +22,10 @@ public class Supplier {
 
     private LocalDateTime created_at;
 
-    public Supplier(int id, String name, String business_name) {
+    public Supplier(int id, String name, String businessName) {
         this.id = id;
         this.name = name;
-        this.business_name = business_name;
+        this.businessName = businessName;
         this.created_at = LocalDateTime.now();
     }
 
@@ -35,7 +35,7 @@ public class Supplier {
 
     @Override
     public String toString() {
-        return business_name;
+        return businessName;
     }
 
     @Override

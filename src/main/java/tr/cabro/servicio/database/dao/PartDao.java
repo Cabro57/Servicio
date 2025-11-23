@@ -41,18 +41,18 @@ public class PartDao extends BaseDao<Part, String> {
         }
 
         stmt.setString(i++, entity.getBrand());
-        stmt.setInt(i++, entity.getSupplier_id());
+        stmt.setInt(i++, entity.getSupplierId());
         stmt.setString(i++, entity.getName());
-        stmt.setString(i++, entity.getDevice_type());
+        stmt.setString(i++, entity.getDeviceType());
         stmt.setString(i++, entity.getModels());
-        stmt.setDouble(i++, entity.getPurchase_price());
-        stmt.setDouble(i++, entity.getSale_price());
+        stmt.setDouble(i++, entity.getPurchasePrice());
+        stmt.setDouble(i++, entity.getSalePrice());
         stmt.setInt(i++, entity.getStock());
         stmt.setInt(i++, entity.getMinStock());
-        stmt.setInt(i++, entity.getWarranty_period());
-        stmt.setString(i++, entity.getPurchase_date() != null ? entity.getPurchase_date().toString() : null);
+        stmt.setInt(i++, entity.getWarrantyPeriod());
+        stmt.setString(i++, entity.getPurchaseDate() != null ? entity.getPurchaseDate().toString() : null);
         stmt.setString(i++, entity.getDescription());
-        stmt.setString(i++, entity.getCreated_at().toString());
+        stmt.setString(i++, entity.getCreatedAt().toString());
 
         if (isUpdate) {
             stmt.setString(i++, entity.getBarcode());
@@ -65,24 +65,24 @@ public class PartDao extends BaseDao<Part, String> {
         p.setBarcode(rs.getString("barcode"));
         p.setBrand(rs.getString("brand"));
         p.setName(rs.getString("name"));
-        p.setSupplier_id(rs.getInt("supplier_id"));
-        p.setDevice_type(rs.getString("device_type"));
+        p.setSupplierId(rs.getInt("supplier_id"));
+        p.setDeviceType(rs.getString("device_type"));
         p.setModels(rs.getString("model"));
-        p.setPurchase_price(rs.getDouble("purchase_price"));
-        p.setSale_price(rs.getDouble("sale_price"));
+        p.setPurchasePrice(rs.getDouble("purchase_price"));
+        p.setSalePrice(rs.getDouble("sale_price"));
         p.setStock(rs.getInt("stock"));
         p.setMinStock(rs.getInt("min_stock"));
-        p.setWarranty_period(rs.getInt("warranty_period"));
+        p.setWarrantyPeriod(rs.getInt("warranty_period"));
 
         String dateStr = rs.getString("purchase_date");
         if (dateStr != null && !dateStr.isEmpty()) {
-            p.setPurchase_date(LocalDate.parse(dateStr));
+            p.setPurchaseDate(LocalDate.parse(dateStr));
         }
         p.setDescription(rs.getString("description"));
 
         String createdAtStr = rs.getString("created_at");
         if (createdAtStr != null && !createdAtStr.isEmpty()) {
-            p.setCreated_at(LocalDateTime.parse(createdAtStr));
+            p.setCreatedAt(LocalDateTime.parse(createdAtStr));
         }
         return p;
     }

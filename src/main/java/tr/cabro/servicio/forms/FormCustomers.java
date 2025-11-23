@@ -47,7 +47,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                                 panel.clearForm();
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 // 1. Panelden veriyi al ve validasyonu kontrol et
-                                Customer updated = panel.getDataIfValid();
+                                Customer updated = panel.getData();
                                 if (updated == null) {
                                     controller.consume(); // Validasyon hatası varsa diyaloğu kapatma
                                     return;
@@ -55,7 +55,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
 
                                 // 2. İşlemi yap (TRY-CATCH İLE)
                                 try {
-                                    updated.setCreated_at(LocalDateTime.now());
+                                    updated.setCreatedAt(LocalDateTime.now());
 
                                     // Artık boolean dönmüyor, hata varsa exception fırlatıyor
                                     customerService.save(updated, false);
@@ -71,7 +71,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
 
                                     // Service veya DAO'dan gelen gerçek hata mesajını gösteriyoruz
                                     Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
-                                    Servicio.getLogger().error("Müşteri ekleme hatası", e);
+                                    Servicio.getLogger().error("Müşteri ekleme hatası", e.getMessage());
                                 }
                             }
                         })
@@ -107,7 +107,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                                 panel.populateFormWith(customer);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
 
-                                Customer updated = panel.getDataIfValid();
+                                Customer updated = panel.getData();
                                 if (updated == null) {
                                     controller.consume();
                                     return;
@@ -117,7 +117,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                                     // ID'yi koru
                                     updated.setId(customer.getId());
                                     // Created_at tarihini koru (değişmemeli)
-                                    updated.setCreated_at(customer.getCreated_at());
+                                    updated.setCreatedAt(customer.getCreatedAt());
 
                                     // Service çağrısı
                                     customerService.save(updated, true);

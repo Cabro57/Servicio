@@ -37,12 +37,12 @@ public class CustomerTableModel extends AbstractTableModel {
             case 0: return selectedRows[rowIndex];
             case 1: return customer.getId();
             case 2: return customer.getName() + " " + customer.getSurname();
-            case 3: return customer.getBusiness_name();
-            case 4: return customer.getId_no();
+            case 3: return customer.getBusinessName();
+            case 4: return customer.getIdNo();
             case 5: return customer.getAddress();
-            case 6: return Format.formatPhoneNumber(customer.getPhone_number_1());
+            case 6: return Format.formatPhoneNumber(customer.getPhoneNumber1());
             case 7: return customer.getType();
-            case 8: return Format.formatDate(customer.getCreated_at());
+            case 8: return Format.formatDate(customer.getCreatedAt());
             default: return null;
         }
     }

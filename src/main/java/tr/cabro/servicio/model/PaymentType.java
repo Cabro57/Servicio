@@ -2,10 +2,12 @@ package tr.cabro.servicio.model;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
+import org.jdbi.v3.core.enums.EnumByName;
 
 import java.util.Arrays;
 
 @Getter
+@EnumByName
 public enum PaymentType {
     CASH("Nakit", "icons/cash.svg"),
     CARD("Banka/Kredi Kartı", "icons/card.svg"),
@@ -20,10 +22,6 @@ public enum PaymentType {
         this.displayName = displayName;
         this.iconPath = iconPath;
         this.icon = new FlatSVGIcon(iconPath, 16, 16);
-    }
-
-    public FlatSVGIcon getIcon(int width, int height) {
-        return new FlatSVGIcon(iconPath, width, height);
     }
 
     public static PaymentType of(String name) {

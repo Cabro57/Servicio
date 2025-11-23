@@ -38,12 +38,12 @@ public class PartTableModel extends AbstractTableModel {
             case 1: return device_part.getBarcode();
             case 2: return device_part.getBrand();
             case 3: return device_part.getName();
-            case 4: return device_part.getDevice_type();
+            case 4: return device_part.getDeviceType();
             case 5: return device_part.getModels();
             case 6: return device_part.getStock();
-            case 7: return Format.formatPrice(device_part.getPurchase_price());
-            case 8: return Format.formatPrice(device_part.getSale_price());
-            case 9: return Format.formatDate(device_part.getPurchase_date());
+            case 7: return Format.formatPrice(device_part.getPurchasePrice());
+            case 8: return Format.formatPrice(device_part.getSalePrice());
+            case 9: return Format.formatDate(device_part.getPurchaseDate());
             default: return null;
         }
     }

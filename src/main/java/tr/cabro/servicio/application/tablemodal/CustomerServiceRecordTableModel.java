@@ -2,7 +2,6 @@ package tr.cabro.servicio.application.tablemodal;
 
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
@@ -41,10 +40,10 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
 
         switch (columnIndex) {
             case 0: return service.getId();
-            case 1: return service.getDevice_brand() + " " + service.getDevice_model();
+            case 1: return service.getDeviceBrand() + " " + service.getDeviceModel();
             case 2: return Format.formatPrice(calculateRemainingAmount(service));
-            case 3: return service.getService_status();
-            case 4: return Format.formatDate(service.getCreated_at());
+            case 3: return service.getServiceStatus();
+            case 4: return Format.formatDate(service.getCreatedAt());
             default: return null;
         }
     }
@@ -76,7 +75,7 @@ public class CustomerServiceRecordTableModel extends AbstractTableModel {
     }
 
     private double calculateRemainingAmount(Service service) {
-        double labor = service.getLabor_cost();
+        double labor = service.getLaborCost();
         double parts = repairService.getTotalPartsCostForService(service.getId());
         double paid = service.getPaid();
         return (labor + parts) - paid;

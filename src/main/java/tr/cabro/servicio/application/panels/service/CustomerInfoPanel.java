@@ -80,14 +80,14 @@ public class CustomerInfoPanel extends ServicePanel {
                                     panel.clearForm();
 
                                 } else if (action == SimpleModalBorder.OK_OPTION) {
-                                    Customer customer = panel.getDataIfValid();
+                                    Customer customer = panel.getData();
                                     if (customer == null) {
                                         controller.consume();
                                         return;
                                     }
 
                                     try {
-                                        customer.setCreated_at(LocalDateTime.now());
+                                        customer.setCreatedAt(LocalDateTime.now());
                                         service.save(customer, false);
                                         Toast.show(this, Toast.Type.SUCCESS, customer.getName() + " başarıyla eklendi.");
                                     } catch (Exception ex) {

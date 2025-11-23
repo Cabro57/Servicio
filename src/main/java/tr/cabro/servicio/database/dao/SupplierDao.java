@@ -26,10 +26,10 @@ public class SupplierDao extends BaseDao<Supplier, Integer> {
     protected void fillStatement(PreparedStatement stmt, Supplier entity, boolean isUpdate) throws SQLException {
         int i = 1;
         stmt.setString(i++, entity.getName());
-        stmt.setString(i++, entity.getBusiness_name());
-        stmt.setString(i++, entity.getId_no());
-        stmt.setString(i++, entity.getTax_no());
-        stmt.setString(i++, entity.getTax_office());
+        stmt.setString(i++, entity.getBusinessName());
+        stmt.setString(i++, entity.getIdNo());
+        stmt.setString(i++, entity.getTaxNo());
+        stmt.setString(i++, entity.getTaxOffice());
         stmt.setString(i++, entity.getEmail());
         stmt.setString(i++, entity.getPhone());
         stmt.setString(i++, entity.getAddress());
@@ -46,10 +46,10 @@ public class SupplierDao extends BaseDao<Supplier, Integer> {
         Supplier s = new Supplier();
         s.setId(rs.getInt("id"));
         s.setName(rs.getString("name"));
-        s.setBusiness_name(rs.getString("business_name"));
-        s.setId_no(rs.getString("id_no"));
-        s.setTax_no(rs.getString("tax_no"));
-        s.setTax_office(rs.getString("tax_office"));
+        s.setBusinessName(rs.getString("business_name"));
+        s.setIdNo(rs.getString("id_no"));
+        s.setTaxNo(rs.getString("tax_no"));
+        s.setTaxOffice(rs.getString("tax_office"));
         s.setEmail(rs.getString("email"));
         s.setPhone(rs.getString("phone"));
         s.setAddress(rs.getString("address"));

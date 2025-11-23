@@ -68,8 +68,6 @@ public class MainUI extends JFrame {
      */
     public void attemptExit() {
         // Eğer "Onay sorma" (skip confirmation) ayarı TRUE ise direkt kapat
-        // Not: Settings'deki isimlendirmeyi "isSkipExitConfirmation" varsayıyorum.
-        // Eğer "isConfirmExitDialog" ise mantığı tersine çeviriniz.
         boolean skipDialog = Servicio.getSettings().isSkipExitConfirmation();
 
         if (skipDialog) {

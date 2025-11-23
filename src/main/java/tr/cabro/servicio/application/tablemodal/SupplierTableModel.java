@@ -35,7 +35,7 @@ public class SupplierTableModel extends AbstractTableModel {
 
         switch (columnIndex) {
             case 0: return selectedRows[rowIndex];
-            case 1: return supplier.getBusiness_name();
+            case 1: return supplier.getBusinessName();
             case 2: return supplier.getName();
             case 3: return Format.formatPhoneNumber(supplier.getPhone());
             case 4: return supplier.getAddress();

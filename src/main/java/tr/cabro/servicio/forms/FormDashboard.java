@@ -14,13 +14,12 @@ import raven.modal.component.chart.utils.ToolBarTimeSeriesChartRenderer;
 import raven.modal.component.dashboard.CardBox;
 import raven.modal.system.Form;
 import raven.modal.utils.SystemForm;
-import raven.swingpack.JPagination;
-import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
 import tr.cabro.servicio.component.PaginationTable;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.reports.ServiceFinanceRecord;
 import tr.cabro.servicio.reports.ServiceFinanceReport;
 import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -55,7 +54,7 @@ public class FormDashboard extends Form {
 
     private void loadData() {
         // load data card
-        RepairService repairService = new RepairService();
+        RepairService repairService = ServiceManager.getRepairService();
         ServiceFinanceReport report = repairService.getDashboardStats();
 
         // Son ay
