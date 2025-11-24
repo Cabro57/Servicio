@@ -8,7 +8,6 @@ import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
-import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 import java.util.List;
@@ -67,7 +66,7 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         }
         p.setName(name);
         p.setDeviceType((String) device_type_combo.getSelectedItem());
-        p.setModels(models_field.getText().trim());
+        p.setModel(models_field.getText().trim());
         p.setPurchasePrice((Double) purchase_price_field.getValue());
         p.setSellingPrice((Double) sale_price_field.getValue());
         p.setAmount((Integer) amount_spinner.getValue());
@@ -84,7 +83,7 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         brand_field.setText(data.getBrand());
         name_field.setText(data.getName());
         device_type_combo.setSelectedItem(data.getDeviceType());
-        models_field.setText(data.getModels());
+        models_field.setText(data.getModel());
         purchase_price_field.setValue(data.getPurchasePrice());
         sale_price_field.setValue(data.getSellingPrice());
         amount_spinner.setValue(data.getAmount());

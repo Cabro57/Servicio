@@ -2,7 +2,7 @@ package tr.cabro.servicio.service;
 
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.DatabaseManager;
-import tr.cabro.servicio.database.repository.RepairRepository;
+import tr.cabro.servicio.database.repository.ServiceRepository;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Service;
@@ -23,10 +23,10 @@ import java.util.stream.Collectors;
 
 public class RepairService {
 
-    private final RepairRepository repository;
+    private final ServiceRepository repository;
     private static String DASHBOARD_SQL = null;
 
-    public RepairService(RepairRepository repository) {
+    public RepairService(ServiceRepository repository) {
         this.repository = repository;
         loadDashboardSql();
     }

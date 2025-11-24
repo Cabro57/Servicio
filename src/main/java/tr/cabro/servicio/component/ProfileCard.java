@@ -5,9 +5,9 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.extras.AvatarIcon;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
-import java.awt.*;
 
 public class ProfileCard extends JPanel {
 
@@ -23,17 +23,17 @@ public class ProfileCard extends JPanel {
         if (nameLabel != null) {
             nameLabel.setText(customer.toString());
         }
-        if (emailPanel != null) {
-            emailPanel.setValue(customer.getEmail());
+        if (email != null) {
+            email.setValue(customer.getEmail());
         }
-        if (addressPanel != null) {
-            addressPanel.setValue(customer.getAddress());
+        if (address != null) {
+            address.setValue(customer.getAddress());
         }
-        if (phonePanel != null) {
-            phonePanel.setValue(customer.getPhoneNumber1());
+        if (phoneNo != null) {
+            phoneNo.setValue(Format.formatPhoneNumber(customer.getPhoneNumber1()));
         }
-        if (transactionPanel != null) {
-            transactionPanel.setValue(customer.getCreatedAt().toString());
+        if (createdAt != null) {
+            createdAt.setValue(Format.formatDate(customer.getCreatedAt()));
         }
     }
 
@@ -48,13 +48,6 @@ public class ProfileCard extends JPanel {
         nameLabel = new JLabel("");
         nameLabel.putClientProperty("FlatLaf.style", "font: bold +4");
         nameStatusPanel.add(nameLabel);
-
-        JButton statusButton = new JButton("Active");
-        statusButton.putClientProperty("FlatLaf.style",
-                "background: $" + Integer.toHexString(Color.GREEN.getRGB()).substring(2) + ";" +
-                        "foreground: #FFFFFF;" + "arc: 999;" + "font: bold;" + "borderWidth: 0;" + "focusWidth: 0;" + "innerFocusWidth: 0;"
-        );
-        // nameStatusPanel.add(statusButton, "gapy 5");
 
         JPanel iconPanel = new JPanel(new MigLayout("insets 0", "[]5[]"));
         iconPanel.setOpaque(false);
@@ -80,22 +73,6 @@ public class ProfileCard extends JPanel {
         return button;
     }
 
-    private JPanel createInfoPanel(String labelText, String key, String initialValue) {
-        JPanel panel = new JPanel(new MigLayout("wrap 1, insets 0 0 15 0"));
-        panel.setOpaque(false);
-
-        JLabel labelLabel = new JLabel(labelText);
-        labelLabel.setForeground(Color.gray);
-        labelLabel.putClientProperty("FlatLaf.style", "font: -2");
-        panel.add(labelLabel);
-
-        JLabel valueLabel = new JLabel(initialValue);
-        valueLabel.putClientProperty("FlatLaf.style", "font: +1");
-        panel.add(valueLabel, "gapy 2");
-
-        return panel;
-    }
-
     private void initComponent() {
         setLayout(new MigLayout("wrap 1, fillx, insets 160 25 25 25", "[fill]", ""));
         putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
@@ -111,43 +88,21 @@ public class ProfileCard extends JPanel {
         add(createTopBlock(), "growx, wrap");
 
         // Yeni InfoPanel kullanımı ve değişkenlere atama:
-        emailPanel = new InfoItem("Email address", "");
-        addressPanel = new InfoItem("Address", "");
-        phonePanel = new InfoItem("Phone number", "");
-        transactionPanel = new InfoItem("Last transaction", "");
+        email = new InfoItem("E-Posta", "");
+        address = new InfoItem("Adres", "");
+        phoneNo = new InfoItem("Telefon Numarası", "");
+        createdAt = new InfoItem("Kayıt Tarihi", "");
 
-        add(emailPanel, "growx, wrap");
-        add(addressPanel, "growx, wrap");
-        add(phonePanel, "growx, wrap");
-        add(transactionPanel, "growx, wrap");
+        add(email, "growx, wrap");
+        add(address, "growx, wrap");
+        add(phoneNo, "growx, wrap");
+        add(createdAt, "growx, wrap");
     }
 
-//    private final Color flatAccent = UIManager.getColor("Component.accentColor");
-//    private final Color gradientStart = (flatAccent != null) ? flatAccent.brighter().brighter() : new Color(190, 100, 255);
-//    private final Color gradientEnd = (flatAccent != null) ? flatAccent.darker().darker() : new Color(100, 150, 255);
-//    private final int headerHeight = 100;
-//
-//    @Override
-//    protected void paintComponent(Graphics g) {
-//        super.paintComponent(g);
-//        Graphics2D g2d = (Graphics2D) g;
-//
-//        // Gradient (FlatLaf vurgu rengi ile)
-//        GradientPaint gradient = new GradientPaint(
-//                0, 0, gradientStart,
-//                getWidth(), 0, gradientEnd
-//        );
-//        g2d.setPaint(gradient);
-//        g2d.fillRect(0, 0, getWidth(), headerHeight);
-//
-//        // Alt Düz Koyu Renk
-//        g2d.setColor(getBackground());
-//        g2d.fillRect(0, headerHeight, getWidth(), getHeight() - headerHeight);
-//    }
 
     private JLabel nameLabel;
-    private InfoItem emailPanel;
-    private InfoItem addressPanel;
-    private InfoItem phonePanel;
-    private InfoItem transactionPanel;
+    private InfoItem email;
+    private InfoItem address;
+    private InfoItem phoneNo;
+    private InfoItem createdAt;
 }

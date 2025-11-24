@@ -95,7 +95,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         }
         p.setName(name);
         p.setDeviceType((String) device_type_combo.getSelectedItem());
-        p.setModels(models_field.getText().trim());
+        p.setModel(models_field.getText().trim());
         p.setPurchasePrice((Double) purchase_price_field.getValue());
         p.setSalePrice((Double) sale_price_field.getValue());
         p.setStock((Integer) stock_spinner.getValue());
@@ -113,7 +113,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         brand_field.setText(data.getBrand());
         name_field.setText(data.getName());
         device_type_combo.setSelectedItem(data.getDeviceType());
-        models_field.setText(data.getModels());
+        models_field.setText(data.getModel());
         purchase_price_field.setValue(data.getPurchasePrice());
         sale_price_field.setValue(data.getSalePrice());
         stock_spinner.setValue(data.getStock());

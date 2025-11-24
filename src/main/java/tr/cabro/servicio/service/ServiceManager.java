@@ -19,7 +19,7 @@ public final class ServiceManager {
         // 2. Repository'leri Oluştur (JDBI Interface Proxy'leri)
         CustomerRepository customerRepo = jdbi.onDemand(CustomerRepository.class);
         PartRepository partRepo = jdbi.onDemand(PartRepository.class);
-        RepairRepository repairRepo = jdbi.onDemand(RepairRepository.class);
+        ServiceRepository repairRepo = jdbi.onDemand(ServiceRepository.class);
         SupplierRepository supplierRepo = jdbi.onDemand(SupplierRepository.class);
 
         // 3. Servislere Enjekte Et (Constructor Injection)

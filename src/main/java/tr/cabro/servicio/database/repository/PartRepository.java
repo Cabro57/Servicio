@@ -13,12 +13,12 @@ import java.util.Optional;
 @RegisterBeanMapper(Part.class)
 public interface PartRepository {
 
-    // :models -> Part sınıfındaki getModels() metodunu çağırır.
+    // :model -> Part sınıfındaki getModel() metodunu çağırır.
     @SqlUpdate("INSERT INTO part (barcode, brand, supplier_id, name, device_type, model, purchase_price, sale_price, stock, min_stock, warranty_period, purchase_date, description, created_at) " +
-            "VALUES (:barcode, :brand, :supplierId, :name, :deviceType, :models, :purchasePrice, :salePrice, :stock, :minStock, :warrantyPeriod, :purchaseDate, :description, :createdAt)")
+            "VALUES (:barcode, :brand, :supplierId, :name, :deviceType, :model, :purchasePrice, :salePrice, :stock, :minStock, :warrantyPeriod, :purchaseDate, :description, :createdAt)")
     void insert(@BindBean Part part);
 
-    @SqlUpdate("UPDATE part SET brand=:brand, name=:name, supplier_id=:supplierId, device_type=:deviceType, model=:models, " +
+    @SqlUpdate("UPDATE part SET brand=:brand, name=:name, supplier_id=:supplierId, device_type=:deviceType, model=:model, " +
             "purchase_price=:purchasePrice, sale_price=:salePrice, stock=:stock, min_stock=:minStock, " +
             "warranty_period=:warrantyPeriod, purchase_date=:purchaseDate, description=:description WHERE barcode=:barcode")
     void update(@BindBean Part part);

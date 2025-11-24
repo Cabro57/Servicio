@@ -17,7 +17,7 @@ public class AddedPart {
     private String name; // Ürün Adı
     private int supplierId; // Tedarikçi
     private String deviceType; // Ürün Cihaz Türü
-    private String models; // Ürün uyumlu modelleri
+    private String model; // Ürün uyumlu modelleri
     private int amount; // Parça Adeti
     private double purchasePrice; //Parça Alış Fiyatı
     private double sellingPrice; // Parça Satış Fiyatı
@@ -45,7 +45,7 @@ public class AddedPart {
         this.name = data.getName();
         this.supplierId = data.getSupplierId();
         this.deviceType = data.getDeviceType();
-        this.models = data.getModels();
+        this.model = data.getModel();
         this.amount = 1;
         this.purchasePrice = data.getPurchasePrice();
         this.sellingPrice = data.getSalePrice();

@@ -39,7 +39,7 @@ public class PartTableModel extends AbstractTableModel {
             case 2: return device_part.getBrand();
             case 3: return device_part.getName();
             case 4: return device_part.getDeviceType();
-            case 5: return device_part.getModels();
+            case 5: return device_part.getModel();
             case 6: return device_part.getStock();
             case 7: return Format.formatPrice(device_part.getPurchasePrice());
             case 8: return Format.formatPrice(device_part.getSalePrice());

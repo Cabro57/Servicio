@@ -16,7 +16,7 @@ public class Part {
     private int supplierId; // Tedarikçi
 
     private String deviceType; // Ürün Cihaz Türü
-    private String models; // Ürün uyumlu modelleri
+    private String model; // Ürün uyumlu modelleri
 
     private double purchasePrice; // Alış Fiyatı
     private double salePrice; // Satış Fiyatı
