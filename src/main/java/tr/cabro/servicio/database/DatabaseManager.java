@@ -70,7 +70,7 @@ public class DatabaseManager {
             // Eğer veritabanı önceden varsa (ilk çalışma değilse), migration öncesi güvenlik yedeği al
             if (!isFirstRun) {
                 Servicio.getLogger().info("Migration öncesi güvenlik yedeği alınıyor...");
-                backup("pre-migrate-" + System.currentTimeMillis());
+                backup("pre-migrate");
             }
 
             Flyway flyway = Flyway.configure()
