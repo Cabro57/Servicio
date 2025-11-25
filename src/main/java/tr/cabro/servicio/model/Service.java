@@ -11,7 +11,7 @@ public class Service {
     private int id;
 
     // Müşteri Bilgileri
-    private int customerId;
+    private Integer customerId;
     private LocalDateTime createdAt;
     private LocalDateTime deliveryAt;
 

@@ -1,6 +1,7 @@
 package raven.modal.component.chart.themes;
 
 import com.formdev.flatlaf.util.UIScale;
+import lombok.Getter;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.StandardChartTheme;
 import org.jfree.chart.plot.PiePlot;
@@ -20,10 +21,7 @@ import java.awt.geom.RectangularShape;
 
 public class DefaultChartTheme extends StandardChartTheme {
 
-    public static DefaultChartTheme getInstance() {
-        return instance;
-    }
-
+    @Getter
     private static DefaultChartTheme instance = new DefaultChartTheme();
     public ColorThemes colorThemes = ColorThemes.DEFAULT;
 

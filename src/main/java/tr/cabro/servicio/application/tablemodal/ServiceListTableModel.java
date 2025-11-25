@@ -43,8 +43,10 @@ public class ServiceListTableModel extends AbstractTableModel {
     public Object getValueAt(int rowIndex, int columnIndex) {
         Service service = services.get(rowIndex);
 
-        Customer customer = ServiceManager.getCustomerService().get(service.getCustomerId()).orElse(null);
-
+        Customer customer = null;
+        if (service.getCustomerId() != null) {
+            customer = ServiceManager.getCustomerService().get(service.getCustomerId()).orElse(null);
+        }
 
         switch (columnIndex) {
             case 0: return service.getId();

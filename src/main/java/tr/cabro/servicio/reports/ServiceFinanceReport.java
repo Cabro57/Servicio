@@ -25,6 +25,7 @@ public class ServiceFinanceReport extends OkaeriConfig {
 
     public ServiceFinanceRecord getLatestMonth() {
         return records.stream()
+                .filter(r -> r.getMonth() != null)
                 .filter(r -> !"GENEL TOPLAM".equals(r.getMonth()))
                 .max(Comparator.comparing(ServiceFinanceRecord::getMonth))
                 .orElse(null);

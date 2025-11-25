@@ -296,8 +296,6 @@ public class FormService extends Form {
         Customer customer = customer_info.selectedCustomer;
         if (customer != null) {
             service.setCustomerId(customer.getId());
-        } else {
-            service.setCustomerId(-1);
         }
 
         service.setCreatedAt(customer_info.getRecordDate());

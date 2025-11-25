@@ -8,6 +8,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlite3.SQLitePlugin;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.database.argument.LocalDateTimeArgumentFactory;
 import tr.cabro.servicio.database.mapper.SQLiteDateMapper;
 import tr.cabro.servicio.database.mapper.SQLiteDateTimeMapper;
 
@@ -42,7 +43,7 @@ public class DatabaseManager {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl("jdbc:sqlite:" + dbPath);
         config.setPoolName("Servicio-SQLite-Pool");
-        config.setMaximumPoolSize(5); // SQLite için tek bağlantı genellikle en sağlıklısıdır
+        config.setMaximumPoolSize(1); // SQLite için tek bağlantı genellikle en sağlıklısıdır
 
         config.setConnectionTimeout(30000);
 
@@ -62,6 +63,9 @@ public class DatabaseManager {
         // Gerekli eklentileri yükle
         jdbi.installPlugin(new SqlObjectPlugin());
         jdbi.installPlugin(new SQLitePlugin());
+
+        jdbi.registerArgument(new LocalDateTimeArgumentFactory());
+
         jdbi.registerColumnMapper(LocalDateTime.class, new SQLiteDateTimeMapper());
         jdbi.registerColumnMapper(LocalDate.class, new SQLiteDateMapper());
 

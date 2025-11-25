@@ -27,8 +27,6 @@ import java.awt.*;
 @SystemForm(name = "Ana Sayfa", description = "gösterge paneli formu bazı ayrıntıları görüntüler")
 public class FormDashboard extends Form {
 
-    private final int LIMIT = 10;
-
     public FormDashboard() {
         init();
     }

@@ -39,7 +39,11 @@ public class OpenServiceTableModel extends AbstractTableModel {
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         Service service = data.get(rowIndex);
-        Customer customer = ServiceManager.getCustomerService().get(service.getCustomerId()).orElse(null);
+
+        Customer customer = null;
+        if (service.getCustomerId() != null) {
+            customer = ServiceManager.getCustomerService().get(service.getCustomerId()).orElse(null);
+        }
 
         switch (columnIndex) {
             case 0: return customer;
