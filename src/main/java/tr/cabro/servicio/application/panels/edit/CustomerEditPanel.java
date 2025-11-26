@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.renderer.CustomerTypeRenderer;
 import tr.cabro.servicio.component.PhoneField;
@@ -10,11 +11,10 @@ import javax.swing.*;
 
 public class CustomerEditPanel extends AbstractEditPanel<Customer> {
 
-    public CustomerEditPanel() {
-        super();
-
-
+    public CustomerEditPanel(Customer data) {
+        super(data);
     }
+
 
 //    @Override
 //    protected boolean validateForm() {
@@ -67,24 +67,22 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
 //    }
 
     @Override
-    protected Customer collectFormData() {
-        Customer c = new Customer();
-        c.setBusinessName(businessNameField.getText().trim());
-        c.setName(nameField.getText().trim());
-        c.setSurname(surnameField.getText().trim());
-        c.setPhoneNumber1(phone1Field.getNormalizedNumber());
-        c.setPhoneNumber2(phone2Field.getNormalizedNumber());
-        c.setIdNo(idNoField.getText().trim());
-        c.setAddress(addressField.getText().trim());
-        c.setEmail(emailField.getText().trim());
-        c.setNote(notesField.getText().trim());
-        c.setType((CustomerType) customerTypeBox.getSelectedItem());
-        return c;
+    protected Customer collectFormData(@NonNull Customer data) {
+        data.setBusinessName(businessNameField.getText().trim());
+        data.setName(nameField.getText().trim());
+        data.setSurname(surnameField.getText().trim());
+        data.setPhoneNumber1(phone1Field.getNormalizedNumber());
+        data.setPhoneNumber2(phone2Field.getNormalizedNumber());
+        data.setIdNo(idNoField.getText().trim());
+        data.setAddress(addressField.getText().trim());
+        data.setEmail(emailField.getText().trim());
+        data.setNote(notesField.getText().trim());
+        data.setType((CustomerType) customerTypeBox.getSelectedItem());
+        return data;
     }
 
     @Override
-    public void populateFormWith(Customer data) {
-        if (data == null) return;
+    public void populateFormWith(@NonNull Customer data) {
         businessNameField.setText(data.getBusinessName());
         nameField.setText(data.getName());
         surnameField.setText(data.getSurname());
@@ -109,6 +107,11 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         emailField.setText("");
         notesField.setText("");
         customerTypeBox.setSelectedItem(CustomerType.NORMAL);
+    }
+
+    @Override
+    protected Customer createEmptyObject() {
+        return new Customer();
     }
 
     @Override

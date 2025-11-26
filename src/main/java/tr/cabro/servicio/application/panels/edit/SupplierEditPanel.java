@@ -1,13 +1,17 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.component.PhoneField;
 import tr.cabro.servicio.model.Supplier;
-import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 
 public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
+
+    public SupplierEditPanel(Supplier data) {
+        super(data);
+    }
 //    @Override
 //    protected boolean validateForm() {
 //        // Ad alanı zorunlu
@@ -48,18 +52,17 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
 //    }
 
     @Override
-    protected Supplier collectFormData() {
-        Supplier s = new Supplier();
-        s.setName(name_field.getText().trim());
-        s.setBusinessName(business_name_field.getText().trim());
-        s.setPhone(phone_field.getNormalizedNumber());
-        s.setAddress(address_field.getText().trim());
-        s.setNotes(notes_field.getText().trim());
-        s.setIdNo(id_no_field.getText().trim());
-        s.setEmail(email_field.getText().trim());
-        s.setTaxNo(tax_no_field.getText().trim());
-        s.setTaxOffice(tax_office_field.getText().trim());
-        return s;
+    protected Supplier collectFormData(@NonNull Supplier data) {
+        data.setName(name_field.getText().trim());
+        data.setBusinessName(business_name_field.getText().trim());
+        data.setPhone(phone_field.getNormalizedNumber());
+        data.setAddress(address_field.getText().trim());
+        data.setNotes(notes_field.getText().trim());
+        data.setIdNo(id_no_field.getText().trim());
+        data.setEmail(email_field.getText().trim());
+        data.setTaxNo(tax_no_field.getText().trim());
+        data.setTaxOffice(tax_office_field.getText().trim());
+        return data;
     }
 
     @Override
@@ -86,6 +89,11 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
         email_field.setText("");
         tax_no_field.setText("");
         tax_office_field.setText("");
+    }
+
+    @Override
+    protected Supplier createEmptyObject() {
+        return new Supplier();
     }
 
     @Override

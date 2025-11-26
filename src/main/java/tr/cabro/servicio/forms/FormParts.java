@@ -70,7 +70,7 @@ public class FormParts extends AbstractTableForm<Part> {
     @Override
     protected void onNew() {
         final String id = "PartNew";
-        PartEditPanel panel = new PartEditPanel();
+        PartEditPanel panel = new PartEditPanel(new Part());
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Kaydet", 0),
@@ -81,7 +81,7 @@ public class FormParts extends AbstractTableForm<Part> {
                         panel, "Yeni Parça Ekle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.clearForm();
+                                //panel.clearForm();
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 Part updated = panel.getData();
                                 if (updated == null) {
@@ -122,7 +122,7 @@ public class FormParts extends AbstractTableForm<Part> {
 
         final String id = "PartEdit";
         Part part = selected.get(0);
-        PartEditPanel panel = new PartEditPanel();
+        PartEditPanel panel = new PartEditPanel(part);
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Güncelle", 0),
@@ -133,7 +133,7 @@ public class FormParts extends AbstractTableForm<Part> {
                         panel, "Parça Düzenle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.populateFormWith(part);
+                                //panel.populateFormWith(part);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 Part updated = panel.getData();
                                 if (updated == null) {

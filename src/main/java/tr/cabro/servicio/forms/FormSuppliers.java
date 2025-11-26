@@ -62,7 +62,7 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
     @Override
     protected void onNew() {
         final String id = "SupplierNew";
-        SupplierEditPanel panel = new SupplierEditPanel();
+        SupplierEditPanel panel = new SupplierEditPanel(new Supplier());
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Kaydet", 0),
@@ -73,7 +73,7 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
                         panel, "Yeni Tedarikçi Ekle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.clearForm();
+                                //panel.clearForm();
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 Supplier updated = panel.getData();
                                 if (updated == null) {
@@ -113,7 +113,7 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
 
         final String id = "SupplierEdit";
         Supplier supplier = selected.get(0);
-        SupplierEditPanel panel = new SupplierEditPanel();
+        SupplierEditPanel panel = new SupplierEditPanel(supplier);
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Güncelle", 0),
@@ -124,7 +124,7 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
                         panel, "Tedarikçi Düzenle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.populateFormWith(supplier);
+                                //panel.populateFormWith(supplier);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 Supplier updated = panel.getData();
                                 if (updated == null) {

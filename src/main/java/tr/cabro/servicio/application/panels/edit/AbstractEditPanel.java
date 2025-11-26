@@ -1,13 +1,17 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import lombok.NonNull;
 import raven.modal.Toast;
 
 import javax.swing.*;
 
 public abstract class AbstractEditPanel<T> extends JPanel {
 
-    public AbstractEditPanel() {
+    private T data;
+
+    public AbstractEditPanel(T data) {
         init();
+        setData(data);
     }
 
     private void init() {
@@ -21,12 +25,14 @@ public abstract class AbstractEditPanel<T> extends JPanel {
 
     /**
      * Form alanlarından nesne oluşturur.
+     *
      * @return model nesnesi
      */
-    protected abstract T collectFormData();
+    protected abstract T collectFormData(T data);
 
     /**
      * Verilen nesnedeki verileri forma doldurur.
+     *
      * @param data doldurulacak model
      */
     protected abstract void populateFormWith(T data);
@@ -37,16 +43,33 @@ public abstract class AbstractEditPanel<T> extends JPanel {
     protected abstract void clearForm();
 
     /**
+     * Yeni kayıt modu için boş nesne üretir.
+     */
+    protected abstract T createEmptyObject();
+
+    /**
      * Ortak doğrulama hatası gösterimi.
      */
     protected void showValidationError(String message) {
-        Toast.show(this, Toast.Type.INFO, message);
+        showValidationError(Toast.Type.INFO, message);
+    }
+
+    protected void showValidationError(Toast.Type type, String message) {
+        Toast.show(this, type, message);
     }
 
     /**
      * Form geçerliyse nesneyi döndürür, değilse null.
      */
     public T getData() {
-        return collectFormData();
+        T objectToProcess = (this.data != null) ? this.data : createEmptyObject();
+        this.data = collectFormData(objectToProcess);
+
+        return this.data;
+    }
+
+    public void setData(@NonNull T data) {
+        this.data = data;
+        populateFormWith(data);
     }
 }

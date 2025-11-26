@@ -33,7 +33,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
     @Override
     protected void onNew() {
         final String id = "CustomerNew";
-        CustomerEditPanel panel = new CustomerEditPanel();
+        CustomerEditPanel panel = new CustomerEditPanel(new Customer());
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Kaydet", 0), // "Tamam" yerine "Kaydet" daha anlamlı olabilir
@@ -44,7 +44,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                         panel, "Yeni Müşteri Ekle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.clearForm();
+                                //panel.clearForm();
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 // 1. Panelden veriyi al ve validasyonu kontrol et
                                 Customer updated = panel.getData();
@@ -93,7 +93,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
 
         final String id = "CustomerEdit";
         Customer customer = selected.get(0);
-        CustomerEditPanel panel = new CustomerEditPanel();
+        CustomerEditPanel panel = new CustomerEditPanel(customer);
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Güncelle", 0),
@@ -104,7 +104,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                         panel, "Müşteri Düzenle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.populateFormWith(customer);
+                                //panel.populateFormWith(customer);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
 
                                 Customer updated = panel.getData();

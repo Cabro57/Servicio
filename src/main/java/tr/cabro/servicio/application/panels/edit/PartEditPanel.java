@@ -1,24 +1,50 @@
 package tr.cabro.servicio.application.panels.edit;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.DatePicker;
+import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.util.SVGIconUIColor;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Barcode;
-import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
-import java.awt.*;
 import java.util.List;
 import java.util.Optional;
 
 public class PartEditPanel extends AbstractEditPanel<Part> {
+
+    PartService service;
+
+    public PartEditPanel(Part data) {
+        super(data);
+
+        service = ServiceManager.getPartService();
+    }
+
+    private void handleBarcode(String barcode) {
+        if (barcode.isEmpty()) {
+            return;
+        }
+
+        Part part = service.get(barcode);
+
+        if (part != null) {
+            showValidationError(Toast.Type.ERROR, "Bu barkod da bir ürün mevcut.");
+            setData(part);
+            barcode_field.putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_ERROR);
+        } else {
+            barcode_field.putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_SUCCESS);
+            clearForm();
+        }
+    }
 
 //    @Override
 //    protected boolean validateForm() {
@@ -80,31 +106,27 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
 //    }
 
     @Override
-    protected Part collectFormData() {
-        String brand = brand_field.getText().trim();
-        String name = name_field.getText().trim();
-        String barcode = barcode_field.getText().trim();
+    protected Part collectFormData(@NonNull Part data) {
 
-        Part p = new Part(barcode, brand, name);
+        data.setBrand(brand_field.getText().trim());
+        data.setName(name_field.getText().trim());
+        data.setBarcode(barcode_field.getText().trim());
 
-        p.setBarcode(barcode);
-        p.setBrand(brand);
         Supplier selectedSupplier = (Supplier) supplier_combo.getSelectedItem();
         if (selectedSupplier != null) {
-            p.setSupplierId(selectedSupplier.getId());
+            data.setSupplierId(selectedSupplier.getId());
         }
-        p.setName(name);
-        p.setDeviceType((String) device_type_combo.getSelectedItem());
-        p.setModel(models_field.getText().trim());
-        p.setPurchasePrice((Double) purchase_price_field.getValue());
-        p.setSalePrice((Double) sale_price_field.getValue());
-        p.setStock((Integer) stock_spinner.getValue());
-        p.setMinStock((Integer) min_stock_spinner.getValue());
-        p.setWarrantyPeriod((Integer) warranty_period_spinner.getValue());
-        p.setPurchaseDate(purchase_picker.getSelectedDate());
-        p.setDescription(description_area.getText().trim());
+        data.setDeviceType((String) device_type_combo.getSelectedItem());
+        data.setModel(models_field.getText().trim());
+        data.setPurchasePrice((Double) purchase_price_field.getValue());
+        data.setSalePrice((Double) sale_price_field.getValue());
+        data.setStock((Integer) stock_spinner.getValue());
+        data.setMinStock((Integer) min_stock_spinner.getValue());
+        data.setWarrantyPeriod((Integer) warranty_period_spinner.getValue());
+        data.setPurchaseDate(purchase_picker.getSelectedDate());
+        data.setDescription(description_area.getText().trim());
 
-        return p;
+        return data;
     }
 
     @Override
@@ -141,19 +163,20 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         warranty_period_spinner.getValue();
         purchase_picker.clearSelectedDate();
         description_area.setText("");
+    }
 
-        barcode_info.setText("[Barkod Numarası Beklenyior]");
+    @Override
+    protected Part createEmptyObject() {
+        return new Part();
     }
 
     @Override
     protected void initComponent() {
         setLayout(new MigLayout("wrap 2, width 600", "[grow,fill][grow,fill]", "[]10[]"));
 
-        JPanel content = new JPanel(new MigLayout("wrap 2", "[grow,fill][grow,fill]", "[]10[]"));
-
-        JPanel panel = new JPanel(new MigLayout("wrap 1", "[grow,fill]", "[]5[]5[]10[]"));
-        JLabel barcodeLabel = new JLabel("Parça barkodunu okutunuz veya girip Enter'a basınız:");
         barcode_field = new JTextField();
+        barcode_field.setHorizontalAlignment(SwingConstants.CENTER);
+        barcode_field.addActionListener(e -> handleBarcode(barcode_field.getText().trim()));
         JButton generate_barcode_button = new JButton(new SVGIconUIColor("icons/barcode.svg", 0.03f, "MenuItem.foreground"));
         generate_barcode_button.setToolTipText("Rastgele barkod üret");
         generate_barcode_button.addActionListener(e -> {
@@ -163,38 +186,19 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
             }
         });
         barcode_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, generate_barcode_button);
+        barcode_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Parça barkodunu okutunuz veya girip Enter'a basınız.");
 
-        situation_label = new JTextPane();
-        situation_label.setText("Durum: Parça barkodunun okutulması bekleniyor...");
-        situation_label.setBackground(null);
+        add(barcode_field, "grow, push, h 40!, wrap, span 2");
 
-        JPanel infoPanel = new JPanel(new MigLayout("insets 0", "[right][grow,fill]", "[]"));
-        barcode_info_label = new JLabel("Parça Barkodu:");
-        barcode_info_label.setFont(barcode_info_label.getFont().deriveFont(Font.BOLD, 16));
-        barcode_info = new JLabel("[Barkod Numarası Bekleniyor]");
-        barcode_info.setFont(barcode_info.getFont().deriveFont(Font.BOLD, 20));
-        barcode_info.setForeground(new Color(0x12, 0x8B, 0xB8));
-
-        infoPanel.add(barcode_info_label);
-        infoPanel.add(barcode_info);
-
-        panel.add(barcodeLabel);
-        panel.add(barcode_field, "growx, h 40!");
-        panel.add(situation_label);
-        panel.add(infoPanel, "growx");
-
-
-        content.add(panel, "span, growx");
-
-        content.add(new JLabel("Parça Adı"), "span, split 2");
+        add(new JLabel("Parça Adı"), "span, split 2");
         name_field = new JTextField();
-        content.add(name_field, "span, growx");
+        add(name_field, "span, growx");
 
-        content.add(new JLabel("Parça Markası"));
+        add(new JLabel("Parça Markası"));
         brand_field = new JTextField();
-        content.add(brand_field);
+        add(brand_field);
 
-        content.add(new JLabel("Tedarikçi"));
+        add(new JLabel("Tedarikçi"));
         supplierTypeComboBoxModel = new DefaultComboBoxModel<>();
         supplierTypeComboBoxModel.removeAllElements();
         List<Supplier> suppliers = ServiceManager.getSupplierService().getAll();
@@ -202,9 +206,9 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
             supplierTypeComboBoxModel.addElement(supplier);
         }
         supplier_combo = new JComboBox<>(supplierTypeComboBoxModel);
-        content.add(supplier_combo);
+        add(supplier_combo);
 
-        content.add(new JLabel("Cihaz Türü"));
+        add(new JLabel("Cihaz Türü"));
         deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
         deviceTypeComboBoxModel.removeAllElements();
         DeviceSettings settings = Servicio.getDeviceSettings();
@@ -213,55 +217,46 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
             deviceTypeComboBoxModel.addElement(type);
         }
         device_type_combo = new JComboBox<>(deviceTypeComboBoxModel);
-        content.add(device_type_combo);
+        add(device_type_combo);
 
-        content.add(new JLabel("Uyumlu Modeller"));
+        add(new JLabel("Uyumlu Modeller"));
         models_field = new JTextField();
-        content.add(models_field);
+        add(models_field);
 
-        content.add(new JLabel("Alış Fiyatı (₺)"));
+        add(new JLabel("Alış Fiyatı (₺)"));
         purchase_price_field = new CurrencyField();
-        content.add(purchase_price_field);
+        add(purchase_price_field);
 
-        content.add(new JLabel("Satış Fiyatı (₺)"));
+        add(new JLabel("Satış Fiyatı (₺)"));
         sale_price_field = new CurrencyField();
-        content.add(sale_price_field);
+        add(sale_price_field);
 
-        content.add(new JLabel("Stok"));
+        add(new JLabel("Stok"));
         stock_spinner = new JSpinner(new SpinnerNumberModel(0, 0, 9999, 1));
-        content.add(stock_spinner);
+        add(stock_spinner);
 
-        content.add(new JLabel("Minimum Stok"));
+        add(new JLabel("Minimum Stok"));
         min_stock_spinner = new JSpinner(new SpinnerNumberModel(0, 0, 9999, 1));
-        content.add(min_stock_spinner);
+        add(min_stock_spinner);
 
-        content.add(new JLabel("Garanti Süresi (Ay)"));
+        add(new JLabel("Garanti Süresi (Ay)"));
         warranty_period_spinner = new JSpinner(new SpinnerNumberModel(0, 0, 120, 1));
-        content.add(warranty_period_spinner);
+        add(warranty_period_spinner);
 
-        content.add(new JLabel("Alış Tarihi"));
+        add(new JLabel("Alış Tarihi"));
         purchase_date_field = new JFormattedTextField();
         purchase_picker = new DatePicker();
         purchase_picker.setEditor(purchase_date_field);
-        content.add(purchase_date_field);
+        add(purchase_date_field);
 
-        content.add(new JLabel("Açıklama"), "span");
+        add(new JLabel("Açıklama"), "span");
         description_area = new JTextArea(4, 40);
         description_area.setLineWrap(true);
         description_area.setWrapStyleWord(true);
-        content.add(new JScrollPane(description_area), "span, growx");
+        add(new JScrollPane(description_area), "span, growx");
 
-        JScrollPane scrollPane = new JScrollPane(content);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-
-        add(scrollPane, "span, grow, push");
     }
     private JTextField barcode_field;
-    private JTextPane situation_label;
-    private JLabel barcode_info_label;
-    private JLabel barcode_info;
 
     private JTextField name_field;
 

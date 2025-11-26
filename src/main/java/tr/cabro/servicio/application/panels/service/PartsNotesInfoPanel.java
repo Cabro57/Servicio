@@ -50,7 +50,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
                 if (data == null) return;
 
                 final String id = "ServicePartEdit";
-                ServicePartEditPanel panel = new ServicePartEditPanel();
+                ServicePartEditPanel panel = new ServicePartEditPanel(data);
 
                 SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                         new SimpleModalBorder.Option("Tamam", 0),
@@ -61,7 +61,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
                         panel, "Servis Parça Formu", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.populateFormWith(data);
+                                //panel.populateFormWith(data);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 AddedPart update = panel.getData();
 
@@ -104,7 +104,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
     private void newPartCmd() {
         final String id = "PartNew";
-        ServicePartEditPanel panel = new ServicePartEditPanel();
+        ServicePartEditPanel panel = new ServicePartEditPanel(new AddedPart());
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Tamam", 0),
@@ -115,7 +115,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
                         panel, "Parça Formu", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.clearForm();
+                                //panel.clearForm();
 
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 AddedPart updated = panel.getData();

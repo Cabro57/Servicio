@@ -66,7 +66,7 @@ public class CustomerInfoPanel extends ServicePanel {
 
         customer_button.addActionListener(e -> {
             final String id = "CustomerNew";
-            CustomerEditPanel panel = new CustomerEditPanel();
+            CustomerEditPanel panel = new CustomerEditPanel(new Customer());
 
             SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                     new SimpleModalBorder.Option("Tamam", 0),
@@ -113,7 +113,9 @@ public class CustomerInfoPanel extends ServicePanel {
 
     }
 
-    public void setCustomer(int serviceId) {
+    public void setCustomer(Integer serviceId) {
+        if (serviceId == null) return;
+
         Optional<Customer> customer = service.get(serviceId);
 
         customer.ifPresent(this::setCustomer);

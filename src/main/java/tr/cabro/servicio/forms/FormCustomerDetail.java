@@ -219,7 +219,7 @@ public class FormCustomerDetail extends Form {
 
     private void onEdit() {
         final String id = "CustomerDetailEdit";
-        CustomerEditPanel panel = new CustomerEditPanel();
+        CustomerEditPanel panel = new CustomerEditPanel(customer);
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Güncelle", 0),
@@ -230,7 +230,7 @@ public class FormCustomerDetail extends Form {
                         panel, "Müşteri Düzenle", options,
                         (controller, action) -> {
                             if (action == SimpleModalBorder.OPENED) {
-                                panel.populateFormWith(customer);
+//                                panel.populateFormWith(customer);
                             } else if (action == SimpleModalBorder.OK_OPTION) {
                                 Customer updated = panel.getData();
                                 if (updated == null) {

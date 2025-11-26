@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.DatePicker;
 import tr.cabro.servicio.Servicio;
@@ -14,6 +15,9 @@ import java.util.List;
 import java.util.Optional;
 
 public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
+    public ServicePartEditPanel(AddedPart data) {
+        super(data);
+    }
 //    @Override
 //    protected boolean validateForm() {
 //
@@ -51,30 +55,24 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
 //    }
 
     @Override
-    protected AddedPart collectFormData() {
-        String brand = brand_field.getText().trim();
-        String name = name_field.getText().trim();
-        String barcode = seri_no_field.getText().trim();
-
-        AddedPart p = new AddedPart();
-
-        p.setSerialNo(barcode);
-        p.setBrand(brand);
+    protected AddedPart collectFormData(@NonNull AddedPart data) {
+        data.setSerialNo(seri_no_field.getText().trim());
+        data.setBrand(brand_field.getText().trim());
         Supplier selectedSupplier = (Supplier) supplier_combo.getSelectedItem();
         if (selectedSupplier != null) {
-            p.setSupplierId(selectedSupplier.getId());
+            data.setSupplierId(selectedSupplier.getId());
         }
-        p.setName(name);
-        p.setDeviceType((String) device_type_combo.getSelectedItem());
-        p.setModel(models_field.getText().trim());
-        p.setPurchasePrice((Double) purchase_price_field.getValue());
-        p.setSellingPrice((Double) sale_price_field.getValue());
-        p.setAmount((Integer) amount_spinner.getValue());
-        p.setWarrantyPeriod((Integer) warranty_period_spinner.getValue());
-        p.setPurchaseDate(purchase_picker.getSelectedDate());
-        p.setDescription(description_area.getText().trim());
+        data.setName(name_field.getText().trim());
+        data.setDeviceType((String) device_type_combo.getSelectedItem());
+        data.setModel(models_field.getText().trim());
+        data.setPurchasePrice((Double) purchase_price_field.getValue());
+        data.setSellingPrice((Double) sale_price_field.getValue());
+        data.setAmount((Integer) amount_spinner.getValue());
+        data.setWarrantyPeriod((Integer) warranty_period_spinner.getValue());
+        data.setPurchaseDate(purchase_picker.getSelectedDate());
+        data.setDescription(description_area.getText().trim());
 
-        return p;
+        return data;
     }
 
     @Override
@@ -110,6 +108,11 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         warranty_period_spinner.getValue();
         purchase_picker.clearSelectedDate();
         description_area.setText("");
+    }
+
+    @Override
+    protected AddedPart createEmptyObject() {
+        return new AddedPart();
     }
 
     @Override
