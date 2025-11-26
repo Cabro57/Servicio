@@ -90,7 +90,7 @@ public class PhoneHelper {
     }
 
     private static FlatSVGIcon getFlagEmoji(String countryCode) {
-        return new FlatSVGIcon("icons/flags/" + countryCode + ".svg", 0.02f);
+        return new FlatSVGIcon("icons/flags/" + countryCode.toLowerCase() + ".svg", 0.02f);
     }
 
     @Getter
