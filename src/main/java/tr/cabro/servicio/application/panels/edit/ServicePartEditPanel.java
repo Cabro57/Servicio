@@ -9,6 +9,7 @@ import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
+import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 import java.util.List;
@@ -18,41 +19,6 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
     public ServicePartEditPanel(AddedPart data) {
         super(data);
     }
-//    @Override
-//    protected boolean validateForm() {
-//
-//        // Marka kontrolü
-//        if (Validator.isEmpty(brand_field.getText())) {
-//            showValidationError("Marka boş olamaz.");
-//            brand_field.requestFocus();
-//            return false;
-//        }
-//
-//        // Ürün adı kontrolü
-//        if (Validator.isEmpty(name_field.getText())) {
-//            showValidationError("Ürün adı boş olamaz.");
-//            name_field.requestFocus();
-//            return false;
-//        }
-//
-//        // Fiyat ve stok değerlerini al
-//        double purchasePrice = (double) purchase_price_field.getValue();
-//        int stock = (int) amount_spinner.getValue();
-//
-//        // Negatif sayı kontrolleri
-//        if (Validator.isNegative(purchasePrice)) {
-//            showValidationError("Alış fiyatı negatif olamaz.");
-//            purchase_price_field.requestFocus();
-//            return false;
-//        }
-//        if (Validator.isNegative(stock)) {
-//            showValidationError("Stok negatif olamaz.");
-//            amount_spinner.requestFocus();
-//            return false;
-//        }
-//
-//        return true;
-//    }
 
     @Override
     protected AddedPart collectFormData(@NonNull AddedPart data) {
@@ -91,8 +57,13 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         description_area.setText(data.getDescription());
 
         // Supplier seçimi
-        Optional<Supplier> supplier = ServiceManager.getSupplierService().get(data.getSupplierId());
-        supplier_combo.setSelectedItem(supplier.orElse(null));
+        if (data.getSupplierId() != null) {
+            Optional<Supplier> supplier = ServiceManager.getSupplierService().get(data.getSupplierId());
+            supplier_combo.setSelectedItem(supplier.orElse(null));
+        } else {
+            // ID yoksa seçim yapma
+            supplier_combo.setSelectedItem(null);
+        }
     }
 
     @Override

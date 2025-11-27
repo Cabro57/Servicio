@@ -15,7 +15,7 @@ public class AddedPart {
     private String serialNo; // Parça Seri Numarası
     private String brand; // Ürün Markası
     private String name; // Ürün Adı
-    private int supplierId; // Tedarikçi
+    private Integer supplierId; // Tedarikçi
     private String deviceType; // Ürün Cihaz Türü
     private String model; // Ürün uyumlu modelleri
     private int amount; // Parça Adeti
