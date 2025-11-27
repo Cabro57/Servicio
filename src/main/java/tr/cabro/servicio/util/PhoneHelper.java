@@ -68,15 +68,12 @@ public class PhoneHelper {
         return "5XX XXX XX XX"; // Varsayılan
     }
 
-    // ... (getSupportedCountries ve CountryCode sınıfı aynen kalıyor) ...
-    // ... (getFlagEmoji metodu aynen kalıyor) ...
-
     public static List<CountryCode> getSupportedCountries() {
         List<CountryCode> countries = new ArrayList<>();
         for (String region : phoneUtil.getSupportedRegions()) {
             int code = phoneUtil.getCountryCodeForRegion(region);
             String name = new Locale("", region).getDisplayCountry(new Locale("tr", "TR"));
-            FlatSVGIcon flag = getFlagEmoji(region);
+            FlatSVGIcon flag = getFlagIcon(region);
             countries.add(new CountryCode(region, code, name, flag));
         }
         countries.sort(Comparator.comparing(CountryCode::getName));
@@ -89,7 +86,7 @@ public class PhoneHelper {
         return countries;
     }
 
-    private static FlatSVGIcon getFlagEmoji(String countryCode) {
+    private static FlatSVGIcon getFlagIcon(String countryCode) {
         return new FlatSVGIcon("icons/flags/" + countryCode.toLowerCase() + ".svg", 0.02f);
     }
 

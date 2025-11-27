@@ -23,10 +23,12 @@ public class ServicePopup extends JPopupMenu {
     private void init() {
         initComponent();
 
-        add(item("Kaydı Aç", () -> {
+        add(item("Servis Kaydını Aç", () -> {
             FormService form = new FormService(service);
             FormManager.showForm(form);
         }));
+
+        add(new Separator());
 
         add(item("Teslim Et", () -> {
             try {

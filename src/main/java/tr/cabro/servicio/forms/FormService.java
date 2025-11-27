@@ -113,6 +113,7 @@ public class FormService extends Form {
 
             repairService.save(newService, false, part_notes_info.getAddedParts());
             Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla oluşturuldu.");
+            setService(newService);
 
         } catch (Exception e) {
             Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
