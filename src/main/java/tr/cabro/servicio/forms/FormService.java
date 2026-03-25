@@ -7,7 +7,9 @@ import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.simple.SimpleMessageModal;
+import raven.modal.system.AllForms;
 import raven.modal.system.Form;
+import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.context.ServiceContext;
 import tr.cabro.servicio.application.listeners.ServiceEditListener;
@@ -163,7 +165,10 @@ public class FormService extends Form {
                 try {
                     repairService.delete(service.getId());
                     Toast.show(this, Toast.Type.SUCCESS, "Servis silindi.");
-                    clearForm();
+
+                    Form formInstance = AllForms.getForm(FormServices.class);
+                    // Sonra FormManager ile göster
+                    FormManager.showForm(formInstance);
 
                 } catch (Exception e) {
                     Toast.show(this, Toast.Type.ERROR, "Silme hatası: " + e.getMessage());
@@ -357,6 +362,8 @@ public class FormService extends Form {
         status_info.setSelected(null);
 
         updateTitle();
+
+        save_button.setEnabled(true);
     }
 
     private void initComponent() {

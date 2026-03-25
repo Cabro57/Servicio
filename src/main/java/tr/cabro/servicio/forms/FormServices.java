@@ -10,12 +10,16 @@ import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.application.renderer.CustomerTableCellRenderer;
 import tr.cabro.servicio.application.renderer.ServiceStatusTableCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
 import tr.cabro.servicio.application.util.SVGIconUIColor;
+import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -32,7 +36,7 @@ import java.util.regex.Pattern;
 public class FormServices extends Form {
 
     private final RepairService service;
-    private TableRowSorter<ServiceListTableModel> sorter;
+    private TableRowSorter<GenericTableModel<Service>> sorter;
 
     public FormServices() {
         this.service = ServiceManager.getRepairService();
@@ -45,84 +49,86 @@ public class FormServices extends Form {
         refreshTable();
     }
 
+    @Override
+    public void formOpen() {
+        refreshTable();
+    }
+
     private void init() {
         initComponent();
 
-        allDeviceButton.setIcon(new SVGIconUIColor("icons/all-service.svg", 0.03f, "MenuItem.foreground"));
-        repairButton.setIcon(new FlatSVGIcon("icons/under_repair.svg", 24, 24));
-        readyButton.setIcon(new FlatSVGIcon("icons/ready.svg", 0.03f));
-        otherServiceButton.setIcon(new FlatSVGIcon("icons/another_service.svg", 0.03f));
-        deliveryButton.setIcon(new FlatSVGIcon("icons/delivered.svg", 0.03f));
-        returnButton.setIcon(new FlatSVGIcon("icons/return.svg", 0.03f));
-        partWaitButton.setIcon(new FlatSVGIcon("icons/waiting_for_part.svg", 0.06f));
+        setupTable();
 
-        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
-                "height:30;"
-                        + "hoverBackground:null;"
-                        + "pressedBackground:null;"
-                        + "separatorColor:$TableHeader.background;"
-                        + "font:bold;");
+        configureTableRenderers();
 
-        table.putClientProperty(FlatClientProperties.STYLE,
-                "rowHeight:50;"
-                        + "showHorizontalLines:true;"
-                        + "intercellSpacing:0,1;"
-                        + "cellFocusColor:$TableHeader.hoverBackground;"
-                        + "selectionBackground:$TableHeader.hoverBackground;"
-                        + "selectionForeground:$Table.foreground;");
+        initFilters();
 
         refreshTable();
 
     }
 
-    public void refreshTable() {
-        ServiceListTableModel model = new ServiceListTableModel(service.getAll());
-        table.setModel(model);
+    private void setupTable() {
+        List<ColumnDef<Service>> columns = Arrays.asList(
+                new ColumnDef<>("#", Integer.class, Service::getId),
+                new ColumnDef<>("Müşteri", Customer.class, s -> ServiceManager.getCustomerService().get(s.getCustomerId()).orElse(null)),
+                new ColumnDef<>("Cihaz Türü", String.class, Service::getDeviceType),
+                new ColumnDef<>("Marka", String.class, Service::getDeviceBrand),
+                new ColumnDef<>("Model", String.class, Service::getDeviceModel),
+                new ColumnDef<>("Seri No./IMEI", String.class, Service::getDeviceSerial),
+                new ColumnDef<>("Ücret", String.class, s -> Format.formatPrice(calculateRemainingAmount(s))),
+                new ColumnDef<>("Kayıt Tarihi", LocalDateTime.class, Service::getCreatedAt),
+                new ColumnDef<>("Teslim Tarihi", LocalDateTime.class, Service::getDeliveryAt),
+                new ColumnDef<>("Durum", ServiceStatus.class, Service::getServiceStatus)
+        );
 
-        initFilters();
+        serviceTableModel = new GenericTableModel<>(columns);
+        table.setModel(serviceTableModel);
+    }
+
+    public void refreshTable() {
+        if (serviceTableModel != null) {
+            List<Service> allServices = service.getAll();
+            serviceTableModel.setData(allServices); // Sihirli dokunuş burası!
+        }
+    }
+
+    // Tablonun görselliği (Genişlik, Tarih formatları, Hizalamalar)
+    private void configureTableRenderers() {
+        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
+                "height:30; hoverBackground:null; pressedBackground:null; separatorColor:$TableHeader.background; font:bold;");
+
+        table.putClientProperty(FlatClientProperties.STYLE,
+                "rowHeight:50; showHorizontalLines:true; intercellSpacing:0,1; " +
+                        "cellFocusColor:$TableHeader.hoverBackground; selectionBackground:$TableHeader.hoverBackground; " +
+                        "selectionForeground:$Table.foreground;");
 
         Integer[] columnAlignments = {
-                SwingConstants.CENTER,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.TRAILING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING
+                SwingConstants.CENTER, SwingConstants.LEADING, SwingConstants.LEADING,
+                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
+                SwingConstants.TRAILING, SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING
         };
-
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
+
+        // Özel Hücre Çiziciler (Renderers)
         table.getColumnModel().getColumn(1).setCellRenderer(new CustomerTableCellRenderer());
 
-        table.getColumnModel().getColumn(7).setCellRenderer(new DefaultTableCellRenderer() {
+        DefaultTableCellRenderer dateRenderer = new DefaultTableCellRenderer() {
             private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("tr", "TR"));
             @Override
             protected void setValue(Object value) {
                 if (value instanceof LocalDateTime) {
                     setText(((LocalDateTime) value).format(formatter));
                 } else {
-                    setText("");
+                    setText(getText().equals("Teslim Tarihi") ? "Teslim Edilmedi" : "");
                 }
             }
-        });
+        };
 
-        table.getColumnModel().getColumn(8).setCellRenderer(new DefaultTableCellRenderer() {
-            private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("tr", "TR"));
-            @Override
-            protected void setValue(Object value) {
-                if (value instanceof LocalDateTime) {
-                    setText(((LocalDateTime) value).format(formatter));
-                } else {
-                    setText("Teslim Edilmedi");
-                }
-            }
-        });
-
+        table.getColumnModel().getColumn(7).setCellRenderer(dateRenderer);
+        table.getColumnModel().getColumn(8).setCellRenderer(dateRenderer);
         table.getColumnModel().getColumn(9).setCellRenderer(new ServiceStatusTableCellRenderer());
 
+        // Genişlik Ayarları
         table.getColumnModel().getColumn(0).setMaxWidth(50);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);
         table.getColumnModel().getColumn(2).setPreferredWidth(80);
@@ -134,74 +140,55 @@ public class FormServices extends Form {
         table.getColumnModel().getColumn(8).setPreferredWidth(80);
         table.getColumnModel().getColumn(9).setPreferredWidth(80);
 
+        // Çift Tıklama Olayı (GenericTableModel adaptasyonu)
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) { // Çift tıklama kontrolü
+                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) {
                     int viewRow = table.getSelectedRow();
                     int modelRow = table.convertRowIndexToModel(viewRow);
 
-                    ServiceListTableModel tableModel = (ServiceListTableModel) table.getModel();
+                    // ESKİ KOD: ServiceListTableModel tableModel = (ServiceListTableModel) table.getModel();
+                    // YENİ KOD: GenericTableModel'in getItemAt metodunu kullanıyoruz
+                    Service selected = serviceTableModel.getItemAt(modelRow);
 
-                    Service selected = tableModel.getService(modelRow);
-                    FormService form = new FormService(selected);
-                    FormManager.showForm(form);
+                    if(selected != null) {
+                        FormService form = new FormService(selected);
+                        FormManager.showForm(form);
+                    }
                 }
             }
         });
     }
 
     private void initFilters() {
-        sorter = new TableRowSorter<>((ServiceListTableModel) table.getModel());
+        // Sorter artık GenericTableModel'e göre çalışıyor
+        sorter = new TableRowSorter<>(serviceTableModel);
         table.setRowSorter(sorter);
 
-        // created_at (7. sütun) DESC sıralama
+        // Kayıt tarihine (7. sütun) göre azalan (DESC) sıralama
         List<RowSorter.SortKey> sortKeys = new ArrayList<>();
         sortKeys.add(new RowSorter.SortKey(7, SortOrder.DESCENDING));
         sorter.setSortKeys(sortKeys);
 
-        // Durum filtreleri
-        Map<JButton, String> statusFilters = new HashMap<>();
-        statusFilters.put(allDeviceButton, null); // Tümü
-        statusFilters.put(repairButton, "Tamirde");
-        statusFilters.put(readyButton, "Hazır");
-        statusFilters.put(otherServiceButton, "Başka Serviste");
-        statusFilters.put(deliveryButton, "Teslim edildi");
-        statusFilters.put(returnButton, "İade");
-        statusFilters.put(partWaitButton, "Parça Bekliyor");
-
-        final String[] currentStatus = {null};
-
-        for (Map.Entry<JButton, String> entry : statusFilters.entrySet()) {
-            final JButton button = entry.getKey();
-            final String status = entry.getValue();
-
-            button.addActionListener(e -> {
-                currentStatus[0] = status;
-                applyFilters(currentStatus[0], searchField.getText());
-            });
-        }
-
+        // Arama kutusu dinleyicisi
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(javax.swing.event.DocumentEvent e) {
-                applyFilters(currentStatus[0], searchField.getText());
-            }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) {
-                applyFilters(currentStatus[0], searchField.getText());
-            }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) {
-                applyFilters(currentStatus[0], searchField.getText());
-            }
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { applyFilters(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { applyFilters(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { applyFilters(); }
         });
     }
 
-    private void applyFilters(String status, String searchText) {
+    private void applyFilters() {
         List<RowFilter<TableModel, Object>> filters = new ArrayList<>();
+        String searchText = searchField.getText();
 
-        if (status != null && !status.isEmpty()) {
-            filters.add(RowFilter.regexFilter("^" + status + "$", 9)); // 9 = durum sütunu
+        // 9. Sütun (Durum) filtresi
+        if (currentStatusFilter != null && !currentStatusFilter.isEmpty()) {
+            filters.add(RowFilter.regexFilter("^" + currentStatusFilter + "$", 9));
         }
 
+        // Genel arama metni filtresi (Büyük/Küçük harf duyarsız)
         if (searchText != null && !searchText.trim().isEmpty()) {
             filters.add(RowFilter.regexFilter("(?i)" + Pattern.quote(searchText)));
         }
@@ -211,9 +198,14 @@ public class FormServices extends Form {
         } else {
             sorter.setRowFilter(RowFilter.andFilter(filters));
         }
-
-        // filtre sonrası da created_at DESC kalsın
         sorter.sort();
+    }
+
+    private double calculateRemainingAmount(Service service) {
+        double labor = service.getLaborCost();
+        double parts = ServiceManager.getRepairService().getTotalPartsCostForService(service.getId());
+        double paid = service.getPaid();
+        return (labor + parts) - paid;
     }
 
     private void initComponent() {
@@ -225,27 +217,11 @@ public class FormServices extends Form {
                 "arc:18;" +
                         "background:$Table.background");
 
-        JToolBar toolBar = new JToolBar();
-        toolBar.setLayout(new MigLayout("fill, insets 0, gap 10"));
-
-        allDeviceButton = new JButton("Tüm Servisler");
-        repairButton = new JButton("Tamirde");
-        readyButton = new JButton("Hazır");
-        otherServiceButton = new JButton("Başka Serviste");
-        deliveryButton = new JButton("Teslim Edildi");
-        returnButton = new JButton("İade");
-        partWaitButton = new JButton("Parça Bekliyor");
-
-        toolBar.add(allDeviceButton);
-        toolBar.add(repairButton);
-        toolBar.add(readyButton);
-        toolBar.add(otherServiceButton);
-        toolBar.add(deliveryButton);
-        toolBar.add(returnButton);
-        toolBar.add(partWaitButton);
-
+        // Modern ToolBarSelection Kullanımı (Eski manuel butonları sildik, kod temizlendi)
         ToolBarSelection<ServiceStatus> toolBarSelection = new ToolBarSelection<>(ServiceStatus.values(), serviceStatus -> {
-            applyFilters(serviceStatus.getDisplayName(), searchField.getText());
+            // Tümü seçiliyse null gönderiyoruz, değilse durum ismini filtreye atıyoruz
+            currentStatusFilter = (serviceStatus == null) ? null : serviceStatus.getDisplayName();
+            applyFilters();
         });
 
         searchField = new JTextField();
@@ -269,12 +245,8 @@ public class FormServices extends Form {
     private JTextField searchField;
     private JTable table;
 
-    private JButton allDeviceButton;
-    private JButton repairButton;
-    private JButton readyButton;
-    private JButton otherServiceButton;
-    private JButton deliveryButton;
-    private JButton returnButton;
-    private JButton partWaitButton;
+    private GenericTableModel<Service> serviceTableModel;
+
+    private String currentStatusFilter = null;
 
 }

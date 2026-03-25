@@ -116,6 +116,11 @@ public class CustomerInfoPanel extends ServicePanel {
     public void setCustomer(Integer serviceId) {
         if (serviceId == null) return;
 
+        if (serviceId == -1) {
+            if (selectedCustomer != null) selectedCustomer = null;
+            customer_field.setText("");
+        }
+
         Optional<Customer> customer = service.get(serviceId);
 
         customer.ifPresent(this::setCustomer);
