@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 512 512" xml:space="preserve">
+<polygon style="fill:#BADB82;" points="325.421,300.602 512,300.602 512,100.829 103.031,100.829 103.031,300.602 "/>
+<ellipse style="fill:#ABC971;" cx="307.514" cy="200.719" rx="76.746" ry="57.448"/>
+<path style="fill:#F4C67D;" d="M270.846,235.897H23.163C10.371,235.897,0,246.266,0,259.06v128.949
+	c0,12.792,10.371,23.163,23.163,23.163h247.683c12.792,0,23.163-10.371,23.163-23.163V259.06
+	C294.009,246.266,283.639,235.897,270.846,235.897z"/>
+<g>
+	<path style="fill:#ABC971;" d="M103.026,100.833h54.663c0,30.177-24.487,54.651-54.663,54.651V100.833z"/>
+	<path style="fill:#ABC971;" d="M512,100.833v54.651c-30.188,0-54.651-24.475-54.651-54.651H512z"/>
+	<path style="fill:#ABC971;" d="M512,245.943v54.663h-54.651C457.349,270.418,481.812,245.943,512,245.943z"/>
+</g>
+<rect y="274.214" style="fill:#666666;" width="294.005" height="41.462"/>
+<rect x="22.535" y="342.611" style="fill:#999999;" width="74.284" height="17.744"/>
+</svg>
