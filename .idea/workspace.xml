@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü." />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Cabro57&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Cabro57/Servicio.git&quot;,
+    &quot;accountId&quot;: &quot;52fb67e1-1cf2-4113-8ac8-5889f3e49beb&quot;
+  }
+}</component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3BRCKTAGVB3rfNytREoZEUHB4xc" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.Servicio.executor": "Run",
+    "Maven.Servicio.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/Projelerim/Servicio",
+    "onboarding.tips.debug.path": "C:/Projelerim/Servicio/src/main/java/org/example/Main.java",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.30229884",
+    "settings.editor.selected.configurable": "preferences.pluginManager"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "sqlite"
+    ]
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Projelerim\Servicio" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="Servicio" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="tr.cabro.servicio.Servicio" />
+      <module name="Servicio" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="tr.cabro.servicio.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.Servicio" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-2fc7cc6b9a17-intellij.indexing.shared.core-IU-253.32098.37" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="" />
+      <created>1774442434296</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1774442434296</updated>
+    </task>
+    <task id="LOCAL-00001" summary="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü.">
+      <option name="closed" value="true" />
+      <created>1774474328139</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1774474328146</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
+    <servers />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü." />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü." />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/org/example/Main.java</url>
+          <line>13</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>
