@@ -10,20 +10,24 @@ import tr.cabro.servicio.application.panels.edit.SupplierEditPanel;
 import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
 import tr.cabro.servicio.application.renderer.ProfileTableRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
-import tr.cabro.servicio.application.tablemodal.SupplierTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.forms.base.AbstractTableForm;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.SupplierService;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @SystemForm(name = "Tedarikçiler", description = "Tüm tedarikçileri listeler")
 public class FormSuppliers extends AbstractTableForm<Supplier> {
 
     private final SupplierService service;
+    private GenericTableModel<Supplier> supplierTableModel;
 
     public FormSuppliers() {
         this.service = ServiceManager.getSupplierService();
@@ -32,8 +36,23 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
     @Override
     protected void refreshTable() {
         try {
-            setTableModel(new SupplierTableModel(service.getAll()));
-            configureTableColumns();
+            List<Supplier> allSuppliers = service.getAll();
+
+            if (supplierTableModel == null) {
+                List<ColumnDef<Supplier>> columns = Arrays.asList(
+                        new ColumnDef<>("Firma İsmi", String.class, Supplier::getBusinessName),
+                        new ColumnDef<>("Ad Soyad", String.class, Supplier::getName),
+                        new ColumnDef<>("Telefon", String.class, s -> Format.formatPhoneNumber(s.getPhone())),
+                        new ColumnDef<>("Adres", String.class, Supplier::getAddress),
+                        new ColumnDef<>("Kayıt Tarihi", String.class, s -> Format.formatDate(s.getCreated_at()))
+                );
+                supplierTableModel = new GenericTableModel<>(columns);
+                setTableModel(supplierTableModel);
+                configureTableColumns();
+            } else {
+                supplierTableModel.setData(allSuppliers);
+            }
+
         } catch (Exception e) {
             Toast.show(this, Toast.Type.ERROR, "Tedarikçi listesi alınamadı: " + e.getMessage());
         }
@@ -41,22 +60,21 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
 
     private void configureTableColumns() {
         Integer[] columnAlignments = {
-                SwingConstants.CENTER, SwingConstants.LEADING, SwingConstants.LEADING,
-                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING
+                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
+                SwingConstants.LEADING, SwingConstants.LEADING
         };
 
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
 
-        if (table.getColumnCount() > 0) {
-            table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
-            table.getColumnModel().getColumn(0).setMaxWidth(50);
-
-            if (table.getColumnCount() > 2) {
-                table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(table));
-                table.getColumnModel().getColumn(2).setPreferredWidth(150);
-            }
-            // Diğer sütun genişlikleri...
+        if (table.getColumnCount() > 1) {
+            table.getColumnModel().getColumn(1).setCellRenderer(new ProfileTableRenderer(table));
+            table.getColumnModel().getColumn(1).setPreferredWidth(150);
         }
+    }
+
+    /** Tabloda seçili satırlardaki tedarikçi nesnelerini döndürür. */
+    private List<Supplier> getSelectedSuppliers() {
+        return supplierTableModel.getSelectedItems(table.getSelectedRows());
     }
 
     @Override
@@ -100,7 +118,7 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
 
     @Override
     protected void onEdit() {
-        List<Supplier> selected = ((SupplierTableModel) table.getModel()).getSelectedSuppliers();
+        List<Supplier> selected = getSelectedSuppliers();
 
         if (selected.isEmpty()) {
             Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir tedarikçi seçin.");
@@ -134,7 +152,6 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
 
                                 try {
                                     updated.setId(supplier.getId());
-                                    // Created_at korunmalı
                                     updated.setCreated_at(supplier.getCreated_at());
 
                                     service.save(updated, true);
@@ -154,7 +171,7 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
 
     @Override
     protected void onDelete() {
-        List<Supplier> cs = ((SupplierTableModel) table.getModel()).getSelectedSuppliers();
+        List<Supplier> cs = getSelectedSuppliers();
 
         if (cs.isEmpty()) {
             Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir tedarikçi seçin.");

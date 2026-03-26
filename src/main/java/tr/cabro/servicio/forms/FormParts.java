@@ -11,20 +11,24 @@ import tr.cabro.servicio.application.renderer.AlignedRenderer;
 import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
-import tr.cabro.servicio.application.tablemodal.PartTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.forms.base.AbstractTableForm;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @SystemForm(name = "Parçalar", description = "Yeni parçalar eklemek ve düzenlemek için kullanılabilir")
 public class FormParts extends AbstractTableForm<Part> {
 
     private final PartService service;
+    private GenericTableModel<Part> partTableModel;
 
     public FormParts() {
         this.service = ServiceManager.getPartService();
@@ -33,8 +37,27 @@ public class FormParts extends AbstractTableForm<Part> {
     @Override
     protected void refreshTable() {
         try {
-            setTableModel(new PartTableModel(service.getAll()));
-            configureTableColumns();
+            List<Part> allParts = service.getAll();
+
+            if (partTableModel == null) {
+                List<ColumnDef<Part>> columns = Arrays.asList(
+                        new ColumnDef<>("Barkod", String.class, Part::getBarcode),
+                        new ColumnDef<>("Marka", String.class, Part::getBrand),
+                        new ColumnDef<>("Ürün Adı", String.class, Part::getName),
+                        new ColumnDef<>("Cihaz Türü", String.class, Part::getDeviceType),
+                        new ColumnDef<>("Uyumlu Model", String.class, Part::getModel),
+                        new ColumnDef<>("Stok", Integer.class, Part::getStock),
+                        new ColumnDef<>("Alış Fiyatı", String.class, p -> Format.formatPrice(p.getPurchasePrice())),
+                        new ColumnDef<>("Satış Fiyatı", String.class, p -> Format.formatPrice(p.getSalePrice())),
+                        new ColumnDef<>("Alış Tarihi", String.class, p -> Format.formatDate(p.getPurchaseDate()))
+                );
+                partTableModel = new GenericTableModel<>(columns);
+                setTableModel(partTableModel);
+                configureTableColumns();
+            } else {
+                partTableModel.setData(allParts);
+            }
+
         } catch (Exception e) {
             Toast.show(this, Toast.Type.ERROR, "Veriler yüklenirken hata oluştu: " + e.getMessage());
             Servicio.getLogger().error("Parts refresh error", e);
@@ -43,7 +66,7 @@ public class FormParts extends AbstractTableForm<Part> {
 
     private void configureTableColumns() {
         Integer[] columnAlignments = {
-                SwingConstants.CENTER, SwingConstants.LEADING, SwingConstants.LEADING,
+                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
                 SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
                 SwingConstants.CENTER, SwingConstants.TRAILING, SwingConstants.TRAILING,
                 SwingConstants.LEADING
@@ -52,19 +75,17 @@ public class FormParts extends AbstractTableForm<Part> {
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
 
         if (table.getColumnCount() > 0) {
-            table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
-            table.getColumnModel().getColumn(0).setMaxWidth(50);
-
-            // IndexOutOfBounds riskine karşı sütun sayısını kontrol edebilirsiniz
-            if (table.getColumnCount() > 6) {
-                table.getColumnModel().getColumn(5).setCellRenderer(new TooltipCellRenderer());
-                table.getColumnModel().getColumn(6).setCellRenderer(new AlignedRenderer(table, 6, SwingConstants.CENTER));
+            if (table.getColumnCount() > 4) {
+                table.getColumnModel().getColumn(3).setCellRenderer(new TooltipCellRenderer());
+                table.getColumnModel().getColumn(5).setCellRenderer(new AlignedRenderer(table, 5, SwingConstants.CENTER));
             }
-
-            // Sütun genişlikleri
-            table.getColumnModel().getColumn(1).setMinWidth(150); // Barkod
-            // ... diğer genişlik ayarları ...
+            table.getColumnModel().getColumn(0).setMinWidth(150); // Barkod
         }
+    }
+
+    /** Tabloda seçili satırlardaki parça nesnelerini döndürür. */
+    private List<Part> getSelectedParts() {
+        return partTableModel.getSelectedItems(table.getSelectedRows());
     }
 
     @Override
@@ -91,14 +112,13 @@ public class FormParts extends AbstractTableForm<Part> {
 
                                 try {
                                     updated.setCreatedAt(LocalDateTime.now());
-                                    // Service katmanında Exception yönetimi
                                     service.save(updated, false);
 
                                     Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
                                     refreshTable();
 
                                 } catch (Exception e) {
-                                    controller.consume(); // Diyaloğu kapatma
+                                    controller.consume();
                                     Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
                                     Servicio.getLogger().error("Parça ekleme hatası", e);
                                 }
@@ -109,7 +129,7 @@ public class FormParts extends AbstractTableForm<Part> {
 
     @Override
     protected void onEdit() {
-        List<Part> selected = ((PartTableModel) table.getModel()).getSelectedProducts();
+        List<Part> selected = getSelectedParts();
 
         if (selected.isEmpty()) {
             Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir parça seçin.");
@@ -142,17 +162,6 @@ public class FormParts extends AbstractTableForm<Part> {
                                 }
 
                                 try {
-                                    // PK (Barkod) değişmemeli veya eski barkod ile update edilmeli
-                                    // Not: Eğer barkod değiştirilmesine izin veriliyorsa, Service katmanında özel işlem gerekir.
-                                    // Burada basitçe eski barkodu koruyoruz veya set ediyoruz.
-                                    // Ancak PartEditPanel formdan yeni barkodu alıyor olabilir.
-                                    // Eğer PK değişirse update yerine insert olabilir veya hata verebilir.
-                                    // Genelde PK update edilmez.
-
-                                    // Eğer formda barkod alanı disable değilse ve değiştirildiyse:
-                                    // Bu senaryo karmaşıktır. Basitlik adına ID değişmez varsayıyoruz.
-                                    // updated.setBarcode(part.getBarcode());
-
                                     service.save(updated, true);
 
                                     Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
@@ -170,7 +179,7 @@ public class FormParts extends AbstractTableForm<Part> {
 
     @Override
     protected void onDelete() {
-        List<Part> selects = ((PartTableModel) table.getModel()).getSelectedProducts();
+        List<Part> selects = getSelectedParts();
 
         if (selects.isEmpty()) {
             Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir parça seçin.");

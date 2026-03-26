@@ -11,19 +11,23 @@ import tr.cabro.servicio.application.panels.PartSearchPanel;
 import tr.cabro.servicio.application.panels.ServicePanel;
 import tr.cabro.servicio.application.panels.edit.ServicePartEditPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
-import tr.cabro.servicio.application.tablemodal.ServicePartTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.application.context.ServiceContext;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class PartsNotesInfoPanel extends ServicePanel {
 
-    public ServicePartTableModel tableModel;
+    private GenericTableModel<AddedPart> tableModel;
+    private final List<AddedPart> addedPartsList = new ArrayList<>();
 
     public PartsNotesInfoPanel(ServiceContext context) {
         super(context);
@@ -37,8 +41,13 @@ public class PartsNotesInfoPanel extends ServicePanel {
         part_add_button.addActionListener(e -> addPartsCmd());
         new_part_add_button.addActionListener(e -> newPartCmd());
 
-        tableModel = new ServicePartTableModel(null);
-        tableModel.addPriceChangeListener(this::updateMaterialCost);
+        List<ColumnDef<AddedPart>> columns = Arrays.asList(
+                new ColumnDef<>("Parça", String.class, AddedPart::getName),
+                new ColumnDef<>("Adet", String.class, p -> String.valueOf(p.getAmount())),
+                new ColumnDef<>("Satış Fiyatı", String.class, p -> Format.formatPrice(p.getSellingPrice())),
+                new ColumnDef<>("", String.class, p -> "")  // Aksiyon sütunu placeholder
+        );
+        tableModel = new GenericTableModel<>(addedPartsList, columns);
         parts_table.setModel(tableModel);
 
         parts_table.setFocusable(false);
@@ -46,7 +55,8 @@ public class PartsNotesInfoPanel extends ServicePanel {
         parts_table.getColumnModel().getColumn(3).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onEdit(int row) {
-                AddedPart data = tableModel.getAddedParts().get(row);
+                if (row < 0 || row >= addedPartsList.size()) return;
+                AddedPart data = addedPartsList.get(row);
                 if (data == null) return;
 
                 final String id = "ServicePartEdit";
@@ -72,9 +82,9 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
                                 update.setCreatedAt(data.getCreatedAt());
 
-                                tableModel.getAddedParts().set(row, update);
+                                addedPartsList.set(row, update);
                                 tableModel.fireTableRowsUpdated(row, row);
-
+                                updateMaterialCost();
                             }
                         }
                 ), id);
@@ -82,8 +92,8 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
             @Override
             public void onDelete(int row) {
-                if (row != -1) {
-                    tableModel.getAddedParts().remove(row);
+                if (row >= 0 && row < addedPartsList.size()) {
+                    addedPartsList.remove(row);
                     tableModel.fireTableRowsDeleted(row, row);
                     updateMaterialCost();
                 }
@@ -125,9 +135,8 @@ public class PartsNotesInfoPanel extends ServicePanel {
                                     return;
                                 }
 
-
-                                tableModel.addAddedPart(updated);
-                                tableModel.fireTableDataChanged();
+                                addedPartsList.add(updated);
+                                tableModel.fireTableRowsInserted(addedPartsList.size() - 1, addedPartsList.size() - 1);
                                 updateMaterialCost();
                             }
                         })
@@ -154,9 +163,8 @@ public class PartsNotesInfoPanel extends ServicePanel {
                         if (parts != null && !parts.isEmpty()) {
                             for (Part part : parts) {
                                 AddedPart addedPart = new AddedPart(part);
-                                tableModel.addAddedPart(addedPart);
+                                addedPartsList.add(addedPart);
                             }
-
                             tableModel.fireTableDataChanged();
                             updateMaterialCost();
                         }
@@ -166,16 +174,22 @@ public class PartsNotesInfoPanel extends ServicePanel {
     }
 
     private void updateMaterialCost() {
-        double total = tableModel.getTotalPrice();
+        double total = addedPartsList.stream()
+                .mapToDouble(AddedPart::getTotal)
+                .sum();
         listener.onPartChange(total);
     }
 
     public List<AddedPart> getAddedParts() {
-        return new ArrayList<>(tableModel.getAddedParts());
+        return new ArrayList<>(addedPartsList);
     }
 
     public void setAddedParts(List<AddedPart> parts) {
-        tableModel.setParts(parts);
+        addedPartsList.clear();
+        if (parts != null) {
+            addedPartsList.addAll(parts);
+        }
+        tableModel.fireTableDataChanged();
         updateMaterialCost();
     }
 

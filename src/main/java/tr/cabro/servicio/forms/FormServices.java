@@ -1,7 +1,6 @@
 package tr.cabro.servicio.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.component.ToolBarSelection;
 import raven.modal.system.Form;
@@ -12,8 +11,6 @@ import tr.cabro.servicio.application.renderer.ServiceStatusTableCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
-import tr.cabro.servicio.application.tablemodal.ServiceListTableModel;
-import tr.cabro.servicio.application.util.SVGIconUIColor;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.ServiceStatus;

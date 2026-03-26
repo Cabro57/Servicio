@@ -3,18 +3,24 @@ package tr.cabro.servicio.application.panels;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.system.FormManager;
-import tr.cabro.servicio.application.tablemodal.CustomerServiceRecordTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.forms.FormService;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.*;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 public class CustomerInfoPanel extends JPanel {
+
+    private GenericTableModel<Service> tableModel;
 
     public CustomerInfoPanel() {
         init();
@@ -23,17 +29,26 @@ public class CustomerInfoPanel extends JPanel {
     private void init() {
         initComponent();
 
+        List<ColumnDef<Service>> columns = Arrays.asList(
+                new ColumnDef<>("#", Integer.class, Service::getId),
+                new ColumnDef<>("Ürün", String.class, s -> s.getDeviceBrand() + " " + s.getDeviceModel()),
+                new ColumnDef<>("Durum", String.class, s -> s.getServiceStatus() != null ? s.getServiceStatus().getDisplayName() : ""),
+                new ColumnDef<>("Kayıt Tarihi", LocalDateTime.class, Service::getCreatedAt)
+        );
+        tableModel = new GenericTableModel<>(columns);
+        table.setModel(tableModel);
+
         table.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) { // Çift tıklama kontrolü
+                if (e.getClickCount() == 2 && table.getSelectedRow() != -1) {
                     int row = table.getSelectedRow();
-                    CustomerServiceRecordTableModel model = (CustomerServiceRecordTableModel) table.getModel();
-                    Service service = model.getService(row);
-
-                    // Yeni bir pencere aç, örneğin:
-                    FormService form = new FormService(service);
-                    FormManager.showForm(form);
+                    int modelRow = table.convertRowIndexToModel(row);
+                    Service service = tableModel.getItemAt(modelRow);
+                    if (service != null) {
+                        FormService form = new FormService(service);
+                        FormManager.showForm(form);
+                    }
                 }
             }
         });
@@ -50,8 +65,7 @@ public class CustomerInfoPanel extends JPanel {
 
         RepairService service = ServiceManager.getRepairService();
         List<Service> services = service.getAll(data.getId());
-        CustomerServiceRecordTableModel model = new CustomerServiceRecordTableModel(services);
-        table.setModel(model);
+        tableModel.setData(services);
     }
 
     private void initComponent() {

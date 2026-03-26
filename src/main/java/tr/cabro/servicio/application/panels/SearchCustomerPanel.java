@@ -6,13 +6,17 @@ import lombok.Setter;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.renderer.CustomerTypeTableRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
-import tr.cabro.servicio.application.tablemodal.SearchCustomerTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class SearchCustomerPanel extends JPanel {
@@ -21,7 +25,8 @@ public class SearchCustomerPanel extends JPanel {
     @Setter
     private Consumer<Customer> onCustomerSelected;
 
-    TableRowSorter<SearchCustomerTableModel> sorter;
+    private GenericTableModel<Customer> customerTableModel;
+    private TableRowSorter<GenericTableModel<Customer>> sorter;
 
     public SearchCustomerPanel() {
         service = ServiceManager.getCustomerService();
@@ -36,10 +41,21 @@ public class SearchCustomerPanel extends JPanel {
     }
 
     private void refreshCustomerTable() {
-        SearchCustomerTableModel model = new SearchCustomerTableModel(service.getAll());
-        table.setModel(model);
+        if (customerTableModel == null) {
+            List<ColumnDef<Customer>> columns = Arrays.asList(
+                    new ColumnDef<>("Tip", String.class, Customer::getType),
+                    new ColumnDef<>("Ad Soyad", String.class, c -> c.getName() + " " + c.getSurname()),
+                    new ColumnDef<>("Firma İsmi", String.class, Customer::getBusinessName),
+                    new ColumnDef<>("Telefon", String.class, c -> Format.formatPhoneNumber(c.getPhoneNumber1())),
+                    new ColumnDef<>("TC Kimlik No", String.class, Customer::getIdNo)
+            );
+            customerTableModel = new GenericTableModel<>(service.getAll(), columns);
+            table.setModel(customerTableModel);
+        } else {
+            customerTableModel.setData(service.getAll());
+        }
 
-        sorter = new TableRowSorter<>(model);
+        sorter = new TableRowSorter<>(customerTableModel);
         table.setRowSorter(sorter);
 
         Integer[] columnAlignments = {
@@ -104,10 +120,9 @@ public class SearchCustomerPanel extends JPanel {
                     int viewRow = table.getSelectedRow();
                     int modelRow = table.convertRowIndexToModel(viewRow);
 
-                    SearchCustomerTableModel model = (SearchCustomerTableModel) table.getModel();
-                    Customer customer = model.getCustomer(modelRow);
+                    Customer customer = customerTableModel.getItemAt(modelRow);
 
-                    if (onCustomerSelected != null) {
+                    if (onCustomerSelected != null && customer != null) {
                         onCustomerSelected.accept(customer);
                     }
 

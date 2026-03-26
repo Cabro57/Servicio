@@ -2,26 +2,32 @@ package tr.cabro.servicio.application.panels;
 
 import lombok.Setter;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
 import tr.cabro.servicio.application.renderer.ProcessTableRenderer;
-import tr.cabro.servicio.application.tablemodal.ProcessTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.Process;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class ProcessSelectedPanel extends JPanel {
 
-    ProcessTableModel model;
+    private GenericTableModel<Process> model;
     @Setter
     private Consumer<Process> onProcessDoubleClick;
 
     public ProcessSelectedPanel() {
-        model = new ProcessTableModel(new ArrayList<>());
+        List<ColumnDef<Process>> columns = Arrays.asList(
+                new ColumnDef<>("İşlem Adı", Process.class, p -> p),
+                new ColumnDef<>("Fiyat", String.class, p -> Format.formatPrice(p.getPrice()))
+        );
+        model = new GenericTableModel<>(new ArrayList<>(), columns);
 
         init();
     }
@@ -35,10 +41,9 @@ public class ProcessSelectedPanel extends JPanel {
                 if (e.getClickCount() == 2) {
                     int row = table.getSelectedRow();
                     if (row != -1) {
-                        Process p = model.getProcess(row);
-                        // Burada direkt ekleme yapabilirsin
-                        // Ama ServiceEditUI'ya ulaşmak için callback lazım
-                        if (onProcessDoubleClick != null) {
+                        int modelRow = table.convertRowIndexToModel(row);
+                        Process p = model.getItemAt(modelRow);
+                        if (onProcessDoubleClick != null && p != null) {
                             onProcessDoubleClick.accept(p);
                         }
                     }
@@ -49,11 +54,11 @@ public class ProcessSelectedPanel extends JPanel {
     }
 
     public void setProcess(List<Process> processes) {
-        model.setProcesses(processes);
+        model.setData(processes);
     }
 
     public List<Process> getSelectedProcesses() {
-        return model.getSelectedProcess();
+        return model.getSelectedItems(table.getSelectedRows());
     }
 
     private void initComponent() {
@@ -62,10 +67,7 @@ public class ProcessSelectedPanel extends JPanel {
         table = new JTable();
         table.setModel(model);
 
-        table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
-        table.getColumnModel().getColumn(1).setCellRenderer(new ProcessTableRenderer());
-
-        table.getColumnModel().getColumn(0).setMaxWidth(50);
+        table.getColumnModel().getColumn(0).setCellRenderer(new ProcessTableRenderer());
 
         table.setRowHeight(55);
 

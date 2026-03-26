@@ -17,16 +17,21 @@ import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import tr.cabro.servicio.application.renderer.DateTimeTableCellRenderer;
 import tr.cabro.servicio.application.renderer.ServiceStatusTableCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
-import tr.cabro.servicio.application.tablemodal.CustomerServiceRecordTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.component.ProfileCard;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 public class FormCustomerDetail extends Form {
@@ -39,6 +44,8 @@ public class FormCustomerDetail extends Form {
     private CardBox cardBox;
     private ProfileCard profileCard;
     private JLabel titleLabel;
+
+    private GenericTableModel<Service> tableModel;
 
     public FormCustomerDetail(Customer customer) {
         this.customer = customer;
@@ -55,7 +62,10 @@ public class FormCustomerDetail extends Form {
         createProfileCard();
         createRightPanel();
 
-        // İlk veri yüklemesi
+        setupTable();
+
+        configureTable();
+
         refreshData();
     }
 
@@ -69,6 +79,25 @@ public class FormCustomerDetail extends Form {
         });
     }
 
+    private void setupTable() {
+        List<ColumnDef<Service>> columns = Arrays.asList(
+                new ColumnDef<>("#", Integer.class, Service::getId),
+                new ColumnDef<>("Ürün", String.class, s -> s.getDeviceBrand() + " " + s.getDeviceModel()),
+                new ColumnDef<>("Ücret", String.class, s -> Format.formatPrice(calculateRemainingAmount(s))),
+                new ColumnDef<>("Durum", String.class, Service::getServiceStatus),
+                new ColumnDef<>("Kayıt Tarihi", LocalDateTime.class, Service::getCreatedAt)
+        );
+
+        tableModel = new GenericTableModel<>(columns);
+        table.setModel(tableModel);
+    }
+
+    public void refreshTable(List<Service> services) {
+        if (tableModel != null) {
+            tableModel.setData(services);
+        }
+    }
+
     private void refreshData() {
         // Profil kartını güncelle
         profileCard.setProfileData(customer);
@@ -79,12 +108,7 @@ public class FormCustomerDetail extends Form {
 
         // İstatistikleri hesapla
         calculateAndSetStats(services);
-
-        // Tabloyu güncelle
-        if (table != null) {
-            table.setModel(new CustomerServiceRecordTableModel(services));
-            configureTable();
-        }
+        refreshTable(services);
     }
 
     private void calculateAndSetStats(List<Service> services) {
@@ -206,12 +230,11 @@ public class FormCustomerDetail extends Form {
                     int viewRow = table.getSelectedRow();
                     int modelRow = table.convertRowIndexToModel(viewRow);
 
-                    CustomerServiceRecordTableModel model = (CustomerServiceRecordTableModel) table.getModel();
-                    Service service = model.getService(modelRow);
-
-                    // Servis detay formunu aç
-                    FormService form = new FormService(service);
-                    FormManager.showForm(form);
+                    Service service = tableModel.getItemAt(modelRow);
+                    if (service != null) {
+                        FormService form = new FormService(service);
+                        FormManager.showForm(form);
+                    }
                 }
             }
         });
@@ -278,5 +301,12 @@ public class FormCustomerDetail extends Form {
 
     private Icon createIcon(String icon, Color color) {
         return new FlatSVGIcon(icon, 0.4f).setColorFilter(new FlatSVGIcon.ColorFilter(color1 -> color));
+    }
+
+    private double calculateRemainingAmount(Service service) {
+        double labor = service.getLaborCost();
+        double parts = repairService.getTotalPartsCostForService(service.getId());
+        double paid = service.getPaid();
+        return (labor + parts) - paid;
     }
 }

@@ -7,14 +7,19 @@ import net.miginfocom.swing.MigLayout;
 import raven.swingpack.JPagination;
 import tr.cabro.servicio.application.component.ServicePopup;
 import tr.cabro.servicio.application.renderer.*;
-import tr.cabro.servicio.application.tablemodal.OpenServiceTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.component.util.UIHelper;
+import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 public class PaginationTable<E> extends JPanel {
@@ -23,6 +28,8 @@ public class PaginationTable<E> extends JPanel {
     private List<E> data;
 
     private int LIMIT;
+
+    private GenericTableModel<Service> serviceTableModel;
 
     public PaginationTable() {
         this(10);
@@ -73,23 +80,19 @@ public class PaginationTable<E> extends JPanel {
         lbTotalPage.setText(DecimalFormat.getInstance().format(data.size()));
         pagination.getModel().setPageRange(page, (int) Math.ceil((double) data.size() / pageSize));
 
-        OpenServiceTableModel model = (OpenServiceTableModel) serviceTable.getModel();
-        model.setData((List<Service>) pageData);
+        serviceTableModel.setData((List<Service>) pageData);
     }
 
     private void showPopup(MouseEvent e) {
         if (!e.isPopupTrigger()) return;
 
         int row = serviceTable.rowAtPoint(e.getPoint());
-        int col = serviceTable.columnAtPoint(e.getPoint());
-
         if (row < 0) return;
 
-        serviceTable.setRowSelectionInterval(row, row); // sağ tık yapılan satırı seç
+        serviceTable.setRowSelectionInterval(row, row);
 
-        OpenServiceTableModel model = (OpenServiceTableModel) serviceTable.getModel();
         int modelRow = serviceTable.convertRowIndexToModel(row);
-        Service service = model.getService(modelRow);
+        Service service = serviceTableModel.getItemAt(modelRow);
 
         JPopupMenu menu = new ServicePopup(service);
         menu.show(e.getComponent(), e.getX(), e.getY());
@@ -99,9 +102,17 @@ public class PaginationTable<E> extends JPanel {
         setLayout(new MigLayout("fillx,wrap", "[fill]", "[][fill,grow][]"));
         putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
 
-        // create table and model
-        OpenServiceTableModel model = new OpenServiceTableModel();
-        serviceTable = new JTable(model);
+        // Sütun tanımları
+        List<ColumnDef<Service>> columns = Arrays.asList(
+                new ColumnDef<>("Müşteri", Customer.class, s -> ServiceManager.getCustomerService().get(s.getCustomerId()).orElse(null)),
+                new ColumnDef<>("Cihaz", String.class, Service::getDevice),
+                new ColumnDef<>("Ücret", Double.class, this::calculateRemainingAmount),
+                new ColumnDef<>("Durum", String.class, Service::getServiceStatus),
+                new ColumnDef<>("Kayıt Tarih", LocalDateTime.class, Service::getCreatedAt)
+        );
+
+        serviceTableModel = new GenericTableModel<>(columns);
+        serviceTable = new JTable(serviceTableModel);
 
         // table scroll
         JScrollPane scrollPane = new JScrollPane(serviceTable);
@@ -147,10 +158,14 @@ public class PaginationTable<E> extends JPanel {
         add(panelPage);
     }
 
+    private double calculateRemainingAmount(Service s) {
+        double labor = s.getLaborCost();
+        double parts = ServiceManager.getRepairService().getTotalPartsCostForService(s.getId());
+        double paid = s.getPaid();
+        return (labor + parts) - paid;
+    }
 
     private JTable serviceTable;
     private JPagination pagination;
     private JLabel lbTotalPage;
-
-
 }

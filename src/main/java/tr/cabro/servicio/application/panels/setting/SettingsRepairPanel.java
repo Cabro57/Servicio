@@ -7,26 +7,34 @@ import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.panels.ProcessEditPanel;
 import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
-import tr.cabro.servicio.application.tablemodal.ProcessEditTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.Process;
 import tr.cabro.servicio.settings.DeviceSettings;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class SettingsRepairPanel extends JPanel {
 
     private final DefaultComboBoxModel<String> comboBoxModel = new DefaultComboBoxModel<>();
-    private final ProcessEditTableModel tableModal;
+    private GenericTableModel<Process> tableModal;
 
     private final DeviceSettings settings;
 
     public SettingsRepairPanel() {
         settings = Servicio.getDeviceSettings();
 
-        tableModal = new ProcessEditTableModel(new ArrayList<>());
+        List<ColumnDef<Process>> columns = Arrays.asList(
+                new ColumnDef<>("İşlem Adı", String.class, Process::getName),
+                new ColumnDef<>("Açıklama", String.class, Process::getComment),
+                new ColumnDef<>("Fiyat", String.class, p -> Format.formatPrice(p.getPrice()))
+        );
+        tableModal = new GenericTableModel<>(new ArrayList<>(), columns);
 
         init();
     }
@@ -80,7 +88,8 @@ public class SettingsRepairPanel extends JPanel {
                         boolean added = settings.addProcess(t, process);
 
                         if (added) {
-                            tableModal.setProcesses(settings.getProcesses(t)); // tabloyu güncelle
+                            // Tabloyu güncel işlem listesiyle yenile
+                            tableModal.setData(settings.getProcesses(t));
                             Toast.show(this, Toast.Type.SUCCESS, process.getName() + " adlı işlem eklendi.");
                         } else {
                             Toast.show(this, Toast.Type.WARNING, process.getName() + " adlı işlem zaten mevcut.");
@@ -98,7 +107,7 @@ public class SettingsRepairPanel extends JPanel {
             return;
         }
 
-        List<Process> processes = tableModal.getSelectedProcess();
+        List<Process> processes = tableModal.getSelectedItems(process_table.getSelectedRows());
         if (processes.size() != 1) {
             Toast.show(this, Toast.Type.WARNING, "Birden fazla işlem seçili.");
             return;
@@ -129,7 +138,7 @@ public class SettingsRepairPanel extends JPanel {
                             return;
                         }
 
-                        Process oldProcess = processes.get(0); // seçilen ilk (ve tek) işlem
+                        Process oldProcess = processes.get(0);
                         boolean updated = settings.updateProcess(t, oldProcess.getName(), process);
 
                         if (updated) {
@@ -151,7 +160,7 @@ public class SettingsRepairPanel extends JPanel {
             return;
         }
 
-        List<Process> selected = tableModal.getSelectedProcess();
+        List<Process> selected = tableModal.getSelectedItems(process_table.getSelectedRows());
         if (selected.isEmpty()) {
             Toast.show(this, Toast.Type.WARNING, "Seçili işlem yok.");
             return;
@@ -162,33 +171,28 @@ public class SettingsRepairPanel extends JPanel {
             if (!settings.removeProcess(type, process.getName())) {
                 Toast.show(this, Toast.Type.ERROR, process.getName() + " adlı işlem silinemedi.");
                 errorCount++;
-                continue;
             }
-            tableModal.removeProcess(process);
         }
 
         if (errorCount > 0) {
             Toast.show(this, Toast.Type.WARNING, errorCount + " işlem silinemedi.");
         }
 
+        // Tabloyu güncel listeyle yenile
+        loadProcesses();
         Toast.show(this, Toast.Type.SUCCESS, "Tüm işlemler başarılı şekilde silindi.");
     }
 
     private void loadProcesses() {
         String selectedType = (String) device_type_combo.getSelectedItem();
-
         List<Process> processes = settings.getProcesses(selectedType);
-
-        tableModal.setProcesses(processes);
+        tableModal.setData(processes);
     }
 
     private void initTable() {
         process_table.setModel(tableModal);
 
-        process_table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(process_table, 0));
-
-        process_table.getColumnModel().getColumn(0).setMaxWidth(50);
-        process_table.getColumnModel().getColumn(3).setMaxWidth(100);
+        process_table.getColumnModel().getColumn(2).setMaxWidth(100);
     }
 
     private void initComponent() {
@@ -200,7 +204,7 @@ public class SettingsRepairPanel extends JPanel {
 
         // Butonlar
         add_button = new JButton("Ekle");
-        add(add_button, "split 3"); // diğer butonlarla birlikte hizala
+        add(add_button, "split 3");
 
         edit_button = new JButton("Düzenle");
         add(edit_button);

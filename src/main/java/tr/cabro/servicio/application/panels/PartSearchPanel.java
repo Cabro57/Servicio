@@ -8,20 +8,23 @@ import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
 import tr.cabro.servicio.application.renderer.ProfileTableRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
-import tr.cabro.servicio.application.tablemodal.SearchPartTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;
+import java.util.Arrays;
 import java.util.List;
 
 public class PartSearchPanel extends JPanel {
 
-    private SearchPartTableModel partTableModel;
+    private GenericTableModel<Part> partTableModel;
     private final DefaultComboBoxModel<String> deviceTypeComboBoxModel;
-    private TableRowSorter<SearchPartTableModel> sorter = new TableRowSorter<>();
+    private TableRowSorter<GenericTableModel<Part>> sorter = new TableRowSorter<>();
 
     private boolean inStockMode = false;
     private boolean outStockMode = false;
@@ -62,14 +65,24 @@ public class PartSearchPanel extends JPanel {
     }
 
     private void refreshProductTable() {
-        partTableModel = new SearchPartTableModel(ServiceManager.getPartService().getAll());
+        List<ColumnDef<Part>> columns = Arrays.asList(
+                new ColumnDef<>("Barkod", String.class, Part::getBarcode),
+                new ColumnDef<>("Marka", String.class, Part::getBrand),
+                new ColumnDef<>("Ürün Adı", String.class, Part::getName),
+                new ColumnDef<>("Cihaz Türü", String.class, Part::getDeviceType),
+                new ColumnDef<>("Uyumlu Model", String.class, Part::getModel),
+                new ColumnDef<>("Stok", Integer.class, Part::getStock),
+                new ColumnDef<>("Alış Fiyatı", String.class, p -> Format.formatPrice(p.getPurchasePrice())),
+                new ColumnDef<>("Satış Fiyatı", String.class, p -> Format.formatPrice(p.getSalePrice()))
+        );
+        partTableModel = new GenericTableModel<>(ServiceManager.getPartService().getAll(), columns);
         productTable.setModel(partTableModel);
 
         sorter = new TableRowSorter<>(partTableModel);
         productTable.setRowSorter(sorter);
 
         Integer[] columnAlignments = {
-                SwingConstants.CENTER,
+                SwingConstants.LEADING,
                 SwingConstants.LEADING,
                 SwingConstants.LEADING,
                 SwingConstants.LEADING,
@@ -79,20 +92,16 @@ public class PartSearchPanel extends JPanel {
         };
 
         productTable.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(productTable, columnAlignments));
-        productTable.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(productTable, 0));
         productTable.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(productTable));
         productTable.getColumnModel().getColumn(3).setCellRenderer(new TooltipCellRenderer());
         productTable.getColumnModel().getColumn(4).setCellRenderer(new TooltipCellRenderer());
-        productTable.getColumnModel().getColumn(5).setCellRenderer(new TooltipCellRenderer());
 
-
-        productTable.getColumnModel().getColumn(0).setMaxWidth(50);
-        productTable.getColumnModel().getColumn(1).setPreferredWidth(220);
-        productTable.getColumnModel().getColumn(2).setPreferredWidth(80);
-        productTable.getColumnModel().getColumn(3).setPreferredWidth(150);
-        productTable.getColumnModel().getColumn(4).setMaxWidth(50);
+        productTable.getColumnModel().getColumn(0).setPreferredWidth(220);
+        productTable.getColumnModel().getColumn(1).setPreferredWidth(80);
+        productTable.getColumnModel().getColumn(2).setPreferredWidth(150);
         productTable.getColumnModel().getColumn(5).setPreferredWidth(80);
         productTable.getColumnModel().getColumn(6).setPreferredWidth(80);
+        productTable.getColumnModel().getColumn(7).setPreferredWidth(80);
 
         applySearchFieldListener();
         applyDoubleClickListener();
@@ -121,12 +130,12 @@ public class PartSearchPanel extends JPanel {
         boolean onlyInStock = inStockMode;
         boolean onlyOutStock = outStockMode;
 
-        sorter.setRowFilter(new RowFilter<SearchPartTableModel, Integer>() {
+        sorter.setRowFilter(new RowFilter<GenericTableModel<Part>, Integer>() {
             @Override
-            public boolean include(Entry<? extends SearchPartTableModel, ? extends Integer> entry) {
-                SearchPartTableModel model = (SearchPartTableModel) productTable.getModel();
+            public boolean include(Entry<? extends GenericTableModel<Part>, ? extends Integer> entry) {
                 int modelRow = entry.getIdentifier();
-                Part p = model.getPart(modelRow);
+                Part p = partTableModel.getItemAt(modelRow);
+                if (p == null) return true;
 
                 // Arama filtresi
                 String searchText = searchField.getText().trim();
@@ -178,21 +187,21 @@ public class PartSearchPanel extends JPanel {
                 if (e.getClickCount() == 2 && productTable.getSelectedRow() != -1) {
                     int viewRow = productTable.getSelectedRow();
                     int modelRow = productTable.convertRowIndexToModel(viewRow);
-
-                    SearchPartTableModel model = (SearchPartTableModel) productTable.getModel();
-
+                    Part part = partTableModel.getItemAt(modelRow);
+                    // Burada gerekirse callback kullanılabilir
                 }
             }
         });
     }
 
+    /** Tabloda seçili satırlardaki parçaları döndürür. */
     public List<Part> getSelected() {
-        return partTableModel.getSelectedPart();
+        return partTableModel.getSelectedItems(productTable.getSelectedRows());
     }
 
     private void loadDeviceTypes() {
         deviceTypeComboBoxModel.removeAllElements();
-        deviceTypeComboBoxModel.addElement("(Tümü)"); // <--- Tümünü göster seçeneği
+        deviceTypeComboBoxModel.addElement("(Tümü)");
         DeviceSettings settings = Servicio.getDeviceSettings();
         List<String> types = settings.getTypes();
         for (String type : types) {

@@ -8,26 +8,27 @@ import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.renderer.*;
-import tr.cabro.servicio.application.tablemodal.CustomerTableModel;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.forms.base.AbstractTableForm;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @SystemForm(name = "Müşteriler", description = "Müşteri listesini gösterir.")
 public class FormCustomers extends AbstractTableForm<Customer> {
 
     private final CustomerService customerService;
+    private GenericTableModel<Customer> customerTableModel;
 
     public FormCustomers() {
-        // Servisi constructor'da almak daha güvenlidir
         this.customerService = ServiceManager.getCustomerService();
-        // Tabloyu ilk açılışta doldur
-        // refreshTable(); // AbstractTableForm constructor'ında çağrılıyorsa buraya gerek yok
     }
 
     @Override
@@ -36,7 +37,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
         CustomerEditPanel panel = new CustomerEditPanel(new Customer());
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Kaydet", 0), // "Tamam" yerine "Kaydet" daha anlamlı olabilir
+                new SimpleModalBorder.Option("Kaydet", 0),
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
@@ -46,30 +47,21 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                             if (action == SimpleModalBorder.OPENED) {
                                 //panel.clearForm();
                             } else if (action == SimpleModalBorder.OK_OPTION) {
-                                // 1. Panelden veriyi al ve validasyonu kontrol et
                                 Customer updated = panel.getData();
                                 if (updated == null) {
-                                    controller.consume(); // Validasyon hatası varsa diyaloğu kapatma
+                                    controller.consume();
                                     return;
                                 }
 
-                                // 2. İşlemi yap (TRY-CATCH İLE)
                                 try {
                                     updated.setCreatedAt(LocalDateTime.now());
-
-                                    // Artık boolean dönmüyor, hata varsa exception fırlatıyor
                                     customerService.save(updated, false);
 
-                                    // Hata yoksa burası çalışır
                                     Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
                                     refreshTable();
-                                    // controller.consume() çağırmadığımız için diyalog otomatik kapanır.
 
                                 } catch (Exception e) {
-                                    // 3. Hata varsa yakala ve kullanıcıya göster
-                                    controller.consume(); // Hata olduğu için diyaloğu açık tut
-
-                                    // Service veya DAO'dan gelen gerçek hata mesajını gösteriyoruz
+                                    controller.consume();
                                     Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
                                     Servicio.getLogger().error("Müşteri ekleme hatası", e.getMessage());
                                 }
@@ -80,7 +72,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
 
     @Override
     protected void onEdit() {
-        List<Customer> selected = ((CustomerTableModel) table.getModel()).getSelectedCustomers();
+        List<Customer> selected = getSelectedCustomers();
 
         if (selected.isEmpty()) {
             Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir müşteri seçin.");
@@ -114,19 +106,16 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                                 }
 
                                 try {
-                                    // ID'yi koru
                                     updated.setId(customer.getId());
-                                    // Created_at tarihini koru (değişmemeli)
                                     updated.setCreatedAt(customer.getCreatedAt());
 
-                                    // Service çağrısı
                                     customerService.save(updated, true);
 
                                     Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
                                     refreshTable();
 
                                 } catch (Exception e) {
-                                    controller.consume(); // Diyaloğu kapatma
+                                    controller.consume();
                                     Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + e.getMessage());
                                     Servicio.getLogger().error("Müşteri güncelleme hatası", e);
                                 }
@@ -137,7 +126,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
 
     @Override
     protected void onDelete() {
-        List<Customer> cs = ((CustomerTableModel) table.getModel()).getSelectedCustomers();
+        List<Customer> cs = getSelectedCustomers();
 
         if (cs.isEmpty()) {
             Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir müşteri seçin.");
@@ -153,7 +142,6 @@ public class FormCustomers extends AbstractTableForm<Customer> {
 
                 for (Customer c : cs) {
                     try {
-                        // Yeni yapıda delete metodu void döner, hata varsa exception fırlatır
                         customerService.delete(c.getId());
                         successCount++;
                     } catch (Exception e) {
@@ -177,15 +165,36 @@ public class FormCustomers extends AbstractTableForm<Customer> {
 
     @Override
     protected void refreshTable() {
-        // Veritabanı bağlantı hatası ihtimaline karşı try-catch
         try {
             List<Customer> allCustomers = customerService.getAll();
-            setTableModel(new CustomerTableModel(allCustomers));
-            configureTable(); // Sütun ayarlarını ayrı bir metoda aldım, daha temiz durur
+
+            if (customerTableModel == null) {
+                List<ColumnDef<Customer>> columns = Arrays.asList(
+                        new ColumnDef<>("#", Integer.class, Customer::getId),
+                        new ColumnDef<>("Ad Soyad", String.class, c -> c.getName() + " " + c.getSurname()),
+                        new ColumnDef<>("Firma İsmi", String.class, Customer::getBusinessName),
+                        new ColumnDef<>("Kimlik No.", String.class, Customer::getIdNo),
+                        new ColumnDef<>("Adres", String.class, Customer::getAddress),
+                        new ColumnDef<>("Telefon 1", String.class, c -> Format.formatPhoneNumber(c.getPhoneNumber1())),
+                        new ColumnDef<>("Tip", String.class, Customer::getType),
+                        new ColumnDef<>("Kayıt Tarihi", String.class, c -> Format.formatDate(c.getCreatedAt()))
+                );
+                customerTableModel = new GenericTableModel<>(columns);
+                setTableModel(customerTableModel);
+                configureTable();
+            } else {
+                customerTableModel.setData(allCustomers);
+            }
+
         } catch (Exception e) {
             Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + e.getMessage());
             Servicio.getLogger().error("Tablo yenileme hatası", e);
         }
+    }
+
+    /** Tabloda seçili satırlardaki müşteri nesnelerini döndürür. */
+    private List<Customer> getSelectedCustomers() {
+        return customerTableModel.getSelectedItems(table.getSelectedRows());
     }
 
     private void configureTable() {
@@ -196,20 +205,15 @@ public class FormCustomers extends AbstractTableForm<Customer> {
         };
 
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-        // Index kontrolleri eklenebilir (IndexOutOfBounds yememek için)
         if (table.getColumnCount() > 0) {
-            table.getColumnModel().getColumn(0).setHeaderRenderer(new CheckBoxTableHeaderRenderer(table, 0));
-            table.getColumnModel().getColumn(0).setMaxWidth(50);
+            table.getColumnModel().getColumn(0).setCellRenderer(new AlignedRenderer(table, 0, SwingConstants.CENTER));
+            table.getColumnModel().getColumn(0).setMaxWidth(40);
 
-            table.getColumnModel().getColumn(1).setCellRenderer(new AlignedRenderer(table, 1, SwingConstants.CENTER));
-            table.getColumnModel().getColumn(1).setMaxWidth(40);
+            table.getColumnModel().getColumn(1).setCellRenderer(new ProfileTableRenderer(table));
+            table.getColumnModel().getColumn(1).setPreferredWidth(150);
 
-            table.getColumnModel().getColumn(2).setCellRenderer(new ProfileTableRenderer(table));
-            table.getColumnModel().getColumn(2).setPreferredWidth(150);
-
-            // Diğer sütun genişlikleri...
-            if (table.getColumnCount() > 7) {
-                table.getColumnModel().getColumn(7).setCellRenderer(new CustomerTypeTableRenderer());
+            if (table.getColumnCount() > 6) {
+                table.getColumnModel().getColumn(6).setCellRenderer(new CustomerTypeTableRenderer());
             }
         }
     }
