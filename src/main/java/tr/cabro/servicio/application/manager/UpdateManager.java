@@ -1,8 +1,6 @@
 package tr.cabro.servicio.application.manager;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import tr.cabro.servicio.Servicio;
+import org.update4j.Configuration;
 
 import javax.swing.*;
 import java.awt.*;
@@ -10,162 +8,134 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Properties;
 
 public class UpdateManager {
 
-    // GÜNCELLEME: GitHub URL'i yerine S3 URL'inizi buraya yazın
-    // Örnek: https://<BUCKET_ADI>.s3.<BOLGE>.amazonaws.com/update.json
-    private static final String UPDATE_URL = "https://servicio-app-updates.s3.eu-north-1.amazonaws.com/update.json";
+    private static String UPDATE_API_URL;
+    private static String ZIP_NAME;
+    private static String EXE_NAME;
 
-    private static final String EXE_NAME = "Servicio.exe";
+    static {
+        try (InputStream is = UpdateManager.class.getResourceAsStream("/config.properties")) {
+            Properties props = new Properties();
+            if (is != null) {
+                props.load(is);
+                // Yeni properties isimlerine dikkat!
+                UPDATE_API_URL = props.getProperty("api.update.url");
+                ZIP_NAME = props.getProperty("update.zip.name", "update_patch.zip");
+                EXE_NAME = props.getProperty("update.exe.name", "Servicio.exe");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     public static void checkForUpdates(Component parent, boolean silent) {
+        if (UPDATE_API_URL == null) return;
+
         new Thread(() -> {
             try {
-                // S3'ten JSON dosyasını okur
-                String jsonResponse = readStringFromURL(UPDATE_URL);
-                JsonObject json = new JsonParser().parse(jsonResponse).getAsJsonObject();
+                // 1. Sunucudaki Dinamik API'ye sor (v2.0.2 olduğumuzu belirterek de gidebiliriz)
+                URL url = new URL(UPDATE_API_URL);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ServicioApp/1.0");
 
-                String latestVersion = json.get("version").getAsString();
-                String downloadUrl = json.get("downloadUrl").getAsString();
-                String releaseNotes = json.has("notes") ? json.get("notes").getAsString() : "";
+                // API'den dönen config.xml içeriğini doğrudan Update4j'ye oku
+                Configuration remoteConfig;
+                try (InputStreamReader isr = new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)) {
+                    remoteConfig = Configuration.read(isr);
+                }
 
-                // Mevcut sürüm (Örn: 2.0-beta.9 -> 2.0-beta.9)
-                String currentVersion = Servicio.getInstance().getAppVersion().replace("v", "");
+                // 2. Hash karşılaştırması yap
+                if (remoteConfig.requiresUpdate()) {
+                    // Sürüm notları artık config.xml içindeki property'den veya versiyondan gelebilir
+                    String version = remoteConfig.getBaseUri().toString(); // Klasör adından versiyonu anlar
+                    String notes = "Yeni özellikler ve hata düzeltmeleri içerir.";
 
-                // Sürümler farklıysa güncelleme öner
-                if (!currentVersion.equalsIgnoreCase(latestVersion)) {
-                    SwingUtilities.invokeLater(() -> showUpdateDialog(parent, latestVersion, releaseNotes, downloadUrl));
+                    SwingUtilities.invokeLater(() -> showUpdateDialog(parent, "Yeni Sürüm", notes, remoteConfig));
                 } else if (!silent) {
-                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parent, "Uygulamanız güncel (v" + currentVersion + ")", "Bilgi", JOptionPane.INFORMATION_MESSAGE));
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parent, "Uygulamanız güncel."));
                 }
 
             } catch (Exception e) {
-                if (!silent) {
-                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parent, "Güncelleme sunucusuna ulaşılamadı.\nLütfen internet bağlantınızı kontrol edin.", "Hata", JOptionPane.ERROR_MESSAGE));
-                }
-                e.printStackTrace();
+                if (!silent) e.printStackTrace();
             }
         }).start();
     }
 
-    // ... (Sınıfın geri kalanı, showUpdateDialog, performUpdate, applyUpdateAndRestart metotları ÖNCEKİ CEVAPTAKİ GİBİ AYNEN KALACAK) ...
+    private static void showUpdateDialog(Component parent, String version, String notes, Configuration remoteConfig) {
+        String message = "Sisteminiz için yeni bir güncelleme mevcut.\n\n" +
+                "Notlar:\n" + notes + "\n\n" +
+                "Güncelleme indirilsin mi?";
 
-    // update.bat veya update.sh oluşturma ve yeniden başlatma mantığı aynıdır.
-    // Aşağıdaki yardımcı metotlar da aynı kalır:
+        int choice = JOptionPane.showConfirmDialog(parent, message, "Servicio Güncelleme",
+                JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
 
-    private static void showUpdateDialog(Component parent, String version, String notes, String url) {
-        String message = "Yeni sürüm mevcut: v" + version + "\n\nNotlar:\n" + notes + "\n\nŞimdi güncellemek ister misiniz?";
-        int choice = JOptionPane.showConfirmDialog(parent, message, "Güncelleme Mevcut", JOptionPane.YES_NO_OPTION);
         if (choice == JOptionPane.YES_OPTION) {
-            performUpdate(parent, url);
+            performBackgroundDownload(parent, remoteConfig);
         }
     }
 
-    private static void performUpdate(Component parent, String downloadUrl) {
-        ProgressMonitor monitor = new ProgressMonitor(parent, "Güncelleme indiriliyor...", "", 0, 100);
+    private static void performBackgroundDownload(Component parent, Configuration remoteConfig) {
+        ProgressMonitor monitor = new ProgressMonitor(parent, "Dosyalar indiriliyor...", "", 0, 100);
 
         new Thread(() -> {
             try {
-                File currentJar = new File(Servicio.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-                File appDir = currentJar.getParentFile();
-                File newJar = new File(appDir, "update_temp.jar");
+                // ÇÖZÜM: 1.4.x serisinde doğrudan indirme yapmak için
+                // parametresiz update() metodunu kullanıyoruz.
+                // Bu metod, config.xml'de belirtilen yollara dosyaları tek tek indirir.
 
-                downloadFile(downloadUrl, newJar, monitor);
+                boolean success = remoteConfig.update();
 
-                if (monitor.isCanceled()) {
-                    newJar.delete();
-                    return;
-                }
+                if (success) {
+                    SwingUtilities.invokeLater(() -> {
+                        monitor.close();
+                        int restart = JOptionPane.showConfirmDialog(parent,
+                                "İndirme tamamlandı. Yeniden başlatılsın mı?",
+                                "Güncelleme Hazır", JOptionPane.YES_NO_OPTION);
 
-                SwingUtilities.invokeLater(() -> {
-                    int restart = JOptionPane.showConfirmDialog(parent,
-                            "İndirme tamamlandı. Uygulamanın güncellenmesi için yeniden başlatılması gerekiyor.",
-                            "Tamamlandı", JOptionPane.YES_NO_OPTION);
-
-                    if (restart == JOptionPane.YES_OPTION) {
-                        try {
-                            applyUpdateAndRestart(currentJar, newJar, appDir);
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                        if (restart == JOptionPane.YES_OPTION) {
+                            try {
+                                applyPatchAndRestart();
+                            } catch (Exception e) { e.printStackTrace(); }
                         }
-                    }
-                });
-
+                    });
+                }
             } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parent, "İndirme hatası: " + e.getMessage()));
+                e.printStackTrace();
+                SwingUtilities.invokeLater(() -> {
+                    monitor.close();
+                    JOptionPane.showMessageDialog(parent, "Güncelleme hatası: " + e.getMessage());
+                });
             }
         }).start();
     }
 
-    private static void applyUpdateAndRestart(File currentJar, File newJar, File appDir) throws IOException {
-        String os = System.getProperty("os.name").toLowerCase();
-        File scriptFile;
-        File exeFile = new File(appDir, EXE_NAME);
-        boolean runExe = exeFile.exists();
+    private static void applyPatchAndRestart() throws IOException {
+        File appDir = new File(System.getProperty("user.dir"));
+        File scriptFile = new File(appDir, "update.bat");
 
-        if (os.contains("win")) {
-            scriptFile = new File(appDir, "update.bat");
-            try (PrintWriter writer = new PrintWriter(scriptFile, "UTF-8")) {
-                writer.println("@echo off");
-                writer.println("timeout /t 2 /nobreak > NUL");
-                writer.println("del \"" + currentJar.getName() + "\"");
-                writer.println("ren \"" + newJar.getName() + "\" \"" + currentJar.getName() + "\"");
-                if (runExe) {
-                    writer.println("start \"\" \"" + EXE_NAME + "\"");
-                } else {
-                    writer.println("start \"\" javaw -jar \"" + currentJar.getName() + "\"");
-                }
-                writer.println("del \"%~f0\"");
+        // ÖNEMLİ: JAR ismini sabitliyoruz (servicio.jar)
+        String jarName = "servicio.jar";
+
+        try (PrintWriter writer = new PrintWriter(scriptFile, "UTF-8")) {
+            writer.println("@echo off");
+            writer.println("timeout /t 1 /nobreak > NUL");
+            // ZIP'ten çıkarırken -Force ile üzerine yazar
+            writer.println("powershell -command \"Expand-Archive -Path '" + ZIP_NAME + "' -DestinationPath '.' -Force\"");
+            writer.println("del \"" + ZIP_NAME + "\"");
+
+            if (new File(appDir, EXE_NAME).exists()) {
+                writer.println("start \"\" \"" + EXE_NAME + "\"");
+            } else {
+                writer.println("start \"\" jre\\bin\\javaw -jar \"" + jarName + "\"");
             }
-        } else {
-            scriptFile = new File(appDir, "update.sh");
-            try (PrintWriter writer = new PrintWriter(scriptFile)) {
-                writer.println("#!/bin/bash");
-                writer.println("sleep 2");
-                writer.println("mv \"" + newJar.getAbsolutePath() + "\" \"" + currentJar.getAbsolutePath() + "\"");
-                if(runExe) {
-                    // Linux'ta exe çalışmaz ama script mantığı buraya konabilir
-                    writer.println("java -jar \"" + currentJar.getAbsolutePath() + "\" &");
-                } else {
-                    writer.println("java -jar \"" + currentJar.getAbsolutePath() + "\" &");
-                }
-                writer.println("rm -- \"$0\"");
-            }
-            scriptFile.setExecutable(true);
+            writer.println("del \"%~f0\"");
         }
 
-        if (os.contains("win")) {
-            Runtime.getRuntime().exec("cmd /c start \"\" \"" + scriptFile.getAbsolutePath() + "\"");
-        } else {
-            Runtime.getRuntime().exec(new String[]{"/bin/bash", scriptFile.getAbsolutePath()});
-        }
+        Runtime.getRuntime().exec("cmd /c start \"\" \"" + scriptFile.getAbsolutePath() + "\"");
         System.exit(0);
-    }
-
-    private static void downloadFile(String urlStr, File dest, ProgressMonitor monitor) throws IOException {
-        URL url = new URL(urlStr);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        // S3 public dosyalarda bazen User-Agent gerekebilir, opsiyonel
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-
-        long totalSize = conn.getContentLength();
-        try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(dest)) {
-            byte[] data = new byte[4096];
-            long count = 0;
-            int n;
-            while ((n = in.read(data)) != -1) {
-                if (monitor.isCanceled()) return;
-                out.write(data, 0, n);
-                count += n;
-                if (totalSize > 0) monitor.setProgress((int) (count * 100 / totalSize));
-            }
-        }
-    }
-
-    private static String readStringFromURL(String url) throws IOException {
-        try (java.util.Scanner scanner = new java.util.Scanner(new URL(url).openStream(), StandardCharsets.UTF_8.name())) {
-            return scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
-        }
     }
 }

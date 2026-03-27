@@ -50,8 +50,8 @@ public final class Servicio {
         }
 
         initSettings();
-        DatabaseManager.initialize();
-        ServiceManager.initialize();
+        //DatabaseManager.initialize();
+        //ServiceManager.initialize();
 
         DemoPreferences.init();
 

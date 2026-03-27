@@ -8,9 +8,13 @@ import raven.modal.menu.MyDrawerBuilder;
 import raven.modal.model.ModelUser;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
+import tr.cabro.servicio.application.manager.AuthManager;
+import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 import java.awt.*;
+import java.net.URI;
 
 public class Login extends Form {
 
@@ -38,13 +42,13 @@ public class Login extends Form {
 
         JLabel lbTitle = new JLabel("Tekrar hoşgeldiniz!");
         JLabel lbDescription = new JLabel("Hesabınıza erişmek için lütfen oturum açın");
-        lbTitle.putClientProperty(FlatClientProperties.STYLE, "" +
-                "font:bold +12;");
+        lbTitle.putClientProperty(FlatClientProperties.STYLE, "font:bold +12;");
 
         loginContent.add(lbTitle);
         loginContent.add(lbDescription);
 
-        JTextField txtUsername = new JTextField();
+        // Değişken adı e-postaya uygun olarak güncellendi
+        JTextField txtEmail = new JTextField();
         JPasswordField txtPassword = new JPasswordField();
         JCheckBox chRememberMe = new JCheckBox("Beni Hatırla");
         JButton cmdLogin = new JButton("Giriş Yap") {
@@ -54,65 +58,112 @@ public class Login extends Form {
             }
         };
 
-        // style
-        txtUsername.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Kullanıcı adınızı veya e-postanızı girin");
+        // UI Stilleri
+        txtEmail.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "E-posta adresinizi girin");
         txtPassword.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Şifrenizi girin");
 
-        panelLogin.putClientProperty(FlatClientProperties.STYLE, "" +
-                "[dark]background:tint($Panel.background,1%);");
+        panelLogin.putClientProperty(FlatClientProperties.STYLE, "[dark]background:tint($Panel.background,1%);");
+        loginContent.putClientProperty(FlatClientProperties.STYLE, "background:null;");
 
-        loginContent.putClientProperty(FlatClientProperties.STYLE, "" +
-                "background:null;");
+        txtEmail.putClientProperty(FlatClientProperties.STYLE, "margin:4,10,4,10; arc:12;");
+        txtPassword.putClientProperty(FlatClientProperties.STYLE, "margin:4,10,4,10; arc:12; showRevealButton:true;");
+        cmdLogin.putClientProperty(FlatClientProperties.STYLE, "margin:4,10,4,10; arc:12;");
 
-        txtUsername.putClientProperty(FlatClientProperties.STYLE, "" +
-                "margin:4,10,4,10;" +
-                "arc:12;");
-        txtPassword.putClientProperty(FlatClientProperties.STYLE, "" +
-                "margin:4,10,4,10;" +
-                "arc:12;" +
-                "showRevealButton:true;");
-
-        cmdLogin.putClientProperty(FlatClientProperties.STYLE, "" +
-                "margin:4,10,4,10;" +
-                "arc:12;");
-
-        loginContent.add(new JLabel("Kullanıcı adı"), "gapy 25");
-        loginContent.add(txtUsername);
-
+        loginContent.add(new JLabel("E-posta"), "gapy 25");
+        loginContent.add(txtEmail);
         loginContent.add(new JLabel("Şifre"), "gapy 10");
         loginContent.add(txtPassword);
         loginContent.add(chRememberMe);
         loginContent.add(cmdLogin, "gapy 20");
+
+        // Alt kısımdaki Kayıt Ol/İletişim linkleri
         loginContent.add(createInfo());
 
         panelLogin.add(loginContent);
         add(panelLogin);
 
-        // event
+        // --- GERÇEK API ENTEGRASYONU (EVENT) ---
         cmdLogin.addActionListener(e -> {
-            String userName = txtUsername.getText();
-            String password = String.valueOf(txtPassword.getPassword());
-            ModelUser user = getUser(userName, password);
-            MyDrawerBuilder.getInstance().setUser(user);
-            FormManager.login();
+            String email = txtEmail.getText().trim();
+            String password = String.valueOf(txtPassword.getPassword()).trim();
+
+            if (email.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Lütfen e-posta adresinizi ve şifrenizi girin.", "Uyarı", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Arayüz donmasın diye butonu kilitliyoruz
+            cmdLogin.setEnabled(false);
+            cmdLogin.setText("Buluta Bağlanıyor...");
+
+            // Arka planda (Thread) ağ isteği atıyoruz
+            new Thread(() -> {
+                try {
+                    // 1. Coolify sunucusundaki API'ye bağlan ve doğrula (E-posta adresini gönderiyoruz)
+                    String dbKey = AuthManager.login(email, password);
+
+                    // 2. API'den gelen güvenlik anahtarı ile yerel SQLite veritabanını çöz ve başlat
+                    boolean isDbReady = DatabaseManager.initialize(dbKey);
+
+                    if (isDbReady) {
+
+                        // 3. Veritabanı şifresi çözüldüğüne göre artık servisleri başlatabiliriz!
+                        try {
+                            ServiceManager.initialize();
+                        } catch (Exception ex) {
+                            tr.cabro.servicio.Servicio.getLogger().error("Servisler başlatılamadı!", ex);
+                        }
+
+                        SwingUtilities.invokeLater(() -> {
+                            // Uygulamanın menüsü (Drawer) için oturum bilgilerini ayarla
+                            ModelUser user = new ModelUser(AuthManager.currentUsername, email, ModelUser.Role.ADMIN);
+                            MyDrawerBuilder.getInstance().setUser(user);
+
+                            // Raven Framework'ün ana uygulamaya geçiş metodu
+                            FormManager.login();
+                        });
+                    } else {
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(this, "Güvenlik İhlali: Veritabanı kilidi açılamadı!", "Kritik Hata", JOptionPane.ERROR_MESSAGE);
+                        });
+                    }
+
+                } catch (Exception ex) {
+                    // API'den "Yanlış Şifre" veya "Lisans İptal" gibi bir yanıt gelirse ekrana basar
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(this, ex.getMessage(), "Giriş Başarısız", JOptionPane.ERROR_MESSAGE);
+                    });
+                } finally {
+                    // İşlem bittikten sonra butonu eski haline getir
+                    SwingUtilities.invokeLater(() -> {
+                        cmdLogin.setEnabled(true);
+                        cmdLogin.setText("Giriş Yap");
+                    });
+                }
+            }).start();
         });
     }
 
     private JPanel createInfo() {
         JPanel panelInfo = new JPanel(new MigLayout("wrap,al center", "[center]"));
-        panelInfo.putClientProperty(FlatClientProperties.STYLE, "" +
-                "background:null;");
+        panelInfo.putClientProperty(FlatClientProperties.STYLE, "background:null;");
 
-        panelInfo.add(new JLabel("Hesap bilgilerinizi hatırlamıyor musunuz?"));
-        panelInfo.add(new JLabel("Bizimle iletişime geçin"), "split 2");
-        LabelButton lbLink = new LabelButton("help@info.com");
+        panelInfo.add(new JLabel("Henüz bir hesabınız yok mu?"), "split 2");
+        LabelButton lbLink = new LabelButton("Web'den Kayıt Ol");
 
         panelInfo.add(lbLink);
 
-        // event
+        // Tıklandığında bilgisayarın varsayılan tarayıcısında kayıt sitesini açar
         lbLink.addOnClick(e -> {
-
+            try {
+                // TODO: İleride buraya kendi gerçek domain adresini yazacaksın (Örn: https://servicio.com/register)
+                Desktop.getDesktop().browse(new URI("https://servicio.sametozen.me/register.html"));
+            } catch (Exception ex) {
+                tr.cabro.servicio.Servicio.getLogger().error("Tarayıcı açılamadı", ex);
+                JOptionPane.showMessageDialog(this, "Lütfen sitemizi ziyaret edin: www.servicio.com", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+            }
         });
+
         return panelInfo;
     }
 
@@ -120,17 +171,5 @@ public class Login extends Form {
         if (panel != null) {
             panel.setBorder(new DropShadowBorder(new Insets(5, 8, 12, 8), 1, 25));
         }
-    }
-
-    private ModelUser getUser(String user, String password) {
-
-        // just testing.
-        // input any user and password is admin by default
-        // user='staff' password='123' if we want to test validation menu for role staff
-
-        if (user.equals("staff") && password.equals("123")) {
-            return new ModelUser("Samet Özen", "ozen.samet.57@gmail.com", ModelUser.Role.STAFF);
-        }
-        return new ModelUser("Biri", "biri@gmail.com", ModelUser.Role.ADMIN);
     }
 }

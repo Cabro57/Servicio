@@ -4,7 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü." />
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü.">
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/AuthManager.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/ConfigManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/auth/Login.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/auth/Login.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/MainUI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/MainUI.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/UpdateManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/DatabaseManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/DatabaseManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/DeviceOperationManagementUI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/DeviceOperationManagementUI.java" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -48,15 +60,18 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "Application.Servicio.executor": "Run",
+    "Maven.Servicio [clean,package,-U].executor": "Run",
+    "Maven.Servicio [clean,package].executor": "Run",
     "Maven.Servicio.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "master",
     "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Projelerim/Servicio",
     "onboarding.tips.debug.path": "C:/Projelerim/Servicio/src/main/java/org/example/Main.java",
-    "project.structure.last.edited": "Modules",
+    "project.structure.last.edited": "SDKs",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.30229884",
     "settings.editor.selected.configurable": "preferences.pluginManager"
@@ -71,6 +86,12 @@
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Projelerim\Servicio" />
     </key>
+  </component>
+  <component name="RunAnythingCache">
+    <option name="myCommands">
+      <command value="mvn clean package -U" />
+      <command value="mvn clean package" />
+    </option>
   </component>
   <component name="RunManager">
     <configuration name="Servicio" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">

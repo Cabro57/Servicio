@@ -38,3 +38,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+/config.xml
+/dependency-reduced-pom.xml
+/publish-patch.bat
+/release-notes.md
+/src/main/resources/config.properties

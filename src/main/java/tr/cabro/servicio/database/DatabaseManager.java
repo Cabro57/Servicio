@@ -28,50 +28,65 @@ public class DatabaseManager {
     private static final String DB_FILE_NAME = "database.db";
     private static Jdbi jdbi;
 
+    // Veritabanı şifresini oturum boyunca RAM'de güvenle tutmak için
+    private static String currentDbKey = null;
+
     // --- BAŞLATMA VE AYARLAR (Config + Initializer Birleşimi) ---
 
-    public static void initialize() {
-        // 1. Klasör kontrolü
-        File dbFolder = new File(Servicio.getInstance().getDataFolder(), "database");
-        if (!dbFolder.exists()) dbFolder.mkdirs();
-
-        File dbFile = new File(dbFolder, DB_FILE_NAME);
-        boolean isFirstRun = !dbFile.exists();
-        String dbPath = dbFile.getAbsolutePath();
-
-        // 2. HikariCP Ayarları (SQLite Odaklı)
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:sqlite:" + dbPath);
-        config.setPoolName("Servicio-SQLite-Pool");
-        config.setMaximumPoolSize(1); // SQLite için tek bağlantı genellikle en sağlıklısıdır
-
-        config.setConnectionTimeout(30000);
-
-        config.setLeakDetectionThreshold(2000);
-
-        // Performans Ayarları (WAL Modu)
-        config.addDataSourceProperty("journal_mode", "WAL");
-        config.addDataSourceProperty("synchronous", "NORMAL");
-        config.addDataSourceProperty("foreign_keys", "true");
-
-        config.addDataSourceProperty("busy_timeout", "30000");
-
-        dataSource = new HikariDataSource(config);
-
-        jdbi = Jdbi.create(dataSource);
-
-        // Gerekli eklentileri yükle
-        jdbi.installPlugin(new SqlObjectPlugin());
-        jdbi.installPlugin(new SQLitePlugin());
-
-        jdbi.registerArgument(new LocalDateTimeArgumentFactory());
-
-        jdbi.registerColumnMapper(LocalDateTime.class, new SQLiteDateTimeMapper());
-        jdbi.registerColumnMapper(LocalDate.class, new SQLiteDateMapper());
-
-        // 3. Migration (Flyway) ve İlk Yedek
+    /**
+     * Veritabanını verilen şifre (dbKey) ile açmayı dener.
+     * @return Şifre doğruysa ve DB açıldıysa true, aksi halde false.
+     */
+    public static boolean initialize(String dbKey) {
         try {
-            // Eğer veritabanı önceden varsa (ilk çalışma değilse), migration öncesi güvenlik yedeği al
+            currentDbKey = dbKey; // Olası kopmalarda tekrar bağlanmak için hafızaya al
+
+            // 1. Klasör kontrolü
+            File dbFolder = new File(Servicio.getInstance().getDataFolder(), "database");
+            if (!dbFolder.exists()) dbFolder.mkdirs();
+
+            File dbFile = new File(dbFolder, DB_FILE_NAME);
+            boolean isFirstRun = !dbFile.exists();
+            String dbPath = dbFile.getAbsolutePath();
+
+            // 2. HikariCP Ayarları (SQLite Odaklı)
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl("jdbc:sqlite:" + dbPath);
+
+            // --- ŞİFRELEME (SQLCipher) AYARI ---
+            if (dbKey != null && !dbKey.isEmpty()) {
+                config.addDataSourceProperty("pragma.key", dbKey);
+            }
+
+            config.setPoolName("Servicio-SQLite-Pool");
+            config.setMaximumPoolSize(1); // SQLite için tek bağlantı
+            config.setConnectionTimeout(30000);
+            config.setLeakDetectionThreshold(2000);
+
+            // Performans Ayarları (WAL Modu)
+            config.addDataSourceProperty("journal_mode", "WAL");
+            config.addDataSourceProperty("synchronous", "NORMAL");
+            config.addDataSourceProperty("foreign_keys", "true");
+            config.addDataSourceProperty("busy_timeout", "30000");
+
+            dataSource = new HikariDataSource(config);
+
+            // --- 3. ŞİFREYİ TEST ET ---
+            // Eğer şifre yanlışsa,getConnection() anında SQLException fırlatır!
+            try (Connection testConn = dataSource.getConnection()) {
+                Servicio.getLogger().info("Veritabanı şifresi doğrulandı ve kilidi açıldı.");
+            }
+
+            jdbi = Jdbi.create(dataSource);
+
+            // Gerekli eklentileri yükle
+            jdbi.installPlugin(new SqlObjectPlugin());
+            jdbi.installPlugin(new SQLitePlugin());
+            jdbi.registerArgument(new LocalDateTimeArgumentFactory());
+            jdbi.registerColumnMapper(LocalDateTime.class, new SQLiteDateTimeMapper());
+            jdbi.registerColumnMapper(LocalDate.class, new SQLiteDateMapper());
+
+            // 4. Migration (Flyway) ve İlk Yedek
             if (!isFirstRun) {
                 Servicio.getLogger().info("Migration öncesi güvenlik yedeği alınıyor...");
                 backup("pre-migrate");
@@ -90,9 +105,15 @@ public class DatabaseManager {
                         result.initialSchemaVersion, result.targetSchemaVersion);
             }
 
+            return true; // Her şey başarılı, giriş yapılabilir
+
         } catch (Exception e) {
-            Servicio.getLogger().error("Veritabanı başlatma hatası: {}", e.getMessage());
-            throw new RuntimeException(e);
+            Servicio.getLogger().warn("Veritabanı açılamadı veya şifre yanlış: {}", e.getMessage());
+            // Şifre yanlışsa veya dosya bozuksa havuzu kapatıp kilitlenmeyi önlüyoruz
+            if (dataSource != null && !dataSource.isClosed()) {
+                dataSource.close();
+            }
+            return false; // Giriş başarısız
         }
     }
 
@@ -103,12 +124,25 @@ public class DatabaseManager {
     }
 
     public static Connection getConnection() throws SQLException {
-        if (dataSource == null || dataSource.isClosed()) initialize();
+        if (dataSource == null || dataSource.isClosed()) {
+            // Eğer bağlantı koptuysa, hafızadaki şifreyle yeniden bağlan
+            if (currentDbKey != null) {
+                initialize(currentDbKey);
+            } else {
+                throw new SQLException("Güvenlik İhlali: Veritabanı henüz bir şifre ile başlatılmadı!");
+            }
+        }
         return dataSource.getConnection();
     }
 
     public static Jdbi getJdbi() {
-        if (jdbi == null) initialize();
+        if (jdbi == null) {
+            if (currentDbKey != null) {
+                initialize(currentDbKey);
+            } else {
+                throw new RuntimeException("Güvenlik İhlali: JDBI şifresiz başlatılamaz!");
+            }
+        }
         return jdbi;
     }
 
@@ -124,15 +158,13 @@ public class DatabaseManager {
             }
             if (!fileName.endsWith(".db")) fileName += ".db";
 
-            // Windows uyumluluğu için ters slaş düzeltmesi
             String targetPath = new File(backupDir, fileName).getAbsolutePath().replace("\\", "/");
 
             try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
-                // Eğer aynı isimde dosya varsa önce onu siliyoruz ki VACUUM hata vermesin
                 File existingFile = new File(targetPath);
                 if (existingFile.exists()) existingFile.delete();
 
-                // Canlı yedek alma komutu
+                // Canlı yedek alma komutu (Şifreli DB'yi şifreli olarak yedekler)
                 stmt.execute("VACUUM INTO '" + targetPath + "'");
             }
             Servicio.getLogger().info("Yedek alındı: {}", fileName);
@@ -159,18 +191,17 @@ public class DatabaseManager {
             File dbFile = new File(Servicio.getInstance().getDataFolder() + "/database", DB_FILE_NAME);
             Files.copy(backupFile.toPath(), dbFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-            // 3. WAL artıklarını temizle (Database tutarlılığı için önemli)
+            // 3. WAL artıklarını temizle
             new File(dbFile.getAbsolutePath() + "-wal").delete();
             new File(dbFile.getAbsolutePath() + "-shm").delete();
 
-            // 4. Sistemi tekrar ayağa kaldır
-            initialize();
+            // 4. Sistemi hafızadaki aktif şifreyle tekrar ayağa kaldır
+            initialize(currentDbKey);
             Servicio.getLogger().info("Geri yükleme başarılı: {}", backupFile.getName());
 
         } catch (Exception e) {
             Servicio.getLogger().error("Geri yükleme kritik hata: {}", e.getMessage());
-            // Hata olsa bile sistemi tekrar açmayı dene
-            initialize();
+            if (currentDbKey != null) initialize(currentDbKey);
         }
     }
 }
