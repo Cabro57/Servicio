@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/src/main/resources/tr/cabro/servicio/database/repository/ServiceRepository/dashboardStats.sql" value="bc00df9e-eefc-4313-ba4c-fbfbcf691cd2" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/tr/cabro/servicio/database/repository/ServiceRepository/financeRecords.sql" value="bc00df9e-eefc-4313-ba4c-fbfbcf691cd2" />
+  </component>
+</project>
