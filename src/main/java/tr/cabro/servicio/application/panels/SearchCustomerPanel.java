@@ -37,24 +37,38 @@ public class SearchCustomerPanel extends JPanel {
     private void init() {
         initComponent();
 
+        setupTable();
+
+        configureTable();
+
         refreshCustomerTable();
     }
 
-    private void refreshCustomerTable() {
-        if (customerTableModel == null) {
-            List<ColumnDef<Customer>> columns = Arrays.asList(
-                    new ColumnDef<>("Tip", String.class, Customer::getType),
-                    new ColumnDef<>("Ad Soyad", String.class, c -> c.getName() + " " + c.getSurname()),
-                    new ColumnDef<>("Firma İsmi", String.class, Customer::getBusinessName),
-                    new ColumnDef<>("Telefon", String.class, c -> Format.formatPhoneNumber(c.getPhoneNumber1())),
-                    new ColumnDef<>("TC Kimlik No", String.class, Customer::getIdNo)
-            );
-            customerTableModel = new GenericTableModel<>(service.getAll(), columns);
-            table.setModel(customerTableModel);
-        } else {
-            customerTableModel.setData(service.getAll());
-        }
+    private void setupTable() {
+        List<ColumnDef<Customer>> columns = Arrays.asList(
+                new ColumnDef<>("Tip", String.class, Customer::getType),
+                new ColumnDef<>("Ad Soyad", String.class, c -> c.getName() + " " + c.getSurname()),
+                new ColumnDef<>("Firma İsmi", String.class, Customer::getBusinessName),
+                new ColumnDef<>("Telefon", String.class, c -> Format.formatPhoneNumber(c.getPhoneNumber1())),
+                new ColumnDef<>("TC Kimlik No", String.class, Customer::getIdNo)
+        );
 
+        customerTableModel = new GenericTableModel<>(columns);
+        table.setModel(customerTableModel);
+    }
+
+    private void refreshCustomerTable() {
+
+        service.getAll().thenAccept(customers -> {
+            customerTableModel.setData(customers);
+        });
+
+
+
+
+    }
+
+    private void configureTable() {
         sorter = new TableRowSorter<>(customerTableModel);
         table.setRowSorter(sorter);
 

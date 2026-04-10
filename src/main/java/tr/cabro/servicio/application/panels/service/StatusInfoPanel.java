@@ -3,19 +3,18 @@ package tr.cabro.servicio.application.panels.service;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.panels.ServicePanel;
-import tr.cabro.servicio.model.ServiceStatus;
-import tr.cabro.servicio.application.context.ServiceContext;
+import tr.cabro.servicio.model.enums.ServiceStatus;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 
 public class StatusInfoPanel extends ServicePanel {
 
-
     private final ButtonGroup status_group = new ButtonGroup();
+    private boolean isInitializing = false;
 
-    public StatusInfoPanel(ServiceContext context) {
-        super(context);
+    public StatusInfoPanel() {
         init();
     }
 
@@ -29,6 +28,40 @@ public class StatusInfoPanel extends ServicePanel {
         status_group.add(under_repair_radio);
         status_group.add(wait_part_radio);
 
+        // Her bir radyo butonuna dinleyici ekle
+        ActionListener radioListener = e -> {
+            if (!isInitializing && getListener() != null) {
+                getListener().onDataChanged();
+            }
+        };
+
+        for (AbstractButton button : java.util.Collections.list(status_group.getElements())) {
+            button.addActionListener(radioListener);
+        }
+    }
+
+    @Override
+    protected void onServiceSet() {
+        if (service == null) return;
+
+        isInitializing = true;
+        try {
+            // Eğer servis teslim edilmişse, durumu Form üzerinden değiştirilemez.
+            // "Teslim Et" butonu kullanılmalıdır. (Kurumsal Kural)
+            boolean isDelivered = service.getServiceStatus() == ServiceStatus.DELIVERED;
+
+            for (AbstractButton button : java.util.Collections.list(status_group.getElements())) {
+                button.setEnabled(!isDelivered);
+            }
+
+            if (service.getServiceStatus() != null) {
+                setSelected(service.getServiceStatus().getDisplayName());
+            } else {
+                under_repair_radio.setSelected(true);
+            }
+        } finally {
+            isInitializing = false;
+        }
     }
 
     private JRadioButton getSelectedRadioButton() {
@@ -37,7 +70,7 @@ public class StatusInfoPanel extends ServicePanel {
                 return (JRadioButton) button;
             }
         }
-        return null; // Hiçbiri seçili değilse
+        return null;
     }
 
     public ServiceStatus getSelected() {
@@ -57,13 +90,7 @@ public class StatusInfoPanel extends ServicePanel {
                 return;
             }
         }
-        // Eğer eşleşen bulunmazsa seçimi temizle
         clearSelection();
-    }
-
-    public ServiceStatus getSelectedStatus() {
-        JRadioButton selected = getSelectedRadioButton();
-        return (selected != null) ? (ServiceStatus) selected.getClientProperty("ServiceStatus") : null;
     }
 
     public void clearSelection() {
@@ -85,13 +112,6 @@ public class StatusInfoPanel extends ServicePanel {
         return_radio = new JRadioButton("İade");
         wait_part_radio = new JRadioButton("Parça Bekliyor");
 
-        status_group.add(under_repair_radio);
-        status_group.add(ready_radio);
-        status_group.add(another_service_radio);
-        status_group.add(delivered_radio);
-        status_group.add(return_radio);
-        status_group.add(wait_part_radio);
-
         under_repair_radio.setSelected(true);
 
         add(title, "span 6, wrap, gapbottom 10");
@@ -110,5 +130,4 @@ public class StatusInfoPanel extends ServicePanel {
     private JRadioButton delivered_radio;
     private JRadioButton return_radio;
     private JRadioButton wait_part_radio;
-
 }

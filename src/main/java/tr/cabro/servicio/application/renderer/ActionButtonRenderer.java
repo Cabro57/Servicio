@@ -8,15 +8,20 @@ import java.awt.*;
 
 public class ActionButtonRenderer extends DefaultTableCellRenderer {
 
+    private PanelAction panel;
+
+    public ActionButtonRenderer() {
+        this.panel = new PanelAction();
+    }
+
+
+
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
         Component com = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-        PanelAction action = new PanelAction();
-        if (isSelected) {
-            action.setBackground(table.getSelectionBackground());
-        } else {
-            action.setBackground(table.getBackground());
-        }
-        return action;
+        setVerticalAlignment(SwingConstants.CENTER);
+        panel.setBackground(com.getBackground());
+
+        return panel;
     }
 }

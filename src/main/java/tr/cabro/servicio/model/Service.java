@@ -2,8 +2,11 @@ package tr.cabro.servicio.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import tr.cabro.servicio.model.enums.PaymentType;
+import tr.cabro.servicio.model.enums.ServiceStatus;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter @Setter
 public class Service {
@@ -12,6 +15,7 @@ public class Service {
 
     // Müşteri Bilgileri
     private Integer customerId;
+    private Customer customer;
     private LocalDateTime createdAt;
     private LocalDateTime deliveryAt;
 
@@ -45,6 +49,10 @@ public class Service {
     private String urgencyStatus; // Aciliyet
     private ServiceStatus serviceStatus;
 
+    private double totalPartsCost;
+
+    private List<AddedPart> addedParts;
+
 
     public Service(int customer, String type, String brand, String model) {
         this.customerId = customer;
@@ -65,6 +73,10 @@ public class Service {
         device.setType(deviceType);
 
         return device;
+    }
+
+    public double getRemainingAmount() {
+        return (getLaborCost() + totalPartsCost) - getPaid();
     }
 
 }

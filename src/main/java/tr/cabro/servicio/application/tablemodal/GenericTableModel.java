@@ -73,9 +73,10 @@ public class GenericTableModel<T> extends AbstractTableModel {
         return column.getValue(item); // ColumnDef içindeki Function'ı çalıştırır
     }
 
-    // İhtiyaca göre düzenlenebilir hücreler için isCellEditable ve setValueAt ezilebilir.
+    // TODO: generic tablo için tekraradn yazılacak
     @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return false; // Varsayılan olarak hücreler sadece okunabilir
+        // Sütun başlığı "İşlem" ise tıklanmasına izin ver
+        return getColumnName(columnIndex).equals("İşlem");
     }
 }

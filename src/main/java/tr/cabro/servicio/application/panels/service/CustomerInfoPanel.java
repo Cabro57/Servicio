@@ -8,55 +8,59 @@ import raven.datetime.TimePicker;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.SearchField;
 import tr.cabro.servicio.application.panels.SearchCustomerPanel;
 import tr.cabro.servicio.application.panels.ServicePanel;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.CustomerType;
+import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Optional;
 
 public class CustomerInfoPanel extends ServicePanel {
 
-    public Customer selectedCustomer;
+    private final CustomerService customerService;
 
-    private final CustomerService service;
-
-    public CustomerInfoPanel(ServiceContext context) {
-        super(context);
-
-        service = ServiceManager.getCustomerService();
-
+    public CustomerInfoPanel() {
+        this.customerService = ServiceManager.getCustomerService();
         init();
+    }
+
+    @Override
+    protected void onServiceSet() {
+        // Hydration sayesinde customer nesnesi servisin içinde zaten dolu geliyor!
+        // Ekstra veritabanı sorgusuna gerek yok.
+        if (service != null) {
+            updateCustomerUI(service.getCustomer());
+            setRecordDate(service.getCreatedAt());
+            setDeliverDate(service.getDeliveryAt());
+        }
     }
 
     private void init() {
         initComponent();
 
+        // 1. Müşteri Temizleme (Çarpı İkonuna Basınca)
         customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_CLEAR_CALLBACK, (Runnable) () -> {
-            if (selectedCustomer != null) selectedCustomer = null;
-            customer_field.setText("");
+            updateCustomerSelection(null);
         });
 
+        // 2. Müşteri Seçme (Enter'a basınca)
         customer_field.addActionListener(e -> {
             final String id = "CustomerSelect";
             SearchCustomerPanel panel = new SearchCustomerPanel();
 
             ModalDialog.showModal(this, new SimpleModalBorder(
-                            panel, "Parça Formu", null,
+                            panel, "Müşteri Seç", null,
                             (controller, action) -> {
                                 if (action == SimpleModalBorder.OPENED) {
                                     panel.setOnCustomerSelected(customer -> {
-                                        setCustomer(customer);
+                                        updateCustomerSelection(customer);
                                         ModalDialog.closeModal("CustomerSelect");
                                     });
                                 }
@@ -64,43 +68,49 @@ public class CustomerInfoPanel extends ServicePanel {
                     , id);
         });
 
+        // 3. Yeni Müşteri Oluşturma (Tamamen Asenkron)
         customer_button.addActionListener(e -> {
             final String id = "CustomerNew";
             CustomerEditPanel panel = new CustomerEditPanel(new Customer());
 
             SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                    new SimpleModalBorder.Option("Tamam", 0),
+                    new SimpleModalBorder.Option("Kaydet", 0),
                     new SimpleModalBorder.Option("İptal", 2)
             };
 
             ModalDialog.showModal(this, new SimpleModalBorder(
-                            panel, "Müşteri Formu", options,
+                            panel, "Yeni Müşteri Formu", options,
                             (controller, action) -> {
                                 if (action == SimpleModalBorder.OPENED) {
                                     panel.clearForm();
 
                                 } else if (action == SimpleModalBorder.OK_OPTION) {
-                                    Customer customer = panel.getData();
-                                    if (customer == null) {
+                                    Customer newCustomer = panel.getData();
+                                    if (newCustomer == null) {
                                         controller.consume();
                                         return;
                                     }
 
-                                    try {
-                                        customer.setCreatedAt(LocalDateTime.now());
-                                        service.save(customer, false);
-                                        Toast.show(this, Toast.Type.SUCCESS, customer.getName() + " başarıyla eklendi.");
-                                    } catch (Exception ex) {
-                                        Toast.show(this, Toast.Type.WARNING, customer.getName() + " zaten mevcut.");
-                                        Servicio.getLogger().error(customer.getName() + " zaten mevcut.", e);
-                                    }
+                                    newCustomer.setCreatedAt(LocalDateTime.now());
 
-                                    setCustomer(customer);
+                                    // KRİTİK DÜZELTME: service.save yerine customerService.saveAsync
+                                    customerService.save(newCustomer, false).thenAccept(savedCustomer -> {
+                                        SwingUtilities.invokeLater(() -> {
+                                            updateCustomerSelection(savedCustomer);
+                                            Toast.show(this, Toast.Type.SUCCESS, savedCustomer.getName() + " başarıyla eklendi.");
+                                        });
+                                    }).exceptionally(ex -> {
+                                        SwingUtilities.invokeLater(() -> {
+                                            Toast.show(this, Toast.Type.ERROR, "Kayıt Hatası: " + ex.getCause().getMessage());
+                                        });
+                                        return null;
+                                    });
                                 }
                             })
                     , id);
         });
 
+        // Tarih ve Saat Seçicileri
         recordDatePicker = new DatePicker();
         recordDatePicker.setEditor(record_date_field);
         recordDatePicker.setSelectedDate(LocalDate.now());
@@ -110,32 +120,51 @@ public class CustomerInfoPanel extends ServicePanel {
         deliverDatePicker.setEditor(deliver_date_field);
         deliverTimePicker = new TimePicker();
 
-
+        // UX İYİLEŞTİRMESİ: Tarih veya saat değiştiğinde de ana formu uyar
+        recordDatePicker.addDateSelectionListener(d -> notifyDataChanged());
+        recordTimePicker.addTimeSelectionListener(t -> notifyDataChanged());
+        deliverDatePicker.addDateSelectionListener(d -> notifyDataChanged());
+        deliverTimePicker.addTimeSelectionListener(t -> notifyDataChanged());
     }
 
-    public void setCustomer(Integer serviceId) {
-        if (serviceId == null) return;
+    // --- MERKEZİ VERİ YÖNETİMİ ---
 
-        if (serviceId == -1) {
-            if (selectedCustomer != null) selectedCustomer = null;
-            customer_field.setText("");
+    /**
+     * Müşteri seçildiğinde, silindiğinde veya yeni eklendiğinde çağrılır.
+     * Hem UI'ı, hem Servis modelini günceller, hem de Ana Formu uyarır.
+     */
+    private void updateCustomerSelection(Customer customer) {
+        if (service != null) {
+            service.setCustomer(customer);
+            service.setCustomerId(customer != null ? customer.getId() : null);
         }
-
-        Optional<Customer> customer = service.get(serviceId);
-
-        customer.ifPresent(this::setCustomer);
+        updateCustomerUI(customer);
+        notifyDataChanged();
     }
 
-    public void setCustomer(Customer customer) {
-        this.selectedCustomer = customer;
+    private void updateCustomerUI(Customer customer) {
         if (customer != null) {
-            customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, customer.getType().getIcon(22, 22));
+            // ZIRH: Eğer müşterinin türü NULL gelirse, uygulamanın çökmemesi için varsayılan olarak NORMAL ata
+            CustomerType type = customer.getType() != null ? customer.getType() : CustomerType.NORMAL;
+
             customer_field.setText(customer.toString());
         } else {
-            customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, CustomerType.NORMAL.getIcon(22, 22));
             customer_field.setText("");
         }
     }
+
+    private void notifyDataChanged() {
+        if (getListener() != null) {
+            getListener().onDataChanged();
+        }
+    }
+
+    // Ana formun collectForm metodu için kullanışlı getter
+    public Customer getSelectedCustomer() {
+        return service != null ? service.getCustomer() : null;
+    }
+
+    // --- TARİH GETTER / SETTER METOTLARI ---
 
     public LocalDateTime getRecordDate() {
         LocalDate date = recordDatePicker.getSelectedDate();
@@ -171,7 +200,7 @@ public class CustomerInfoPanel extends ServicePanel {
         putClientProperty(FlatClientProperties.STYLE_CLASS, "editServicePanel");
 
         title = new JLabel("Müşteri Bilgileri");
-        title.putClientProperty(FlatClientProperties.STYLE_CLASS, "h3"); // daha hoş stil için
+        title.putClientProperty(FlatClientProperties.STYLE_CLASS, "h3");
         title.setFont(title.getFont().deriveFont(18f).deriveFont(java.awt.Font.BOLD));
         title.setHorizontalTextPosition(SwingConstants.LEFT);
         title.setHorizontalAlignment(SwingConstants.LEFT);
@@ -179,7 +208,7 @@ public class CustomerInfoPanel extends ServicePanel {
         customer_field = new SearchField();
         customer_field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icons/customer.svg", 22, 22));
         customer_field.putClientProperty(FlatClientProperties.STYLE_CLASS, "serviceSearchField");
-        customer_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Müşteri adı, telefon, veya TC kimlik no yazıp ENTER tuşuna basın");
+        customer_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Müşteri adı, telefon veya TC kimlik no yazıp ENTER tuşuna basın");
         customer_field.setFont(customer_field.getFont().deriveFont(16f));
         customer_field.requestFocusInWindow();
 
@@ -198,26 +227,25 @@ public class CustomerInfoPanel extends ServicePanel {
         date_panel.add(record_date_label);
         date_panel.add(record_date_field, "growx");
         date_panel.add(deliver_date_label);
+        add(title, "span 2, align left, gapbottom 10");
         date_panel.add(deliver_date_field, "growx");
 
-        add(title, "span 2, align left, gapbottom 10");
         add(customer_field, "growx, height 50::");
         add(customer_button, "growy, align right, wrap");
         add(date_panel, "span 2, growx");
     }
 
-    JLabel title;
+    private JLabel title;
+    private SearchField customer_field;
+    private JButton customer_button;
 
-    SearchField customer_field;
-    JButton customer_button;
+    private JFormattedTextField record_date_field;
+    private JFormattedTextField deliver_date_field;
+    private JLabel record_date_label;
+    private JLabel deliver_date_label;
 
-    JFormattedTextField record_date_field;
-    JFormattedTextField deliver_date_field;
-    JLabel record_date_label;
-    JLabel deliver_date_label;
-
-    DatePicker recordDatePicker;
-    TimePicker recordTimePicker;
-    DatePicker deliverDatePicker;
-    TimePicker deliverTimePicker;
+    private DatePicker recordDatePicker;
+    private TimePicker recordTimePicker;
+    private DatePicker deliverDatePicker;
+    private TimePicker deliverTimePicker;
 }

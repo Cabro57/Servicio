@@ -3,8 +3,7 @@ package tr.cabro.servicio.application.component;
 import raven.modal.Toast;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.database.exception.DataAccessException;
-import tr.cabro.servicio.forms.FormService;
+import tr.cabro.servicio.application.forms.FormService;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -31,14 +30,16 @@ public class ServicePopup extends JPopupMenu {
         add(new Separator());
 
         add(item("Teslim Et", () -> {
-            try {
-                RepairService repairService = ServiceManager.getRepairService();
-                repairService.setDelivered(service.getId());
+
+            RepairService repairService = ServiceManager.getRepairService();
+            repairService.setDelivered(service.getId()).thenAccept(repair -> {
                 Toast.show(FormManager.getFrame(), Toast.Type.SUCCESS, "Başarılı şekilde teslim edildi.");
-            } catch (Exception e) {
-                Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + e.getMessage());
-                Servicio.getLogger().error("Servis güncelleme hatası", e);
-            }
+            }).exceptionally(ex -> {
+                Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
+                Servicio.getLogger().error("Servis güncelleme hatası", ex);
+                return null;
+            });
+
         }));
     }
 

@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.renderer;
 
-import tr.cabro.servicio.model.CustomerType;
-import tr.cabro.servicio.model.PaymentType;
+import tr.cabro.servicio.model.enums.PaymentType;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,7 +21,6 @@ public class PaymentTypeRenderer extends JLabel implements ListCellRenderer<Paym
                                                   boolean cellHasFocus) {
         if (value != null) {
             setText(value.getDisplayName());
-            setIcon(value.getIcon());
         }
 
         return this;

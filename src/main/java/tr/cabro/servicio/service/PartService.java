@@ -7,6 +7,8 @@ import tr.cabro.servicio.util.Validator;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public class PartService {
 
@@ -16,75 +18,73 @@ public class PartService {
         this.repository = repository;
     }
 
-    public Part save(Part part, boolean update) {
-        // --- Validasyon ---
+    public CompletableFuture<Part> save(Part part, boolean update) {
+        // --- Validasyon (Ana Thread - Anında fırlatılır) ---
         if (Validator.isEmpty(part.getBarcode())) throw new ValidationException("Barkod boş olamaz.");
         if (Validator.isEmpty(part.getName())) throw new ValidationException("Ürün adı boş olamaz.");
         if (Validator.isEmpty(part.getBrand())) throw new ValidationException("Marka boş olamaz.");
-
         if (part.getPurchasePrice() < 0) throw new ValidationException("Alış fiyatı negatif olamaz.");
         if (part.getSalePrice() < 0) throw new ValidationException("Satış fiyatı negatif olamaz.");
         if (part.getStock() < 0) throw new ValidationException("Stok miktarı negatif olamaz.");
 
-        // Barkod Çakışma Kontrolü (Sadece yeni kayıtta)
-        if (!update && !isBarcodeAvailable(part.getBarcode())) {
-            throw new ValidationException("Bu barkod (" + part.getBarcode() + ") zaten sistemde kayıtlı!");
-        }
-
-        // --- DB İşlemi ---
-        if (!update) {
-            repository.insert(part);
-        } else {
-            repository.update(part);
-        }
-        return part;
+        // --- Veritabanı İşlemi (Arka Plan Thread) ---
+        return CompletableFuture.supplyAsync(() -> {
+            if (!update) {
+                // Sadece yeni kayıtta barkod çakışma kontrolü (Arka planda veritabanına sorulur)
+                if (repository.existsByBarcode(part.getBarcode())) {
+                    throw new ValidationException("Bu barkod (" + part.getBarcode() + ") zaten sistemde kayıtlı!");
+                }
+                repository.insert(part);
+            } else {
+                repository.update(part);
+            }
+            return part;
+        });
     }
 
-    public void delete(String barcode) {
-        repository.delete(barcode);
+    public CompletableFuture<Void> delete(String barcode) {
+        return CompletableFuture.runAsync(() -> repository.delete(barcode));
     }
 
-    public List<Part> getAll() {
-        return repository.findAll();
+    public CompletableFuture<Void> deleteMultiple(List<String> barcodes) {
+        return CompletableFuture.runAsync(() -> repository.deleteByBarcodes(barcodes));
     }
 
-    public Part get(String barcode) {
-        return repository.findByBarcode(barcode).orElse(null);
+    public CompletableFuture<List<Part>> getAll() {
+        return CompletableFuture.supplyAsync(repository::findAll);
     }
 
-    public List<Part> getPartsBelowMinStock() {
-        return repository.findBelowMinStock();
+    public CompletableFuture<Optional<Part>> get(String barcode) {
+        return CompletableFuture.supplyAsync(() -> repository.findByBarcode(barcode));
     }
 
-    public boolean isBarcodeAvailable(String barcode) {
-        return !repository.existsByBarcode(barcode);
+    public CompletableFuture<List<Part>> getPartsBelowMinStockAsync() {
+        return CompletableFuture.supplyAsync(repository::findBelowMinStock);
     }
 
-    public void increaseStock(String barcode, int amount) {
+    public CompletableFuture<Boolean> isBarcodeAvailableAsync(String barcode) {
+        return CompletableFuture.supplyAsync(() -> !repository.existsByBarcode(barcode));
+    }
+
+    public CompletableFuture<Void> increaseStockAsync(String barcode, int amount) {
         if (amount <= 0) throw new ValidationException("Artırılacak miktar 0'dan büyük olmalıdır.");
-        repository.adjustStock(barcode, amount);
+        return CompletableFuture.runAsync(() -> repository.increaseStockAtomically(barcode, amount));
     }
 
-    public void decreaseStock(String barcode, int amount) {
+    public CompletableFuture<Void> decreaseStockAsync(String barcode, int amount) {
         if (amount <= 0) throw new ValidationException("Azaltılacak miktar 0'dan büyük olmalıdır.");
 
-        Part part = get(barcode);
-        if (part == null) {
-            throw new ValidationException("Ürün bulunamadı: " + barcode);
-        }
+        return CompletableFuture.runAsync(() -> {
+            int updatedRows = repository.decreaseStockAtomically(barcode, amount);
 
-        if (part.getStock() < amount) {
-            throw new ValidationException(String.format(
-                    "Yetersiz stok! Barkod: %s. Mevcut: %d, İstenen: %d",
-                    barcode, part.getStock(), amount
-            ));
-        }
-
-        repository.adjustStock(barcode, -amount);
+            if (updatedRows == 0) {
+                throw new ValidationException(String.format("İşlem Başarısız! Barkod: %s için yeterli stok bulunamadı veya ürün yok.", barcode));
+            }
+        });
     }
 
-    public List<Part> search(String searchTerm) {
-        // İleride arama özelliği eklenirse repository üzerinden çağrılabilir
-        return Collections.emptyList();
+    public CompletableFuture<List<Part>> searchAsync(String searchTerm) {
+        // İleride repository entegrasyonu yapılacak
+        return CompletableFuture.supplyAsync(Collections::emptyList);
     }
 }

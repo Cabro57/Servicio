@@ -1,8 +1,10 @@
 package tr.cabro.servicio.database.repository;
 
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
+import org.jdbi.v3.sqlobject.config.RegisterColumnMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -27,16 +29,19 @@ public interface CustomerRepository {
     @SqlUpdate("DELETE FROM customers WHERE id = :id")
     void delete(@Bind("id") int id);
 
-    // DÜZELTME: 'status AS type' diyerek DB'deki 'status' kolonunu Java'daki 'type' alanına eşliyoruz.
-    @SqlQuery("SELECT *, status AS type FROM customers WHERE id = :id")
+    @SqlUpdate("DELETE FROM customers WHERE id IN (<ids>)")
+    void deleteByIds(@BindList("ids") List<Integer> ids);
+
+    @SqlQuery("SELECT id, business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at FROM customers WHERE id = :id")
     Optional<Customer> findById(@Bind("id") int id);
 
-    // DÜZELTME: 'status AS type' eklendi
-    @SqlQuery("SELECT *, status AS type FROM customers ORDER BY created_at DESC")
+    @SqlQuery("SELECT id, business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at FROM customers WHERE id IN (<ids>)")
+    List<Customer> findByIds(@BindList("ids") List<Integer> ids);
+
+    @SqlQuery("SELECT id, business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at FROM customers ORDER BY created_at DESC")
     List<Customer> findAll();
 
-    // DÜZELTME: 'status AS type' eklendi
-    @SqlQuery("SELECT *, status AS type FROM customers WHERE " +
+    @SqlQuery("SELECT id, business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at FROM customers WHERE " +
             "name LIKE :search OR surname LIKE :search OR business_name LIKE :search OR " +
             "phone_number_1 LIKE :search OR id_no LIKE :search " +
             "ORDER BY created_at DESC")

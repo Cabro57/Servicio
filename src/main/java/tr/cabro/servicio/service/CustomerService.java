@@ -1,5 +1,6 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.repository.CustomerRepository;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.service.exception.ValidationException;
@@ -8,6 +9,7 @@ import tr.cabro.servicio.util.Validator;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public class CustomerService {
 
@@ -17,7 +19,47 @@ public class CustomerService {
         this.repository = repository;
     }
 
-    public Customer save(Customer customer, boolean update) {
+    public CompletableFuture<Customer> save(Customer customer, boolean update) {
+
+        validateCustomer(customer);
+
+        return CompletableFuture.supplyAsync(() -> {
+            // --- 2. Veritabanı İşlemi ---
+            if (!update) {
+                int id = repository.insert(customer);
+                customer.setId(id);
+                return customer;
+            } else {
+                repository.update(customer);
+                return customer;
+            }
+        });
+    }
+
+    public CompletableFuture<Void> delete(int id) {
+        return CompletableFuture.runAsync(() -> repository.delete(id));
+    }
+
+    public CompletableFuture<Void> deleteMultiple(List<Integer> ids) {
+        return CompletableFuture.runAsync(() -> repository.deleteByIds(ids));
+    }
+
+    public CompletableFuture<Optional<Customer>> get(int id) {
+        return CompletableFuture.supplyAsync(() -> repository.findById(id));
+    }
+
+    public CompletableFuture<List<Customer>> getAll() {
+        return CompletableFuture.supplyAsync(repository::findAll);
+    }
+
+    public CompletableFuture<List<Customer>> search(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAll();
+        }
+        return CompletableFuture.supplyAsync(() -> repository.search("%" + searchTerm.trim() + "%"));
+    }
+
+    private void validateCustomer(Customer customer) {
         // --- 1. Validasyon ve Normalizasyon ---
 
         // Zorunlu Alanlar
@@ -61,34 +103,5 @@ public class CustomerService {
         if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
             throw new ValidationException("TC Kimlik numarası 11 haneli ve rakamlardan oluşmalıdır.");
         }
-
-        // --- 2. Veritabanı İşlemi ---
-        if (!update) {
-            int id = repository.insert(customer);
-            customer.setId(id);
-            return customer;
-        } else {
-            repository.update(customer);
-            return customer;
-        }
-    }
-
-    public void delete(int id) {
-        repository.delete(id);
-    }
-
-    public Optional<Customer> get(int id) {
-        return repository.findById(id);
-    }
-
-    public List<Customer> getAll() {
-        return repository.findAll();
-    }
-
-    public List<Customer> search(String searchTerm) {
-        if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            return getAll();
-        }
-        return repository.search("%" + searchTerm.trim() + "%");
     }
 }

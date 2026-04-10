@@ -1,4 +1,4 @@
-package tr.cabro.servicio.forms.base;
+package tr.cabro.servicio.application.forms.base;
 
 import javax.swing.*;
 

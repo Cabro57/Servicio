@@ -8,7 +8,7 @@ import raven.modal.component.FormSearchButton;
 import raven.modal.component.MemoryBar;
 import raven.modal.component.RefreshLine;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.util.SVGIconUIColor;
+import tr.cabro.servicio.application.util.Ikon;
 
 import javax.swing.*;
 import java.awt.*;
@@ -31,10 +31,10 @@ public class MainForm extends JPanel {
     private JPanel createHeader() {
         JPanel panel = new JPanel(new MigLayout("insets 3", "[]push[]push", "[fill]"));
         JToolBar toolBar = new JToolBar();
-        JButton buttonDrawer = new JButton(new FlatSVGIcon("icons/menu.svg", 0.5f));
-        buttonUndo = new JButton(new FlatSVGIcon("icons/undo.svg", 0.5f));
-        buttonRedo = new JButton(new FlatSVGIcon("icons/redo.svg", 0.5f));
-        buttonRefresh = new JButton(new FlatSVGIcon("icons/refresh.svg", 0.5f));
+        JButton buttonDrawer = new JButton(new Ikon("icons/menu.svg", 1f));
+        buttonUndo = new JButton(new Ikon("icons/arrow-left.svg", 1f));
+        buttonRedo = new JButton(new Ikon("icons/arrow-right.svg", 1f));
+        buttonRefresh = new JButton(new Ikon("icons/refresh-cw.svg", 1f));
 
         // style
         buttonDrawer.putClientProperty(FlatClientProperties.STYLE, "" +
@@ -76,7 +76,7 @@ public class MainForm extends JPanel {
         JLabel lbDemoVersion = new JLabel("Sürüm: " + Servicio.getInstance().getAppVersion());
         lbDemoVersion.putClientProperty(FlatClientProperties.STYLE, "" +
                 "foreground:$Label.disabledForeground;");
-        lbDemoVersion.setIcon(new SVGIconUIColor("icons/git.svg", 1f, "Label.disabledForeground"));
+        lbDemoVersion.setIcon(new Ikon("icons/git-merge.svg", 0.7f, "Label.disabledForeground"));
         panel.add(lbDemoVersion);
 
         // java version
@@ -89,7 +89,7 @@ public class MainForm extends JPanel {
         JLabel lbJava = new JLabel(String.format(st, java));
         lbJava.putClientProperty(FlatClientProperties.STYLE, "" +
                 "foreground:$Label.disabledForeground;");
-        lbJava.setIcon(new SVGIconUIColor("icons/java.svg", 1f, "Label.disabledForeground"));
+        lbJava.setIcon(new Ikon("icons/java.svg", 1f, "Label.disabledForeground"));
         panel.add(lbJava);
 
         panel.add(new JSeparator(JSeparator.VERTICAL));

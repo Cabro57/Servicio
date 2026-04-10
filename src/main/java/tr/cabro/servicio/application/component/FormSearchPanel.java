@@ -1,13 +1,15 @@
-package raven.modal.component;
+package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.icons.FlatMenuArrowIcon;
 import net.miginfocom.swing.MigLayout;
+import raven.modal.component.ModalContainer;
 import raven.modal.menu.MyMenuValidation;
 import raven.modal.system.Form;
 import raven.modal.utils.DemoPreferences;
 import raven.modal.utils.SystemForm;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
@@ -30,8 +32,11 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class FormSearchPanel extends JPanel {
 
@@ -41,7 +46,7 @@ public class FormSearchPanel extends JPanel {
     private final List<Item> listItems = new ArrayList<>();
 
     private javax.swing.Timer searchDebounceTimer;
-    private SwingWorker<Void, ISearchableResult> activeSearchWorker;
+    private CompletableFuture<Void> activeSearchFuture;
 
     public FormSearchPanel(Map<SystemForm, Class<? extends Form>> formsMap) {
         this.formsMap = formsMap;
@@ -53,7 +58,7 @@ public class FormSearchPanel extends JPanel {
         textSearch = new JTextField();
         panelResult = new PanelResult();
         textSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ara...");
-        textSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icons/search.svg", 0.4f));
+        textSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 0.7f));
         textSearch.putClientProperty(FlatClientProperties.STYLE, "" +
                 "border:3,3,3,3;" +
                 "background:null;" +
@@ -136,93 +141,85 @@ public class FormSearchPanel extends JPanel {
     }
 
     private void performSearch(String st) {
-        // Önceki aramayı iptal et
-        if (activeSearchWorker != null && !activeSearchWorker.isDone()) {
-            activeSearchWorker.cancel(true);
+        // 1. Önceki aramayı iptal et (Debounce koruması)
+        if (activeSearchFuture != null && !activeSearchFuture.isDone()) {
+            activeSearchFuture.cancel(true);
         }
 
         panelResult.removeAll();
-        listItems.clear(); // Artık 'Item' değil, 'ISearchableResult' tutan Item'ları tutmalı
+        listItems.clear();
 
         if (st.isEmpty()) {
-            showRecentResult(); // Sonuçları göster
+            showRecentResult();
             updateLayout();
             return;
         }
 
-        // 4. Asenkron arama için SwingWorker
-        activeSearchWorker = new SwingWorker<Void, ISearchableResult>() {
+        // 2. Paralel Asenkron Aramaları Başlat
+        RepairService repairService = ServiceManager.getRepairService();
+        CustomerService customerService = ServiceManager.getCustomerService();
+        CompletableFuture<List<Service>> servicesFuture = repairService.search(st);
+        CompletableFuture<List<Customer>> customersFuture = customerService.search(st);
 
-            @Override
-            protected Void doInBackground() throws Exception {
-                // 1. STATİK FORMLARI ARA (Lokal, Hızlı)
-                for (Map.Entry<SystemForm, Class<? extends Form>> entry : formsMap.entrySet()) {
-                    if (isCancelled()) return null;
-                    SystemForm s = entry.getKey();
-                    if (s.name().toLowerCase().contains(st)
-                        || s.description().toLowerCase().contains(st)
-                        || checkTags(s.tags(), st)) {
-                        if (MyMenuValidation.validation(entry.getValue())) {
-                            publish(new StaticFormResult(s, entry.getValue()));
-                        }
+        // 3. Statik Form Araması (Lokal ve çok hızlı olduğu için UI thread'ini yormaz,
+        // ancak bütünlüğü bozmamak için onu da listeye hazırlıyoruz)
+        List<ISearchableResult> staticResults = new ArrayList<>();
+        for (Map.Entry<SystemForm, Class<? extends Form>> entry : formsMap.entrySet()) {
+            SystemForm s = entry.getKey();
+            if (s.name().toLowerCase().contains(st) || s.description().toLowerCase().contains(st) || checkTags(s.tags(), st)) {
+                if (MyMenuValidation.validation(entry.getValue())) {
+                    staticResults.add(new StaticFormResult(s, entry.getValue()));
+                }
+            }
+        }
+
+        // 4. Tüm Asenkron İşlemlerin Bitmesini Bekle (AllOf)
+        activeSearchFuture = CompletableFuture.allOf(servicesFuture, customersFuture)
+                .thenApply(v -> {
+
+                    List<ISearchableResult> combinedResults = new ArrayList<>(staticResults);
+
+                    try {
+                        servicesFuture.get().forEach(service -> combinedResults.add(new ServiceSearchResult(service)));
+
+                        customersFuture.get().forEach(customer -> combinedResults.add(new CustomerSearchResult(customer)));
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
                     }
-                }
 
-                RepairService repairService = ServiceManager.getRepairService();
-                List<Service> services = repairService.search(st);
-                for (Service service : services) {
-                    if (isCancelled()) return null;
-                    publish(new ServiceSearchResult(service));
-                }
+                    return combinedResults;
+                })
+                .thenAccept(combinedResults -> {
+                    SwingUtilities.invokeLater(() -> {
+                        for (ISearchableResult result : combinedResults) {
+                            Item item = new Item(result, false, false);
+                            checkComponentOrientation(item);
+                            panelResult.add(item);
+                            listItems.add(item);
+                        }
 
-                CustomerService customerService = ServiceManager.getCustomerService();
-                List<Customer> customers = customerService.search(st);
-                for (Customer customer : customers) {
-                    if (isCancelled()) return null;
-                    publish(new CustomerSearchResult(customer));
-                }
+                        if (listItems.isEmpty()) {
+                            panelResult.add(createNoResult(st));
+                        } else if (getSelectedIndex() == -1) {
+                            setSelected(0);
+                        }
+                        updateLayout();
+                    });
+                })
+                .exceptionally(ex -> {
+                    if (ex.getCause() instanceof java.util.concurrent.CancellationException || ex instanceof java.util.concurrent.CancellationException) {
+                        return null;
+                    }
 
-                // 2. VERİTABANINI ARA (Yavaş, Asenkron)
-                // ÖNEMLİ: Kendi veritabanı servislerinizi burada çağırın
-                // MusteriRepository repo = new MusteriRepository();
-                // List<Musteri> musteriler = repo.searchByName(st);
-                // for (Musteri musteri : musteriler) {
-                //     if (isCancelled()) return null;
-                //     publish(new MusteriSearchResult(musteri));
-                // }
-
-                // ...Aynı şeyi Ürünler, Servisler vb. için yapabilirsiniz...
-
-                return null;
-            }
-
-            @Override
-            protected void process(List<ISearchableResult> chunks) {
-                // publish() ile gönderilen sonuçlar anlık olarak buraya düşer
-                for (ISearchableResult result : chunks) {
-                    // Item sınıfınızın 'ISearchableResult' alacak şekilde
-                    // güncellenmesi gerekiyor (Bakınız Adım 5)
-                    Item item = new Item(result, false, false);
-                    checkComponentOrientation(item);
-                    panelResult.add(item);
-                    listItems.add(item);
-                }
-                if (!listItems.isEmpty() && getSelectedIndex() == -1) {
-                    setSelected(0);
-                }
-                updateLayout();
-            }
-
-            @Override
-            protected void done() {
-                // Arama bittiğinde
-                if (listItems.isEmpty()) {
-                    panelResult.add(createNoResult(st));
-                }
-                updateLayout();
-            }
-        };
-        activeSearchWorker.execute(); // Aramayı başlat
+                    // Gerçek bir hata varsa logla
+                    SwingUtilities.invokeLater(() -> {
+                        Servicio.getLogger().error("Arama sırasında asenkron hata: ", ex);
+                        panelResult.removeAll();
+                        panelResult.add(createNoResult("Hata oluştu."));
+                        updateLayout();
+                    });
+                    return null;
+                });
     }
 
     private boolean checkTags(String[] tags, String st) {
@@ -339,17 +336,24 @@ public class FormSearchPanel extends JPanel {
                     }
                 }
             } else if (sp[0].equals("SERVICE")) {
-                Service service = ServiceManager.getRepairService().get(Integer.parseInt(sp[1])).get();
-                ServiceSearchResult result = new ServiceSearchResult(service);
-                Item item = new Item(result, true, favorite);
+                RepairService repairService = ServiceManager.getRepairService();
+                repairService.get(Integer.parseInt(sp[1])).thenAccept(serviceOptional -> {
+                    serviceOptional.ifPresent(service -> {
+                        ServiceSearchResult result = new ServiceSearchResult(service);
+                        Item item = new Item(result, true, favorite);
+                        list.add(item);
+                    });
+                });
 
-                list.add(item);
             } else if (sp[0].equals("CUSTOMER")) {
-                Customer customer = ServiceManager.getCustomerService().get(Integer.parseInt(sp[1])).get();
-                CustomerSearchResult result = new CustomerSearchResult(customer);
-                Item item = new Item(result, true, favorite);
-
-                list.add(item);
+                CustomerService service = ServiceManager.getCustomerService();
+                service.get(Integer.parseInt(sp[1])).thenAccept(customerOptional -> {
+                    customerOptional.ifPresent(customer -> {
+                        CustomerSearchResult result = new CustomerSearchResult(customer);
+                        Item item = new Item(result, true, favorite);
+                        list.add(item);
+                    });
+                });
             }
 
 
@@ -498,7 +502,7 @@ public class FormSearchPanel extends JPanel {
         protected Component createRecentOption() {
             JPanel panel = new JPanel(new MigLayout("insets n 0 n 0,fill,gapx 2", "", "[fill]"));
             panel.setOpaque(false);
-            JButton cmdRemove = createButton("remove", "clear.svg", 0.35f, "Label.foreground", 0.9f);
+            JButton cmdRemove = createButton("remove", "x.svg", 0.35f, "Label.foreground", 0.9f);
             if (!isFavorite) {
                 JButton cmdFavorite = createButton("favorite", "favorite.svg", 0.4f, "Component.accentColor", 0.9f);
                 panel.add(cmdFavorite);

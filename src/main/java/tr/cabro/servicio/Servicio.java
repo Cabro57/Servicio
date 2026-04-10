@@ -9,17 +9,22 @@ import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import raven.modal.ModalDialog;
+import raven.modal.system.FormManager;
 import raven.modal.utils.DemoPreferences;
-import tr.cabro.servicio.application.listeners.InactivityListener;
 import tr.cabro.servicio.application.MainUI;
+import tr.cabro.servicio.application.component.AppSplashScreen;
+import tr.cabro.servicio.application.listeners.InactivityMonitor;
 import tr.cabro.servicio.database.*;
-import tr.cabro.servicio.model.BackupMode;
+import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.util.AppLock;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Properties;
@@ -32,48 +37,71 @@ public final class Servicio {
     @Getter private final File dataFolder;
     @Getter private MainUI frame;
     @Getter private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
-    @Getter private static InactivityListener inactivityListener;
+    @Getter private static InactivityMonitor inactivityMonitor;
 
     private boolean running = false;
     private String appVersion;
 
-    public Servicio(File baseFolder) {
+    // CONSTRUCTOR (Yapıcı Metot): Artık Splash Screen nesnesini parametre olarak alıyor
+    public Servicio(File baseFolder, AppSplashScreen splash) {
         if (!LauncherAccessContext.isAllowed()) {
             throw new SecurityException("Erişim reddedildi: Sadece Launcher yetkilidir.");
         }
 
         instance = this;
 
+        splash.updateProgress(10, "Klasör yapıları kontrol ediliyor...");
         this.dataFolder = new File(baseFolder, ".servicio");
         if (!this.dataFolder.exists() && this.dataFolder.mkdirs()) {
             logger.info("Veri klasörü oluşturuldu: {}", this.dataFolder.getAbsolutePath());
         }
 
+        splash.updateProgress(25, "Ayarlar yükleniyor...");
         initSettings();
-        //DatabaseManager.initialize();
-        //ServiceManager.initialize();
+
+        splash.updateProgress(45, "Veritabanı bağlantısı kuruluyor...");
+        DatabaseManager.initialize();
+
+        splash.updateProgress(65, "Servis yöneticileri başlatılıyor...");
+        ServiceManager.initialize();
+
+        splash.updateProgress(80, "Arka plan işlemleri hazırlanıyor...");
+        Action sifreEkraniniGetir = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                FormManager.logout();
+                ModalDialog.closeAllModal();
+                inactivityMonitor.start();
+            }
+        };
+
+        inactivityMonitor = new InactivityMonitor(sifreEkraniniGetir);
+        int timeout = settings.getAutoLockTimeoutMinutes();
+        inactivityMonitor.setTimeout(timeout);
 
         DemoPreferences.init();
-
-        inactivityListener = new InactivityListener();
     }
 
-    public void run() {
+    public void run(AppSplashScreen splash) {
         if (running) return;
         running = true;
         logger.info("Servicio başlatılıyor (v{})...", getAppVersion());
 
-        // Açılış yedeği
+        splash.updateProgress(90, "Yedekleme politikaları kontrol ediliyor...");
         runBackupIfNeeded(BackupMode.ON_START, BackupMode.ON_START_AND_EXIT);
-
-        // Zamanlayıcıyı başlat
         BackupScheduler.start();
 
-        // UI Hazırlığı
-        setupUI();
+        splash.updateProgress(95, "Kullanıcı arayüzü çiziliyor...");
 
-        // UI'ı EDT (Event Dispatch Thread) üzerinde başlat
-        EventQueue.invokeLater(this::launchMainUI);
+        // Arayüz işlemlerinin her zaman EDT (Event Dispatch Thread) üzerinde yapılması şarttır.
+        EventQueue.invokeLater(() -> {
+            setupUI();
+            splash.updateProgress(100, "Tamamlandı!");
+
+            // Ana ekranı aç ve Splash'i yok et
+            launchMainUI();
+            splash.dispose();
+        });
     }
 
     private void initSettings() {
@@ -135,7 +163,7 @@ public final class Servicio {
             deviceSettings.save();
 
             // 3. Arka plan işlemlerini durdur
-            if (inactivityListener != null) inactivityListener.stop();
+            if (inactivityMonitor != null) inactivityMonitor.stop();
             BackupScheduler.stop();
 
             // 4. Kapanış yedeği al
@@ -167,7 +195,30 @@ public final class Servicio {
     }
 
     public static void main(String[] args) {
+        // 1. Kilit kontrolü (Uygulamanın 2 kere açılmasını önle)
+        if (!AppLock.acquireLock()) {
+            JOptionPane.showMessageDialog(null,
+                    "Servicio uygulaması şu anda zaten çalışıyor!\nLütfen açık olan pencereyi kontrol edin.",
+                    "Sistem Uyarısı", JOptionPane.WARNING_MESSAGE);
+            System.exit(0);
+        }
         LauncherAccessContext.allow();
-        new Servicio(new File(".")).run();
+
+        // 2. Açılış Ekranını (Splash Screen) hemen göster
+        AppSplashScreen splash = new AppSplashScreen();
+        SwingUtilities.invokeLater(() -> splash.setVisible(true));
+
+        // 3. Ağır işlemleri Arka Plana (Background Thread) at
+        // Böylece işlemler yapılırken Splash Screen'deki bar akıcı şekilde ilerler.
+        new Thread(() -> {
+            try {
+                Servicio app = new Servicio(new File("."), splash);
+                app.run(splash);
+            } catch (Exception e) {
+                logger.error("Başlatma sırasında kritik hata!", e);
+                JOptionPane.showMessageDialog(null, "Uygulama başlatılamadı:\n" + e.getMessage(), "Hata", JOptionPane.ERROR_MESSAGE);
+                System.exit(1);
+            }
+        }).start();
     }
 }

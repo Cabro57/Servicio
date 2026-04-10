@@ -1,37 +1,35 @@
 package tr.cabro.servicio.service;
 
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.database.repository.CustomerRepository;
+import tr.cabro.servicio.database.repository.PartRepository;
 import tr.cabro.servicio.database.repository.ServiceRepository;
+import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.dto.DashboardStats;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.model.ServiceStatus;
+import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.reports.ServiceFinanceRecord;
 import tr.cabro.servicio.reports.ServiceFinanceReport;
 import tr.cabro.servicio.util.Validator;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class RepairService {
 
     private final ServiceRepository repository;
-    private static String DASHBOARD_SQL = null;
+    private final CustomerRepository customerRepo;
 
     public RepairService(ServiceRepository repository) {
         this.repository = repository;
-        loadDashboardSql();
+        this.customerRepo = DatabaseManager.getJdbi().onDemand(CustomerRepository.class);
     }
 
-    public Service save(Service service, boolean update, List<AddedPart> parts) {
+    public CompletableFuture<Service> save(Service service, boolean update) {
         // --- Validasyon ---
         if (Validator.isEmpty(service.getDeviceBrand()) || Validator.isEmpty(service.getDeviceModel())) {
             throw new ValidationException("Cihaz marka ve modeli zorunludur.");
@@ -42,151 +40,198 @@ public class RepairService {
         if (service.getPaid() < 0) throw new ValidationException("Ödenen tutar negatif olamaz.");
 
         // Transactional Kayıt (Repository içindeki @Transaction metodu çağrılır)
-        return repository.saveFullService(service, parts, update);
+        return CompletableFuture.supplyAsync(() -> {
+            if (!update) {
+                int id = repository.insertService(service);
+                service.setId(id);
+            } else {
+                repository.updateService(service);
+            }
+            return service;
+        });
     }
 
-    public void delete(int id) {
+    public CompletableFuture<Void> delete(int id) {
         // Eğer veritabanında ON DELETE CASCADE tanımlı değilse,
         // önce parçaları silmek gerekebilir.
         // repository.deletePartsByServiceId(id);
-        repository.deleteService(id);
+        return CompletableFuture.runAsync(() -> repository.deleteService(id));
     }
 
-    public Optional<Service> get(int id) {
-        return repository.findServiceById(id);
+    public CompletableFuture<Optional<Service>> get(int id) {
+        return CompletableFuture.supplyAsync(() -> {
+            Optional<Service> optService = repository.findById(id);
+            optService.ifPresent(s -> hydrateServices(Collections.singletonList(s)));
+            return optService;
+        });
     }
 
-    public List<Service> getAll() {
-        return repository.findAllServices();
+    public CompletableFuture<List<Service>> getAll() {
+        return CompletableFuture.supplyAsync(() -> hydrateServices(repository.findServices()));
     }
 
-    public List<Service> getAll(int customerId) {
-        return repository.findServicesByCustomerId(customerId);
+    public CompletableFuture<List<Service>> getAll(int customerId) {
+        return CompletableFuture.supplyAsync(() -> hydrateServices(repository.findByCustomerId(customerId)));
     }
 
     // Duruma göre filtreleme
-    public List<Service> getAll(String statusStr) {
-        List<Service> services = getAll();
-
+    public CompletableFuture<List<Service>> getAll(String statusStr) {
         if (statusStr == null || statusStr.isEmpty() || statusStr.equalsIgnoreCase("ALL")) {
-            return services;
+            return getAll();
         }
 
         if (statusStr.equalsIgnoreCase("OPEN")) {
-            return services.stream()
-                    .filter(s -> s.getServiceStatus() != ServiceStatus.DELIVERED && s.getServiceStatus() != ServiceStatus.RETURN)
-                    .collect(Collectors.toList());
+            return CompletableFuture.supplyAsync(() -> {
+                List<ServiceStatus> statuses = Arrays.asList(ServiceStatus.DELIVERED, ServiceStatus.RETURN);
+                return hydrateServices(repository.findByServiceStatusesExcluded(statuses));
+            });
         }
 
-        try {
-            // Gelen string'i (örn: "Tamirde" veya "UNDER_REPAIR") Enum'a çevir
+        return CompletableFuture.supplyAsync(() -> {
             ServiceStatus status = ServiceStatus.of(statusStr);
-            return services.stream()
-                    .filter(s -> s.getServiceStatus() == status)
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            return new ArrayList<>();
+            return hydrateServices(repository.findByServiceStatuses(Collections.singletonList(status)));
+        });
+    }
+
+    public CompletableFuture<Void> setDelivered(int serviceId) {
+
+        return CompletableFuture.runAsync(() -> {
+            Optional<Service> opt = repository.findById(serviceId);
+            if (opt.isPresent()) {
+                Service service = opt.get();
+                service.setServiceStatus(ServiceStatus.DELIVERED);
+                // Teslim tarihi daha önce set edilmemişse şu anı ata
+                if (service.getDeliveryAt() == null) {
+                    service.setDeliveryAt(LocalDateTime.now());
+                }
+                repository.updateService(service);
+            } else {
+                throw new ValidationException("Servis bulunamadı ID: " + serviceId);
+            }
+        });
+
+    }
+
+    public CompletableFuture<List<Service>> search(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            return getAll();
         }
+        return CompletableFuture.supplyAsync(() -> hydrateServices(repository.search("%" + searchTerm.trim() + "%")));
     }
 
     // --- Parça İşlemleri ---
 
-    public void addPart(AddedPart part) {
-        if (part.getServiceId() <= 0) throw new ValidationException("Parça bir servise ait olmalıdır.");
-        repository.insertParts(Collections.singletonList(part));
-    }
+    public CompletableFuture<AddedPart> addServicePart(AddedPart part) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (part.getServiceId() <= 0) throw new ValidationException("Parça eklemek için önce servis kaydedilmiş olmalıdır.");
+            if (part.getAmount() <= 0) throw new ValidationException("Miktar 0 veya negatif olamaz.");
 
-    public void addParts(List<AddedPart> parts) {
-        if (parts == null || parts.isEmpty()) return;
-        repository.insertParts(parts);
-    }
+            // 1. Stok Düşümü (Transaction Mantığı)
+            if (part.isStockTracked() && part.getPartBarcode() != null) {
+                PartRepository partRepo = DatabaseManager.getJdbi().onDemand(PartRepository.class);
 
-    public void removePart(int partId) {
-        repository.deletePart(partId);
-    }
+                // Atomik olarak stoğu düşür. Stok yetersizse 0 döner.
+                int updatedRows = partRepo.decreaseStockAtomically(part.getPartBarcode(), part.getAmount());
 
-    public List<AddedPart> getParts(int serviceId) {
-        return repository.findPartsByServiceId(serviceId);
-    }
-
-    public double getTotalPartsCostForService(int serviceId) {
-        return getParts(serviceId).stream()
-                .mapToDouble(AddedPart::getTotal)
-                .sum();
-    }
-
-    public void setDelivered(int serviceId) {
-        Optional<Service> opt = repository.findServiceById(serviceId);
-        if (opt.isPresent()) {
-            Service service = opt.get();
-            service.setServiceStatus(ServiceStatus.DELIVERED);
-            // Teslim tarihi daha önce set edilmemişse şu anı ata
-            if (service.getDeliveryAt() == null) {
-                service.setDeliveryAt(LocalDateTime.now());
+                if (updatedRows == 0) {
+                    throw new IllegalStateException("Stok yetersiz veya parça bulunamadı: " + part.getName());
+                }
             }
-            repository.updateService(service);
-        } else {
-            throw new ValidationException("Servis bulunamadı ID: " + serviceId);
-        }
+
+            // 2. Stok başarıyla düştüyse (veya manuel bir parçaysa), servise kaydet
+            int addedPartId = repository.insertPart(part);
+            part.setId(addedPartId); // UI tablosuna geri dönecek ID
+
+            return part;
+        });
     }
 
-    public List<Service> search(String searchTerm) {
-        if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            return getAll();
-        }
-        return repository.searchServices("%" + searchTerm.trim() + "%");
+    public CompletableFuture<AddedPart> updateServicePart(AddedPart part) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (part.getId() <= 0) {
+                throw new ValidationException("Güncellenecek parça ID'si bulunamadı.");
+            }
+            if (part.getAmount() <= 0) {
+                throw new ValidationException("Miktar 0 veya negatif olamaz.");
+            }
+
+            // Not: Stok takipli bir ürünün ADETİ sonradan değiştiriliyorsa, eski adet ile yeni adet
+            // arasındaki fark kadar stoktan düşme/artırma yapılması gereken karmaşık bir süreç başlar.
+            // Şimdilik sadece parçanın fiyat, isim vb. bilgilerinin güncellendiğini varsayarak DB'ye yazıyoruz.
+            repository.updatePart(part);
+
+            return part;
+        });
     }
+
+    public CompletableFuture<Void> removeServicePart(AddedPart part) {
+        return CompletableFuture.runAsync(() -> {
+
+            // 1. İade Kontrolü (Sadece stok takipli ise ve kullanıcı "İade Et" dediyse)
+            if (part.isStockTracked() && part.getPartBarcode() != null && part.isReturnToStockOnDelete()) {
+                PartRepository partRepo = DatabaseManager.getJdbi().onDemand(PartRepository.class);
+                partRepo.increaseStockAtomically(part.getPartBarcode(), part.getAmount());
+            }
+
+            // 2. Parçayı servisten sil
+            repository.deletePart(part.getId());
+        });
+    }
+
+    public CompletableFuture<List<AddedPart>> getServiceParts(int serviceId) {
+        return CompletableFuture.supplyAsync(() -> repository.findPartsByServiceId(serviceId));
+    }
+
+    public CompletableFuture<Double> getTotalPartsCostForService(int serviceId) {
+        return CompletableFuture.supplyAsync(() -> repository.calculateTotalPartsCost(serviceId));
+    }
+
 
     // --- Raporlama ---
 
-    public ServiceFinanceReport getDashboardStats() {
-        // SQL dosyası yüklenemediyse boş rapor dön
-        if (DASHBOARD_SQL == null || DASHBOARD_SQL.isEmpty()) {
-            return new ServiceFinanceReport();
-        }
+    public CompletableFuture<ServiceFinanceReport> getFinanceReport() {
+        return CompletableFuture.supplyAsync(() -> {
+            List<ServiceFinanceRecord> records = repository.financeRecords();
 
-        // JDBI Handle ile manuel mapping ve SQL çalıştırma
-        return DatabaseManager.getJdbi().withHandle(handle -> {
             ServiceFinanceReport report = new ServiceFinanceReport();
-
-            handle.createQuery(DASHBOARD_SQL)
-                    .map((rs, ctx) -> {
-                        ServiceFinanceRecord record = new ServiceFinanceRecord();
-                        record.setMonth(rs.getString("month"));
-
-                        // HATA DÜZELTMESİ:
-                        // rs.getObject(..., Double.class) yerine rs.getDouble(...) kullanıyoruz.
-                        // Bu metod null değerler için 0.0 döndürür ve SQLite sürücüsündeki
-                        // "Bad value for type Double" hatasını engeller.
-
-                        record.setServiceCount(rs.getInt("service_count"));
-
-                        record.setServiceChangeRate(rs.getDouble("service_change_rate"));
-                        record.setTotalRevenue(rs.getDouble("total_revenue"));
-                        record.setRevenueChangeRate(rs.getDouble("revenue_change_rate"));
-                        record.setTotalExpense(rs.getDouble("total_expense"));
-                        record.setExpenseChangeRate(rs.getDouble("expense_change_rate"));
-                        record.setTotalProfit(rs.getDouble("total_profit"));
-                        record.setProfitChangeRate(rs.getDouble("profit_change_rate"));
-
-                        return record;
-                    })
-                    .forEach(report::add);
+            records.forEach(report::add);
 
             return report;
         });
     }
 
-    private void loadDashboardSql() {
-        if (DASHBOARD_SQL != null) return;
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("db/queries/service_summary.sql")) {
-            if (in != null) {
-                try (java.util.Scanner scanner = new java.util.Scanner(in, StandardCharsets.UTF_8.name())) {
-                    DASHBOARD_SQL = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
-                }
-            }
-        } catch (IOException e) {
-            Servicio.getLogger().error("SQL dosyası yüklenirken hata: {}", e.getMessage());
+    public CompletableFuture<DashboardStats> getDashboardStats() {
+        return CompletableFuture.supplyAsync(repository::dashboardStats);
+    }
+
+    // --- Helper ---
+    private List<Service> hydrateServices(List<Service> services) {
+        if (services == null || services.isEmpty()) return services;
+
+        List<Integer> serviceIds = services.stream()
+                .map(Service::getId)
+                .collect(Collectors.toList());
+
+        List<Integer> customerIds = services.stream()
+                .map(Service::getCustomerId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 1. Müşterileri TEK SORGUYLA çek
+        Map<Integer, Customer> customerMap = customerRepo.findByIds(customerIds).stream()
+                .collect(Collectors.toMap(Customer::getId, c -> c));
+
+        // 2. Parça maliyetlerini TEK SORGUYLA çek
+        Map<Integer, Double> partsCostMap = repository.getPartsCostsByServiceIds(serviceIds);
+
+        // 3. Servisleri Müşteri ve Parça Maliyetiyle zenginleştir
+        for (Service s : services) {
+            s.setCustomer(customerMap.get(s.getCustomerId()));
+
+            // Eğer o servise ait parça yoksa 0.0 ata
+            s.setTotalPartsCost(partsCostMap.getOrDefault(s.getId(), 0.0));
         }
+
+        return services;
     }
 }

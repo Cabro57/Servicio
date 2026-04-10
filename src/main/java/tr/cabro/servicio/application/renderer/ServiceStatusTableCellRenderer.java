@@ -1,6 +1,6 @@
 package tr.cabro.servicio.application.renderer;
 
-import tr.cabro.servicio.model.ServiceStatus;
+import tr.cabro.servicio.model.enums.ServiceStatus;
 import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
@@ -27,7 +27,6 @@ public class ServiceStatusTableCellRenderer implements TableCellRenderer {
             ServiceStatus status = (ServiceStatus) value;
 
             JLabel label = new JLabel(status.getDisplayName());
-            label.setIcon(status.getIcon());
             label.setHorizontalTextPosition(SwingConstants.RIGHT);
             label.setIconTextGap(8);
 

@@ -7,7 +7,7 @@ import raven.datetime.DatePicker;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
-import tr.cabro.servicio.application.util.SVGIconUIColor;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.PartService;
@@ -34,16 +34,20 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
             return;
         }
 
-        Part part = service.get(barcode);
-
-        if (part != null) {
-            showValidationError(Toast.Type.ERROR, "Bu barkod da bir ürün mevcut.");
-            setData(part);
-            barcode_field.putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_ERROR);
-        } else {
-            barcode_field.putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_SUCCESS);
-            clearForm();
-        }
+        service.get(barcode).thenAccept(part -> {
+            if (part.isPresent()) {
+                SwingUtilities.invokeLater(() -> {
+                    showValidationError(Toast.Type.ERROR, "Bu barkod da bir ürün mevcut.");
+                    setData(part.get());
+                    barcode_field.putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_ERROR);
+                });
+            } else {
+                SwingUtilities.invokeLater(() -> {
+                    barcode_field.putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_SUCCESS);
+                    clearForm();
+                });
+            }
+        });
     }
 
 //    @Override
@@ -177,7 +181,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         barcode_field = new JTextField();
         barcode_field.setHorizontalAlignment(SwingConstants.CENTER);
         barcode_field.addActionListener(e -> handleBarcode(barcode_field.getText().trim()));
-        JButton generate_barcode_button = new JButton(new SVGIconUIColor("icons/barcode.svg", 0.03f, "MenuItem.foreground"));
+        JButton generate_barcode_button = new JButton(new Ikon("icons/barcode.svg", 0.03f, "MenuItem.foreground"));
         generate_barcode_button.setToolTipText("Rastgele barkod üret");
         generate_barcode_button.addActionListener(e -> {
             if (barcode_field.isEditable()) {

@@ -43,11 +43,7 @@ public class PaginationTable<E> extends JPanel {
     private void init() {
         initComponent();
 
-        serviceTable.getColumnModel().getColumn(0).setCellRenderer(new CustomerTableCellRenderer());
-        serviceTable.getColumnModel().getColumn(1).setCellRenderer(new DeviceTableCellRenderer());
-        serviceTable.getColumnModel().getColumn(2).setCellRenderer(new CurrencyTableCellRenderer());
-        serviceTable.getColumnModel().getColumn(3).setCellRenderer(new ServiceStatusTableCellRenderer());
-        serviceTable.getColumnModel().getColumn(4).setCellRenderer(new DateTimeTableCellRenderer());
+        setupTable();
 
         serviceTable.addMouseListener(new MouseAdapter() {
             @Override
@@ -98,23 +94,38 @@ public class PaginationTable<E> extends JPanel {
         menu.show(e.getComponent(), e.getX(), e.getY());
     }
 
-    private void initComponent() {
-        setLayout(new MigLayout("fillx,wrap", "[fill]", "[][fill,grow][]"));
-        putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-
+    private void setupTable() {
         // Sütun tanımları
         List<ColumnDef<Service>> columns = Arrays.asList(
-                new ColumnDef<>("Müşteri", Customer.class, s -> ServiceManager.getCustomerService().get(s.getCustomerId()).orElse(null)),
+                new ColumnDef<>("Müşteri", Customer.class, Service::getCustomer),
                 new ColumnDef<>("Cihaz", String.class, Service::getDevice),
-                new ColumnDef<>("Ücret", Double.class, this::calculateRemainingAmount),
+                new ColumnDef<>("Ücret", Double.class, Service::getRemainingAmount),
                 new ColumnDef<>("Durum", String.class, Service::getServiceStatus),
                 new ColumnDef<>("Kayıt Tarih", LocalDateTime.class, Service::getCreatedAt)
         );
 
         serviceTableModel = new GenericTableModel<>(columns);
-        serviceTable = new JTable(serviceTableModel);
+        serviceTable.setModel(serviceTableModel);
 
-        // table scroll
+        configureTable();
+    }
+
+    private void configureTable() {
+        serviceTable.getColumnModel().getColumn(0).setCellRenderer(new CustomerTableCellRenderer());
+
+        serviceTable.getColumnModel().getColumn(0).setCellRenderer(new CustomerTableCellRenderer());
+        serviceTable.getColumnModel().getColumn(1).setCellRenderer(new DeviceTableCellRenderer());
+        serviceTable.getColumnModel().getColumn(2).setCellRenderer(new CurrencyTableCellRenderer());
+        serviceTable.getColumnModel().getColumn(3).setCellRenderer(new UniversalVisualizableRenderer(SwingConstants.LEFT, 16));
+        serviceTable.getColumnModel().getColumn(4).setCellRenderer(new DateTimeTableCellRenderer());
+    }
+
+    private void initComponent() {
+        setLayout(new MigLayout("fillx,wrap", "[fill]", "[][fill,grow][]"));
+        putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+
+        serviceTable = new JTable();
+
         JScrollPane scrollPane = new JScrollPane(serviceTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         UIHelper.fixNestedScroll(scrollPane);
@@ -133,7 +144,8 @@ public class PaginationTable<E> extends JPanel {
                 "cellFocusColor:$TableHeader.hoverBackground;" +
                 "selectionBackground:$TableHeader.hoverBackground;" +
                 "selectionInactiveBackground:$TableHeader.hoverBackground;" +
-                "selectionForeground:$Table.foreground;");
+                "selectionForeground:$Table.foreground;" +
+                "selectionArc: 25");
         scrollPane.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "" +
                 "trackArc:$ScrollBar.thumbArc;" +
                 "trackInsets:3,3,3,3;" +
@@ -143,7 +155,7 @@ public class PaginationTable<E> extends JPanel {
         add(scrollPane);
 
         // create pagination
-        pagination = new JPagination(11, 1, 1);
+        pagination = new JPagination(10, 1, 1);
 
         JPanel panelPage = new JPanel(new MigLayout("insets 5 15 5 15", "[][]push[]"));
         lbTotalPage = new JLabel("0");
@@ -156,13 +168,6 @@ public class PaginationTable<E> extends JPanel {
         panelPage.add(pagination);
 
         add(panelPage);
-    }
-
-    private double calculateRemainingAmount(Service s) {
-        double labor = s.getLaborCost();
-        double parts = ServiceManager.getRepairService().getTotalPartsCostForService(s.getId());
-        double paid = s.getPaid();
-        return (labor + parts) - paid;
     }
 
     private JTable serviceTable;

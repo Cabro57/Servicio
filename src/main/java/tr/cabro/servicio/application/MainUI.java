@@ -7,6 +7,7 @@ import raven.modal.menu.MyDrawerBuilder;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.manager.UpdateManager;
+import tr.cabro.servicio.model.User;
 
 import javax.swing.*;
 import java.awt.*;
@@ -26,6 +27,8 @@ public class MainUI extends JFrame {
         getRootPane().putClientProperty(FlatClientProperties.FULL_WINDOW_CONTENT, true);
 
         Drawer.installDrawer(this, MyDrawerBuilder.getInstance());
+        User user = new User();
+        MyDrawerBuilder.getInstance().setUser(user);
         FormManager.install(this);
     }
 

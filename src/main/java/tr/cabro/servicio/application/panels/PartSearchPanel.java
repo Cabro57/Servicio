@@ -4,13 +4,14 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
 import tr.cabro.servicio.application.renderer.ProfileTableRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Format;
@@ -25,46 +26,36 @@ public class PartSearchPanel extends JPanel {
     private GenericTableModel<Part> partTableModel;
     private final DefaultComboBoxModel<String> deviceTypeComboBoxModel;
     private TableRowSorter<GenericTableModel<Part>> sorter = new TableRowSorter<>();
+    private PartService partService;
 
     private boolean inStockMode = false;
     private boolean outStockMode = false;
 
     public PartSearchPanel() {
         this.deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
-
+        this.partService = ServiceManager.getPartService();
         init();
     }
 
     private void init() {
         initComponent();
 
-        productTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-
-        searchField.putClientProperty(FlatClientProperties.STYLE, ""
-                + "arc:15;"
-                + "borderWidth:0;"
-                + "focusWidth:0;"
-                + "innerFocusWidth:0;"
-                + "margin:5,20,5,20;"
-                + "background:$Table.background");
-        searchField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ara...");
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icons/search.svg", 0.4f));
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-
         deviceTypeCombo.addActionListener(e -> applyCombinedFilter());
         deviceTypeCombo.setModel(deviceTypeComboBoxModel);
         loadDeviceTypes();
 
         if (productTable != null) {
-            refreshProductTable();
+            refreshTable();
         }
 
         allPartsButton.addActionListener(e -> showAllParts());
         inStockButton.addActionListener(e -> filterInStock());
         outStockButton.addActionListener(e -> filterOutStock());
+
+        setupTable();
     }
 
-    private void refreshProductTable() {
+    private void setupTable() {
         List<ColumnDef<Part>> columns = Arrays.asList(
                 new ColumnDef<>("Barkod", String.class, Part::getBarcode),
                 new ColumnDef<>("Marka", String.class, Part::getBrand),
@@ -75,9 +66,14 @@ public class PartSearchPanel extends JPanel {
                 new ColumnDef<>("Alış Fiyatı", String.class, p -> Format.formatPrice(p.getPurchasePrice())),
                 new ColumnDef<>("Satış Fiyatı", String.class, p -> Format.formatPrice(p.getSalePrice()))
         );
-        partTableModel = new GenericTableModel<>(ServiceManager.getPartService().getAll(), columns);
+
+        partTableModel = new GenericTableModel<>(columns);
         productTable.setModel(partTableModel);
 
+        configureTable();
+    }
+
+    private void configureTable() {
         sorter = new TableRowSorter<>(partTableModel);
         productTable.setRowSorter(sorter);
 
@@ -105,6 +101,12 @@ public class PartSearchPanel extends JPanel {
 
         applySearchFieldListener();
         applyDoubleClickListener();
+    }
+
+    private void refreshTable() {
+        partService.getAll().thenAccept(parts -> {
+            SwingUtilities.invokeLater(() -> partTableModel.setData(parts));
+        });
     }
 
     private void showAllParts() {
@@ -231,6 +233,12 @@ public class PartSearchPanel extends JPanel {
         // Tablo alanı
         productTable = new JTable();
         add(new JScrollPane(productTable), "grow, push");
+
+        productTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+
+        searchField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ara...");
+        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg"));
+        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
     }
 
     private JButton allPartsButton;

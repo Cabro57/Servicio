@@ -5,9 +5,12 @@ import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import raven.modal.system.FormSearch;
 import raven.modal.utils.DemoPreferences;
-import tr.cabro.servicio.forms.FormService;
+import tr.cabro.servicio.application.forms.FormService;
+import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.ServiceManager;
+
+import java.util.Optional;
 
 public class ServiceSearchResult implements ISearchableResult {
 
@@ -24,12 +27,22 @@ public class ServiceSearchResult implements ISearchableResult {
 
     @Override
     public String getDescription() {
-        // Müşteriyi Optional nesnesi olarak çek
-        return ServiceManager.getCustomerService().get(service.getCustomerId())
-                // Eğer müşteri varsa, formatla
-                .map(customer -> String.format("%s adlı müşterinin servisi", customer.getName() + " " + customer.getSurname()))
-                // Eğer Optional boşsa (Müşteri silinmişse veya bulunamazsa) güvenli bir varsayılan değer kullan
-                .orElse("Silinmiş Müşterinin Servisi");
+        try {
+            // join() metodu asenkron işlemin tamamlanmasını bekler ve sonucu döndürür.
+            Optional<Customer> customerOpt = ServiceManager.getCustomerService()
+                    .get(service.getCustomerId())
+                    .join();
+
+            return customerOpt
+                    .map(customer -> String.format("%s %s adlı müşterinin servisi",
+                            customer.getName(),
+                            customer.getSurname()))
+                    .orElse("Silinmiş Müşterinin Servisi");
+
+        } catch (Exception e) {
+            // Veritabanı hatası veya zaman aşımı durumunda güvenli bir dönüş
+            return "Servis Bilgisi Alınamadı";
+        }
     }
 
     @Override

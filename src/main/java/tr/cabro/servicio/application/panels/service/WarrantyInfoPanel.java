@@ -4,7 +4,6 @@ import com.formdev.flatlaf.FlatClientProperties;
 import raven.datetime.DatePicker;
 import raven.datetime.PanelDateOptionLabel;
 import tr.cabro.servicio.application.panels.ServicePanel;
-import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,9 +15,9 @@ public class WarrantyInfoPanel extends ServicePanel {
 
     private DatePicker warrantyDatePicker;
     private DatePicker maintenanceDatePicker;
+    private boolean isInitializing = false;
 
-    public WarrantyInfoPanel(ServiceContext context) {
-        super(context);
+    public WarrantyInfoPanel() {
         init();
     }
 
@@ -31,37 +30,49 @@ public class WarrantyInfoPanel extends ServicePanel {
         warrantyDatePicker.setUsePanelOption(true);
         warrantyDatePicker.setPanelDateOptionLabel(panelDateOptionLabel);
         warrantyDatePicker.setEditor(warranty_period_field);
-        warrantyDatePicker.addDateSelectionListener(d -> updateWarrantyStatus());
+
+        warrantyDatePicker.addDateSelectionListener(d -> {
+            updateWarrantyStatus();
+            notifyDataChanged();
+        });
 
         maintenanceDatePicker = new DatePicker();
         maintenanceDatePicker.setUsePanelOption(true);
         maintenanceDatePicker.setPanelDateOptionLabel(panelDateOptionLabel);
         maintenanceDatePicker.setEditor(maintenance_period_field);
-        maintenanceDatePicker.addDateSelectionListener(d -> updateMaintenanceStatus());
+
+        maintenanceDatePicker.addDateSelectionListener(d -> {
+            updateMaintenanceStatus();
+            notifyDataChanged();
+        });
+    }
+
+    @Override
+    protected void onServiceSet() {
+        if (service == null) return;
+
+        isInitializing = true;
+        try {
+            setWarrantyDate(service.getWarrantyDate());
+            setMaintenanceDate(service.getMaintenanceDate());
+        } finally {
+            isInitializing = false;
+        }
+    }
+
+    private void notifyDataChanged() {
+        if (!isInitializing && getListener() != null) {
+            getListener().onDataChanged();
+        }
     }
 
     private static PanelDateOptionLabel getPanelDateOptionLabel() {
         PanelDateOptionLabel panelDateOptionLabel = new PanelDateOptionLabel();
-
-        panelDateOptionLabel.add("3 Gün", () -> new LocalDate[] {
-                LocalDate.now().plusDays(2)
-        });
-
-        panelDateOptionLabel.add("1 Hafta", () -> new LocalDate[] {
-                LocalDate.now().plusDays(6)
-        });
-
-        panelDateOptionLabel.add("2 Hafta", () -> new LocalDate[] {
-                LocalDate.now().plusDays(13)
-        });
-
-        panelDateOptionLabel.add("1 Ay", () -> new LocalDate[] {
-                LocalDate.now().plusMonths(1).minusDays(1)
-        });
-
-        panelDateOptionLabel.add("3 Ay", () -> new LocalDate[] {
-                LocalDate.now().plusMonths(3).minusDays(1)
-        });
+        panelDateOptionLabel.add("3 Gün", () -> new LocalDate[] { LocalDate.now().plusDays(2) });
+        panelDateOptionLabel.add("1 Hafta", () -> new LocalDate[] { LocalDate.now().plusDays(6) });
+        panelDateOptionLabel.add("2 Hafta", () -> new LocalDate[] { LocalDate.now().plusDays(13) });
+        panelDateOptionLabel.add("1 Ay", () -> new LocalDate[] { LocalDate.now().plusMonths(1).minusDays(1) });
+        panelDateOptionLabel.add("3 Ay", () -> new LocalDate[] { LocalDate.now().plusMonths(3).minusDays(1) });
         return panelDateOptionLabel;
     }
 
@@ -97,11 +108,6 @@ public class WarrantyInfoPanel extends ServicePanel {
         }
     }
 
-    // ----------------------------
-    // Getter / Setter metodları
-    // ----------------------------
-
-
     public LocalDateTime getWarrantyDate() {
         LocalDate date = warrantyDatePicker.getSelectedDate();
         return date != null ? LocalDateTime.of(date, LocalTime.now()) : null;
@@ -111,8 +117,7 @@ public class WarrantyInfoPanel extends ServicePanel {
         if (date != null) {
             warrantyDatePicker.setSelectedDate(date.toLocalDate());
         } else {
-            // Eğer tarih null ise, tarih seçim alanını temizlemek için uygun bir yöntem varsa kullan
-            warrantyDatePicker.clearSelectedDate(); // veya başka bir temizleme metodu yoksa, boş bırakabilirsin
+            warrantyDatePicker.clearSelectedDate();
         }
         updateWarrantyStatus();
     }
@@ -126,7 +131,7 @@ public class WarrantyInfoPanel extends ServicePanel {
         if (date != null) {
             maintenanceDatePicker.setSelectedDate(date.toLocalDate());
         } else {
-            maintenanceDatePicker.clearSelectedDate(); // Varsa
+            maintenanceDatePicker.clearSelectedDate();
         }
         updateMaintenanceStatus();
     }

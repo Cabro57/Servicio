@@ -2,6 +2,7 @@ package tr.cabro.servicio.model;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.jdbi.v3.core.mapper.reflect.ColumnName;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,7 +13,17 @@ public class AddedPart {
     private int id;
 
     private int serviceId; // Hangi servis kaydına ait
-    private String serialNo; // Parça Seri Numarası
+
+    @ColumnName("part_barcode")
+    private String partBarcode; // Stoktaki parçanın gerçek barkodu
+
+    @ColumnName("is_stock_tracked")
+    private boolean stockTracked;
+
+    private transient boolean returnToStockOnDelete;
+
+    @ColumnName("series_no")
+    private String seriesNo; // Parça Seri Numarası
     private String brand; // Ürün Markası
     private String name; // Ürün Adı
     private Integer supplierId; // Tedarikçi
@@ -20,6 +31,8 @@ public class AddedPart {
     private String model; // Ürün uyumlu modelleri
     private int amount; // Parça Adeti
     private double purchasePrice; //Parça Alış Fiyatı
+
+    @ColumnName("sale_price")
     private double sellingPrice; // Parça Satış Fiyatı
 
     private int warrantyPeriod; // Garanti Süresi
@@ -40,6 +53,8 @@ public class AddedPart {
 
     public AddedPart(Part data) {
         this();
+        this.partBarcode = data.getBarcode(); // Asıl referans bağlandı!
+        this.stockTracked = true;
 
         this.brand = data.getBrand();
         this.name = data.getName();

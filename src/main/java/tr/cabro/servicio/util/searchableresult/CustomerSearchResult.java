@@ -5,7 +5,7 @@ import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import raven.modal.system.FormSearch;
 import raven.modal.utils.DemoPreferences;
-import tr.cabro.servicio.forms.FormCustomerDetail;
+import tr.cabro.servicio.application.forms.FormCustomerDetail;
 import tr.cabro.servicio.model.Customer;
 
 public class CustomerSearchResult implements ISearchableResult {

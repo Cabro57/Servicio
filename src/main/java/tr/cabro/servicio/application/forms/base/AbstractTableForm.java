@@ -1,9 +1,10 @@
-package tr.cabro.servicio.forms.base;
+package tr.cabro.servicio.application.forms.base;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.system.Form;
+import tr.cabro.servicio.application.util.Ikon;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -24,14 +25,16 @@ public abstract class AbstractTableForm<T> extends Form {
     protected TableRowSorter<? extends TableModel> sorter;
 
     public AbstractTableForm() {
-        initLayout();
-        styleComponents();
-        attachListeners();
+
     }
 
     @Override
     public void formInit() {
         // Form ilk açıldığında verileri yükle
+        initLayout();
+        styleComponents();
+        attachListeners();
+
         setupTable();
 
         refreshTable();
@@ -79,7 +82,7 @@ public abstract class AbstractTableForm<T> extends Form {
                 "trackArc:999; trackInsets:3,3,3,3; thumbInsets:3,3,3,3; background:$Table.background;");
 
         searchField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ara...");
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icons/search.svg", 0.4f));
+        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 0.7f));
         searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
         searchField.putClientProperty(FlatClientProperties.STYLE,
                 "arc:15; borderWidth:0; focusWidth:0; innerFocusWidth:0; margin:5,20,5,20; background:$Table.background");

@@ -2,21 +2,57 @@ package tr.cabro.servicio.application.panels.service;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.component.FieldPopupEditor;
 import tr.cabro.servicio.application.panels.ServicePanel;
-import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 public class FaultProcessInfoPanel extends ServicePanel {
 
-    public FaultProcessInfoPanel(ServiceContext context) {
-        super(context);
+    // Veri yüklenirken sahte tetiklemeleri engellemek için
+    private boolean isInitializing = false;
+
+    public FaultProcessInfoPanel() {
         init();
     }
 
     private void init() {
         initComponent();
+        addListeners();
+    }
+
+    @Override
+    protected void onServiceSet() {
+        if (service == null) return;
+
+        isInitializing = true;
+        try {
+            reported_fault_field.setText(service.getReportedFault() != null ? service.getReportedFault() : "");
+            detected_fault_field.setText(service.getDetectedFault() != null ? service.getDetectedFault() : "");
+            action_taken_field.setText(service.getActionTaken() != null ? service.getActionTaken() : "");
+        } finally {
+            isInitializing = false;
+        }
+    }
+
+    private void addListeners() {
+        // Metin kutularında klavye ile yapılan her değişikliği dinle
+        DocumentListener documentListener = new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { notifyDataChanged(); }
+            @Override public void removeUpdate(DocumentEvent e) { notifyDataChanged(); }
+            @Override public void changedUpdate(DocumentEvent e) { notifyDataChanged(); }
+        };
+
+        reported_fault_field.getDocument().addDocumentListener(documentListener);
+        detected_fault_field.getDocument().addDocumentListener(documentListener);
+        action_taken_field.getDocument().addDocumentListener(documentListener);
+    }
+
+    private void notifyDataChanged() {
+        if (!isInitializing && getListener() != null) {
+            getListener().onDataChanged(); // Ana formdaki 'Güncelle' butonunu uyandır
+        }
     }
 
     public void appendAction(String newAction) {
@@ -30,6 +66,21 @@ public class FaultProcessInfoPanel extends ServicePanel {
         } else {
             action_taken_field.setText(current + ", " + newAction.trim());
         }
+        // Not: setText metodu DocumentListener'ı otomatik tetikleyeceği için
+        // notifyDataChanged() dememize gerek yok, kendi kendine çalışır.
+    }
+
+    // --- FormService'in verileri toplaması (collectForm) için güvenli Getter'lar ---
+    public String getReportedFault() {
+        return reported_fault_field.getText().trim();
+    }
+
+    public String getDetectedFault() {
+        return detected_fault_field.getText().trim();
+    }
+
+    public String getActionTaken() {
+        return action_taken_field.getText().trim();
     }
 
     private void initComponent() {
@@ -42,14 +93,10 @@ public class FaultProcessInfoPanel extends ServicePanel {
 
         customer_complaint_label = new JLabel("Müşteri Şikayeti:");
         reported_fault_field = new JTextField();
-        FieldPopupEditor reportedPopupEditor = new FieldPopupEditor(reported_fault_field);
-        reported_fault_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, reportedPopupEditor.getTriggerButton());
         reported_fault_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
         detected_fault_label = new JLabel("Tespit:");
         detected_fault_field = new JTextField();
-        FieldPopupEditor detectedPopupEditor = new FieldPopupEditor(detected_fault_field);
-        detected_fault_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, detectedPopupEditor.getTriggerButton());
         detected_fault_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
         action_taken_label = new JLabel("Yapılan İşlem:");
@@ -59,8 +106,8 @@ public class FaultProcessInfoPanel extends ServicePanel {
         action_taken_button = new JButton("Seç");
 
         add(title, "span 3, align left, gapbottom 10");
-        add(customer_complaint_label);
-        add(reported_fault_field, "growx, span 2");
+//        add(customer_complaint_label);
+//        add(reported_fault_field, "growx, span 2");
         add(detected_fault_label);
         add(detected_fault_field, "growx, span 2");
         add(action_taken_label);
@@ -68,11 +115,13 @@ public class FaultProcessInfoPanel extends ServicePanel {
         add(action_taken_button, "align right");
     }
 
-    JLabel title;
+    private JLabel title;
+    private JLabel customer_complaint_label;
+    private JLabel detected_fault_label;
+    private JLabel action_taken_label;
 
-    JLabel customer_complaint_label;
-    JLabel detected_fault_label;
-    JLabel action_taken_label;
+    // UI Bileşenleri (Getter'lar eklendiği için bunları private yapmak daha güvenli olurdu ama
+    // FormService içinden butona EventListener eklediğin için şimdilik public/package-private kalıyor).
     public JTextField detected_fault_field;
     public JTextField reported_fault_field;
     public JTextField action_taken_field;

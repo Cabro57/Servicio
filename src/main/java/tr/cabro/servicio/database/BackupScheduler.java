@@ -2,7 +2,7 @@ package tr.cabro.servicio.database;
 
 import lombok.Getter;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.model.BackupMode;
+import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.settings.Settings;
 
 import java.time.DayOfWeek;

@@ -1,21 +1,17 @@
 package tr.cabro.servicio.application.component;
 
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.util.Ikon;
 
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-/**
- *
- * @author RAVEN
- */
-public class PanelAction extends javax.swing.JPanel {
+public class PanelAction extends JPanel {
 
-    /**
-     * Creates new form PanelAction
-     */
+
     public PanelAction() {
         initComponents();
     }
@@ -41,17 +37,35 @@ public class PanelAction extends javax.swing.JPanel {
         });
     }
 
+    @Override
+    public void setBackground(Color bg) {
+        super.setBackground(bg);
+
+        if (cmdEdit != null) {
+            cmdEdit.setBackground(bg);
+        }
+        if (cmdDelete != null) {
+            cmdDelete.setBackground(bg);
+        }
+        if (cmdView != null) {
+            cmdView.setBackground(bg);
+        }
+    }
+
     private void initComponents() {
-        setLayout(new MigLayout("insets 0, fill, align center", "[]0[]0[]", "[]"));
+        setLayout(new MigLayout("insets 0, fill", "[grow, center][grow, center][grow, center]", "[center]"));
 
-        cmdEdit = new ActionButton(new FlatSVGIcon("icons/edit.svg", 0.4f));
-        cmdDelete = new ActionButton(new FlatSVGIcon("icons/delete.svg", 0.4f));
-        cmdView = new ActionButton(new FlatSVGIcon("icons/view.svg", 0.4f));
+        Color editColor = new Color(253, 126, 20);   // Şık bir Turuncu
+        Color deleteColor = new Color(220, 53, 69); // Şık bir Kırmızı
+        Color viewColor = new Color(13, 110, 253);  // Şık bir Mavi
 
-        add(cmdEdit, "split 3");
-        add(cmdDelete);
+        cmdEdit = new ActionButton(new Ikon("icons/pencil.svg", 0.7f), editColor);
+        cmdDelete = new ActionButton(new Ikon("icons/trash-2.svg", 0.7f), deleteColor);
+        cmdView = new ActionButton(new Ikon("icons/eye.svg", 0.7f), viewColor);
+
         add(cmdView);
-
+        add(cmdEdit);
+        add(cmdDelete);
     }
 
     private ActionButton cmdDelete;

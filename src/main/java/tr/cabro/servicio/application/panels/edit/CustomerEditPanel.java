@@ -5,7 +5,7 @@ import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.renderer.CustomerTypeRenderer;
 import tr.cabro.servicio.component.PhoneField;
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.CustomerType;
+import tr.cabro.servicio.model.enums.CustomerType;
 
 import javax.swing.*;
 

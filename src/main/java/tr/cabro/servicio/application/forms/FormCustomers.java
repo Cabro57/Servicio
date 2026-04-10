@@ -1,4 +1,4 @@
-package tr.cabro.servicio.forms;
+package tr.cabro.servicio.application.forms;
 
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
@@ -10,14 +10,14 @@ import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.renderer.*;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
-import tr.cabro.servicio.forms.base.AbstractTableForm;
+import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -67,16 +67,6 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                                     });
                                     return null;
                                 });
-
-                                try {
-                                    updated.setCreatedAt(LocalDateTime.now());
-                                    customerService.save(updated, false);
-
-
-
-                                } catch (Exception e) {
-
-                                }
                             }
                         })
                 , id);
@@ -94,6 +84,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
             Toast.show(this, Toast.Type.INFO, "Düzenlemek için sadece 1 kişi seçin.");
             return;
         }
+
 
         final String id = "CustomerEdit";
         Customer customer = selected.get(0);
@@ -176,7 +167,7 @@ public class FormCustomers extends AbstractTableForm<Customer> {
                 new ColumnDef<>("Kimlik No.", String.class, Customer::getIdNo),
                 new ColumnDef<>("Adres", String.class, Customer::getAddress),
                 new ColumnDef<>("Telefon 1", String.class, c -> Format.formatPhoneNumber(c.getPhoneNumber1())),
-                new ColumnDef<>("Tip", String.class, Customer::getType),
+                new ColumnDef<>("Tip", CustomerType.class, Customer::getType),
                 new ColumnDef<>("Kayıt Tarihi", String.class, c -> Format.formatDate(c.getCreatedAt()))
         );
 
@@ -214,16 +205,12 @@ public class FormCustomers extends AbstractTableForm<Customer> {
         };
 
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-        if (table.getColumnCount() > 0) {
-            table.getColumnModel().getColumn(0).setCellRenderer(new AlignedRenderer(table, 0, SwingConstants.CENTER));
-            table.getColumnModel().getColumn(0).setMaxWidth(40);
+        table.getColumnModel().getColumn(0).setCellRenderer(new AlignedRenderer(table, 0, SwingConstants.CENTER));
+        table.getColumnModel().getColumn(0).setMaxWidth(40);
 
-            table.getColumnModel().getColumn(1).setCellRenderer(new ProfileTableRenderer(table));
-            table.getColumnModel().getColumn(1).setPreferredWidth(150);
+        table.getColumnModel().getColumn(1).setCellRenderer(new ProfileTableRenderer(table));
+        table.getColumnModel().getColumn(1).setPreferredWidth(150);
 
-            if (table.getColumnCount() > 6) {
-                table.getColumnModel().getColumn(6).setCellRenderer(new CustomerTypeTableRenderer());
-            }
-        }
+        table.getColumnModel().getColumn(6).setCellRenderer(new UniversalVisualizableRenderer(SwingConstants.LEFT, 16));
     }
 }

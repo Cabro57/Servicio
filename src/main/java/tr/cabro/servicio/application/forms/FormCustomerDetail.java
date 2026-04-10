@@ -1,4 +1,4 @@
-package tr.cabro.servicio.forms;
+package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
@@ -13,12 +13,10 @@ import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
-import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
-import tr.cabro.servicio.application.renderer.DateTimeTableCellRenderer;
-import tr.cabro.servicio.application.renderer.ServiceStatusTableCellRenderer;
-import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
+import tr.cabro.servicio.application.renderer.*;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.component.ProfileCard;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
@@ -157,8 +155,8 @@ public class FormCustomerDetail extends Form {
 
         JPanel actions = new JPanel(new MigLayout("insets 0"));
 
-        JButton btnEdit = new JButton("Düzenle", new FlatSVGIcon("icons/edit.svg", 0.4f));
-        JButton btnDelete = new JButton("Sil", new FlatSVGIcon("icons/delete.svg", 0.4f));
+        JButton btnEdit = new JButton("Düzenle", new Ikon("icons/user-pen.svg", 0.7f));
+        JButton btnDelete = new JButton("Sil", new Ikon("icons/user-minus.svg", 0.7f));
 
         btnEdit.addActionListener(e -> onEdit());
         btnDelete.addActionListener(e -> onDelete());
@@ -213,15 +211,15 @@ public class FormCustomerDetail extends Form {
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, alignments));
 
         table.getColumnModel().getColumn(2).setCellRenderer(new CurrencyTableCellRenderer());
-        table.getColumnModel().getColumn(3).setCellRenderer(new ServiceStatusTableCellRenderer());
+        table.getColumnModel().getColumn(3).setCellRenderer(new UniversalVisualizableRenderer());
         table.getColumnModel().getColumn(4).setCellRenderer(new DateTimeTableCellRenderer());
 
         // Sütun Genişlikleri
         table.getColumnModel().getColumn(0).setMaxWidth(50); // ID
         table.getColumnModel().getColumn(2).setPreferredWidth(100); // Ücret
         table.getColumnModel().getColumn(2).setMaxWidth(120);
-        table.getColumnModel().getColumn(3).setPreferredWidth(120); // Durum
-        table.getColumnModel().getColumn(3).setMaxWidth(150);
+        table.getColumnModel().getColumn(3).setPreferredWidth(180); // Durum
+        table.getColumnModel().getColumn(3).setMaxWidth(200);
         table.getColumnModel().getColumn(4).setPreferredWidth(100); // Tarih
         table.getColumnModel().getColumn(4).setMaxWidth(120);
 

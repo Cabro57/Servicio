@@ -2,13 +2,13 @@ package raven.modal.system;
 
 import raven.modal.ModalDialog;
 import raven.modal.component.EmptyModalBorder;
-import raven.modal.component.FormSearchPanel;
 import raven.modal.menu.MyDrawerBuilder;
 import raven.modal.utils.SystemForm;
 import raven.modal.drawer.item.Item;
 import raven.modal.drawer.item.MenuItem;
 import raven.modal.option.Location;
 import raven.modal.option.Option;
+import tr.cabro.servicio.application.component.FormSearchPanel;
 
 import javax.swing.*;
 import java.awt.*;

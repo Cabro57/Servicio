@@ -2,16 +2,16 @@ package raven.modal.menu;
 
 import raven.modal.Drawer;
 import raven.modal.drawer.menu.MenuValidation;
-import raven.modal.model.ModelUser;
 import raven.modal.system.Form;
+import tr.cabro.servicio.model.User;
 
 public class MyMenuValidation extends MenuValidation {
 
-    public static void setUser(ModelUser user) {
+    public static void setUser(User user) {
         MyMenuValidation.user = user;
     }
 
-    public static ModelUser user;
+    public static User user;
 
     @Override
     public boolean menuValidation(int[] index) {
@@ -42,18 +42,13 @@ public class MyMenuValidation extends MenuValidation {
         if (user == null) {
             return false;
         }
-        if (user.getRole() == ModelUser.Role.ADMIN) {
-            return true;
-        }
 
-        boolean status
-                // `Modal`
-                = checkMenu(index, new int[]{2, 0})
-                // `Components`->`Toast`
-                && checkMenu(index, new int[]{2, 1})
-                // `Forms`->`Responsive Layout`
-                && checkMenu(index, new int[]{1, 2});
+        // `Modal`
 
-        return status;
+        return checkMenu(index, new int[]{2, 0})
+        // `Components`->`Toast`
+        && checkMenu(index, new int[]{2, 1})
+        // `Forms`->`Responsive Layout`
+        && checkMenu(index, new int[]{1, 2});
     }
 }

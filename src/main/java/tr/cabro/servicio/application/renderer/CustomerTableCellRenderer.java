@@ -1,7 +1,9 @@
 package tr.cabro.servicio.application.renderer;
 
+import tr.cabro.servicio.application.ui.IconManager;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.CustomerType;
+import tr.cabro.servicio.model.enums.CustomerType;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -19,10 +21,12 @@ public class CustomerTableCellRenderer extends DefaultTableCellRenderer {
 
             // GÜVENLİK ÖNLEMİ: Type null ise varsayılan ikonu (NORMAL) kullan veya boş geç
             if (ct.getType() != null) {
-                label.setIcon(ct.getType().getIcon());
+                CustomerType type = CustomerType.valueOf(ct.getType().name());
+                IconManager.getIcon(type.getIconPath(), 16);
+                label.setIcon(new Ikon(ct.getType().getIconPath()));
             } else {
+                label.setIcon(new Ikon(CustomerType.NORMAL.getIconPath()));
                 // Veri hatası varsa varsayılan olarak NORMAL kabul et
-                label.setIcon(CustomerType.NORMAL.getIcon());
             }
 
             label.setHorizontalTextPosition(SwingConstants.RIGHT);

@@ -4,14 +4,11 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.icons.FlatMenuArrowIcon;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.Drawer;
-import raven.modal.ModalDialog;
 import raven.modal.menu.MyMenuValidation;
 import raven.modal.system.Form;
-import raven.modal.system.FormSearch;
 import raven.modal.utils.DemoPreferences;
 import raven.modal.utils.SystemForm;
-import tr.cabro.servicio.application.util.SVGIconUIColor;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.service.CustomerService;
@@ -56,7 +53,7 @@ public class FormSearchPanel extends JPanel {
         textSearch = new JTextField();
         panelResult = new PanelResult();
         textSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ara...");
-        textSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new FlatSVGIcon("icons/search.svg", 0.4f));
+        textSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/user.svg"));
         textSearch.putClientProperty(FlatClientProperties.STYLE, "" +
                 "border:3,3,3,3;" +
                 "background:null;" +
@@ -171,19 +168,19 @@ public class FormSearchPanel extends JPanel {
                     }
                 }
 
-                RepairService repairService = ServiceManager.getRepairService();
-                List<Service> services = repairService.search(st);
-                for (Service service : services) {
-                    if (isCancelled()) return null;
-                    publish(new ServiceSearchResult(service));
-                }
+//                RepairService repairService = ServiceManager.getRepairService();
+//                List<Service> services = repairService.search(st);
+//                for (Service service : services) {
+//                    if (isCancelled()) return null;
+//                    publish(new ServiceSearchResult(service));
+//                }
 
-                CustomerService customerService = ServiceManager.getCustomerService();
-                List<Customer> customers = customerService.search(st);
-                for (Customer customer : customers) {
-                    if (isCancelled()) return null;
-                    publish(new CustomerSearchResult(customer));
-                }
+//                CustomerService customerService = ServiceManager.getCustomerService();
+//                List<Customer> customers = customerService.search(st);
+//                for (Customer customer : customers) {
+//                    if (isCancelled()) return null;
+//                    publish(new CustomerSearchResult(customer));
+//                }
 
                 // 2. VERİTABANINI ARA (Yavaş, Asenkron)
                 // ÖNEMLİ: Kendi veritabanı servislerinizi burada çağırın
@@ -341,18 +338,18 @@ public class FormSearchPanel extends JPanel {
                         list.add(item);
                     }
                 }
-            } else if (sp[0].equals("SERVICE")) {
-                Service service = ServiceManager.getRepairService().get(Integer.parseInt(sp[1])).get();
-                ServiceSearchResult result = new ServiceSearchResult(service);
-                Item item = new Item(result, true, favorite);
-
-                list.add(item);
-            } else if (sp[0].equals("CUSTOMER")) {
-                Customer customer = ServiceManager.getCustomerService().get(Integer.parseInt(sp[1])).get();
-                CustomerSearchResult result = new CustomerSearchResult(customer);
-                Item item = new Item(result, true, favorite);
-
-                list.add(item);
+//            } else if (sp[0].equals("SERVICE")) {
+//                Service service = ServiceManager.getRepairService().get(Integer.parseInt(sp[1])).get();
+//                ServiceSearchResult result = new ServiceSearchResult(service);
+//                Item item = new Item(result, true, favorite);
+//
+//                list.add(item);
+//            } else if (sp[0].equals("CUSTOMER")) {
+//                //Customer customer = ServiceManager.getCustomerService().get(Integer.parseInt(sp[1])).get();
+//                CustomerSearchResult result = new CustomerSearchResult(customer);
+//                Item item = new Item(result, true, favorite);
+//
+//                list.add(item);
             }
 
 
@@ -506,7 +503,7 @@ public class FormSearchPanel extends JPanel {
                 JButton cmdFavorite = createButton("favorite", "favorite.svg", 0.4f, "Component.accentColor", 0.9f);
                 panel.add(cmdFavorite);
             } else {
-                JLabel label = new JLabel(new SVGIconUIColor("icons/favorite_filled.svg", 0.4f, "Component.accentColor", 0.8f));
+                JLabel label = new JLabel(new Ikon("icons/favorite_filled.svg", 0.4f, "Component.accentColor", 0.8f));
                 label.putClientProperty(FlatClientProperties.STYLE, "" +
                         "border:3,3,3,3;");
                 panel.add(label);
@@ -517,7 +514,7 @@ public class FormSearchPanel extends JPanel {
         }
 
         private JButton createButton(String name, String icon, float scale, String hoverKey, float alpha) {
-            SVGIconUIColor svgIcon = new SVGIconUIColor("icons/" + icon, scale, "Label.disabledForeground", alpha);
+            Ikon svgIcon = new Ikon("icons/" + icon, scale, "Label.disabledForeground", alpha);
             JButton button = new JButton(svgIcon);
             button.setName(name);
             button.setFocusable(false);

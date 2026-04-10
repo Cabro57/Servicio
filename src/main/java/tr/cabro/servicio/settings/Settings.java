@@ -5,7 +5,7 @@ import eu.okaeri.configs.annotation.Variable;
 import lombok.Getter;
 import lombok.Setter;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.model.BackupMode;
+import tr.cabro.servicio.model.enums.BackupMode;
 
 
 @Getter
@@ -16,6 +16,9 @@ public class Settings extends OkaeriConfig {
     private boolean full_size = false;
     private boolean deviceMigrated = false;
     private boolean skipExitConfirmation = false;
+    private boolean isFirstLaunch = false;
+
+    private int autoLockTimeoutMinutes = 5;
 
     private BackupSettings backup = new BackupSettings();
 

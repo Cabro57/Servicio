@@ -2,11 +2,13 @@ package tr.cabro.servicio.application.panels.setting;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
+import com.formdev.flatlaf.util.SystemFileChooser;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.database.BackupScheduler;
 import tr.cabro.servicio.database.DatabaseManager;
-import tr.cabro.servicio.model.BackupMode;
+import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.settings.Settings;
 
 import javax.swing.*;
@@ -29,7 +31,7 @@ public class SettingsDatabasePanel extends JPanel {
         initComponent();
 
         // === Klasör seçici ===
-        JButton chooser_folder_button = new JButton(new FlatSVGIcon("icons/folder.svg"));
+        JButton chooser_folder_button = new JButton(new Ikon("icons/folder-search.svg", 0.7f));
         chooser_folder_button.addActionListener(e -> onFolderChooser());
 
         folder_path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooser_folder_button);
@@ -124,9 +126,9 @@ public class SettingsDatabasePanel extends JPanel {
     }
 
     private void onFolderChooser() {
-        JFileChooser chooser = new JFileChooser(settings.getBackup().getPath());
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+        SystemFileChooser chooser = new SystemFileChooser (settings.getBackup().getPath());
+        chooser.setFileSelectionMode(SystemFileChooser.DIRECTORIES_ONLY);
+        if (chooser.showOpenDialog(this) == SystemFileChooser.APPROVE_OPTION) {
             String path = chooser.getSelectedFile().getAbsolutePath();
             folder_path_field.setText(path);
             settings.getBackup().setPath(path);

@@ -1,4 +1,4 @@
-package tr.cabro.servicio.forms;
+package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;

@@ -4,18 +4,240 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü.">
-      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/AuthManager.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/ConfigManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/data_source_mapping.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/sqldialects.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/AppSplashScreen.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/AsyncCustomerComboBox.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/Badge.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/CustomerCellRenderer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/EmbeddedComboBox.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/FormSearchPanel.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/base/Form.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/example/ServiceRecordsPanel.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/example/StatCard.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/PinPanel.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/SetupPanel.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/QuickIntakePanel.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/MultiLineTableCellRenderer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/UniversalVisualizableRenderer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/ui/IconManager.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/UserRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/User.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/contract/Visualizable.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/dto/DashboardStats.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/enums/BadgeColor.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/enums/CustomerType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/UserService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/AppLock.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/db/migration/V6__add_stock_tracking_to_added_parts.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/icons/user-check.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/icons/user-cog.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/icons/user-minus.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/icons/user-pen.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/icons/user-plus.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/icons/user-search.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/icons/user.svg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/tr/cabro/servicio/database/repository/ServiceRepository/dashboardStats.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/testMain.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/tr/cabro/servicio/application/SplashScreenTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/auth/Login.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/auth/Login.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/auth/Login.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/component/FormSearchButton.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/component/FormSearchButton.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/component/FormSearchPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/component/FormSearchPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/menu/MyDrawerBuilder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/menu/MyDrawerBuilder.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/menu/MyMenuValidation.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/menu/MyMenuValidation.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/system/FormManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/system/FormManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/system/FormSearch.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/system/FormSearch.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/MainUI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/MainUI.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/UpdateManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/ActionButton.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/ActionButton.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/PanelAction.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/PanelAction.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/SearchField.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/SearchField.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/ServicePopup.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/ServicePopup.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/context/ServiceContext.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/editors/ActionButtonEditor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/editors/ActionButtonEditor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/InactivityListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/InactivityMonitor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/ServiceEditListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/ServiceEditListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/AuthManager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/CustomerInfoPanel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/PartSearchPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/PartSearchPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/SearchCustomerPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/SearchCustomerPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ServicePanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ServicePanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/CustomerEditPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/CustomerEditPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/PartEditPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/PartEditPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/ServicePartEditPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/ServicePartEditPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/CustomerInfoPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/CustomerInfoPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/DeviceInfoPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/DeviceInfoPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/FaultProcessInfoPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/FaultProcessInfoPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/PartsNotesInfoPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/PartsNotesInfoPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/PriceInfoPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/PriceInfoPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/StatusInfoPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/StatusInfoPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/WarrantyInfoPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/WarrantyInfoPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsDatabasePanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsDatabasePanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsMainPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsMainPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/ActionButtonRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/ActionButtonRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CurrencyTableCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CurrencyTableCellRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CustomerTableCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CustomerTableCellRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CustomerTypeRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CustomerTypeRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CustomerTypeTableRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CustomerTypeTableRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/PaymentTypeRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/PaymentTypeRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/ServiceStatusTableCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/ServiceStatusTableCellRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/CustomerServiceRecordTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/CustomerTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/GenericTableModel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/GenericTableModel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/OpenServiceTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/PartTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/ProcessEditTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/ProcessTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/SearchCustomerTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/SearchPartTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/ServiceListTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/ServicePartTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/tablemodal/SupplierTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/util/SVGIconUIColor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/util/Ikon.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/component/PaginationTable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/component/PaginationTable.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/BackupScheduler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/BackupScheduler.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/DatabaseManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/DatabaseManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/DeviceOperationManagementUI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/DeviceOperationManagementUI.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/CustomerRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/CustomerRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/PartRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/PartRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/FormCustomerDetail.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormCustomerDetail.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/FormCustomers.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormCustomers.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/FormDashboard.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormDashboard.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/FormParts.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormParts.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/FormService.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/FormServices.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormServices.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/FormSettings.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormSettings.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/FormSuppliers.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormSuppliers.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/forms/base/AbstractTableForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/base/AbstractTableForm.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/AddedPart.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/AddedPart.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/BackupMode.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/enums/BackupMode.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/Customer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/Customer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/CustomerType.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/PaymentType.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/enums/PaymentType.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/Service.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/Service.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/ServiceStatus.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/enums/ServiceStatus.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/CustomerService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/CustomerService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/PartService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/PartService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/RepairService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/RepairService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/ServiceManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/ServiceManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/settings/Settings.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/settings/Settings.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/searchableresult/CustomerSearchResult.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/searchableresult/CustomerSearchResult.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/searchableresult/ServiceSearchResult.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/searchableresult/ServiceSearchResult.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/App.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/MainUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/Customer.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/CustomerManagementUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/CustomerTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/Customers.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/PaymentTransaction.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/PaymentTransactionUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/PaymentTransactions.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/customermanagementui.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/customer/paymenttransactionui.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/AddedPartEditUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/DeviceInfoManagementUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/DeviceInfoTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/DeviceOperationManagementUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/DeviceOperationManagmentUI.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/ServiceRecord.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/ServiceRecords.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/addedpart/AddedPart.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/addedpart/AddedPartTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/addedpart/AddedParts.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/addedparteditui.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/device/deviceinfomanagementui.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/devicepart/DevicePart.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/devicepart/DevicePartManagementUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/devicepart/DevicePartTableModel.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/devicepart/DeviceParts.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/devicepart/devicepartmanagementui.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/mainui.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/settings/Manager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/settings/SettingsUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/settings/Theme.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/settings/settingsui.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/util/ChooserTextField.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/util/CsvManager.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/util/ListDeleteUpdateUI.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/util/StorageFile.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/technicalserviceapp/util/listdeleteupdateui.form" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/background.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/add.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/cancel.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/customer.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/delete.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/device_part.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/devices.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/edit.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/folder.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/more.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/operation.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/payment.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/reload.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/search.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/service.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icon/settings.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/about.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/add.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/all-service.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/another_service.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/attention.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/barcode.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/business.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/cancel.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/card.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/cash.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/clear.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/customer.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/customer_list.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/delete.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/delivered.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/device_part.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/devices.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/edit.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/enter.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/esnaf.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/favorite.svg" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/icons/favorite.svg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/favorite_filled.svg" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/icons/favorite_filled.svg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/folder.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/git.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/java.svg" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/icons/java.svg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/lira-symbol.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/menu.svg" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/icons/menu.svg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/more.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/new_service.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/not_work.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/ok.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/on_account.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/operation.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/part_edit.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/payment.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/problematic.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/ready.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/redo.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/refresh.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/reload.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/repair.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/resize-full.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/resize-min.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/return.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/search.svg" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/icons/search.svg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/second_hand_device.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/service.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/settings.svg" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/icons/settings.svg" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/transfer.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/under_repair.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/undo.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/view.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/icons/waiting_for_part.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/settings.json" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -25,6 +247,7 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Enum" />
         <option value="Class" />
       </list>
     </option>
@@ -59,19 +282,23 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "Application.Servicio.executor": "Run",
+    "Application.App.executor": "Run",
+    "Application.Servicio.executor": "Debug",
+    "Application.SplashScreenTest.executor": "Run",
+    "Application.testMain.executor": "Run",
     "Maven.Servicio [clean,package,-U].executor": "Run",
     "Maven.Servicio [clean,package].executor": "Run",
     "Maven.Servicio.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
     "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "git-widget-placeholder": "master",
     "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Projelerim/Servicio",
+    "last_opened_file_path": "C:/Projelerim/Servicio/src/main/resources",
     "onboarding.tips.debug.path": "C:/Projelerim/Servicio/src/main/java/org/example/Main.java",
-    "project.structure.last.edited": "SDKs",
+    "project.structure.last.edited": "Project",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.30229884",
     "settings.editor.selected.configurable": "preferences.pluginManager"
@@ -84,7 +311,20 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Projelerim\Servicio\src\main\resources" />
+      <recent name="C:\Projelerim\Servicio\src\main\resources\icons" />
       <recent name="C:\Projelerim\Servicio" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Projelerim\Servicio\src\main\resources\tr\cabro\servicio\database\repository\ServiceRepository" />
+      <recent name="C:\Projelerim\Servicio\src\main\resources\tr\cabro\servicio\database\repository" />
+      <recent name="C:\Projelerim\Servicio\src\main\resources\icons" />
+    </key>
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="tr.cabro.servicio.application.forms" />
+      <recent name="tr.cabro.servicio.application.component" />
+      <recent name="tr.cabro.servicio.forms.base" />
+      <recent name="tr.cabro.servicio.auth" />
     </key>
   </component>
   <component name="RunAnythingCache">
@@ -93,7 +333,7 @@
       <command value="mvn clean package" />
     </option>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Application.Servicio">
     <configuration name="Servicio" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
       <option name="MAIN_CLASS_NAME" value="tr.cabro.servicio.Servicio" />
       <module name="Servicio" />
@@ -107,9 +347,31 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration name="SplashScreenTest" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="tr.cabro.servicio.application.SplashScreenTest" />
+      <module name="Servicio" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="tr.cabro.servicio.application.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="testMain" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="testMain" />
+      <module name="Servicio" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <recent_temporary>
       <list>
         <item itemvalue="Application.Servicio" />
+        <item itemvalue="Application.testMain" />
+        <item itemvalue="Application.SplashScreenTest" />
       </list>
     </recent_temporary>
   </component>

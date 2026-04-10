@@ -1,4 +1,4 @@
-package tr.cabro.servicio.model;
+package tr.cabro.servicio.model.enums;
 
 import lombok.Getter;
 

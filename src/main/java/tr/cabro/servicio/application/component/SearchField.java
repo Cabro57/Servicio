@@ -1,14 +1,14 @@
 package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import tr.cabro.servicio.application.util.SVGIconUIColor;
+import tr.cabro.servicio.application.util.Ikon;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class SearchField extends JTextField {
+public class SearchField<T> extends JTextField {
 
     private final JButton enter;
 
@@ -23,7 +23,7 @@ public class SearchField extends JTextField {
         putClientProperty(FlatClientProperties.STYLE_CLASS, "searchField");
         putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
-        enter.setIcon(new SVGIconUIColor("icons/enter.svg", 0.04f, "TextField.foreground"));
+        enter.setIcon(new Ikon("icons/enter.svg", 0.04f, "TextField.foreground"));
         enter.setFocusable(false);
 
         JToolBar toolBar = new JToolBar();

@@ -1,4 +1,4 @@
-package tr.cabro.servicio.forms;
+package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
@@ -52,7 +52,7 @@ public class FormDashboard extends Form {
     private void loadData() {
         // load data card
         RepairService repairService = ServiceManager.getRepairService();
-        repairService.getDashboardStats().thenAccept(report -> {
+        repairService.getFinanceReport().thenAccept(report -> {
             ServiceFinanceRecord current = report.getLatestMonth();
             if (current == null) return;
 

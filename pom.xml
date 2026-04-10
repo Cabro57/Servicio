@@ -6,7 +6,7 @@
 
     <groupId>tr.cabro.servicio</groupId>
     <artifactId>Servicio</artifactId>
-    <version>2.0.2</version>
+    <version>2.0.0</version>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -108,7 +108,7 @@
         <dependency>
             <groupId>io.github.dj-raven</groupId>
             <artifactId>modal-dialog</artifactId>
-            <version>2.5.2</version>
+            <version>2.6.1</version>
         </dependency>
 
         <dependency>
@@ -134,17 +134,17 @@
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
-            <version>3.7-SNAPSHOT</version>
+            <version>3.7.1</version>
         </dependency>
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf-extras</artifactId>
-            <version>3.7-SNAPSHOT</version>
+            <version>3.7.1</version>
         </dependency>
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf-intellij-themes</artifactId>
-            <version>3.6</version>
+            <version>3.7.1</version>
         </dependency>
         <dependency>
             <groupId>eu.okaeri</groupId>
@@ -162,9 +162,9 @@
             <version>1.18.38</version>
         </dependency>
         <dependency>
-            <groupId>io.github.willena</groupId>
+            <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
-            <version>3.44.2.0</version>
+            <version>3.51.3.0</version>
         </dependency>
         <dependency>
             <groupId>io.github.dj-raven</groupId>

@@ -1,45 +1,50 @@
 package tr.cabro.servicio.model;
 
+import lombok.Getter;
+import lombok.Setter;
+import java.time.LocalDateTime;
+
+@Getter @Setter
 public class User {
 
-    private String userName;
-    private String mail;
-    private Role role;
-    private String businessName; // Yeni eklendi
-    private String phoneNumber;  // Yeni eklendi
+    private int id;
 
-    public User(String userName, String mail, Role role, String businessName, String phoneNumber) {
-        this.userName = userName;
-        this.mail = mail;
-        this.role = role;
+    private String name;
+    private String surname;
+    private String email;
+    private String password;
+
+    private String businessName;
+    private String phoneNumber;
+
+    // YENİ EKLENDİ: Profil resminin dosya adı veya yolu (Örn: "avatar_1.png")
+    private String profilePicture;
+
+    private LocalDateTime createdAt;
+
+    public User(String name, String surname, String email, String password, String businessName, String phoneNumber, String profilePicture) {
+        this.name = name;
+        this.surname = surname;
+        this.email = email;
+        this.password = password;
         this.businessName = businessName;
         this.phoneNumber = phoneNumber;
+        this.profilePicture = profilePicture;
+        this.createdAt = LocalDateTime.now();
     }
 
-    public String getUserName() { return userName; }
-    public void setUserName(String userName) { this.userName = userName; }
+    public User() {
+        this.name = "";
+        this.surname = "";
+        this.email = "";
+        this.password = "";
+        this.businessName = "";
+        this.phoneNumber = "";
+        this.profilePicture = "default_avatar.svg"; // Yeni eklenen kullanıcıların varsayılan bir resmi olsun
+        this.createdAt = LocalDateTime.now();
+    }
 
-    public String getMail() { return mail; }
-    public void setMail(String mail) { this.mail = mail; }
-
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
-
-    public String getBusinessName() { return businessName; }
-    public void setBusinessName(String businessName) { this.businessName = businessName; }
-
-    public String getPhoneNumber() { return phoneNumber; }
-    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
-
-    public enum Role {
-        ADMIN, STAFF;
-
-        @Override
-        public String toString() {
-            if (this == ADMIN) {
-                return "Admin";
-            }
-            return "Staff";
-        }
+    public String getFullName() {
+        return (name + " " + surname).trim();
     }
 }

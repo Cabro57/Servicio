@@ -1,6 +1,6 @@
 package tr.cabro.servicio.application.renderer;
 
-import tr.cabro.servicio.model.CustomerType;
+import tr.cabro.servicio.model.enums.CustomerType;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -15,7 +15,6 @@ public class CustomerTypeTableRenderer extends DefaultTableCellRenderer {
         if (value instanceof CustomerType) {
             CustomerType ct = (CustomerType) value;
             label.setText(ct.getDisplayName());
-            label.setIcon(ct.getIcon());
             label.setHorizontalTextPosition(SwingConstants.RIGHT);
             label.setIconTextGap(8);
         } else {

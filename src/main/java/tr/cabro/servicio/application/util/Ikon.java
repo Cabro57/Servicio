@@ -8,50 +8,49 @@ import lombok.Setter;
 import javax.swing.*;
 import java.awt.*;
 
-@Setter
 @Getter
-public class SVGIconUIColor extends FlatSVGIcon {
+@Setter
+public class Ikon extends FlatSVGIcon {
 
     private String colorKey;
     private float alpha;
 
-    public SVGIconUIColor(String name, float scale, String colorKey) {
-        this(name, scale, colorKey, 1f);
+    public Ikon(String name) {
+        this(name, 1f, "Label.foreground");
     }
 
-    public SVGIconUIColor(String name, int size, String colorKey) {
-        super(name, size, size);
-        this.alpha = 1f;
-        this.colorKey = colorKey;
-        setColorFilter(new ColorFilter(color -> {
-            Color uiColor = UIManager.getColor(getColorKey());
-            if (uiColor != null) {
-                return getAlpha() == 1 ? uiColor : ColorFunctions.fade(uiColor, getAlpha());
-            }
-            return color;
-        }));
-
-    }
-
-    public SVGIconUIColor(String name, int size) {
+    public Ikon(String name, int size) {
         this(name, size, "Label.foreground");
     }
 
-    public SVGIconUIColor(String name) {
-        this(name, 12, "Label.foreground");
+    public Ikon(String name, int size, String colorKey) {
+        super(name, size, size);
+        init(colorKey, 1f);
     }
 
-    public SVGIconUIColor(String name, float scale, String colorKey, float alpha) {
+    public Ikon(String name, float scale) {
+        this(name, scale, "Label.foreground", 1f);
+    }
+
+    public Ikon(String name, float scale, String colorKey) {
+        this(name, scale, colorKey, 1f);
+    }
+
+    public Ikon(String name, float scale, String colorKey, float alpha) {
         super(name, scale);
+        init(colorKey, alpha);
+    }
+
+    private void init(String colorKey, float alpha) {
         this.colorKey = colorKey;
         this.alpha = alpha;
+
         setColorFilter(new ColorFilter(color -> {
             Color uiColor = UIManager.getColor(getColorKey());
             if (uiColor != null) {
-                return getAlpha() == 1 ? uiColor : ColorFunctions.fade(uiColor, getAlpha());
+                return getAlpha() == 1f ? uiColor : ColorFunctions.fade(uiColor, getAlpha());
             }
             return color;
         }));
     }
-
 }

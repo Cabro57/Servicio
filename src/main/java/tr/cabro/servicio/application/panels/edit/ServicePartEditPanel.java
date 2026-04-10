@@ -22,7 +22,7 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
 
     @Override
     protected AddedPart collectFormData(@NonNull AddedPart data) {
-        data.setSerialNo(seri_no_field.getText().trim());
+        data.setSeriesNo(seri_no_field.getText().trim());
         data.setBrand(brand_field.getText().trim());
         Supplier selectedSupplier = (Supplier) supplier_combo.getSelectedItem();
         if (selectedSupplier != null) {
@@ -43,7 +43,7 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
 
     @Override
     public void populateFormWith(AddedPart data) {
-        seri_no_field.setText(data.getSerialNo());
+        seri_no_field.setText(data.getSeriesNo());
         brand_field.setText(data.getBrand());
         name_field.setText(data.getName());
         device_type_combo.setSelectedItem(data.getDeviceType());

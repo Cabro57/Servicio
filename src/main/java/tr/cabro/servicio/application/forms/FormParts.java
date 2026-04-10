@@ -1,4 +1,4 @@
-package tr.cabro.servicio.forms;
+package tr.cabro.servicio.application.forms;
 
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
@@ -8,13 +8,11 @@ import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.panels.edit.PartEditPanel;
 import tr.cabro.servicio.application.renderer.AlignedRenderer;
-import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
-import tr.cabro.servicio.forms.base.AbstractTableForm;
-import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;

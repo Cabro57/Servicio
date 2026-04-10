@@ -4,10 +4,14 @@ import lombok.Getter;
 import raven.modal.Drawer;
 import raven.modal.ModalDialog;
 import raven.modal.component.SimpleModalBorder;
-import raven.modal.auth.Login;
 import raven.modal.component.About;
 import raven.modal.utils.UndoRedo;
-import tr.cabro.servicio.forms.FormDashboard;
+import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.panels.PinPanel;
+import tr.cabro.servicio.application.panels.SetupPanel;
+import tr.cabro.servicio.application.forms.FormDashboard;
+import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.service.UserService;
 
 import javax.swing.*;
 
@@ -17,7 +21,7 @@ public class FormManager {
     @Getter
     private static JFrame frame;
     private static MainForm mainForm;
-    private static Login login;
+    private static PinPanel pinPanel;
 
     public static void install(JFrame f) {
         frame = f;
@@ -71,11 +75,18 @@ public class FormManager {
     }
 
     public static void login() {
+        Servicio.getInactivityMonitor().start();
+
         Drawer.setVisible(true);
         frame.getContentPane().removeAll();
-        frame.getContentPane().add(getMainForm());
+        if (FORMS.isRedoAble()) {
+            redo();
+        } else {
+            frame.getContentPane().add(getMainForm());
+        }
 
         Drawer.setSelectedItemClass(FormDashboard.class);
+        FORMS.clear();
         frame.repaint();
         frame.revalidate();
     }
@@ -83,12 +94,28 @@ public class FormManager {
     public static void logout() {
         Drawer.setVisible(false);
         frame.getContentPane().removeAll();
-        Form login = getLogin();
-        login.formCheck();
-        frame.getContentPane().add(login);
-        FORMS.clear();
-        frame.repaint();
-        frame.revalidate();
+
+        UserService userService = ServiceManager.getUserService();
+
+        // 1. Sistemde daha önce kurulum yapılmış mı? (Asenkron sor)
+        userService.hasSetupCompleted().thenAccept(hasSetup -> {
+            SwingUtilities.invokeLater(() -> {
+                FORMS.clear(); // Geçmiş formları temizle
+                if (!hasSetup) {
+                    // Hiç kullanıcı yok, İLK KURULUM ekranını ekrana bas
+                    SetupPanel setup = new SetupPanel();
+                    setup.formCheck();
+                    frame.getContentPane().add(setup);
+                } else {
+                    // Kullanıcı var, 6 Haneli PIN KİLİT ekranını bas
+                    PinPanel pinScreen = getLogin();
+                    pinScreen.formCheck();
+                    frame.getContentPane().add(pinScreen);
+                }
+                frame.repaint();
+                frame.revalidate();
+            });
+        });
     }
 
     private static MainForm getMainForm() {
@@ -98,11 +125,11 @@ public class FormManager {
         return mainForm;
     }
 
-    private static Login getLogin() {
-        if (login == null) {
-            login = new Login();
+    private static PinPanel getLogin() {
+        if (pinPanel == null) {
+            pinPanel = new PinPanel();
         }
-        return login;
+        return pinPanel;
     }
 
     public static void showAbout() {

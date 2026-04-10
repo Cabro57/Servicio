@@ -1,4 +1,4 @@
-package tr.cabro.servicio.forms;
+package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
@@ -6,16 +6,21 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
-import raven.modal.simple.SimpleMessageModal;
-import raven.modal.system.AllForms;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.listeners.ServiceEditListener;
 import tr.cabro.servicio.application.panels.ProcessSelectedPanel;
-import tr.cabro.servicio.application.panels.service.*;
-import tr.cabro.servicio.model.*;
+import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
+import tr.cabro.servicio.application.panels.service.FaultProcessInfoPanel;
+import tr.cabro.servicio.application.panels.service.PartsNotesInfoPanel;
+import tr.cabro.servicio.application.panels.service.PriceInfoPanel;
+import tr.cabro.servicio.application.panels.service.QuickIntakePanel;
+import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.model.AddedPart;
+import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Process;
+import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -23,324 +28,286 @@ import tr.cabro.servicio.settings.DeviceSettings;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.awt.event.ActionListener;
+import java.time.format.DateTimeFormatter;
 
 public class FormService extends Form {
 
     private Service service;
     private final RepairService repairService;
 
+    // --- UI Bileşenleri (Üst ve Sol) ---
+    private JLabel lblHeaderTitle;
+    private JLabel lblHeaderSubtitle;
+    private JLabel lblHeaderBadge;
+    private JComboBox<ServiceStatus> statusComboBox;
+
+    private JPanel leftColumn;
+    private JPanel rightColumn;
+
+    private JLabel lblCustomerName, lblCustomerPhone, lblCustomerEmail;
+    private JLabel lblDeviceType, lblDeviceBrand, lblDeviceModel, lblDeviceSerial;
+    private JTextArea txtReportedFault;
+    private JLabel lblDateArrival, lblDateEstimated;
+
+    // --- ESKİ İŞ MANTIĞI PANELLERİ (Sağ Kolon İçin) ---
+    private FaultProcessInfoPanel fault_process_info;
+    private PartsNotesInfoPanel part_notes_info;
+    private PriceInfoPanel price_info;
+
+    private Timer autoSaveTimer;
+
     public FormService(Service service) {
-        this.service = service;
-        repairService = ServiceManager.getRepairService();
-        formInit();
-        setService(service);
-    }
-
-
-    // Silme AllForms sınıfı kullanıyor
-    public FormService() {
         this.repairService = ServiceManager.getRepairService();
-        this.service = new Service(); // Boş bir servis nesnesi oluştur
-        // formInit() metodunu burada çağırmana gerek yok, AllForms sınıfı zaten onu çağırıyor.
+        initComponent();
+        initListeners();
+        setService(service);
+
+        autoSaveTimer = new Timer(1000, e -> forceSaveAsync());
+        autoSaveTimer.setRepeats(false);
+
+        // YENİ: UYGULAMA KAPATILIRSA (X Tuşu veya Alt+F4)
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (autoSaveTimer != null && autoSaveTimer.isRunning()) {
+                forceSaveSync(); // Uygulama kapanmadan son saniyede veriyi kurtar
+            }
+        }));
     }
 
+    public void setService(@NonNull Service service) {
+        this.service = service;
+        if (service.getId() > 0) {
+            // Asenkron veri çekme (Hydration) ve panelleri doldurma
+            repairService.getServiceParts(service.getId()).thenAccept(parts -> {
+                this.service.setAddedParts(parts);
 
-    @Override
-    public void formInit() {
-        initComponent();
+                repairService.getTotalPartsCostForService(service.getId()).thenAccept(totalCost -> {
+                    this.service.setTotalPartsCost(totalCost);
+
+                    SwingUtilities.invokeLater(() -> {
+                        hydrateReadOnlyUI(); // Sol kolonu doldur
+                        bindOperationalPanels(); // Sağ kolon panellerini doldur
+                    });
+                });
+            }).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Servis detayları yüklenemedi!"));
+                return null;
+            });
+        }
+    }
+
+    private void bindOperationalPanels() {
+        // Eski panellerin kendi içlerindeki veriyi (service) almasını sağlıyoruz.
+        fault_process_info.bindService(this.service);
+        part_notes_info.bindService(this.service);
+        price_info.bindService(this.service);
+    }
+
+    private void hydrateReadOnlyUI() {
+        lblHeaderTitle.setText("SRV-" + service.getId());
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new java.util.Locale("tr", "TR"));
+        String dateStr = service.getCreatedAt() != null ? service.getCreatedAt().format(formatter) : "-";
+        lblHeaderSubtitle.setText("Kayıt Tarihi: " + dateStr);
+
+        ServiceStatus currentStatus = service.getServiceStatus() != null ? service.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
+        lblHeaderBadge.setText(currentStatus.getDisplayName());
+
+        // Listener'ın boş yere tetiklenmemesi için geçici kapatıyoruz
+        ActionListener[] listeners = statusComboBox.getActionListeners();
+        for (ActionListener l : listeners) statusComboBox.removeActionListener(l);
+        statusComboBox.setSelectedItem(currentStatus);
+        for (ActionListener l : listeners) statusComboBox.addActionListener(l);
+
+        if (service.getCustomer() != null) {
+            lblCustomerName.setText(service.getCustomer().getName() + " " + service.getCustomer().getSurname());
+            lblCustomerPhone.setText(service.getCustomer().getPhoneNumber1() != null ? service.getCustomer().getPhoneNumber1() : "-");
+            lblCustomerEmail.setText(service.getCustomer().getEmail() != null ? service.getCustomer().getEmail() : "-");
+        }
+
+        lblDeviceType.setText(service.getDeviceType() != null ? service.getDeviceType() : "-");
+        lblDeviceBrand.setText(service.getDeviceBrand() != null ? service.getDeviceBrand() : "-");
+        lblDeviceModel.setText(service.getDeviceModel() != null ? service.getDeviceModel() : "-");
+        lblDeviceSerial.setText(service.getDeviceSerial() != null ? service.getDeviceSerial() : "-");
+        txtReportedFault.setText(service.getReportedFault() != null ? service.getReportedFault() : "Belirtilmemiş.");
+
+        lblDateArrival.setText(dateStr);
+        lblDateEstimated.setText(service.getCreatedAt() != null ? service.getCreatedAt().plusDays(2).format(formatter) : "-");
+    }
+
+    private void initListeners() {
 
         ServiceEditListener serviceEditListener = new ServiceEditListener() {
             @Override
             public void onPartChange(double price) {
-                // Parça panelinde fiyat değiştiğinde fiyat paneline gönder
                 price_info.setMaterialCost(price);
+                autoSaveService();
             }
 
             @Override
             public void onProcessAdded(String name, double price) {
                 price_info.addLaborCost(price);
                 fault_process_info.appendAction(name);
+                autoSaveService();
             }
 
             @Override
-            public void onProcessAdded(tr.cabro.servicio.model.Process process) {
+            public void onProcessAdded(Process process) {
                 fault_process_info.appendAction(process.getName());
                 price_info.addLaborCost(process.getPrice());
+                autoSaveService();
             }
 
             @Override
-            public void onStatusChanged(String status) {
-                // Şimdilik boş
-            }
+            public void onStatusChanged(String status) {}
 
             @Override
             public void onDataChanged() {
-                // Herhangi bir panelde klavyeye basıldığında veya seçim yapıldığında
-                // Güncelle butonunu aktif et.
-                if (service != null && service.getId() > 0) {
-                    update_button.setEnabled(true);
-                }
+                autoSaveService();
             }
 
             @Override
             public void requestRefresh() {
-                // Yenileme talebi gelirse mevcut servisi tekrar çek
-                if (service != null && service.getId() > 0) {
-                    setService(service);
-                }
+                if (service != null && service.getId() > 0) setService(service);
             }
 
             @Override
             public void onPartAdded(AddedPart part) {
-
+                autoSaveService();
             }
         };
 
-        customer_info.setServicePanelListener(serviceEditListener);
-        device_info.setServicePanelListener(serviceEditListener);
-        price_info.setServicePanelListener(serviceEditListener);
-        warranty_info.setServicePanelListener(serviceEditListener);
         fault_process_info.setServicePanelListener(serviceEditListener);
         part_notes_info.setServicePanelListener(serviceEditListener);
-        status_info.setServicePanelListener(serviceEditListener);
-
-        save_button.addActionListener(e -> saveService());
-        update_button.addActionListener(e -> updateService());
-        delete_button.addActionListener(e -> deleteService());
-        deliver_button.addActionListener(e -> deliverService());
+        price_info.setServicePanelListener(serviceEditListener);
 
         fault_process_info.action_taken_button.addActionListener(e -> onActionTaken());
     }
 
-    @Override
-    public void formRefresh() {
-        setService(new Service()); // clearForm yerine direkt yeni servis veriyoruz
+    /**
+     * İşlem yapıldıkça arkaplanda sessizce kaydeder
+     */
+    private void autoSaveService() {
+        if (service == null || service.getId() <= 0) return;
+        if (autoSaveTimer.isRunning()) autoSaveTimer.restart();
+        else autoSaveTimer.start();
     }
 
-    public void setService(@NonNull Service service) {
-        this.service = service;
-
-        // 1. YENİ SERVİS SENARYOSU
-        if (service.getId() <= 0) {
-            this.service.setAddedParts(new ArrayList<>());
-            this.service.setTotalPartsCost(0.0);
-
-            SwingUtilities.invokeLater(() -> {
-                bindAllPanels();
-                save_button.setEnabled(true);
-                update_button.setEnabled(false);
-                deliver_button.setEnabled(false);
-                updateTitle();
-            });
-            return;
-        }
-
-        // 2. MEVCUT SERVİS SENARYOSU (Asenkron Hydration)
-        repairService.getServiceParts(service.getId()).thenAccept(parts -> {
-            this.service.setAddedParts(parts);
-
-            repairService.getTotalPartsCostForService(service.getId()).thenAccept(totalCost -> {
-                this.service.setTotalPartsCost(totalCost);
-
-                SwingUtilities.invokeLater(() -> {
-                    bindAllPanels();
-                    save_button.setEnabled(false);
-                    update_button.setEnabled(false); // Sadece veri değişince açılacak (onDataChanged)
-                    deliver_button.setEnabled(service.getServiceStatus() != ServiceStatus.DELIVERED);
-                    updateTitle();
-                });
-            });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Servis detayları yüklenemedi!"));
+    /**
+     * Kullanıcı formdayken arkaplanda sessizce ve asenkron kaydeder. (Arayüzü dondurmaz)
+     */
+    private void forceSaveAsync() {
+        if (service == null || service.getId() <= 0) return;
+        collectDataForSave();
+        repairService.save(service, true).exceptionally(ex -> {
+            System.err.println("Otomatik Kayıt Hatası: " + ex.getMessage());
             return null;
         });
     }
 
-    private void bindAllPanels() {
-        customer_info.bindService(this.service);
-        device_info.bindService(this.service);
-        fault_process_info.bindService(this.service);
-        warranty_info.bindService(this.service);
-        price_info.bindService(this.service);
-        status_info.bindService(this.service);
-        part_notes_info.bindService(this.service);
+    /**
+     * Formdan ÇIKILIRKEN veya uygulama KAPATILIRKEN senkron (bloklayıcı) olarak kaydeder.
+     * Veritabanı işlemi bitene kadar kapanmayı durdurur.
+     */
+    private void forceSaveSync() {
+        if (service == null || service.getId() <= 0) return;
+        collectDataForSave();
+        try {
+            // join() veya get() kullanarak asenkron işlemin BİTMESİNİ BEKLİYORUZ.
+            repairService.save(service, true).join();
+            System.out.println("Sistemden çıkılırken son veriler başarıyla kurtarıldı!");
+        } catch (Exception e) {
+            System.err.println("Çıkışta kayıt kurtarılamadı: " + e.getMessage());
+        }
     }
 
-    private Service collectForm() {
-        // Zaten elimizde olan nesnenin üzerine değişiklikleri yazıyoruz
-        if (this.service == null) {
-            this.service = new Service();
-        }
-
-        // Temiz kapsüllenmiş Getter'lar ile veri toplama
-        Customer customer = customer_info.getSelectedCustomer();
-        if (customer != null) {
-            service.setCustomerId(customer.getId());
-        } else {
-            service.setCustomerId(null);
-        }
-
-        service.setCreatedAt(customer_info.getRecordDate());
-        service.setDeliveryAt(customer_info.getDeliverDate());
-
-        service.setDeviceType(device_info.getSelectedDeviceType());
-        service.setDeviceBrand(device_info.getSelectedBrand());
-        service.setDeviceModel(device_info.getDeviceModel());
-        service.setDeviceSerial(device_info.getDeviceSerial());
-        service.setDevicePassword(device_info.getDevicePassword());
-        service.setDeviceAccessory(device_info.getDeviceAccessory());
-
+    private void collectDataForSave() {
         service.setLaborCost(price_info.getLaborCost());
         service.setPaid(price_info.getPaid());
         service.setPaymentType(price_info.getPaymentType());
-
-        service.setWarrantyDate(warranty_info.getWarrantyDate());
-        service.setMaintenanceDate(warranty_info.getMaintenanceDate());
-
-        service.setReportedFault(fault_process_info.getReportedFault());
         service.setDetectedFault(fault_process_info.getDetectedFault());
         service.setActionTaken(fault_process_info.getActionTaken());
-
-        service.setServiceStatus(status_info.getSelected());
         service.setNotes(part_notes_info.getNotes());
-
-        return service;
     }
 
-    private void saveService() {
-        Service newService = collectForm();
-        save_button.setEnabled(false);
+    private void initComponent() {
+        setLayout(new MigLayout("fill, insets 20", "[grow]", "[pref!]20[grow, fill]"));
 
-        try {
-            if (newService.getServiceStatus() == ServiceStatus.DELIVERED && newService.getDeliveryAt() == null) {
-                newService.setDeliveryAt(LocalDateTime.now());
+        // Panellerin init edilmesi
+        fault_process_info = new FaultProcessInfoPanel();
+        fault_process_info.setOpaque(false); // Kart tasarımıyla uyumlu olması için arkaplanı saydamlaştırdık
+
+        part_notes_info = new PartsNotesInfoPanel();
+        part_notes_info.setOpaque(false);
+
+        price_info = new PriceInfoPanel();
+        price_info.setOpaque(false);
+
+        createHeaderPanel();
+        createMainContentPanels();
+    }
+
+    private void createHeaderPanel() {
+        JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx", "[][][][grow][][]", "[]"));
+        headerPanel.setOpaque(false);
+
+        JButton btnBack = new JButton(new Ikon("icons/arrow-left.svg", 0.5f));
+        btnBack.putClientProperty(FlatClientProperties.STYLE, "arc: 999; background: lighten($Panel.background, 5%);");
+        btnBack.addActionListener(e -> {
+            FormManager.showForm(new FormServices());
+        });
+
+        JPanel titlePanel = new JPanel(new MigLayout("insets 0, gapy 2", "[fill]", "[][]"));
+        titlePanel.setOpaque(false);
+        lblHeaderTitle = new JLabel("SRV-YENI");
+        lblHeaderTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold +8");
+        lblHeaderSubtitle = new JLabel("Kayıt Tarihi: -");
+        lblHeaderSubtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
+        titlePanel.add(lblHeaderTitle, "wrap");
+        titlePanel.add(lblHeaderSubtitle);
+
+        lblHeaderBadge = new JLabel("Bekliyor");
+        lblHeaderBadge.putClientProperty(FlatClientProperties.STYLE, "background: #f1c40f; foreground: #000000; arc: 15; border: 4,10,4,10; font: bold -1");
+        lblHeaderBadge.setOpaque(true);
+
+        JPanel statusPanel = new JPanel(new MigLayout("insets 0", "[][]", "[]"));
+        statusPanel.setOpaque(false);
+        statusComboBox = new JComboBox<>(ServiceStatus.values());
+        statusComboBox.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
+        statusComboBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof ServiceStatus) setText(((ServiceStatus) value).getDisplayName());
+                return this;
             }
+        });
 
-            // DİKKAT: Artık parts göndermiyoruz. Asenkron Kayıt!
-            repairService.save(newService, false).thenAccept(savedService -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla oluşturuldu.");
-                    setService(savedService); // Arayüzü yeni ID ile güncelle (Parça ekleme aktifleşir)
-                });
-            }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.ERROR, "Kayıt Hatası: " + ex.getCause().getMessage());
-                    save_button.setEnabled(true);
-                });
-                return null;
-            });
-        } catch (Exception ex) {
-            Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
-            save_button.setEnabled(true);
-        }
-    }
-
-    private void updateService() {
-        if (this.service == null || this.service.getId() <= 0) return;
-
-        Service updated = collectForm();
-        update_button.setEnabled(false);
-
-        try {
-            if (updated.getServiceStatus() == ServiceStatus.DELIVERED && updated.getDeliveryAt() == null) {
-                updated.setDeliveryAt(LocalDateTime.now());
-            }
-
-            repairService.save(updated, true).thenAccept(savedService -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.SUCCESS, "Servis güncellendi.");
-                    setService(savedService); // Güncel veriyi yansıt
-                });
-            }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.ERROR, "Güncelleme hatası: " + ex.getCause().getMessage());
-                    update_button.setEnabled(true);
-                });
-                return null;
-            });
-
-        } catch (Exception e) {
-            Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
-            update_button.setEnabled(true);
-        }
-    }
-
-    private void deleteService() {
-        if (service == null || service.getId() <= 0) {
-            Toast.show(this, Toast.Type.ERROR, "Silinecek bir servis seçili değil!");
-            return;
-        }
-
-        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                "Bu servisi silmek istediğinize emin misiniz?\nServise bağlı parçalar da silinecek. Bu işlem geri alınamaz!", "Servis Silme Onayı",
-                SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-            if (action == SimpleModalBorder.YES_OPTION) {
-
-                delete_button.setEnabled(false);
-
-                repairService.delete(service.getId())
-                        .thenAccept(result -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toast.show(this, Toast.Type.SUCCESS, "Servis silindi.");
-                                FormManager.showForm(AllForms.getForm(FormServices.class));
-                            });
-                        }).exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toast.show(this, Toast.Type.ERROR, "Silme hatası: " + ex.getCause().getMessage());
-                                delete_button.setEnabled(true);
-                            });
-                            return null;
-                        });
-            }
-        }));
-    }
-
-    private void deliverService() {
-        if (service == null || service.getId() <= 0) {
-            Toast.show(this, Toast.Type.ERROR, "Teslim edilecek bir servis seçili değil!");
-            return;
-        }
-
-        if (service.getServiceStatus() == ServiceStatus.DELIVERED) {
-            Toast.show(this, Toast.Type.WARNING, "Bu Servis zaten teslim edilmiş.");
-            return;
-        }
-
-        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.DEFAULT,
-                "Servis No: " + service.getId() + "\nBu cihazı teslim etmek istediğinize emin misiniz?",
-                "Teslimat", SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-
-            if (action == 0) {
-                repairService.setDelivered(service.getId()).thenAccept(v -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, "Servis teslim edildi olarak işaretlendi.");
-                        setService(service); // Formu yenile (Durum paneli kilitlensin diye)
-                    });
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.ERROR, "İşlem hatası: " + ex.getCause().getMessage());
-                    });
-                    return null;
+        statusComboBox.addActionListener(e -> {
+            ServiceStatus newStatus = (ServiceStatus) statusComboBox.getSelectedItem();
+            if (newStatus != null && service != null && service.getId() > 0 && service.getServiceStatus() != newStatus) {
+                lblHeaderBadge.setText(newStatus.getDisplayName());
+                service.setServiceStatus(newStatus);
+                repairService.save(service, true).thenAccept(s -> {
+                    SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.SUCCESS, "Durum güncellendi."));
                 });
             }
-        }));
-    }
+        });
 
-    private void updateTitle() {
-        if (service == null || service.getId() <= 0) {
-            title.setText("Servis No: Yeni");
-        } else {
-            title.setText("Servis No: " + service.getId());
-        }
+        statusPanel.add(new JLabel("Durum Güncelle:"));
+        statusPanel.add(statusComboBox);
+
+        headerPanel.add(btnBack, "w 40!, h 40!, aligny top");
+        headerPanel.add(titlePanel, "gapleft 15, aligny top");
+        headerPanel.add(lblHeaderBadge, "gapleft 10, aligny top, gaptop 5");
+        headerPanel.add(new JLabel(""), "growx, pushx");
+        headerPanel.add(statusPanel, "align right, aligny top");
+
+        add(headerPanel, "wrap, growx");
     }
 
     private void onActionTaken() {
-        String selectedDeviceType = device_info.getSelectedDeviceType();
+        String selectedDeviceType = service.getDeviceType();
 
         if (selectedDeviceType == null || selectedDeviceType.isEmpty()) {
             Toast.show(this, Toast.Type.WARNING, "Lütfen bir cihaz türü seçin!");
@@ -358,7 +325,7 @@ public class FormService extends Form {
                 (controller, action) -> {
                     if (action == SimpleModalBorder.OPENED) {
                         DeviceSettings settings = Servicio.getDeviceSettings();
-                        List<Process> processes = settings.getProcesses(selectedDeviceType);
+                        java.util.List<Process> processes = settings.getProcesses(selectedDeviceType);
                         panel.setProcess(processes);
 
                         panel.setOnProcessDoubleClick(process -> {
@@ -368,7 +335,7 @@ public class FormService extends Form {
                         });
 
                     } else if (action == SimpleModalBorder.OK_OPTION) {
-                        List<Process> selected = panel.getSelectedProcesses();
+                        java.util.List<Process> selected = panel.getSelectedProcesses();
                         if (selected == null || selected.isEmpty()) {
                             Toast.show(FormService.this, Toast.Type.WARNING, "Lütfen en az bir işlem seçin!");
                             return;
@@ -384,93 +351,113 @@ public class FormService extends Form {
                 }), "processSelected");
     }
 
-    private void initComponent() {
-        setLayout(new MigLayout("wrap,fill", "[fill]", "[grow 0][fill]"));
+    private void createMainContentPanels() {
+        JPanel contentPanel = new JPanel(new MigLayout("insets 0, gapx 20", "[330!, fill][grow, fill]", "[grow, fill]"));
+        contentPanel.setOpaque(false);
 
-        // TITLE
-        JPanel panel = new JPanel(new MigLayout("fillx", "[]push[][]"));
-        title = new JLabel("Servis No: Yeni");
+        leftColumn = new JPanel(new MigLayout("insets 0, gapy 20", "[fill, grow]", "[pref!][pref!][pref!]"));
+        leftColumn.setOpaque(false);
 
-        title.putClientProperty(FlatClientProperties.STYLE, "" +
-                "font:bold +3");
+        leftColumn.add(createCustomerCard(), "wrap");
+        leftColumn.add(createDeviceCard(), "wrap");
+        leftColumn.add(createTimelineCard(), "wrap");
 
-        panel.add(title);
-        add(panel);
+        rightColumn = new JPanel(new MigLayout("insets 0, gapy 20", "[fill, grow]", "[grow, fill][pref!]"));
+        rightColumn.setOpaque(false);
 
-        //CONTENT
-        JPanel content = new JPanel(
-                new MigLayout("wrap, fillx", "[grow, fill]", "")
-        );
-        content.setPreferredSize(null);
+        JPanel partsOperationsCard = createCardPanel();
+        partsOperationsCard.setLayout(new MigLayout("insets 15, fill", "[grow]", "[][grow]"));
+        partsOperationsCard.add(fault_process_info, "wrap, growx");
+        partsOperationsCard.add(part_notes_info, "grow");
 
-        JScrollPane scrollPane = new JScrollPane(content);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(24);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getViewport().addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                Dimension pref = content.getPreferredSize();
-                int vw = scrollPane.getViewport().getWidth();
-                if (pref.width != vw) {
-                    content.setPreferredSize(new Dimension(vw, pref.height));
-                    content.revalidate();
-                }
-            }
-        });
+        JPanel paymentsCard = createCardPanel();
+        paymentsCard.setLayout(new MigLayout("insets 15, fill", "[grow]", "[grow]"));
+        paymentsCard.add(price_info, "grow");
 
-        customer_info = new CustomerInfoPanel();
-        device_info = new DeviceInfoPanel();
-        fault_process_info = new FaultProcessInfoPanel();
-        warranty_info = new WarrantyInfoPanel();
-        part_notes_info = new PartsNotesInfoPanel();
-        price_info = new PriceInfoPanel();
-        status_info = new StatusInfoPanel();
+        rightColumn.add(partsOperationsCard, "wrap, growy");
+        rightColumn.add(paymentsCard, "growy");
 
-        content.add(customer_info, "growx, tag help2");
-        content.add(device_info, "growx");
-        content.add(price_info, "growx");
-        content.add(warranty_info, "growx");
-        content.add(fault_process_info, "growx");
-        content.add(part_notes_info, "growx");
-        content.add(status_info, "growx");
+        contentPanel.add(leftColumn, "grow");
+        contentPanel.add(rightColumn, "grow");
 
-        add(scrollPane);
-
-        //BUTTONS
-        JPanel buttons_panel = new JPanel(new MigLayout("insets 0, fill", "", "[50:5%:]"));
-
-        save_button = new JButton("Kaydet");
-        update_button = new JButton("Güncelle");
-        print_button = new JButton("Yazdır");
-        deliver_button = new JButton("Teslim Et");
-        delete_button = new JButton("Sil");
-        whatsapp_button = new JButton("Whatsapp");
-
-        buttons_panel.add(save_button, "grow");
-        buttons_panel.add(update_button, "grow");
-        buttons_panel.add(print_button, "grow");
-        buttons_panel.add(deliver_button, "grow");
-        buttons_panel.add(delete_button, "grow");
-        buttons_panel.add(whatsapp_button, "grow");
-
-        add(buttons_panel);
+        JScrollPane scrollPane = new JScrollPane(contentPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setBackground(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        add(scrollPane, "grow");
     }
 
-    private JLabel title;
+    // --- KART METOTLARI VE YARDIMCILAR (Aynı Kalıyor) ---
+    private JPanel createCustomerCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx, wrap 2", "[grow][]", "[]15[][][]"));
+        JLabel title = new JLabel("Müşteri Bilgileri"); title.setIcon(new Ikon("icons/user.svg"));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        lblCustomerName = new JLabel("-"); lblCustomerName.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");
+        lblCustomerPhone = new JLabel("-"); lblCustomerPhone.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        lblCustomerEmail = new JLabel("-"); lblCustomerEmail.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        card.add(title, "span 2"); card.add(lblCustomerName, "span 2"); card.add(lblCustomerPhone, "span 2"); card.add(lblCustomerEmail, "span 2");
+        return card;
+    }
 
-    private CustomerInfoPanel customer_info;
-    private DeviceInfoPanel device_info;
-    private FaultProcessInfoPanel fault_process_info;
-    private PriceInfoPanel price_info;
-    private WarrantyInfoPanel warranty_info;
-    private PartsNotesInfoPanel part_notes_info;
-    private StatusInfoPanel status_info;
+    private JPanel createDeviceCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx", "[100!][grow]", "[]15[][][][]15[]5[]"));
+        JLabel title = new JLabel("Cihaz Bilgileri"); title.setIcon(new Ikon("icons/tablet-smartphone.svg")); title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        lblDeviceType = new JLabel("-"); lblDeviceType.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        lblDeviceBrand = new JLabel("-"); lblDeviceBrand.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        lblDeviceModel = new JLabel("-"); lblDeviceModel.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        lblDeviceSerial = new JLabel("-"); lblDeviceSerial.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        card.add(title, "span 2, wrap");
+        card.add(createMutedLabel("Tür:")); card.add(lblDeviceType, "wrap");
+        card.add(createMutedLabel("Marka:")); card.add(lblDeviceBrand, "wrap");
+        card.add(createMutedLabel("Model:")); card.add(lblDeviceModel, "wrap");
+        card.add(createMutedLabel("Seri No:")); card.add(lblDeviceSerial, "wrap");
+        card.add(createMutedLabel("Müşteri Şikayeti:"), "span 2, wrap");
+        txtReportedFault = new JTextArea();
+        txtReportedFault.setEditable(false);
+        txtReportedFault.setLineWrap(true);
+        txtReportedFault.setWrapStyleWord(true);
+        txtReportedFault.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 3%); border: 10,10,10,10;");
+        card.add(txtReportedFault, "span 2, growx, h 60!");
+        return card;
+    }
 
-    private JButton save_button;
-    private JButton update_button;
-    private JButton deliver_button;
-    private JButton print_button;
-    private JButton delete_button;
-    private JButton whatsapp_button;
+    private JPanel createTimelineCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx", "[100!][grow, right]", "[]15[][]"));
+        JLabel title = new JLabel("Zaman Çizelgesi"); title.setIcon(new Ikon("icons/clock.svg")); title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        lblDateArrival = new JLabel("-"); lblDateArrival.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        lblDateEstimated = new JLabel("-"); lblDateEstimated.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        card.add(title, "span 2, wrap");
+        card.add(createMutedLabel("Geliş:")); card.add(lblDateArrival, "wrap");
+        card.add(createMutedLabel("Tahmini Bitiş:")); card.add(lblDateEstimated, "wrap");
+        return card;
+    }
+
+    private JLabel createMutedLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        return label;
+    }
+
+    private JPanel createCardPanel() {
+        JPanel panel = new JPanel();
+        panel.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); arc: 15;");
+        return panel;
+    }
+
+
+
+    @Override
+    public void removeNotify() {
+        super.removeNotify(); // Swing'in kendi temizlik işlemlerini yapmasına izin ver
+
+        // Form ekrandan kaldırılıyor! (Başka menüye geçildi)
+        // Eğer bekleyen bir otomatik kayıt varsa, hemen ZORLA kaydet.
+        if (autoSaveTimer != null && autoSaveTimer.isRunning()) {
+            autoSaveTimer.stop();
+            forceSaveSync(); // Dikkat: Artık senkron (bekleten) kayıt yapmalıyız
+        }
+    }
 }
-

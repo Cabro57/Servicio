@@ -3,6 +3,7 @@ package tr.cabro.servicio.database.repository;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import tr.cabro.servicio.model.Part;
@@ -26,6 +27,9 @@ public interface PartRepository {
     @SqlUpdate("DELETE FROM part WHERE barcode = :barcode")
     void delete(@Bind("barcode") String barcode);
 
+    @SqlUpdate("DELETE FROM part WHERE barcode IN (<barcodes>)")
+    void deleteByBarcodes(@BindList("barcodes") List<String> barcodes);
+
     @SqlQuery("SELECT * FROM part WHERE barcode = :barcode")
     Optional<Part> findByBarcode(@Bind("barcode") String barcode);
 
@@ -40,7 +44,9 @@ public interface PartRepository {
     @SqlQuery("SELECT count(1) FROM part WHERE barcode = :barcode")
     boolean existsByBarcode(@Bind("barcode") String barcode);
 
-    // Atomik Stok Güncelleme: Eşzamanlılık (concurrency) sorunlarını önler
+    @SqlUpdate("UPDATE part SET stock = stock - :amount WHERE barcode = :barcode AND stock >= :amount")
+    int decreaseStockAtomically(@Bind("barcode") String barcode, @Bind("amount") int amount);
+
     @SqlUpdate("UPDATE part SET stock = stock + :amount WHERE barcode = :barcode")
-    void adjustStock(@Bind("barcode") String barcode, @Bind("amount") int amount);
+    void increaseStockAtomically(@Bind("barcode") String barcode, @Bind("amount") int amount);
 }

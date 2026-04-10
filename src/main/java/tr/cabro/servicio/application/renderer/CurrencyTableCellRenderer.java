@@ -16,7 +16,7 @@ public class CurrencyTableCellRenderer extends DefaultTableCellRenderer {
     public void setValue(Object value) {
         if (value instanceof Number) {
             setText(Format.formatPrice(((Number) value).doubleValue()));
-            setHorizontalAlignment(SwingConstants.CENTER);
+            setHorizontalAlignment(SwingConstants.RIGHT);
         } else {
             setText("");
         }

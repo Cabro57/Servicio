@@ -1,4 +1,9 @@
 package tr.cabro.servicio.model.contract;
 
-public class Visualizable {
+import tr.cabro.servicio.model.enums.BadgeColor;
+
+public interface Visualizable {
+    String getDisplayName();
+    String getIconPath();
+    BadgeColor getBadgeColor();
 }

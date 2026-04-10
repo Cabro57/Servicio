@@ -17,9 +17,12 @@ public class ActionButtonEditor extends DefaultCellEditor {
 
     @Override
     public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+        Component com = super.getTableCellEditorComponent(table, value, isSelected, row, column);
+
         PanelAction action = new PanelAction();
         action.initEvent(event, row);
-        action.setBackground(table.getSelectionBackground());
+
+        action.setBackground(com.getBackground());
 
         return action;
     }

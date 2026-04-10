@@ -5,8 +5,7 @@ import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.panels.ServicePanel;
 import tr.cabro.servicio.application.renderer.PaymentTypeRenderer;
-import tr.cabro.servicio.model.PaymentType;
-import tr.cabro.servicio.application.context.ServiceContext;
+import tr.cabro.servicio.model.enums.PaymentType;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -17,8 +16,10 @@ import java.math.RoundingMode;
 
 public class PriceInfoPanel extends ServicePanel {
 
-    public PriceInfoPanel(ServiceContext context) {
-        super(context);
+    // Veri yüklenirken gereksiz onDataChanged sinyallerini engellemek için bayrak
+    private boolean isInitializing = false;
+
+    public PriceInfoPanel() {
         init();
     }
 
@@ -30,6 +31,32 @@ public class PriceInfoPanel extends ServicePanel {
         payment_type_combo.setRenderer(new PaymentTypeRenderer());
 
         addListeners();
+    }
+
+    @Override
+    protected void onServiceSet() {
+        if (service == null) return;
+
+        // Form doldurulurken tetiklenen Listener'ları susturmak için bayrağı açıyoruz
+        isInitializing = true;
+        try {
+            // Service modeli içindeki verileri arayüze basıyoruz
+            setMaterialCost(service.getTotalPartsCost());
+            setLaborCost(service.getLaborCost());
+            setPaid(service.getPaid());
+
+            if (service.getPaymentType() != null) {
+                payment_type_combo.setSelectedItem(service.getPaymentType());
+            } else {
+                payment_type_combo.setSelectedItem(PaymentType.CASH);
+            }
+
+            // Veriler dolduktan sonra matematiksel hesabı bir kez çalıştır
+            recalculate();
+        } finally {
+            // Bayrağı kapat. Bundan sonraki her klavye hareketi "değişiklik" sayılacak.
+            isInitializing = false;
+        }
     }
 
     private void addListeners() {
@@ -45,6 +72,9 @@ public class PriceInfoPanel extends ServicePanel {
         material_cost_field.getDocument().addDocumentListener(recalculateListener);
         labor_cost_field.getDocument().addDocumentListener(recalculateListener);
         paid_field.getDocument().addDocumentListener(recalculateListener);
+
+        // Ödeme türü değiştiğinde de ana formu uyar
+        payment_type_combo.addActionListener(e -> notifyDataChanged());
     }
 
     private void recalculate() {
@@ -52,11 +82,23 @@ public class PriceInfoPanel extends ServicePanel {
         BigDecimal labor = getFieldValue(labor_cost_field);
         BigDecimal paid = getFieldValue(paid_field);
 
+        // Toplam = Malzeme + İşçilik
         BigDecimal total = material.add(labor);
         total_field.setValue(total);
 
+        // Kalan = Toplam - Ödenen (Eksiye düşemez)
         BigDecimal remainder = total.subtract(paid);
         remainder_field.setValue(remainder.max(BigDecimal.ZERO));
+
+        // Hesaplama değiştiğine göre ana formu (Güncelle butonunu) uyar
+        notifyDataChanged();
+    }
+
+    private void notifyDataChanged() {
+        // Eğer form program tarafından doldurulmuyorsa ve listener bağlıysa tetikle
+        if (!isInitializing && getListener() != null) {
+            getListener().onDataChanged();
+        }
     }
 
     private BigDecimal getFieldValue(JFormattedTextField field) {
@@ -72,6 +114,7 @@ public class PriceInfoPanel extends ServicePanel {
         }
     }
 
+    // Ana formun (FormService) parçalar güncellendiğinde buraya fiyat basması için kullanılır
     public void setMaterialCost(double amount) {
         BigDecimal value = BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP);
         material_cost_field.setValue(value);
@@ -90,14 +133,7 @@ public class PriceInfoPanel extends ServicePanel {
         recalculate();
     }
 
-    public void setPaymentType(String type) {
-        if (type != null) {
-            payment_type_combo.setSelectedItem(PaymentType.of(type));
-        } else {
-            payment_type_combo.setSelectedItem(null);
-        }
-    }
-
+    // Formu toplarken (collectForm) kullanılacak Getter'lar
     public double getMaterialCost() {
         return getFieldValue(material_cost_field).doubleValue();
     }
@@ -115,33 +151,12 @@ public class PriceInfoPanel extends ServicePanel {
         return selected != null ? selected : PaymentType.CASH;
     }
 
-    // Diğer mevcut add/subtract metodları korunuyor
-    public void addMaterialCost(double amount) {
-        BigDecimal current = getFieldValue(material_cost_field);
-        BigDecimal added = current.add(BigDecimal.valueOf(amount));
-        material_cost_field.setValue(added);
-        recalculate();
-    }
-
-    public void subtractMaterialCost(double amount) {
-        BigDecimal current = getFieldValue(material_cost_field);
-        BigDecimal result = current.subtract(BigDecimal.valueOf(amount)).max(BigDecimal.ZERO);
-        material_cost_field.setValue(result);
-        recalculate();
-    }
-
+    // --- İşlemler Eklendiğinde Otomatik Artırma/Azaltma Metotları ---
     public void addLaborCost(double amount) {
         BigDecimal current = getFieldValue(labor_cost_field);
         BigDecimal added = current.add(BigDecimal.valueOf(amount));
         labor_cost_field.setValue(added);
-        recalculate();
-    }
-
-    public void subtractLaborCost(double amount) {
-        BigDecimal current = getFieldValue(labor_cost_field);
-        BigDecimal result = current.subtract(BigDecimal.valueOf(amount)).max(BigDecimal.ZERO);
-        labor_cost_field.setValue(result);
-        recalculate();
+        // recalculate() DocumentListener sayesinde otomatik tetiklenecektir.
     }
 
     private void initComponent() {
@@ -154,21 +169,21 @@ public class PriceInfoPanel extends ServicePanel {
 
         material_cost_label = new JLabel("Malzeme Ücreti:");
         material_cost_field = new CurrencyField();
-        material_cost_field.setEditable(false);
+        material_cost_field.setEditable(false); // Sadece Parça tablosu değiştirebilir
 
         labor_cost_label = new JLabel("İşçilik Ücreti:");
         labor_cost_field = new CurrencyField();
 
         total_label = new JLabel("Toplam:");
         total_field = new CurrencyField();
-        total_field.setEditable(false);
+        total_field.setEditable(false); // Otomatik Hesaplanır
 
         paid_label = new JLabel("Ödenen:");
         paid_field = new CurrencyField();
 
         remainder_label = new JLabel("Kalan:");
         remainder_field = new CurrencyField();
-        remainder_field.setEditable(false);
+        remainder_field.setEditable(false); // Otomatik Hesaplanır
 
         payment_type_label = new JLabel("Ödeme Türü:");
         payment_type_combo = new JComboBox<>();
@@ -189,17 +204,17 @@ public class PriceInfoPanel extends ServicePanel {
 
     }
 
-    JLabel material_cost_label;
-    JFormattedTextField material_cost_field;
-    JLabel labor_cost_label;
-    JFormattedTextField labor_cost_field;
-    JLabel total_label;
-    JFormattedTextField total_field;
-    JLabel paid_label;
-    JFormattedTextField paid_field;
-    JLabel remainder_label;
-    JFormattedTextField remainder_field;
-    JLabel payment_type_label;
-    JComboBox<PaymentType> payment_type_combo;
-    JLabel title;
+    private JLabel material_cost_label;
+    private JFormattedTextField material_cost_field;
+    private JLabel labor_cost_label;
+    private JFormattedTextField labor_cost_field;
+    private JLabel total_label;
+    private JFormattedTextField total_field;
+    private JLabel paid_label;
+    private JFormattedTextField paid_field;
+    private JLabel remainder_label;
+    private JFormattedTextField remainder_field;
+    private JLabel payment_type_label;
+    private JComboBox<PaymentType> payment_type_combo;
+    private JLabel title;
 }

@@ -3,13 +3,14 @@ package raven.modal.component;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
+import tr.cabro.servicio.application.util.Ikon;
 
 import javax.swing.*;
 
 public class FormSearchButton extends JButton {
 
     public FormSearchButton() {
-        super("Hızlı Arama...", new FlatSVGIcon("icons/search.svg", 0.4f));
+        super("Hızlı Arama...", new Ikon("icons/search.svg", 0.4f));
         init();
     }
 

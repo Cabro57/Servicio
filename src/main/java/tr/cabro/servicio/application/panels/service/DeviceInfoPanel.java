@@ -7,16 +7,19 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.FieldPopupEditor;
 import tr.cabro.servicio.application.panels.ServicePanel;
 import tr.cabro.servicio.settings.DeviceSettings;
-import tr.cabro.servicio.application.context.ServiceContext;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.event.ActionEvent;
 import java.util.List;
 
 public class DeviceInfoPanel extends ServicePanel {
 
-    public DeviceInfoPanel(ServiceContext context) {
-        super(context);
+    // Form yüklenirken sahte "Veri Değişti" sinyallerini engellemek için
+    private boolean isInitializing = false;
+
+    public DeviceInfoPanel() {
         init();
     }
 
@@ -33,13 +36,64 @@ public class DeviceInfoPanel extends ServicePanel {
         AutoCompleteDecorator.decorate(brand_combo);
 
         loadDeviceTypes();
+        device_type_combo.setSelectedItem(null);
 
+        // Dinleyicileri (Listeners) aktifleştir
+        addListeners();
+    }
+
+    @Override
+    protected void onServiceSet() {
+        if (service == null) return;
+
+        isInitializing = true; // Dinleyicileri (Listeners) geçici olarak sağır et
+        try {
+            // DİKKAT: Sıralama çok önemlidir! Önce Tür, Sonra Marka seçilmeli.
+            setDeviceType(service.getDeviceType());
+            setDeviceBrand(service.getDeviceBrand());
+
+            model_field.setText(service.getDeviceModel() != null ? service.getDeviceModel() : "");
+            seri_no_field.setText(service.getDeviceSerial() != null ? service.getDeviceSerial() : "");
+            password_field.setText(service.getDevicePassword() != null ? service.getDevicePassword() : "");
+            accessory_field.setText(service.getDeviceAccessory() != null ? service.getDeviceAccessory() : "");
+
+        } finally {
+            isInitializing = false; // Form doldu, dinleyicileri tekrar aç
+        }
+    }
+
+    private void addListeners() {
+        // Metin kutuları için ortak dinleyici (Klavye ile bir harf bile yazılsa tetiklenir)
+        DocumentListener documentListener = new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { notifyDataChanged(); }
+            @Override public void removeUpdate(DocumentEvent e) { notifyDataChanged(); }
+            @Override public void changedUpdate(DocumentEvent e) { notifyDataChanged(); }
+        };
+
+        model_field.getDocument().addDocumentListener(documentListener);
+        seri_no_field.getDocument().addDocumentListener(documentListener);
+        password_field.getDocument().addDocumentListener(documentListener);
+        accessory_field.getDocument().addDocumentListener(documentListener);
+
+        // Cihaz Türü değiştiğinde markaları yükle ve ana formu uyar
         device_type_combo.addActionListener((ActionEvent e) -> {
-            String selectedType = (String) device_type_combo.getSelectedItem();
-            loadBrands(selectedType);
+            if (!isInitializing) {
+                String selectedType = (String) device_type_combo.getSelectedItem();
+                loadBrands(selectedType);
+                notifyDataChanged();
+            }
         });
 
-        device_type_combo.setSelectedItem(null);
+        // Marka değiştiğinde ana formu uyar
+        brand_combo.addActionListener(e -> {
+            if (!isInitializing) notifyDataChanged();
+        });
+    }
+
+    private void notifyDataChanged() {
+        if (!isInitializing && getListener() != null) {
+            getListener().onDataChanged(); // Ana formdaki 'Güncelle' butonunu aktif et
+        }
     }
 
     private void loadDeviceTypes() {
@@ -63,19 +117,28 @@ public class DeviceInfoPanel extends ServicePanel {
         brand_combo.setSelectedItem(null);
     }
 
-    // 💡 Eksik setter metodları ekliyoruz
     public void setDeviceType(String type) {
         if (type != null) {
             device_type_combo.setSelectedItem(type);
-            loadBrands(type);
+            // Eğer isInitializing True ise Listener tetiklenmeyeceği için markaları manuel yüklüyoruz
+            if (isInitializing) loadBrands(type);
         } else {
             device_type_combo.setSelectedItem(null);
+            brandComboBoxModel.removeAllElements();
         }
     }
 
     public void setDeviceBrand(String brand) {
         brand_combo.setSelectedItem(brand);
     }
+
+    // --- FormService'in verileri toplaması (collectForm) için güvenli Getter'lar ---
+    public String getSelectedDeviceType() { return (String) device_type_combo.getSelectedItem(); }
+    public String getSelectedBrand() { return (String) brand_combo.getSelectedItem(); }
+    public String getDeviceModel() { return model_field.getText().trim(); }
+    public String getDeviceSerial() { return seri_no_field.getText().trim(); }
+    public String getDevicePassword() { return password_field.getText().trim(); }
+    public String getDeviceAccessory() { return accessory_field.getText().trim(); }
 
     private void initComponent() {
         setLayout(new MigLayout("insets 5, wrap 4", "[][grow,fill][][grow,fill]", "[]"));
@@ -123,19 +186,19 @@ public class DeviceInfoPanel extends ServicePanel {
         add(accessory_field, "sg combos");
     }
 
-    JLabel device_type_label;
-    JComboBox<String> device_type_combo;
-    JLabel brand_label;
-    JComboBox<String> brand_combo;
-    JLabel model_label;
+    private JLabel device_type_label;
+    public JComboBox<String> device_type_combo;
+    private JLabel brand_label;
+    public JComboBox<String> brand_combo;
+    private JLabel model_label;
     public JTextField model_field;
-    JLabel seri_no_label;
+    private JLabel seri_no_label;
     public JTextField seri_no_field;
-    JLabel password_label;
+    private JLabel password_label;
     public JTextField password_field;
-    JLabel accessory_label;
+    private JLabel accessory_label;
     public JTextField accessory_field;
-    JLabel title;
+    private JLabel title;
 
     public final DefaultComboBoxModel<String> deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
     public final DefaultComboBoxModel<String> brandComboBoxModel = new DefaultComboBoxModel<>();
