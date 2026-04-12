@@ -113,8 +113,7 @@ public class FormDashboard extends Form {
         JPanel panel = new JPanel(new MigLayout("fillx", "[]push[][]"));
         JLabel title = new JLabel("Ana Sayfa");
 
-        title.putClientProperty(FlatClientProperties.STYLE, "" +
-                "font:bold +3");
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold $h1.font");
 
         ToolBarSelection<ColorThemes> toolBarSelection = new ToolBarSelection<>(ColorThemes.values(), colorThemes -> {
             if (DefaultChartTheme.setChartColors(colorThemes)) {
@@ -150,7 +149,7 @@ public class FormDashboard extends Form {
         cardBox.addCardItem(createIcon("icons/wrench.svg", DefaultChartTheme.getColor(0)), "Toplam Servis");
         cardBox.addCardItem(createIcon("icons/banknote-arrow-up.svg", DefaultChartTheme.getColor(1)), "Toplam Gelir");
         cardBox.addCardItem(createIcon("icons/banknote-arrow-down.svg", DefaultChartTheme.getColor(2)), "Toplam Gider");
-        cardBox.addCardItem(createIcon("icons/dashboard/profit.svg", DefaultChartTheme.getColor(3)), "Son Kr");
+        cardBox.addCardItem(createIcon("icons/turkish-lira.svg", DefaultChartTheme.getColor(3)), "Son Kâr");
         panel.add(cardBox);
         panelLayout.add(panel);
     }

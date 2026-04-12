@@ -5,7 +5,7 @@ import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import raven.modal.system.FormSearch;
 import raven.modal.utils.DemoPreferences;
-import tr.cabro.servicio.application.forms.FormCustomerDetail;
+import tr.cabro.servicio.application.forms.FormCustomer;
 import tr.cabro.servicio.model.Customer;
 
 public class CustomerSearchResult implements ISearchableResult {
@@ -37,7 +37,7 @@ public class CustomerSearchResult implements ISearchableResult {
 
         // SİZİN MİMARİNİZDEKİ DOĞRU ÇAĞRI:
         // Yeni, veri odaklı formu 'new' ile oluştur
-        Form formInstance = new FormCustomerDetail(customer);
+        Form formInstance = new FormCustomer(customer);
         // FormManager'a göster komutu ver
         FormManager.showForm(formInstance);
 

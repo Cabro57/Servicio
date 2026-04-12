@@ -27,9 +27,9 @@ public final class ServiceManager {
         // 3. Servislere Enjekte Et (Constructor Injection)
         // Artık Servisler veritabanı bağlantısını kendileri oluşturmuyor,
         // dışarıdan "hazır repository" alıyorlar.
-        customerService = new CustomerService(customerRepo);
         partService = new PartService(partRepo);
         repairService = new RepairService(repairRepo);
+        customerService = new CustomerService(customerRepo, repairService);
         supplierService = new SupplierService(supplierRepo);
         userService = new UserService(userRepo);
     }

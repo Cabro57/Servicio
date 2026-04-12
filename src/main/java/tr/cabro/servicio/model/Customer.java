@@ -38,6 +38,8 @@ public class Customer {
     private CustomerType type;
     private String note;
 
+    private int deviceCount;
+
     @ColumnName("created_at")
     private LocalDateTime createdAt;
 

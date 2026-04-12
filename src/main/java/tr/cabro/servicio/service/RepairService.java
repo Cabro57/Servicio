@@ -93,6 +93,16 @@ public class RepairService {
         });
     }
 
+    public CompletableFuture<List<Service>> getServicesWithDebt() {
+        // Tüm servisleri çek (hydrate işlemi ile parça fiyatları dahil hesaplanır)
+        return getAll().thenApply(services ->
+                services.stream()
+                        // Sadece getRemainingAmount() > 0 olanları (borcu olanları) filtrele
+                        .filter(s -> s.getRemainingAmount() > 0)
+                        .collect(Collectors.toList())
+        );
+    }
+
     public CompletableFuture<Void> setDelivered(int serviceId) {
 
         return CompletableFuture.runAsync(() -> {
@@ -184,6 +194,14 @@ public class RepairService {
 
     public CompletableFuture<Double> getTotalPartsCostForService(int serviceId) {
         return CompletableFuture.supplyAsync(() -> repository.calculateTotalPartsCost(serviceId));
+    }
+
+    public CompletableFuture<Map<Integer, Integer>> getDeviceCountsByCustomerIds(List<Integer> customerIds) {
+        // Eğer liste boşsa veritabanını hiç yormadan boş bir Map dön
+        if (customerIds == null || customerIds.isEmpty()) {
+            return CompletableFuture.completedFuture(Collections.emptyMap());
+        }
+        return CompletableFuture.supplyAsync(() -> repository.getDeviceCountsByCustomerIds(customerIds));
     }
 
 

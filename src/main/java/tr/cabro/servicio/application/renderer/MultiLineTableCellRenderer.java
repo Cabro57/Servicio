@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.renderer;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
 import javax.swing.table.TableCellRenderer;
@@ -18,56 +17,83 @@ public class MultiLineTableCellRenderer<T> extends JPanel implements TableCellRe
     private final Function<T, String> topTextExtractor;
     private final Function<T, String> bottomTextExtractor;
 
+    // Yeni eklenen renk belirleyici fonksiyonlar
+    private Function<T, Color> topColorExtractor = null;
+    private Function<T, Color> bottomColorExtractor = null;
+
+    // Mevcut yapıyı bozmamak için eski constructor (Renkler varsayılan kalır)
     public MultiLineTableCellRenderer(Function<T, String> topTextExtractor, Function<T, String> bottomTextExtractor) {
+        this(topTextExtractor, bottomTextExtractor, null, null);
+    }
+
+    // Yeni ve gelişmiş constructor (Özel renk koşulları eklenebilir)
+    public MultiLineTableCellRenderer(Function<T, String> topTextExtractor,
+                                      Function<T, String> bottomTextExtractor,
+                                      Function<T, Color> topColorExtractor,
+                                      Function<T, Color> bottomColorExtractor) {
         this.topTextExtractor = topTextExtractor;
         this.bottomTextExtractor = bottomTextExtractor;
+        this.topColorExtractor = topColorExtractor;
+        this.bottomColorExtractor = bottomColorExtractor;
 
-        // ÇÖZÜM BURADA:
-        // "gapy 0" ve "[]0[]" komutları iki satır arasındaki tüm varsayılan boşlukları ezer ve 0 yapar.
-        // "insets 0 5 0 5" alt ve üstteki iç boşlukları sıfırlar.
-        // "aligny center" ile bu yapışık iki satır hücrenin dikey ekseninde tam ortaya hizalanır.
-        setLayout(new MigLayout("insets 0 5 0 5, gapy 0, fill, aligny center", "[grow]", "[]0[]"));
+        setLayout(new GridBagLayout());
         setOpaque(true);
+        setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
 
         topLabel = new JLabel();
-        topLabel.putClientProperty(FlatClientProperties.STYLE, "font: bold +1"); // Görseldeki gibi biraz daha belirgin olması için +1 yapabilirsiniz
+        topLabel.putClientProperty(FlatClientProperties.STYLE, "font: $h3.font");
+        topLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         bottomLabel = new JLabel();
-        bottomLabel.putClientProperty(FlatClientProperties.STYLE, "font: -1");
+        bottomLabel.putClientProperty(FlatClientProperties.STYLE, "font: $medium.font");
+        bottomLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
-        // "wrap" komutu bir alt satıra geçmesini sağlar, cell kullanmaktan daha temizdir.
-        add(topLabel, "growx, wrap");
-        add(bottomLabel, "growx");
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(0, 5, 0, 5);
+
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.SOUTH;
+        add(topLabel, gbc);
+
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.NORTH;
+        add(bottomLabel, gbc);
     }
 
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-
-        // Satır seçimi koruması
-        if (isSelected) {
-            setBackground(table.getSelectionBackground());
-            topLabel.setForeground(table.getSelectionForeground());
-            bottomLabel.setForeground(table.getSelectionForeground()); // Seçiliyken alt metin de beyaz olsun
-        } else {
-            setBackground(table.getBackground());
-            topLabel.setForeground(table.getForeground());
-            // Seçili değilken alt metin FlatLaf'ın pasif (gri) rengini alsın
-            bottomLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
-        }
-
         if (value != null) {
             try {
                 @SuppressWarnings("unchecked")
                 T item = (T) value;
 
-                // Java 8 Function'ları ile nesneden ilgili metinleri çek
+                // Metinleri ayarla
                 String topText = topTextExtractor.apply(item);
                 String bottomText = bottomTextExtractor.apply(item);
-
                 topLabel.setText(topText != null ? topText : "");
                 bottomLabel.setText(bottomText != null ? bottomText : "");
+
+                // Özel renkleri kontrol et
+                Color topCustomColor = topColorExtractor != null ? topColorExtractor.apply(item) : null;
+                Color bottomCustomColor = bottomColorExtractor != null ? bottomColorExtractor.apply(item) : null;
+
+                // Renk atamaları ve Seçili olma durumu
+                if (isSelected) {
+                    setBackground(table.getSelectionBackground());
+                    // Seçiliyken eğer özel renk varsa onu kullan, yoksa tablonun varsayılan seçili rengini (genelde beyaz) kullan
+                    topLabel.setForeground(topCustomColor != null ? topCustomColor : table.getSelectionForeground());
+                    bottomLabel.setForeground(bottomCustomColor != null ? bottomCustomColor : table.getSelectionForeground());
+                } else {
+                    setBackground(table.getBackground());
+                    topLabel.setForeground(topCustomColor != null ? topCustomColor : table.getForeground());
+                    // Özel renk yoksa varsayılan pasif griyi kullan
+                    bottomLabel.setForeground(bottomCustomColor != null ? bottomCustomColor : UIManager.getColor("Label.disabledForeground"));
+                }
+
             } catch (ClassCastException e) {
-                // Tip uyuşmazlığı olursa sistemi çökertme, düz metin bas
                 topLabel.setText(value.toString());
                 bottomLabel.setText("");
             }

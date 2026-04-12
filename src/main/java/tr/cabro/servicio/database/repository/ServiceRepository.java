@@ -130,6 +130,11 @@ public interface ServiceRepository {
     @ValueColumn("total")
     Map<Integer, Double> getPartsCostsByServiceIds(@BindList("serviceIds") List<Integer> serviceIds);
 
+    @SqlQuery("SELECT customer_id, COUNT(id) AS device_count FROM services WHERE customer_id IN (<customerIds>) GROUP BY customer_id")
+    @KeyColumn("customer_id")
+    @ValueColumn("device_count")
+    Map<Integer, Integer> getDeviceCountsByCustomerIds(@BindList("customerIds") List<Integer> customerIds);
+
     // --- TRANSACTION ---
 
     @Transaction
@@ -161,4 +166,6 @@ public interface ServiceRepository {
     @RegisterBeanMapper(DashboardStats.class)
     @RegisterBeanMapper(DashboardStats.class)
     DashboardStats dashboardStats();
+
+
 }

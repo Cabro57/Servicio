@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @SystemForm(name = "Parçalar", description = "Yeni parçalar eklemek ve düzenlemek için kullanılabilir")
-public class FormParts extends AbstractTableForm<Part> {
+public class FormParts extends AbstractTableForm {
 
     private final PartService service;
     private GenericTableModel<Part> partTableModel;
@@ -135,91 +135,91 @@ public class FormParts extends AbstractTableForm<Part> {
                 , id);
     }
 
-    @Override
-    protected void onEdit() {
-        List<Part> selected = getSelectedParts();
-
-        if (selected.isEmpty()) {
-            Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir parça seçin.");
-            return;
-        }
-        if (selected.size() > 1) {
-            Toast.show(this, Toast.Type.INFO, "Düzenlemek için sadece 1 parça seçin.");
-            return;
-        }
-
-        final String id = "PartEdit";
-        Part part = selected.get(0);
-        PartEditPanel panel = new PartEditPanel(part);
-
-        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Güncelle", 0),
-                new SimpleModalBorder.Option("İptal", 2)
-        };
-
-        ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Parça Düzenle", options,
-                        (controller, action) -> {
-                            if (action == SimpleModalBorder.OPENED) {
-                                //panel.populateFormWith(part);
-                            } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Part updated = panel.getData();
-                                if (updated == null) {
-                                    controller.consume();
-                                    return;
-                                }
-
-                                service.save(updated, true).thenAccept(updare -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
-                                        refreshTable();
-                                    });
-                                }).exceptionally(ex -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        controller.consume();
-                                        Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
-
-                                    });
-                                    Servicio.getLogger().error("Parça güncelleme hatası", ex);
-                                    return  null;
-                                });
-                                try {
-
-
-                                } catch (Exception e) {
-                                }
-                            }
-                        })
-                , id);
-    }
-
-    @Override
-    protected void onDelete() {
-        List<Part> selects = getSelectedParts();
-
-        if (selects.isEmpty()) {
-            Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir parça seçin.");
-            return;
-        }
-
-        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                "Seçilen " + selects.size() + " parçayı silmek istediğinizden emin misiniz?", "Silme Onayı",
-                SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-
-
-                List<String> idsToDelete = selects.stream().map(Part::getBarcode).collect(Collectors.toList());
-
-                service.deleteMultiple(idsToDelete).thenAccept(v -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, selects.size() + " adet müşteri silindi.");
-                        refreshTable();
-                    });
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.ERROR, "Silme işlemi başarısız oldu.");
-                    });
-                    return null;
-                });
-        }));
-    }
+//    @Override
+//    protected void onEdit() {
+//        List<Part> selected = getSelectedParts();
+//
+//        if (selected.isEmpty()) {
+//            Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir parça seçin.");
+//            return;
+//        }
+//        if (selected.size() > 1) {
+//            Toast.show(this, Toast.Type.INFO, "Düzenlemek için sadece 1 parça seçin.");
+//            return;
+//        }
+//
+//        final String id = "PartEdit";
+//        Part part = selected.get(0);
+//        PartEditPanel panel = new PartEditPanel(part);
+//
+//        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+//                new SimpleModalBorder.Option("Güncelle", 0),
+//                new SimpleModalBorder.Option("İptal", 2)
+//        };
+//
+//        ModalDialog.showModal(this, new SimpleModalBorder(
+//                        panel, "Parça Düzenle", options,
+//                        (controller, action) -> {
+//                            if (action == SimpleModalBorder.OPENED) {
+//                                //panel.populateFormWith(part);
+//                            } else if (action == SimpleModalBorder.OK_OPTION) {
+//                                Part updated = panel.getData();
+//                                if (updated == null) {
+//                                    controller.consume();
+//                                    return;
+//                                }
+//
+//                                service.save(updated, true).thenAccept(updare -> {
+//                                    SwingUtilities.invokeLater(() -> {
+//                                        Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
+//                                        refreshTable();
+//                                    });
+//                                }).exceptionally(ex -> {
+//                                    SwingUtilities.invokeLater(() -> {
+//                                        controller.consume();
+//                                        Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
+//
+//                                    });
+//                                    Servicio.getLogger().error("Parça güncelleme hatası", ex);
+//                                    return  null;
+//                                });
+//                                try {
+//
+//
+//                                } catch (Exception e) {
+//                                }
+//                            }
+//                        })
+//                , id);
+//    }
+//
+//    @Override
+//    protected void onDelete() {
+//        List<Part> selects = getSelectedParts();
+//
+//        if (selects.isEmpty()) {
+//            Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir parça seçin.");
+//            return;
+//        }
+//
+//        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
+//                "Seçilen " + selects.size() + " parçayı silmek istediğinizden emin misiniz?", "Silme Onayı",
+//                SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
+//
+//
+//                List<String> idsToDelete = selects.stream().map(Part::getBarcode).collect(Collectors.toList());
+//
+//                service.deleteMultiple(idsToDelete).thenAccept(v -> {
+//                    SwingUtilities.invokeLater(() -> {
+//                        Toast.show(this, Toast.Type.SUCCESS, selects.size() + " adet müşteri silindi.");
+//                        refreshTable();
+//                    });
+//                }).exceptionally(ex -> {
+//                    SwingUtilities.invokeLater(() -> {
+//                        Toast.show(this, Toast.Type.ERROR, "Silme işlemi başarısız oldu.");
+//                    });
+//                    return null;
+//                });
+//        }));
+//    }
 }

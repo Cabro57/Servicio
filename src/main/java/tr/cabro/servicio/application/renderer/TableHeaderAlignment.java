@@ -1,9 +1,7 @@
 package tr.cabro.servicio.application.renderer;
 
 import java.awt.Component;
-import javax.swing.JLabel;
-import javax.swing.JTable;
-import javax.swing.SwingConstants;
+import javax.swing.*;
 import javax.swing.table.TableCellRenderer;
 
 public class TableHeaderAlignment implements TableCellRenderer {
@@ -19,6 +17,7 @@ public class TableHeaderAlignment implements TableCellRenderer {
 
         table.setDefaultRenderer(Object.class, (jtable, o, isSelected, hasFocus, row, column) -> {
             JLabel label = (JLabel) oldCellRenderer.getTableCellRendererComponent(jtable, o, isSelected, hasFocus, row, column);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
             label.setHorizontalAlignment(getAlignment(column));
             return label;
         });
@@ -27,6 +26,7 @@ public class TableHeaderAlignment implements TableCellRenderer {
     @Override
     public Component getTableCellRendererComponent(JTable jtable, Object o, boolean isSelected, boolean hasFocus, int row, int column) {
         JLabel label = (JLabel) oldHeaderRenderer.getTableCellRendererComponent(jtable, o, isSelected, hasFocus, row, column);
+        label.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
         label.setHorizontalAlignment(getAlignment(column));
         return label;
     }

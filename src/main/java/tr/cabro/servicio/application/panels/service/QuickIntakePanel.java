@@ -27,7 +27,6 @@ import java.util.List;
 
 public class QuickIntakePanel extends AbstractEditPanel<Service> {
 
-    private final String MODAL_ID;
     public static final int NEW_CUSTOMER_ACTION = 50;
 
     private EmbeddedComboBox<Customer> customerCombo;
@@ -44,10 +43,9 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     private DefaultComboBoxModel<String> brandComboBoxModel;
     private DefaultComboBoxModel<Customer> listModel;
 
-    public QuickIntakePanel(String modalId, Service data) {
+    public QuickIntakePanel(Service data) {
         // DIKKAT: super(data) cagrildiginda dogrudan initComponent() tetiklenecek.
         super(data);
-        this.MODAL_ID = modalId;
 
         initData();
         initEvents();

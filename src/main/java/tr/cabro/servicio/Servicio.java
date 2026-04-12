@@ -128,9 +128,11 @@ public final class Servicio {
     private void setupUI() {
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("themes");
+
+        FlatLaf.setPreferredFontFamily( FlatRobotoFont.FAMILY );
+        FlatLaf.setPreferredLightFontFamily( FlatRobotoFont.FAMILY_LIGHT );
+        FlatLaf.setPreferredSemiboldFontFamily( FlatRobotoFont.FAMILY_SEMIBOLD );
         DemoPreferences.setupLaf();
-        int scaledFontSize = UIScale.scale(12);
-        UIManager.put("defaultFont", FontUtils.getCompositeFont(FlatRobotoFont.FAMILY, Font.PLAIN, scaledFontSize));
     }
 
     private void launchMainUI() {

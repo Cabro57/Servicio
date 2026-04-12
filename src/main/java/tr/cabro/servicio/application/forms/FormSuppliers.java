@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @SystemForm(name = "Tedarikçiler", description = "Tüm tedarikçileri listeler")
-public class FormSuppliers extends AbstractTableForm<Supplier> {
+public class FormSuppliers extends AbstractTableForm {
 
     private final SupplierService service;
     private GenericTableModel<Supplier> supplierTableModel;
@@ -117,90 +117,90 @@ public class FormSuppliers extends AbstractTableForm<Supplier> {
                 , id);
     }
 
-    @Override
-    protected void onEdit() {
-        List<Supplier> selected = getSelectedSuppliers();
-
-        if (selected.isEmpty()) {
-            Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir tedarikçi seçin.");
-            return;
-        }
-        if (selected.size() > 1) {
-            Toast.show(this, Toast.Type.INFO, "Düzenlemek için sadece 1 tedarikçi seçin.");
-            return;
-        }
-
-        final String id = "SupplierEdit";
-        Supplier supplier = selected.get(0);
-        SupplierEditPanel panel = new SupplierEditPanel(supplier);
-
-        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Güncelle", 0),
-                new SimpleModalBorder.Option("İptal", 2)
-        };
-
-        ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Tedarikçi Düzenle", options,
-                        (controller, action) -> {
-                            if (action == SimpleModalBorder.OPENED) {
-                                //panel.populateFormWith(supplier);
-                            } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Supplier updated = panel.getData();
-                                if (updated == null) {
-                                    controller.consume();
-                                    return;
-                                }
-
-                                try {
-                                    updated.setId(supplier.getId());
-                                    updated.setCreated_at(supplier.getCreated_at());
-
-                                    service.save(updated, true);
-
-                                    Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
-                                    refreshTable();
-
-                                } catch (Exception e) {
-                                    controller.consume();
-                                    Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + e.getMessage());
-                                    Servicio.getLogger().error("Tedarikçi güncelleme hatası", e);
-                                }
-                            }
-                        })
-                , id);
-    }
-
-    @Override
-    protected void onDelete() {
-        List<Supplier> cs = getSelectedSuppliers();
-
-        if (cs.isEmpty()) {
-            Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir tedarikçi seçin.");
-            return;
-        }
-
-        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                "Seçilen " + cs.size() + " tedarikçiyi silmek istediğinizden emin misiniz?", "Silme Onayı",
-                SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-            if (action == 0) {
-                int successCount = 0;
-                int errorCount = 0;
-
-                for (Supplier s : cs) {
-                    try {
-                        service.delete(s.getId());
-                        successCount++;
-                    } catch (Exception e) {
-                        errorCount++;
-                        Servicio.getLogger().error("Silme hatası ID: " + s.getId(), e);
-                    }
-                }
-
-                if (successCount > 0) Toast.show(this, Toast.Type.SUCCESS, successCount + " adet tedarikçi silindi.");
-                if (errorCount > 0) Toast.show(this, Toast.Type.WARNING, errorCount + " adet tedarikçi silinemedi.");
-
-                refreshTable();
-            }
-        }));
-    }
+//    @Override
+//    protected void onEdit() {
+//        List<Supplier> selected = getSelectedSuppliers();
+//
+//        if (selected.isEmpty()) {
+//            Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir tedarikçi seçin.");
+//            return;
+//        }
+//        if (selected.size() > 1) {
+//            Toast.show(this, Toast.Type.INFO, "Düzenlemek için sadece 1 tedarikçi seçin.");
+//            return;
+//        }
+//
+//        final String id = "SupplierEdit";
+//        Supplier supplier = selected.get(0);
+//        SupplierEditPanel panel = new SupplierEditPanel(supplier);
+//
+//        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+//                new SimpleModalBorder.Option("Güncelle", 0),
+//                new SimpleModalBorder.Option("İptal", 2)
+//        };
+//
+//        ModalDialog.showModal(this, new SimpleModalBorder(
+//                        panel, "Tedarikçi Düzenle", options,
+//                        (controller, action) -> {
+//                            if (action == SimpleModalBorder.OPENED) {
+//                                //panel.populateFormWith(supplier);
+//                            } else if (action == SimpleModalBorder.OK_OPTION) {
+//                                Supplier updated = panel.getData();
+//                                if (updated == null) {
+//                                    controller.consume();
+//                                    return;
+//                                }
+//
+//                                try {
+//                                    updated.setId(supplier.getId());
+//                                    updated.setCreated_at(supplier.getCreated_at());
+//
+//                                    service.save(updated, true);
+//
+//                                    Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
+//                                    refreshTable();
+//
+//                                } catch (Exception e) {
+//                                    controller.consume();
+//                                    Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + e.getMessage());
+//                                    Servicio.getLogger().error("Tedarikçi güncelleme hatası", e);
+//                                }
+//                            }
+//                        })
+//                , id);
+//    }
+//
+//    @Override
+//    protected void onDelete() {
+//        List<Supplier> cs = getSelectedSuppliers();
+//
+//        if (cs.isEmpty()) {
+//            Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir tedarikçi seçin.");
+//            return;
+//        }
+//
+//        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
+//                "Seçilen " + cs.size() + " tedarikçiyi silmek istediğinizden emin misiniz?", "Silme Onayı",
+//                SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
+//            if (action == 0) {
+//                int successCount = 0;
+//                int errorCount = 0;
+//
+//                for (Supplier s : cs) {
+//                    try {
+//                        service.delete(s.getId());
+//                        successCount++;
+//                    } catch (Exception e) {
+//                        errorCount++;
+//                        Servicio.getLogger().error("Silme hatası ID: " + s.getId(), e);
+//                    }
+//                }
+//
+//                if (successCount > 0) Toast.show(this, Toast.Type.SUCCESS, successCount + " adet tedarikçi silindi.");
+//                if (errorCount > 0) Toast.show(this, Toast.Type.WARNING, errorCount + " adet tedarikçi silinemedi.");
+//
+//                refreshTable();
+//            }
+//        }));
+//    }
 }

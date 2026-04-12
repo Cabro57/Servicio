@@ -38,7 +38,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
-public class FormCustomerDetail extends Form {
+public class FormCustomer extends Form {
 
     private Customer customer;
     private final RepairService repairService;
@@ -51,7 +51,7 @@ public class FormCustomerDetail extends Form {
     private JLabel lblNameBadge;
     private JLabel valTotalDevices, valActiveServices, valCompletedServices, valTotalSpent;
 
-    public FormCustomerDetail(Customer customer) {
+    public FormCustomer(Customer customer) {
         this.customer = customer;
         this.repairService = ServiceManager.getRepairService();
         this.customerService = ServiceManager.getCustomerService();

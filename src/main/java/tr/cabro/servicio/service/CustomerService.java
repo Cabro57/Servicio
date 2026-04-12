@@ -1,22 +1,25 @@
 package tr.cabro.servicio.service;
 
-import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.repository.CustomerRepository;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.util.Validator;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public class CustomerService {
 
     private final CustomerRepository repository;
+    private final RepairService repairService;
 
-    public CustomerService(CustomerRepository repository) {
+    public CustomerService(CustomerRepository repository, RepairService repairService) {
         this.repository = repository;
+        this.repairService = repairService;
     }
 
     public CompletableFuture<Customer> save(Customer customer, boolean update) {
@@ -45,18 +48,44 @@ public class CustomerService {
     }
 
     public CompletableFuture<Optional<Customer>> get(int id) {
-        return CompletableFuture.supplyAsync(() -> repository.findById(id));
+        // Tekil müşteri çekerken de cihaz sayısını almak isteyebiliriz
+        return CompletableFuture.supplyAsync(() -> repository.findById(id))
+                .thenCompose(optionalCustomer -> {
+                    return optionalCustomer.map(customer -> populateDeviceCounts(Collections.singletonList(customer))
+                            .thenApply(list -> Optional.of(list.get(0)))).orElseGet(() -> CompletableFuture.completedFuture(Optional.empty()));
+                });
     }
 
     public CompletableFuture<List<Customer>> getAll() {
-        return CompletableFuture.supplyAsync(repository::findAll);
+        return CompletableFuture.supplyAsync(repository::findAll)
+                .thenCompose(this::populateDeviceCounts); // Çekilen listeyi cihaz sayısıyla doldur
     }
 
     public CompletableFuture<List<Customer>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return getAll();
         }
-        return CompletableFuture.supplyAsync(() -> repository.search("%" + searchTerm.trim() + "%"));
+        return CompletableFuture.supplyAsync(() -> repository.search("%" + searchTerm.trim() + "%"))
+                .thenCompose(this::populateDeviceCounts); // Arama sonucunu cihaz sayısıyla doldur
+    }
+
+    private CompletableFuture<List<Customer>> populateDeviceCounts(List<Customer> customers) {
+        if (customers.isEmpty()) {
+            return CompletableFuture.completedFuture(customers);
+        }
+
+        List<Integer> customerIds = customers.stream()
+                .map(Customer::getId)
+                .collect(Collectors.toList());
+
+        return repairService.getDeviceCountsByCustomerIds(customerIds)
+                .thenApply(countsMap -> {
+                    for (Customer c : customers) {
+                        // Eğer müşterinin hiç servisi yoksa Map'ten null döner, bu yüzden getOrDefault(id, 0)
+                        c.setDeviceCount(countsMap.getOrDefault(c.getId(), 0));
+                    }
+                    return customers;
+                });
     }
 
     private void validateCustomer(Customer customer) {
