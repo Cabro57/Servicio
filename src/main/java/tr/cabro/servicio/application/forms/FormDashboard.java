@@ -14,8 +14,8 @@ import raven.modal.component.chart.utils.ToolBarTimeSeriesChartRenderer;
 import raven.modal.component.dashboard.CardBox;
 import raven.modal.system.Form;
 import raven.modal.utils.SystemForm;
-import tr.cabro.servicio.component.PaginationTable;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.application.panels.ActiveServiceTable;
+import tr.cabro.servicio.application.panels.PendingPaymentsTable;
 import tr.cabro.servicio.reports.ServiceFinanceRecord;
 import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -36,7 +36,7 @@ public class FormDashboard extends Form {
         createPanelLayout();
         createCard();
         createChart();
-        createServiceTable();
+        createOtherTable();
     }
 
     @Override
@@ -101,8 +101,11 @@ public class FormDashboard extends Form {
         });
 
         repairService.getAll("OPEN").thenAccept(services -> {
-            paginationTable.setData(services);
-            paginationTable.showData();
+            SwingUtilities.invokeLater(() -> activeServiceTable.setData(services));
+        });
+
+        repairService.getServicesWithDebt().thenAccept(services -> {
+            SwingUtilities.invokeLater(() -> pendingPaymentsTable.setData(services));
         });
     }
 
@@ -132,7 +135,7 @@ public class FormDashboard extends Form {
         JScrollPane scrollPane = new JScrollPane(panelLayout);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(10);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         scrollPane.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "" +
                 "width:5;" +
                 "trackArc:$ScrollBar.thumbArc;" +
@@ -144,10 +147,10 @@ public class FormDashboard extends Form {
     private void createCard() {
         JPanel panel = new JPanel(new MigLayout("fillx", "[fill]"));
         cardBox = new CardBox();
-        cardBox.addCardItem(createIcon("icons/dashboard/customer.svg", DefaultChartTheme.getColor(0)), "Toplam Servis");
-        cardBox.addCardItem(createIcon("icons/dashboard/income.svg", DefaultChartTheme.getColor(1)), "Toplam Gelir");
-        cardBox.addCardItem(createIcon("icons/dashboard/expense.svg", DefaultChartTheme.getColor(2)), "Toplam Gider");
-        cardBox.addCardItem(createIcon("icons/dashboard/profit.svg", DefaultChartTheme.getColor(3)), "Son Kar");
+        cardBox.addCardItem(createIcon("icons/wrench.svg", DefaultChartTheme.getColor(0)), "Toplam Servis");
+        cardBox.addCardItem(createIcon("icons/banknote-arrow-up.svg", DefaultChartTheme.getColor(1)), "Toplam Gelir");
+        cardBox.addCardItem(createIcon("icons/banknote-arrow-down.svg", DefaultChartTheme.getColor(2)), "Toplam Gider");
+        cardBox.addCardItem(createIcon("icons/dashboard/profit.svg", DefaultChartTheme.getColor(3)), "Son Kr");
         panel.add(cardBox);
         panelLayout.add(panel);
     }
@@ -162,26 +165,27 @@ public class FormDashboard extends Form {
         panelLayout.add(panel);
     }
 
-    private void createServiceTable() {
-        JPanel panel = new JPanel(new MigLayout("gap 14,wrap,fillx", "[fill]"));
-
-        paginationTable = new PaginationTable<>();
-
-        panel.add(paginationTable);
+    private void createOtherTable() {
+        JPanel panel = new JPanel(new MigLayout("fillx,gap 14", "[fill,300::]", "[300]"));
+        activeServiceTable = new ActiveServiceTable();
+        pendingPaymentsTable = new PendingPaymentsTable();
+        panel.add(activeServiceTable, "sgx 1, aligny top");
+        panel.add(pendingPaymentsTable, "sgx 1, aligny top");
         panelLayout.add(panel);
     }
 
     private Icon createIcon(String icon, Color color) {
-        return new FlatSVGIcon(icon, 0.4f).setColorFilter(new FlatSVGIcon.ColorFilter(color1 -> color));
+        return new FlatSVGIcon(icon, 1f).setColorFilter(new FlatSVGIcon.ColorFilter(color1 -> color));
     }
+
+    private ActiveServiceTable activeServiceTable;
+    private PendingPaymentsTable pendingPaymentsTable;
 
 
     private JPanel panelLayout;
     private CardBox cardBox;
 
     private TimeSeriesChart timeSeriesChart;
-
-    private PaginationTable<Service> paginationTable;
 
     private class DashboardLayout implements LayoutManager {
 
