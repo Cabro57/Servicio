@@ -2,61 +2,71 @@ package tr.cabro.servicio.model;
 
 import lombok.Getter;
 import lombok.Setter;
-
-import java.time.LocalDate;
+import org.jdbi.v3.core.mapper.reflect.ColumnName;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter @Setter
 public class Part {
+    private int id;
+    private String barcode;
 
-    private String barcode; // Ürün kodu ya da barkod
+    private String name;
+    private String category;
 
-    private String brand; // Ürün Markası
-    private String name; // Ürün Adı
-    private int supplierId; // Tedarikçi
+    @ColumnName("model_compatibility")
+    private String modelCompatibility;
 
-    private String deviceType; // Ürün Cihaz Türü
-    private String model; // Ürün uyumlu modelleri
+    @ColumnName("supplier_id")
+    private Integer supplierId;
 
-    private double purchasePrice; // Alış Fiyatı
-    private double salePrice; // Satış Fiyatı
-    private int stock; // Stok miktarı
-    private int minStock; // Minimum Stok Miktarı
+    private Supplier supplier;
 
-    private int warrantyPeriod; // Garanti Süresi
+    @ColumnName("purchase_price")
+    private BigDecimal purchasePrice = BigDecimal.ZERO;
 
-    private LocalDate purchaseDate; // Alınma Tarihi
-    private String description; // Açıklama - Ürün hakkında not
+    @ColumnName("sale_price")
+    private BigDecimal salePrice = BigDecimal.ZERO;
 
+    @ColumnName("stock_quantity")
+    private int stockQuantity;
+
+    @ColumnName("min_stock_level")
+    private int minStockLevel;
+
+    private String description;
+
+    @ColumnName("is_deleted")
+    private boolean isDeleted;
+
+    @ColumnName("created_at")
     private LocalDateTime createdAt;
 
-    public Part(String barcode, String brand, String name) {
-        this.barcode = barcode;
-        this.brand = brand;
-        this.name = name;
-        this.createdAt = LocalDateTime.now();
-    }
+    @ColumnName("updated_at")
+    private LocalDateTime updatedAt;
 
-    public Part() {
-        this.createdAt = LocalDateTime.now();
+    public BigDecimal getTotalStockValue() {
+        if (purchasePrice == null) return BigDecimal.ZERO;
+        return purchasePrice.multiply(BigDecimal.valueOf(stockQuantity));
     }
 
     @Override
     public String toString() {
-        return brand.toUpperCase() + " " + name;
+        return "Part{" +
+                "id=" + id +
+                ", barcode='" + barcode + '\'' +
+                ", name='" + name + '\'' +
+                ", category='" + category + '\'' +
+                ", modelCompatibility='" + modelCompatibility + '\'' +
+                ", supplierId=" + supplierId +
+                ", purchasePrice=" + purchasePrice +
+                ", salePrice=" + salePrice +
+                ", stockQuantity=" + stockQuantity +
+                ", minStockLevel=" + minStockLevel +
+                ", description='" + description + '\'' +
+                ", isDeleted=" + isDeleted +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
     }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Part other = (Part) obj;
-        return barcode.equals(other.barcode);
-    }
-
-    @Override
-    public int hashCode() {
-        return barcode.hashCode();
-    }
-
 }

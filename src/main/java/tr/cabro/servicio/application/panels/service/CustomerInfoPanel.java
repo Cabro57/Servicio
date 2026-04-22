@@ -38,7 +38,7 @@ public class CustomerInfoPanel extends ServicePanel {
         if (service != null) {
             updateCustomerUI(service.getCustomer());
             setRecordDate(service.getCreatedAt());
-            setDeliverDate(service.getDeliveryAt());
+            setDeliverDate(service.getDeliveryDate());
         }
     }
 
@@ -97,7 +97,7 @@ public class CustomerInfoPanel extends ServicePanel {
                                     customerService.save(newCustomer, false).thenAccept(savedCustomer -> {
                                         SwingUtilities.invokeLater(() -> {
                                             updateCustomerSelection(savedCustomer);
-                                            Toast.show(this, Toast.Type.SUCCESS, savedCustomer.getName() + " başarıyla eklendi.");
+                                            Toast.show(this, Toast.Type.SUCCESS, savedCustomer.getFullName() + " başarıyla eklendi.");
                                         });
                                     }).exceptionally(ex -> {
                                         SwingUtilities.invokeLater(() -> {

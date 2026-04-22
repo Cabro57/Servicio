@@ -92,10 +92,10 @@ public class CustomerService {
         // --- 1. Validasyon ve Normalizasyon ---
 
         // Zorunlu Alanlar
-        if (Validator.isEmpty(customer.getName())) {
+        if (Validator.isEmpty(customer.getFirstName())) {
             throw new ValidationException("Müşteri adı boş bırakılamaz.");
         }
-        if (Validator.isEmpty(customer.getSurname())) {
+        if (Validator.isEmpty(customer.getLastName())) {
             throw new ValidationException("Müşteri soyadı boş bırakılamaz.");
         }
 
@@ -128,7 +128,7 @@ public class CustomerService {
         }
 
         // TC Kimlik Kontrolü
-        String idNo = customer.getIdNo();
+        String idNo = customer.getIdentityNo();
         if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
             throw new ValidationException("TC Kimlik numarası 11 haneli ve rakamlardan oluşmalıdır.");
         }

@@ -13,6 +13,7 @@ public class PaymentTypeRenderer extends JLabel implements ListCellRenderer<Paym
         setVerticalAlignment(CENTER);
     }
 
+    // TODO: PaymenType düzenlendikten sonra buraya da ayara çekilecek
     @Override
     public Component getListCellRendererComponent(JList<? extends PaymentType> list,
                                                   PaymentType value,
@@ -20,7 +21,7 @@ public class PaymentTypeRenderer extends JLabel implements ListCellRenderer<Paym
                                                   boolean isSelected,
                                                   boolean cellHasFocus) {
         if (value != null) {
-            setText(value.getDisplayName());
+            setText(value.name());
         }
 
         return this;

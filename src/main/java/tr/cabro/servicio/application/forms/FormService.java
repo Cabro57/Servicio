@@ -6,40 +6,50 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import raven.modal.system.AllForms;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.listeners.ServiceEditListener;
+import tr.cabro.servicio.application.component.Badge;
+import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.panels.ProcessSelectedPanel;
-import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
-import tr.cabro.servicio.application.panels.service.FaultProcessInfoPanel;
-import tr.cabro.servicio.application.panels.service.PartsNotesInfoPanel;
-import tr.cabro.servicio.application.panels.service.PriceInfoPanel;
-import tr.cabro.servicio.application.panels.service.QuickIntakePanel;
+import tr.cabro.servicio.application.panels.service.ServiceItemAddPanel;
+import tr.cabro.servicio.application.panels.service.ServiceItemEditPanel;
 import tr.cabro.servicio.application.util.Ikon;
-import tr.cabro.servicio.model.AddedPart;
-import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.Process;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.enums.ItemType;
+import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
-import tr.cabro.servicio.service.RepairService;
-import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.model.enums.SourceType;
+import tr.cabro.servicio.service.*;
 import tr.cabro.servicio.settings.DeviceSettings;
+import tr.cabro.servicio.util.Format;
+import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class FormService extends Form {
 
     private Service service;
-    private final RepairService repairService;
+    private List<ServiceNote> serviceNotes;
 
-    // --- UI Bileşenleri (Üst ve Sol) ---
+    private final RepairService repairService;
+    private final ServiceItemManager itemManager;
+    private final ServiceNoteManager noteManager;
+    private final ServicePaymentManager paymentManager; // MİMARİ DÜZELTME: Artık Repo değil, Manager kullanıyoruz
+
+    // --- UI Bileşenleri ---
     private JLabel lblHeaderTitle;
     private JLabel lblHeaderSubtitle;
-    private JLabel lblHeaderBadge;
+    private Badge lblHeaderBadge;
     private JComboBox<ServiceStatus> statusComboBox;
 
     private JPanel leftColumn;
@@ -50,60 +60,39 @@ public class FormService extends Form {
     private JTextArea txtReportedFault;
     private JLabel lblDateArrival, lblDateEstimated;
 
-    // --- ESKİ İŞ MANTIĞI PANELLERİ (Sağ Kolon İçin) ---
-    private FaultProcessInfoPanel fault_process_info;
-    private PartsNotesInfoPanel part_notes_info;
-    private PriceInfoPanel price_info;
-
-    private Timer autoSaveTimer;
-
     public FormService(Service service) {
         this.repairService = ServiceManager.getRepairService();
+        this.itemManager = ServiceManager.getServiceItemManager();
+        this.noteManager = ServiceManager.getServiceNoteManager();
+        this.paymentManager = ServiceManager.getServicePaymentManager(); // MİMARİ DÜZELTME
+
         initComponent();
-        initListeners();
         setService(service);
-
-        autoSaveTimer = new Timer(1000, e -> forceSaveAsync());
-        autoSaveTimer.setRepeats(false);
-
-        // YENİ: UYGULAMA KAPATILIRSA (X Tuşu veya Alt+F4)
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (autoSaveTimer != null && autoSaveTimer.isRunning()) {
-                forceSaveSync(); // Uygulama kapanmadan son saniyede veriyi kurtar
-            }
-        }));
     }
 
     public void setService(@NonNull Service service) {
         this.service = service;
-        if (service.getId() > 0) {
-            // Asenkron veri çekme (Hydration) ve panelleri doldurma
-            repairService.getServiceParts(service.getId()).thenAccept(parts -> {
-                this.service.setAddedParts(parts);
+        reloadServiceData();
+    }
 
-                repairService.getTotalPartsCostForService(service.getId()).thenAccept(totalCost -> {
-                    this.service.setTotalPartsCost(totalCost);
+    private void reloadServiceData() {
+        if (service == null || service.getId() <= 0) return;
 
+        repairService.get(service.getId()).thenAccept(opt -> {
+            opt.ifPresent(s -> {
+                this.service = s;
+                noteManager.getNotesForService(s.getId()).thenAccept(notes -> {
+                    this.serviceNotes = notes;
                     SwingUtilities.invokeLater(() -> {
-                        hydrateReadOnlyUI(); // Sol kolonu doldur
-                        bindOperationalPanels(); // Sağ kolon panellerini doldur
+                        hydrateLeftUI();
+                        buildRightColumn();
                     });
                 });
-            }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Servis detayları yüklenemedi!"));
-                return null;
             });
-        }
+        });
     }
 
-    private void bindOperationalPanels() {
-        // Eski panellerin kendi içlerindeki veriyi (service) almasını sağlıyoruz.
-        fault_process_info.bindService(this.service);
-        part_notes_info.bindService(this.service);
-        price_info.bindService(this.service);
-    }
-
-    private void hydrateReadOnlyUI() {
+    private void hydrateLeftUI() {
         lblHeaderTitle.setText("SRV-" + service.getId());
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new java.util.Locale("tr", "TR"));
@@ -111,140 +100,321 @@ public class FormService extends Form {
         lblHeaderSubtitle.setText("Kayıt Tarihi: " + dateStr);
 
         ServiceStatus currentStatus = service.getServiceStatus() != null ? service.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
-        lblHeaderBadge.setText(currentStatus.getDisplayName());
+        lblHeaderBadge.setVisualizable(currentStatus);
 
-        // Listener'ın boş yere tetiklenmemesi için geçici kapatıyoruz
         ActionListener[] listeners = statusComboBox.getActionListeners();
         for (ActionListener l : listeners) statusComboBox.removeActionListener(l);
         statusComboBox.setSelectedItem(currentStatus);
         for (ActionListener l : listeners) statusComboBox.addActionListener(l);
 
         if (service.getCustomer() != null) {
-            lblCustomerName.setText(service.getCustomer().getName() + " " + service.getCustomer().getSurname());
-            lblCustomerPhone.setText(service.getCustomer().getPhoneNumber1() != null ? service.getCustomer().getPhoneNumber1() : "-");
+            lblCustomerName.setText(service.getCustomer().getFullName());
+            lblCustomerPhone.setText(service.getCustomer().getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(service.getCustomer().getPhoneNumber1()) : "-");
             lblCustomerEmail.setText(service.getCustomer().getEmail() != null ? service.getCustomer().getEmail() : "-");
         }
 
-        lblDeviceType.setText(service.getDeviceType() != null ? service.getDeviceType() : "-");
-        lblDeviceBrand.setText(service.getDeviceBrand() != null ? service.getDeviceBrand() : "-");
-        lblDeviceModel.setText(service.getDeviceModel() != null ? service.getDeviceModel() : "-");
-        lblDeviceSerial.setText(service.getDeviceSerial() != null ? service.getDeviceSerial() : "-");
-        txtReportedFault.setText(service.getReportedFault() != null ? service.getReportedFault() : "Belirtilmemiş.");
-
-        lblDateArrival.setText(dateStr);
-        lblDateEstimated.setText(service.getCreatedAt() != null ? service.getCreatedAt().plusDays(2).format(formatter) : "-");
-    }
-
-    private void initListeners() {
-
-        ServiceEditListener serviceEditListener = new ServiceEditListener() {
-            @Override
-            public void onPartChange(double price) {
-                price_info.setMaterialCost(price);
-                autoSaveService();
-            }
-
-            @Override
-            public void onProcessAdded(String name, double price) {
-                price_info.addLaborCost(price);
-                fault_process_info.appendAction(name);
-                autoSaveService();
-            }
-
-            @Override
-            public void onProcessAdded(Process process) {
-                fault_process_info.appendAction(process.getName());
-                price_info.addLaborCost(process.getPrice());
-                autoSaveService();
-            }
-
-            @Override
-            public void onStatusChanged(String status) {}
-
-            @Override
-            public void onDataChanged() {
-                autoSaveService();
-            }
-
-            @Override
-            public void requestRefresh() {
-                if (service != null && service.getId() > 0) setService(service);
-            }
-
-            @Override
-            public void onPartAdded(AddedPart part) {
-                autoSaveService();
-            }
-        };
-
-        fault_process_info.setServicePanelListener(serviceEditListener);
-        part_notes_info.setServicePanelListener(serviceEditListener);
-        price_info.setServicePanelListener(serviceEditListener);
-
-        fault_process_info.action_taken_button.addActionListener(e -> onActionTaken());
-    }
-
-    /**
-     * İşlem yapıldıkça arkaplanda sessizce kaydeder
-     */
-    private void autoSaveService() {
-        if (service == null || service.getId() <= 0) return;
-        if (autoSaveTimer.isRunning()) autoSaveTimer.restart();
-        else autoSaveTimer.start();
-    }
-
-    /**
-     * Kullanıcı formdayken arkaplanda sessizce ve asenkron kaydeder. (Arayüzü dondurmaz)
-     */
-    private void forceSaveAsync() {
-        if (service == null || service.getId() <= 0) return;
-        collectDataForSave();
-        repairService.save(service, true).exceptionally(ex -> {
-            System.err.println("Otomatik Kayıt Hatası: " + ex.getMessage());
-            return null;
-        });
-    }
-
-    /**
-     * Formdan ÇIKILIRKEN veya uygulama KAPATILIRKEN senkron (bloklayıcı) olarak kaydeder.
-     * Veritabanı işlemi bitene kadar kapanmayı durdurur.
-     */
-    private void forceSaveSync() {
-        if (service == null || service.getId() <= 0) return;
-        collectDataForSave();
-        try {
-            // join() veya get() kullanarak asenkron işlemin BİTMESİNİ BEKLİYORUZ.
-            repairService.save(service, true).join();
-            System.out.println("Sistemden çıkılırken son veriler başarıyla kurtarıldı!");
-        } catch (Exception e) {
-            System.err.println("Çıkışta kayıt kurtarılamadı: " + e.getMessage());
+        Device device = service.getDevice();
+        if (device != null) {
+            lblDeviceType.setText(device.getDeviceType() != null ? device.getDeviceType() : "-");
+            lblDeviceBrand.setText(device.getBrand() != null ? device.getBrand() : "-");
+            lblDeviceModel.setText(device.getModel() != null ? device.getModel() : "-");
+            lblDeviceSerial.setText(device.getSerialNo() != null ? device.getSerialNo() : "-");
         }
-    }
 
-    private void collectDataForSave() {
-        service.setLaborCost(price_info.getLaborCost());
-        service.setPaid(price_info.getPaid());
-        service.setPaymentType(price_info.getPaymentType());
-        service.setDetectedFault(fault_process_info.getDetectedFault());
-        service.setActionTaken(fault_process_info.getActionTaken());
-        service.setNotes(part_notes_info.getNotes());
+        txtReportedFault.setText(service.getReportedFault() != null ? service.getReportedFault() : "Belirtilmemiş.");
+        lblDateArrival.setText(dateStr);
+        lblDateEstimated.setText(service.getCreatedAt() != null ? service.getCreatedAt().plusDays(3).format(formatter) : "-");
     }
 
     private void initComponent() {
         setLayout(new MigLayout("fill, insets 20", "[grow]", "[pref!]20[grow, fill]"));
-
-        // Panellerin init edilmesi
-        fault_process_info = new FaultProcessInfoPanel();
-        fault_process_info.setOpaque(false); // Kart tasarımıyla uyumlu olması için arkaplanı saydamlaştırdık
-
-        part_notes_info = new PartsNotesInfoPanel();
-        part_notes_info.setOpaque(false);
-
-        price_info = new PriceInfoPanel();
-        price_info.setOpaque(false);
-
         createHeaderPanel();
-        createMainContentPanels();
+
+        JPanel contentPanel = new JPanel(new MigLayout("insets 0, gapx 20", "[330!, fill][grow, fill]", "[grow, fill]"));
+        contentPanel.setOpaque(false);
+
+        leftColumn = new JPanel(new MigLayout("insets 0, gapy 20", "[fill, grow]", "[pref!][pref!][pref!]"));
+        leftColumn.setOpaque(false);
+        leftColumn.add(createCustomerCard(), "wrap");
+        leftColumn.add(createDeviceCard(), "wrap");
+        leftColumn.add(createTimelineCard(), "wrap");
+
+        rightColumn = new JPanel(new MigLayout("insets 0, gapy 20", "[fill, grow]", "[]"));
+        rightColumn.setOpaque(false);
+
+        contentPanel.add(leftColumn, "grow");
+        contentPanel.add(rightColumn, "grow");
+
+        JScrollPane scrollPane = new JScrollPane(contentPanel);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setBackground(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        add(scrollPane, "grow");
+    }
+
+    private void buildRightColumn() {
+        rightColumn.removeAll();
+        rightColumn.add(buildPartsCard(), "wrap, growx");
+        rightColumn.add(buildPaymentsCard(), "wrap, growx");
+        rightColumn.add(buildNotesCard(), "wrap, growx");
+        rightColumn.revalidate();
+        rightColumn.repaint();
+    }
+
+    private JPanel buildPartsCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx", "[grow][]", "[]15[]10[]"));
+
+        JLabel title = new JLabel("Kullanılan Parçalar ve Ücretlendirme");
+        title.setIcon(new Ikon("icons/wrench.svg", 1f));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        card.add(title, "span 2, wrap");
+
+        JLabel subtitle = new JLabel("İşlemler ve Parçalar");
+        subtitle.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+
+        JButton btnAddPart = new JButton("+ Parça / İşlem Ekle");
+        btnAddPart.putClientProperty(FlatClientProperties.STYLE, "background: $Component.accentColor; foreground: #ffffff; arc: 10; font: bold");
+        btnAddPart.addActionListener(e -> onActionTaken());
+
+        card.add(subtitle, "aligny center");
+        card.add(btnAddPart, "align right, wrap");
+
+        JPanel listHeader = new JPanel(new MigLayout("insets 5 10 5 10, fillx", "[80!][grow][150!][100!][40!]", ""));
+        listHeader.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
+        listHeader.setOpaque(false);
+        listHeader.add(createMutedLabel("Tür"));
+        listHeader.add(createMutedLabel("İşlem / Parça Adı"));
+        listHeader.add(createMutedLabel("Seri No"));
+        listHeader.add(createMutedLabel("Fiyat"), "align right");
+        listHeader.add(new JLabel(""), "wrap");
+        card.add(listHeader, "span 2, growx, wrap");
+
+        if (service.getItems() == null || service.getItems().isEmpty()) {
+            JLabel empty = createMutedLabel("Henüz işlem veya parça eklenmedi.");
+            card.add(empty, "span 2, gapy 10");
+        } else {
+            for (ServiceItem item : service.getItems()) {
+                JPanel row = new JPanel(new MigLayout("insets 10, fillx", "[80!][grow][150!][100!][70!]", ""));
+                row.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
+                row.setOpaque(false);
+
+                JLabel lblType = new JLabel(item.getItemType() == ItemType.LABOR ? "İşçilik" : "Parça");
+                String badgeStyle = item.getItemType() == ItemType.LABOR ?
+                        "border: 1,8,1,8,#9b59b6; foreground: #9b59b6; arc: 15; font: -1" :
+                        "border: 1,8,1,8,#3498db; foreground: #3498db; arc: 15; font: -1";
+                lblType.putClientProperty(FlatClientProperties.STYLE, badgeStyle);
+
+                JLabel lblName = new JLabel(item.getItemName());
+                JLabel lblSerial = createMutedLabel(item.getUsedSerialNo() != null ? item.getUsedSerialNo() : "-");
+
+                JLabel lblPrice = new JLabel(Format.formatPrice(item.getUnitPrice()));
+                lblPrice.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+
+                // --- YENİ DÜZENLE BUTONU ---
+                JButton btnEdit = new JButton(new Ikon("icons/pencil.svg", 0.7f));
+                btnEdit.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: $Component.accentColor");
+                btnEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                btnEdit.addActionListener(e -> openItemEditModal(item));
+
+                // --- ÇÖP KUTUSU ---
+                JButton btnDelete = new JButton(new Ikon("icons/trash-2.svg", 0.8f));
+                btnDelete.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
+                btnDelete.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                btnDelete.addActionListener(e -> {
+                    itemManager.deleteItem(item).thenAccept(v -> reloadServiceData());
+                });
+
+                JPanel actions = new JPanel(new MigLayout("insets 0, gap 5", "[][]", ""));
+                actions.setOpaque(false);
+                actions.add(btnEdit);
+                actions.add(btnDelete);
+
+                row.add(lblType);
+                row.add(lblName);
+                row.add(lblSerial);
+                row.add(lblPrice, "align right");
+                row.add(actions, "align center");
+                card.add(row, "span 2, growx, wrap");
+            }
+        }
+        return card;
+    }
+
+    private JPanel buildPaymentsCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[][]20[]"));
+
+        JLabel title = new JLabel("Ödemeler (Ön Muhasebe)");
+        title.setIcon(new Ikon("icons/credit-card.svg", 1f));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        card.add(title, "wrap");
+
+        if (service.getPayments() == null || service.getPayments().isEmpty()) {
+            card.add(createMutedLabel("Henüz ödeme alınmadı."), "wrap");
+        } else {
+            for (ServicePayment p : service.getPayments()) {
+                JPanel row = new JPanel(new MigLayout("insets 5, fillx", "[grow][100!][40!]", ""));
+                row.setOpaque(false);
+                row.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
+
+                PaymentType method = p.getPaymentType();
+
+                row.add(new JLabel("Tahsilat (" + method.getDisplayName() + ")"), "growx");
+                JLabel lblAmt = new JLabel(Format.formatPrice(p.getAmount()));
+                lblAmt.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71; font: bold");
+                row.add(lblAmt, "align right");
+
+                JButton btnDel = new JButton(new Ikon("icons/x.svg", 0.7f));
+                btnDel.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
+                btnDel.addActionListener(e -> {
+                    paymentManager.deletePayment(p.getId()).thenAccept(v -> reloadServiceData());
+                });
+                row.add(btnDel, "align center");
+                card.add(row, "wrap, growx");
+            }
+        }
+
+        JPanel inputRow = new JPanel(new MigLayout("insets 10, fillx", "[150!][grow][]", "[]5[]"));
+        inputRow.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); arc: 10; border: 1,1,1,1,$Component.borderColor");
+
+        inputRow.add(createMutedLabel("Ödeme Yöntemi"));
+        inputRow.add(createMutedLabel("Tutar (TL)"), "wrap");
+
+        JComboBox<PaymentType> cmbMethod = new JComboBox<>(PaymentType.values());
+        cmbMethod.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof PaymentType) setText(((PaymentType) value).getDisplayName());
+                return this;
+            }
+        });
+        JFormattedTextField txtAmount = new CurrencyField();
+        txtAmount.setValue(service.getRemainingAmount());
+
+        JButton btnAddPayment = new JButton("+ Tahsilat Ekle");
+        btnAddPayment.putClientProperty(FlatClientProperties.STYLE, "background: #0b4a3a; foreground: #2ecc71; arc: 8; font: bold; borderWidth: 0");
+
+        btnAddPayment.addActionListener(e -> {
+            BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
+            if (amt.compareTo(BigDecimal.ZERO) <= 0) return;
+
+            ServicePayment sp = new ServicePayment();
+            sp.setServiceId(service.getId());
+            sp.setAmount(amt);
+            sp.setPaymentType((PaymentType) cmbMethod.getSelectedItem());
+            sp.setPaymentDate(LocalDateTime.now());
+
+            paymentManager.addPayment(sp).thenAccept(v -> reloadServiceData());
+        });
+
+        inputRow.add(cmbMethod, "growx");
+        inputRow.add(txtAmount, "growx");
+        inputRow.add(btnAddPayment);
+        card.add(inputRow, "wrap, growx");
+
+        // ÖZET KUTUSU VE ROZET MANTIĞI
+        JPanel summaryBox = new JPanel(new MigLayout("insets 15, fillx", "[grow][pref!]", "[]10[]15[]"));
+        summaryBox.putClientProperty(FlatClientProperties.STYLE, "background: darken($Panel.background, 2%); arc: 15");
+
+        summaryBox.add(createMutedLabel("Hizmet & Parça Toplamı:"));
+        summaryBox.add(new JLabel(Format.formatPrice(service.getTotalServiceAmount())), "align right, wrap");
+
+        summaryBox.add(createMutedLabel("Alınan Ödeme:"));
+        JLabel lblPaid = new JLabel("- " + Format.formatPrice(service.getTotalPaid()));
+        lblPaid.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71");
+        summaryBox.add(lblPaid, "align right, wrap");
+
+        summaryBox.add(new JSeparator(), "span 2, growx, wrap");
+
+        JLabel lblRemainText = new JLabel("Kalan Bakiye:");
+        lblRemainText.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");
+        summaryBox.add(lblRemainText);
+
+        BigDecimal remain = service.getRemainingAmount();
+        BigDecimal totalPaid = service.getTotalPaid();
+        BigDecimal totalCost = service.getTotalServiceAmount();
+
+        JLabel lblRemainVal = new JLabel(Format.formatPrice(remain));
+        String remainColor = remain.compareTo(BigDecimal.ZERO) > 0 ? "#e74c3c" : "#2ecc71";
+        lblRemainVal.putClientProperty(FlatClientProperties.STYLE, "font: bold +4; foreground: " + remainColor);
+        summaryBox.add(lblRemainVal, "align right, wrap");
+
+        // UX DÜZELTMESİ: Kısmi Ödeme / Ödendi / Ödenmedi / Ücretsiz
+        JLabel lblBadge = new JLabel();
+        lblBadge.setOpaque(true);
+
+        if (totalCost.compareTo(BigDecimal.ZERO) == 0) {
+            lblBadge.setText("Ücretsiz İşlem");
+            lblBadge.putClientProperty(FlatClientProperties.STYLE, "background: #1e3a8a; foreground: #3498db; arc: 15; border: 4,10,4,10; font: bold -1");
+        } else if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
+            lblBadge.setText("Ödenmedi");
+            lblBadge.putClientProperty(FlatClientProperties.STYLE, "background: #4a1919; foreground: #e74c3c; arc: 15; border: 4,10,4,10; font: bold -1");
+        } else if (remain.compareTo(BigDecimal.ZERO) > 0) {
+            lblBadge.setText("Kısmi Ödeme");
+            lblBadge.putClientProperty(FlatClientProperties.STYLE, "background: #7a5c13; foreground: #f1c40f; arc: 15; border: 4,10,4,10; font: bold -1");
+        } else {
+            lblBadge.setText("Ödendi");
+            lblBadge.putClientProperty(FlatClientProperties.STYLE, "background: #0b4a3a; foreground: #2ecc71; arc: 15; border: 4,10,4,10; font: bold -1");
+        }
+
+        summaryBox.add(lblBadge, "span 2, align right");
+        card.add(summaryBox, "align right, w 350!");
+        return card;
+    }
+
+    private JPanel buildNotesCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[]15[]"));
+
+        JLabel title = new JLabel("Teknisyen Notları");
+        title.setIcon(new Ikon("icons/file-text.svg", 1f));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        card.add(title, "wrap");
+
+        if (serviceNotes != null && !serviceNotes.isEmpty()) {
+            DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new java.util.Locale("tr", "TR"));
+            for (ServiceNote n : serviceNotes) {
+                JPanel noteRow = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "[]5[]"));
+                noteRow.setOpaque(false);
+
+                JLabel lblNote = new JLabel("<html>" + n.getNote().replace("\n", "<br>") + "</html>");
+                lblNote.putClientProperty(FlatClientProperties.STYLE, "font: +1");
+
+                JLabel lblAuthor = createMutedLabel(n.getTechnicianId() == null ? "Sistem" : "Teknisyen");
+                JLabel lblDate = createMutedLabel(n.getCreatedAt() != null ? n.getCreatedAt().format(df) : "-");
+
+                noteRow.add(lblNote, "span 2, wrap");
+                noteRow.add(lblAuthor);
+                noteRow.add(lblDate, "align right");
+
+                card.add(noteRow, "wrap, growx");
+                card.add(new JSeparator(), "wrap, growx");
+            }
+        }
+
+        JTextArea txtNewNote = new JTextArea(3, 20);
+        txtNewNote.setLineWrap(true);
+        txtNewNote.setWrapStyleWord(true);
+        txtNewNote.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Servis süreciyle ilgili notlarınızı buraya yazın...");
+        txtNewNote.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); border: 10,10,10,10;");
+
+        JScrollPane scrollNote = new JScrollPane(txtNewNote);
+        card.add(scrollNote, "wrap, growx, h 80!");
+
+        JButton btnAddNote = new JButton("+ Not Ekle");
+        btnAddNote.putClientProperty(FlatClientProperties.STYLE, "background: #1e3a8a; foreground: #3498db; arc: 10; font: bold; borderWidth: 0");
+        btnAddNote.addActionListener(e -> {
+            if (txtNewNote.getText().trim().isEmpty()) return;
+            ServiceNote n = new ServiceNote();
+            n.setServiceId(service.getId());
+            n.setNote(txtNewNote.getText().trim());
+            noteManager.addNote(n).thenAccept(v -> reloadServiceData());
+        });
+
+        card.add(btnAddNote, "align right");
+        return card;
     }
 
     private void createHeaderPanel() {
@@ -253,9 +423,7 @@ public class FormService extends Form {
 
         JButton btnBack = new JButton(new Ikon("icons/arrow-left.svg", 0.5f));
         btnBack.putClientProperty(FlatClientProperties.STYLE, "arc: 999; background: lighten($Panel.background, 5%);");
-        btnBack.addActionListener(e -> {
-            FormManager.showForm(new FormServices());
-        });
+        btnBack.addActionListener(e -> FormManager.showForm(AllForms.getForm(FormServices.class)));
 
         JPanel titlePanel = new JPanel(new MigLayout("insets 0, gapy 2", "[fill]", "[][]"));
         titlePanel.setOpaque(false);
@@ -266,8 +434,9 @@ public class FormService extends Form {
         titlePanel.add(lblHeaderTitle, "wrap");
         titlePanel.add(lblHeaderSubtitle);
 
-        lblHeaderBadge = new JLabel("Bekliyor");
-        lblHeaderBadge.putClientProperty(FlatClientProperties.STYLE, "background: #f1c40f; foreground: #000000; arc: 15; border: 4,10,4,10; font: bold -1");
+        lblHeaderBadge = new Badge(ServiceStatus.UNDER_REPAIR);
+        lblHeaderBadge.setShowIcon(true);
+        lblHeaderBadge.setShowBorder(true);
         lblHeaderBadge.setOpaque(true);
 
         JPanel statusPanel = new JPanel(new MigLayout("insets 0", "[][]", "[]"));
@@ -285,12 +454,9 @@ public class FormService extends Form {
 
         statusComboBox.addActionListener(e -> {
             ServiceStatus newStatus = (ServiceStatus) statusComboBox.getSelectedItem();
-            if (newStatus != null && service != null && service.getId() > 0 && service.getServiceStatus() != newStatus) {
-                lblHeaderBadge.setText(newStatus.getDisplayName());
+            if (newStatus != null && service != null && service.getServiceStatus() != newStatus) {
                 service.setServiceStatus(newStatus);
-                repairService.save(service, true).thenAccept(s -> {
-                    SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.SUCCESS, "Durum güncellendi."));
-                });
+                repairService.save(service, true).thenAccept(s -> reloadServiceData());
             }
         });
 
@@ -307,87 +473,53 @@ public class FormService extends Form {
     }
 
     private void onActionTaken() {
-        String selectedDeviceType = service.getDeviceType();
+        ServiceItemAddPanel addPanel = new ServiceItemAddPanel(service, this::reloadServiceData);
 
-        if (selectedDeviceType == null || selectedDeviceType.isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, "Lütfen bir cihaz türü seçin!");
-            return;
-        }
-
-        ProcessSelectedPanel panel = new ProcessSelectedPanel();
-
-        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Tamam", 0),
-                new SimpleModalBorder.Option("İptal", 2)
+        SimpleModalBorder.Option[] options = {
+                new SimpleModalBorder.Option("Pencereyi Kapat", SimpleModalBorder.CANCEL_OPTION)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, "İşlem Seç", options,
-                (controller, action) -> {
-                    if (action == SimpleModalBorder.OPENED) {
-                        DeviceSettings settings = Servicio.getDeviceSettings();
-                        java.util.List<Process> processes = settings.getProcesses(selectedDeviceType);
-                        panel.setProcess(processes);
-
-                        panel.setOnProcessDoubleClick(process -> {
-                            price_info.addLaborCost(process.getPrice());
-                            fault_process_info.appendAction(process.getName());
-                            controller.close();
-                        });
-
-                    } else if (action == SimpleModalBorder.OK_OPTION) {
-                        java.util.List<Process> selected = panel.getSelectedProcesses();
-                        if (selected == null || selected.isEmpty()) {
-                            Toast.show(FormService.this, Toast.Type.WARNING, "Lütfen en az bir işlem seçin!");
-                            return;
-                        }
-
-                        for (Process p : selected) {
-                            price_info.addLaborCost(p.getPrice());
-                            fault_process_info.appendAction(p.getName());
-                        }
-
-                        Toast.show(FormService.this, Toast.Type.SUCCESS, selected.size() + " işlem eklendi!");
-                    }
-                }), "processSelected");
+        ModalDialog.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", options, (controller, action) -> {
+            // Ekleme işlemleri panel içinde hallediliyor, kapatınca sayfayı tazele
+            if (action == SimpleModalBorder.CLOSE_OPTION) {
+                reloadServiceData();
+            }
+        }), "itemAddModal");
     }
 
-    private void createMainContentPanels() {
-        JPanel contentPanel = new JPanel(new MigLayout("insets 0, gapx 20", "[330!, fill][grow, fill]", "[grow, fill]"));
-        contentPanel.setOpaque(false);
+    private void openItemEditModal(ServiceItem item) {
+        ServiceItemEditPanel editPanel = new ServiceItemEditPanel(item);
 
-        leftColumn = new JPanel(new MigLayout("insets 0, gapy 20", "[fill, grow]", "[pref!][pref!][pref!]"));
-        leftColumn.setOpaque(false);
+        SimpleModalBorder.Option[] options = {
+                new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
+        };
 
-        leftColumn.add(createCustomerCard(), "wrap");
-        leftColumn.add(createDeviceCard(), "wrap");
-        leftColumn.add(createTimelineCard(), "wrap");
+        ModalDialog.showModal(this, new SimpleModalBorder(editPanel, "Kalemi Düzenle", options, (controller, action) -> {
+            if (action == SimpleModalBorder.YES_OPTION) {
+                ServiceItem updated = editPanel.getUpdatedItem();
+                if (updated == null) {
+                    Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bir isim girin.");
+                    controller.consume();
+                    return;
+                }
 
-        rightColumn = new JPanel(new MigLayout("insets 0, gapy 20", "[fill, grow]", "[grow, fill][pref!]"));
-        rightColumn.setOpaque(false);
-
-        JPanel partsOperationsCard = createCardPanel();
-        partsOperationsCard.setLayout(new MigLayout("insets 15, fill", "[grow]", "[][grow]"));
-        partsOperationsCard.add(fault_process_info, "wrap, growx");
-        partsOperationsCard.add(part_notes_info, "grow");
-
-        JPanel paymentsCard = createCardPanel();
-        paymentsCard.setLayout(new MigLayout("insets 15, fill", "[grow]", "[grow]"));
-        paymentsCard.add(price_info, "grow");
-
-        rightColumn.add(partsOperationsCard, "wrap, growy");
-        rightColumn.add(paymentsCard, "growy");
-
-        contentPanel.add(leftColumn, "grow");
-        contentPanel.add(rightColumn, "grow");
-
-        JScrollPane scrollPane = new JScrollPane(contentPanel);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.setBackground(null);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        add(scrollPane, "grow");
+                // MİMARİ DÜZELTME: Doğrudan Repo yerine ItemManager kullanıyoruz.
+                itemManager.updateItem(updated).thenAccept(v -> {
+                    SwingUtilities.invokeLater(() -> {
+                        Toast.show(this, Toast.Type.SUCCESS, "Kalem başarıyla güncellendi.");
+                        reloadServiceData();
+                    });
+                }).exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        Toast.show(this, Toast.Type.ERROR, "Güncelleme başarısız: " + ex.getMessage());
+                    });
+                    return null;
+                });
+            }
+        }), "itemEditModal");
     }
 
-    // --- KART METOTLARI VE YARDIMCILAR (Aynı Kalıyor) ---
     private JPanel createCustomerCard() {
         JPanel card = createCardPanel();
         card.setLayout(new MigLayout("insets 20, fillx, wrap 2", "[grow][]", "[]15[][][]"));
@@ -445,19 +577,5 @@ public class FormService extends Form {
         JPanel panel = new JPanel();
         panel.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); arc: 15;");
         return panel;
-    }
-
-
-
-    @Override
-    public void removeNotify() {
-        super.removeNotify(); // Swing'in kendi temizlik işlemlerini yapmasına izin ver
-
-        // Form ekrandan kaldırılıyor! (Başka menüye geçildi)
-        // Eğer bekleyen bir otomatik kayıt varsa, hemen ZORLA kaydet.
-        if (autoSaveTimer != null && autoSaveTimer.isRunning()) {
-            autoSaveTimer.stop();
-            forceSaveSync(); // Dikkat: Artık senkron (bekleten) kayıt yapmalıyız
-        }
     }
 }

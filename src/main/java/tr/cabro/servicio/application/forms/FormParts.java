@@ -1,63 +1,226 @@
 package tr.cabro.servicio.application.forms;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.simple.SimpleMessageModal;
 import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.editors.ActionButtonEditor;
+import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.edit.PartEditPanel;
-import tr.cabro.servicio.application.renderer.AlignedRenderer;
+import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import java.awt.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @SystemForm(name = "Parçalar", description = "Yeni parçalar eklemek ve düzenlemek için kullanılabilir")
 public class FormParts extends AbstractTableForm {
 
-    private final PartService service;
-    private GenericTableModel<Part> partTableModel;
+    private final PartService partService;
+    private GenericTableModel<Part> tableModel;
 
     public FormParts() {
-        this.service = ServiceManager.getPartService();
+        this.partService = ServiceManager.getPartService();
+    }
+
+    @Override
+    protected String getNewButtonText() {
+       return "Yeni Parça Ekle";
+    }
+
+    @Override
+    protected String getNewButtonIconPath() {
+       return "icons/package-plus.svg";
+    }
+
+    @Override
+    protected String getTableTitleText() {
+       return "Envanter Listesi";
+    }
+
+    @Override
+    protected String getSearchPlaceholder() {
+        return "Parça adı, SKU veya Kategori ara...";
+    }
+
+    @Override
+    protected void initCards() {
+        cardBox.addCardItem(new Ikon("icons/package-check.svg", 0.7f), "Parça Çeşidi");
+        cardBox.addCardItem(new Ikon("icons/sigma.svg", 0.7f), "Toplam Stok");
+        cardBox.addCardItem(new Ikon("icons/circle-alert.svg", 0.7f), "Kritik Stok");
+        cardBox.addCardItem(new Ikon("icons/turkish-lira.svg", 0.7f), "Envanter Değeri");
+    }
+
+    @Override
+    protected void refreshStats() {
+        partService.getAll().thenAccept(allParts -> {
+
+            // 1. Parça Çeşidi (Sistemdeki farklı ürün/barkod sayısı)
+            long partVarietyCount = allParts.size();
+
+            // 2. Toplam Stok (Tüm parçaların stok adetlerinin toplamı)
+            long totalStock = allParts.stream()
+                    .mapToLong(Part::getStockQuantity)
+                    .sum();
+
+            // 3. Kritik Stok (Stok seviyesi 'minStock' değerinin altına düşen parça sayısı)
+            long criticalStockCount = allParts.stream()
+                    .filter(p -> p.getStockQuantity() < p.getMinStockLevel())
+                    .count();
+
+            // 4. Envanter Değeri (Stoktaki ürünlerin alış fiyatı üzerinden toplam sermaye değeri)
+            BigDecimal totalInventoryValue = allParts.stream()
+                    .map(Part::getTotalStockValue)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            SwingUtilities.invokeLater(() -> {
+                cardBox.setValueAt(0, String.valueOf(partVarietyCount), "Sistemdeki tüm kayıtlar", "", true);
+                cardBox.setValueAt(1, String.valueOf(totalStock), "Bireysel kullanıcılar", "", true);
+                cardBox.setValueAt(2, String.valueOf(criticalStockCount), "İşletme ve ticari hesaplar", "", true);
+                cardBox.setValueAt(3, Format.formatPrice(totalInventoryValue), "Bakım aşamasında", "", true);
+            });
+        }).exceptionally(ex -> {
+            Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
+            SwingUtilities.invokeLater(() -> {
+                raven.modal.Toast.show(this, raven.modal.Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
+            });
+            return null;
+        });
     }
 
     @Override
     protected void setupTable() {
         List<ColumnDef<Part>> columns = Arrays.asList(
                 new ColumnDef<>("Barkod", String.class, Part::getBarcode),
-                new ColumnDef<>("Marka", String.class, Part::getBrand),
-                new ColumnDef<>("Ürün Adı", String.class, Part::getName),
-                new ColumnDef<>("Cihaz Türü", String.class, Part::getDeviceType),
-                new ColumnDef<>("Uyumlu Model", String.class, Part::getModel),
-                new ColumnDef<>("Stok", Integer.class, Part::getStock),
+                new ColumnDef<>("Parça Adı", String.class, Part::getName),
+                new ColumnDef<>("Uyumlu Model", String.class, Part::getModelCompatibility),
+                new ColumnDef<>("Tedarikçi",  Supplier.class, Part::getSupplier),
+                new ColumnDef<>("Kategori",  String.class, Part::getCategory),
+                new ColumnDef<>("Stok", Integer.class, Part::getStockQuantity),
                 new ColumnDef<>("Alış Fiyatı", String.class, p -> Format.formatPrice(p.getPurchasePrice())),
                 new ColumnDef<>("Satış Fiyatı", String.class, p -> Format.formatPrice(p.getSalePrice())),
-                new ColumnDef<>("Alış Tarihi", String.class, p -> Format.formatDate(p.getPurchaseDate()))
+                new ColumnDef<>("Alış Tarihi", String.class, p -> Format.formatDate(p.getCreatedAt())),
+                new ColumnDef<>("İşlem", String.class, p -> "Detay")
         );
-        partTableModel = new GenericTableModel<>(columns);
-        setTableModel(partTableModel);
+        tableModel = new GenericTableModel<>(columns);
+        setTableModel(tableModel);
+
         configureTableColumns();
+    }
+
+    private void configureTableColumns() {
+        Integer[] columnAlignments = {
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.CENTER,
+//                SwingConstants.LEADING,
+                SwingConstants.TRAILING,
+                SwingConstants.TRAILING,
+                SwingConstants.LEADING,
+                SwingConstants.CENTER
+        };
+
+        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
+
+        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                ((JLabel) c).setHorizontalAlignment(SwingConstants.LEADING);
+                ((JLabel) c).putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: +1");
+                return c;
+            }
+        });
+
+        table.getColumnModel().getColumn(2).setCellRenderer(new TooltipCellRenderer());
+
+        table.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                label.setHorizontalAlignment(SwingConstants.CENTER);
+                label.setFont(label.getFont().deriveFont(Font.BOLD));
+                label.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
+                return label;
+            }
+        });
+        table.getColumnModel().getColumn(9).setCellRenderer(new ActionButtonRenderer());
+        table.getColumnModel().getColumn(9).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+            @Override
+            public void onEdit(int row) {
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+                int modelRow = table.convertRowIndexToModel(row);
+                openEditModal(tableModel.getItemAt(modelRow));
+            }
+
+            @Override
+            public void onDelete(int row) {
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+                int modelRow = table.convertRowIndexToModel(row);
+                Part selectedPart = tableModel.getItemAt(modelRow);
+
+                ModalDialog.showModal(FormParts.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
+                        "Bu parçayı silmek istediğinizden emin misiniz?", "Silme Onayı",
+                        SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
+
+                    if (action == SimpleModalBorder.YES_OPTION) {
+                        partService.delete(selectedPart.getId()).thenAccept(v -> {
+                            SwingUtilities.invokeLater(() -> {
+                                Toast.show(FormParts.this, Toast.Type.SUCCESS," Parça silindi.");
+                                refreshTable();
+                            });
+                        }).exceptionally(ex -> {
+                            SwingUtilities.invokeLater(() -> {
+                                Toast.show(FormParts.this, Toast.Type.ERROR, "Silme işlemi başarısız oldu.");
+                            });
+                            return null;
+                        });
+                    }
+                }));
+            }
+
+            @Override
+            public void onView(int row) {
+                Toast.show(FormParts.this, Toast.Type.WARNING, "Yapım aşamasında ");
+            }
+        }));
+
+        // Genişlik Ayarları
+        table.getColumnModel().getColumn(0).setMinWidth(150); // Barkod
+        table.getColumnModel().getColumn(1).setPreferredWidth(120);
+        table.getColumnModel().getColumn(5).setMaxWidth(70);
+        table.getColumnModel().getColumn(9).setMaxWidth(180);
+        table.getColumnModel().getColumn(9).setMinWidth(120);
     }
 
     @Override
     protected void refreshTable() {
 
-        service.getAll().thenAccept(parts -> {
+        partService.getAll().thenAccept(parts -> {
             SwingUtilities.invokeLater(() -> {
-                partTableModel.setData(parts);
+                tableModel.setData(parts);
+                refreshStats();
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
@@ -68,30 +231,6 @@ public class FormParts extends AbstractTableForm {
             return  null;
         });
 
-    }
-
-    private void configureTableColumns() {
-        Integer[] columnAlignments = {
-                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
-                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
-                SwingConstants.CENTER, SwingConstants.TRAILING, SwingConstants.TRAILING,
-                SwingConstants.LEADING
-        };
-
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-
-        if (table.getColumnCount() > 0) {
-            if (table.getColumnCount() > 4) {
-                table.getColumnModel().getColumn(3).setCellRenderer(new TooltipCellRenderer());
-                table.getColumnModel().getColumn(5).setCellRenderer(new AlignedRenderer(table, 5, SwingConstants.CENTER));
-            }
-            table.getColumnModel().getColumn(0).setMinWidth(150); // Barkod
-        }
-    }
-
-    /** Tabloda seçili satırlardaki parça nesnelerini döndürür. */
-    private List<Part> getSelectedParts() {
-        return partTableModel.getSelectedItems(table.getSelectedRows());
     }
 
     @Override
@@ -107,9 +246,7 @@ public class FormParts extends AbstractTableForm {
         ModalDialog.showModal(this, new SimpleModalBorder(
                         panel, "Yeni Parça Ekle", options,
                         (controller, action) -> {
-                            if (action == SimpleModalBorder.OPENED) {
-                                //panel.clearForm();
-                            } else if (action == SimpleModalBorder.OK_OPTION) {
+                            if (action == SimpleModalBorder.OK_OPTION) {
                                 Part updated = panel.getData();
                                 if (updated == null) {
                                     controller.consume();
@@ -117,7 +254,7 @@ public class FormParts extends AbstractTableForm {
                                 }
 
                                 updated.setCreatedAt(LocalDateTime.now());
-                                service.save(updated, false).thenAccept(part -> {
+                                partService.save(updated, false).thenAccept(part -> {
                                     SwingUtilities.invokeLater(() -> {
                                         Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
                                         refreshTable();
@@ -135,91 +272,41 @@ public class FormParts extends AbstractTableForm {
                 , id);
     }
 
-//    @Override
-//    protected void onEdit() {
-//        List<Part> selected = getSelectedParts();
-//
-//        if (selected.isEmpty()) {
-//            Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir parça seçin.");
-//            return;
-//        }
-//        if (selected.size() > 1) {
-//            Toast.show(this, Toast.Type.INFO, "Düzenlemek için sadece 1 parça seçin.");
-//            return;
-//        }
-//
-//        final String id = "PartEdit";
-//        Part part = selected.get(0);
-//        PartEditPanel panel = new PartEditPanel(part);
-//
-//        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-//                new SimpleModalBorder.Option("Güncelle", 0),
-//                new SimpleModalBorder.Option("İptal", 2)
-//        };
-//
-//        ModalDialog.showModal(this, new SimpleModalBorder(
-//                        panel, "Parça Düzenle", options,
-//                        (controller, action) -> {
-//                            if (action == SimpleModalBorder.OPENED) {
-//                                //panel.populateFormWith(part);
-//                            } else if (action == SimpleModalBorder.OK_OPTION) {
-//                                Part updated = panel.getData();
-//                                if (updated == null) {
-//                                    controller.consume();
-//                                    return;
-//                                }
-//
-//                                service.save(updated, true).thenAccept(updare -> {
-//                                    SwingUtilities.invokeLater(() -> {
-//                                        Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
-//                                        refreshTable();
-//                                    });
-//                                }).exceptionally(ex -> {
-//                                    SwingUtilities.invokeLater(() -> {
-//                                        controller.consume();
-//                                        Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
-//
-//                                    });
-//                                    Servicio.getLogger().error("Parça güncelleme hatası", ex);
-//                                    return  null;
-//                                });
-//                                try {
-//
-//
-//                                } catch (Exception e) {
-//                                }
-//                            }
-//                        })
-//                , id);
-//    }
-//
-//    @Override
-//    protected void onDelete() {
-//        List<Part> selects = getSelectedParts();
-//
-//        if (selects.isEmpty()) {
-//            Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir parça seçin.");
-//            return;
-//        }
-//
-//        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-//                "Seçilen " + selects.size() + " parçayı silmek istediğinizden emin misiniz?", "Silme Onayı",
-//                SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-//
-//
-//                List<String> idsToDelete = selects.stream().map(Part::getBarcode).collect(Collectors.toList());
-//
-//                service.deleteMultiple(idsToDelete).thenAccept(v -> {
-//                    SwingUtilities.invokeLater(() -> {
-//                        Toast.show(this, Toast.Type.SUCCESS, selects.size() + " adet müşteri silindi.");
-//                        refreshTable();
-//                    });
-//                }).exceptionally(ex -> {
-//                    SwingUtilities.invokeLater(() -> {
-//                        Toast.show(this, Toast.Type.ERROR, "Silme işlemi başarısız oldu.");
-//                    });
-//                    return null;
-//                });
-//        }));
-//    }
+    private void openEditModal(Part part) {
+        final String id = "PartEdit";
+        PartEditPanel panel = new PartEditPanel(part);
+
+        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Güncelle", 0),
+                new SimpleModalBorder.Option("İptal", 2)
+        };
+
+        ModalDialog.showModal(this, new SimpleModalBorder(
+                        panel, "Parça Düzenle", options,
+                        (controller, action) -> {
+                             if (action == SimpleModalBorder.OK_OPTION) {
+                                Part updated = panel.getData();
+                                if (updated == null) {
+                                    controller.consume();
+                                    return;
+                                }
+
+                                partService.save(updated, true).thenAccept(updare -> {
+                                    SwingUtilities.invokeLater(() -> {
+                                        Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
+                                        refreshTable();
+                                    });
+                                }).exceptionally(ex -> {
+                                    SwingUtilities.invokeLater(() -> {
+                                        controller.consume();
+                                        Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
+
+                                    });
+                                    Servicio.getLogger().error("Parça güncelleme hatası", ex);
+                                    return  null;
+                                });
+                            }
+                        })
+                , id);
+    }
 }

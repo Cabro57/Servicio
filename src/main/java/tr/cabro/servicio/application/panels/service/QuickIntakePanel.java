@@ -8,10 +8,12 @@ import raven.modal.component.ModalBorderAction;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CustomerCellRenderer;
+import tr.cabro.servicio.application.component.CustomerSelectBox;
 import tr.cabro.servicio.application.component.EmbeddedComboBox;
 import tr.cabro.servicio.application.panels.edit.AbstractEditPanel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.ServiceManager;
@@ -24,12 +26,13 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public class QuickIntakePanel extends AbstractEditPanel<Service> {
 
     public static final int NEW_CUSTOMER_ACTION = 50;
 
-    private EmbeddedComboBox<Customer> customerCombo;
+    private CustomerSelectBox customerCombo;
     private JTextArea reportedFaultArea;
     private JComboBox<String> device_type_combo;
     private JComboBox<String> brand_combo;
@@ -37,24 +40,23 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     private JTextField seri_no_field;
     private JTextField password_field;
     private JTextField accessory_field;
+    private JButton btnCheckSerial; // YENİ: Sorgulama Butonu
 
-    // Sadece deklare ediyoruz. "new" anahtar kelimesi ile oluşturmayı initComponent'in içine alacağız.
     private DefaultComboBoxModel<String> deviceTypeComboBoxModel;
     private DefaultComboBoxModel<String> brandComboBoxModel;
     private DefaultComboBoxModel<Customer> listModel;
 
-    public QuickIntakePanel(Service data) {
-        // DIKKAT: super(data) cagrildiginda dogrudan initComponent() tetiklenecek.
-        super(data);
+    // YENİ: Eğer cihaz sistemde varsa, aynı ID'yi korumak için tutuyoruz
+    private int currentDeviceId = 0;
 
+    public QuickIntakePanel(Service data) {
+        super(data);
         initData();
         initEvents();
     }
 
     @Override
     protected void initComponent() {
-        // HATA ÇÖZÜMÜ BURASI: Abstract class'tan buraya gelindiğinde değişkenler henüz null'dır.
-        // Onları hemen burada, ilk satırlarda bellekte yaratıyoruz.
         deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
         brandComboBoxModel = new DefaultComboBoxModel<>();
         listModel = new DefaultComboBoxModel<>();
@@ -62,7 +64,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
         setLayout(new MigLayout("fillx,wrap,insets 5 30 5 30,width 400", "[fill]", ""));
 
         // 1. Müşteri Seçimi
-        customerCombo = createEmbeddedComboBox(e -> {
+        customerCombo = new CustomerSelectBox(e -> {
             ModalBorderAction borderAction = ModalBorderAction.getModalBorderAction(this);
             if (borderAction != null) {
                 borderAction.doAction(NEW_CUSTOMER_ACTION);
@@ -70,7 +72,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
         });
 
         add(new JLabel("Müşteri"), "gapy 5 0");
-        add(customerCombo, "");
+        add(customerCombo, "growx");
 
         // 2. Cihaz Bilgileri
         createTitle("Cihaz Bilgileri");
@@ -88,6 +90,10 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
         seri_no_field = new JTextField();
         seri_no_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
+        // Sorgulama Butonu
+        btnCheckSerial = new JButton("Sorgula", new Ikon("icons/search.svg"));
+        btnCheckSerial.addActionListener(e -> checkDeviceBySerial());
+
         password_field = new JTextField();
         password_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
@@ -95,6 +101,10 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
         accessory_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
         // Dizilim
+        device_content.add(new JLabel("IMEI/Seri No:"), "span 2");
+        device_content.add(seri_no_field, "split 2, growx, pushx"); // Split ile butonu yanına alıyoruz
+        device_content.add(btnCheckSerial, "shrink");
+
         device_content.add(new JLabel("Cihaz Türü:"), "span 2");
         device_content.add(device_type_combo, "span 2");
 
@@ -102,9 +112,6 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
         device_content.add(new JLabel("Model:"), "sg 1");
         device_content.add(brand_combo, "sg 1");
         device_content.add(model_field, "sg 1");
-
-        device_content.add(new JLabel("IMEI/Seri No:"), "span 2");
-        device_content.add(seri_no_field, "span 2");
 
         device_content.add(new JLabel("Kozmetik Durumu:"), "sg 1");
         device_content.add(new JLabel("Ekran Şifresi:"), "sg 1");
@@ -139,9 +146,45 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
         loadDeviceTypes();
     }
 
+    // YENİ: Cihaz Sorgulama Mantığı
+    private void checkDeviceBySerial() {
+        String serial = seri_no_field.getText().trim();
+        if (serial.isEmpty()) {
+            Toast.show(this, Toast.Type.WARNING, "Lütfen sorgulamak için bir seri numarası girin.");
+            return;
+        }
+
+        // TODO: Kendi mimarinize göre çağrıyı düzenleyin. Örn: ServiceManager.getDeviceService().findBySerialNo()
+        ServiceManager.getDeviceService().getBySerialNo(serial).thenAccept(deviceOpt -> {
+            if (deviceOpt.isPresent()) {
+                Device device = deviceOpt.get();
+                currentDeviceId = device.getId();
+
+                SwingUtilities.invokeLater(() -> {
+                    device_type_combo.setSelectedItem(device.getDeviceType());
+                    loadBrands(device.getDeviceType()); // Markaları yükle
+                    brand_combo.setSelectedItem(device.getBrand());
+                    model_field.setText(device.getModel());
+
+                    Toast.show(this, Toast.Type.SUCCESS, "Cihaz sistemde bulundu. Bilgiler getirildi.");
+                });
+            } else {
+                SwingUtilities.invokeLater(() -> {
+                    currentDeviceId = 0; // Yeni cihaz olarak işaretle
+                    Toast.show(this, Toast.Type.INFO, "Bu seri numarasına sahip cihaz bulunamadı. Yeni cihaz olarak kaydedilecek.");
+                });
+            }
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.WARNING, "Bu seri numarasıile arama yaparken bir hata oluştu.");
+            });
+            return null;
+        });
+    }
+
     @Override
     protected Service collectFormData(Service data) {
-        Customer selectedCustomer = (Customer) customerCombo.getSelectedItem();
+        Customer selectedCustomer = customerCombo.getSelectedItem();
 
         if (selectedCustomer == null) {
             showValidationError(Toast.Type.WARNING, "Lütfen bir müşteri seçin.");
@@ -159,14 +202,21 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
         data.setCustomer(selectedCustomer);
         data.setCustomerId(selectedCustomer.getId());
 
-        data.setDeviceType(dType);
-        data.setDeviceBrand(dBrand);
-        data.setDeviceModel(model_field.getText().trim());
-        data.setDeviceSerial(seri_no_field.getText().trim());
-        data.setDevicePassword(password_field.getText().trim());
-        data.setDeviceAccessory(accessory_field.getText().trim());
-        data.setReportedFault(reportedFaultArea.getText().trim());
+        // YENİ: Bağımsız Cihaz Nesnesi Oluşturma
+        Device device = new Device();
+        device.setId(currentDeviceId); // Eğer sorgulanıp bulunduysa mevcut ID, yoksa 0 (yeni kayıt)
+        device.setDeviceType(dType);
+        device.setBrand(dBrand);
+        device.setModel(model_field.getText().trim());
+        device.setSerialNo(seri_no_field.getText().trim());
+        device.setPassword(password_field.getText().trim());
+        device.setAccessory(accessory_field.getText().trim());
+        device.setCustomerId(selectedCustomer.getId()); // Cihazı müşteriye bağla
 
+        // Cihazı Servise Bağla
+        data.setDevice(device);
+
+        data.setReportedFault(reportedFaultArea.getText().trim());
         data.setCreatedAt(LocalDateTime.now());
         data.setServiceStatus(ServiceStatus.UNDER_REPAIR);
 
@@ -182,25 +232,29 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
             customerCombo.setSelectedItem(data.getCustomer());
         }
 
-        // Eğer veritabanından gelen dolu bir Service ise türü ve markayı seç
-        if (data.getDeviceType() != null && !data.getDeviceType().isEmpty()) {
-            device_type_combo.setSelectedItem(data.getDeviceType());
-            loadBrands(data.getDeviceType());
+        // YENİ: Servisin içindeki cihaza (Device) ulaşıyoruz
+        Device device = data.getDevice();
+        if (device != null) {
+            currentDeviceId = device.getId(); // Düzenleme yapılıyorsa ID'yi koru
 
-            if (data.getDeviceBrand() != null) {
-                brand_combo.setSelectedItem(data.getDeviceBrand());
+            if (device.getDeviceType() != null && !device.getDeviceType().isEmpty()) {
+                device_type_combo.setSelectedItem(device.getDeviceType());
+                loadBrands(device.getDeviceType());
+
+                if (device.getBrand() != null) {
+                    brand_combo.setSelectedItem(device.getBrand());
+                }
             }
+            model_field.setText(device.getModel() != null ? device.getModel() : "");
+            seri_no_field.setText(device.getSerialNo() != null ? device.getSerialNo() : "");
+            password_field.setText(device.getPassword() != null ? device.getPassword() : "");
+            accessory_field.setText(device.getAccessory() != null ? device.getAccessory() : "");
         } else {
-            // DÜZELTME: Eğer YENİ BİR KAYIT açılıyorsa (data boşsa),
-            // kullanıcıyı seçim yapmaya zorlamak için kutuları boşalt.
+            currentDeviceId = 0;
             device_type_combo.setSelectedItem(null);
             brand_combo.setSelectedItem(null);
         }
 
-        model_field.setText(data.getDeviceModel() != null ? data.getDeviceModel() : "");
-        seri_no_field.setText(data.getDeviceSerial() != null ? data.getDeviceSerial() : "");
-        password_field.setText(data.getDevicePassword() != null ? data.getDevicePassword() : "");
-        accessory_field.setText(data.getDeviceAccessory() != null ? data.getDeviceAccessory() : "");
         reportedFaultArea.setText(data.getReportedFault() != null ? data.getReportedFault() : "");
     }
 
@@ -208,9 +262,9 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     protected void clearForm() {
         customerCombo.setSelectedItem(null);
 
-        // Form temizlenirken ComboBox seçimlerini iptal et
+        currentDeviceId = 0; // Sıfırla
         device_type_combo.setSelectedItem(null);
-        brandComboBoxModel.removeAllElements(); // Tür seçili olmadığı için markaları da temizle
+        brandComboBoxModel.removeAllElements();
 
         model_field.setText("");
         seri_no_field.setText("");
@@ -229,24 +283,16 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     private void initData() {
         ServiceManager.getCustomerService().getAll().thenAccept(customers -> {
             SwingUtilities.invokeLater(() -> {
-                // Seçili müşteriyi hafızaya al
-                Customer selectedCustomer = (Customer) customerCombo.getSelectedItem();
+                Customer currentSelection = customerCombo.getSelectedItem();
+                customerCombo.setCustomers(customers);
 
-                listModel.removeAllElements();
-
-                if (customers != null) {
+                if (currentSelection != null) {
                     for (Customer c : customers) {
-                        listModel.addElement(c);
-                        // Veritabanından gelen referans ile hafızadaki nesneyi ID üzerinden eşleştir
-                        if (selectedCustomer != null && c.getId() == selectedCustomer.getId()) {
-                            selectedCustomer = c;
+                        if (c.getId() == currentSelection.getId()) {
+                            customerCombo.setSelectedItem(c);
+                            break;
                         }
                     }
-                }
-
-                // Müşteriyi listeye geri oturt
-                if (selectedCustomer != null) {
-                    customerCombo.setSelectedItem(selectedCustomer);
                 }
             });
         }).exceptionally(ex -> {
@@ -292,27 +338,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     }
 
     public void appendNewCustomer(Customer newCustomer) {
-        listModel.addElement(newCustomer);
-        customerCombo.setSelectedItem(newCustomer);
-    }
-
-    private EmbeddedComboBox<Customer> createEmbeddedComboBox(ActionListener event) {
-        EmbeddedComboBox<Customer> embeddedComboBox = new EmbeddedComboBox<>();
-        embeddedComboBox.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "İsim veya Telefon yazın...");
-        embeddedComboBox.setRenderer(new CustomerCellRenderer());
-
-        // Model artık burada null gelmeyecek çünkü initComponent başında yaratıldı.
-        embeddedComboBox.setModel(listModel);
-
-        embeddedComboBox.setEditable(true);
-        AutoCompleteDecorator.decorate(embeddedComboBox);
-        JToolBar toolbar = new JToolBar();
-        JButton button = new JButton(new Ikon("icons/user-plus.svg"));
-        button.addActionListener(event);
-        toolbar.add(button);
-        toolbar.addSeparator();
-        embeddedComboBox.setEmbedded(toolbar);
-        return embeddedComboBox;
+        customerCombo.appendCustomer(newCustomer);
     }
 
     private void createTitle(String title) {

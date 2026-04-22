@@ -6,7 +6,7 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.application.component.PanelAction;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.PartSearchPanel;
@@ -51,7 +51,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
     protected void onServiceSet() {
         if (service == null) return;
 
-        notes_field.setText(service.getNotes() != null ? service.getNotes() : "");
+//        notes_field.setText(service.getNotes() != null ? service.getNotes() : "");
 
         boolean isRegistered = service.getId() > 0;
         part_add_button.setEnabled(isRegistered);
@@ -116,46 +116,46 @@ public class PartsNotesInfoPanel extends ServicePanel {
             @Override
             public void onDelete(int row) {
                 if (parts_table.isEditing()) parts_table.getCellEditor().stopCellEditing();
-                if (row < 0 || row >= service.getAddedParts().size()) return;
-
-                AddedPart partToDelete = service.getAddedParts().get(row);
+//                if (row < 0 || row >= service.getAddedParts().size()) return;
+//
+//                AddedPart partToDelete = service.getAddedParts().get(row);
 
                 int choice = JOptionPane.showConfirmDialog(PartsNotesInfoPanel.this,
                         "Bu parçayı servisten çıkarmak istediğinize emin misiniz?\n(Stoklu ürün ise stoğa iade edilecek)",
                         "Parça Çıkar", JOptionPane.YES_NO_OPTION);
 
                 if (choice == JOptionPane.YES_OPTION) {
-                    partToDelete.setReturnToStockOnDelete(true);
+//                    partToDelete.setReturnToStockOnDelete(true);
 
-                    repairService.removeServicePart(partToDelete).thenAccept(v -> {
-                        SwingUtilities.invokeLater(() -> {
-                            // DÜZELTME: Doğrudan listeyi yenile.
-                            pullLatestParts();
-                            Toast.show(PartsNotesInfoPanel.this, Toast.Type.SUCCESS, "Parça çıkarıldı.");
-                            if (getListener() != null) getListener().onDataChanged();
-                        });
-                    }).exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> Toast.show(PartsNotesInfoPanel.this, Toast.Type.ERROR, "Silme hatası: " + ex.getCause().getMessage()));
-                        return null;
-                    });
+//                    repairService.removeServicePart(partToDelete).thenAccept(v -> {
+//                        SwingUtilities.invokeLater(() -> {
+//                            // DÜZELTME: Doğrudan listeyi yenile.
+//                            pullLatestParts();
+//                            Toast.show(PartsNotesInfoPanel.this, Toast.Type.SUCCESS, "Parça çıkarıldı.");
+//                            if (getListener() != null) getListener().onDataChanged();
+//                        });
+//                    }).exceptionally(ex -> {
+//                        SwingUtilities.invokeLater(() -> Toast.show(PartsNotesInfoPanel.this, Toast.Type.ERROR, "Silme hatası: " + ex.getCause().getMessage()));
+//                        return null;
+//                    });
                 }
             }
 
             @Override
             public void onView(int row) {
                 if (parts_table.isEditing()) parts_table.getCellEditor().stopCellEditing();
-                if (row < 0 || row >= service.getAddedParts().size()) return;
+//                if (row < 0 || row >= service.getAddedParts().size()) return;
 
-                AddedPart partToView = service.getAddedParts().get(row);
+//                AddedPart partToView = service.getAddedParts().get(row);
                 // Şimdilik basit bir mesaj kutusu ile detayı gösterelim
-                String details = String.format("Parça Adı: %s\nAdet: %d\nAlış Fiyatı: %s\nSatış Fiyatı: %s\nStok Takibi: %s",
-                        partToView.getName(),
-                        partToView.getAmount(),
-                        Format.formatPrice(partToView.getPurchasePrice()),
-                        Format.formatPrice(partToView.getSellingPrice()),
-                        partToView.isStockTracked() ? "Evet" : "Hayır");
-
-                JOptionPane.showMessageDialog(PartsNotesInfoPanel.this, details, "Parça Detayı", JOptionPane.INFORMATION_MESSAGE);
+//                String details = String.format("Parça Adı: %s\nAdet: %d\nAlış Fiyatı: %s\nSatış Fiyatı: %s\nStok Takibi: %s",
+//                        partToView.getName(),
+//                        partToView.getAmount(),
+//                        Format.formatPrice(partToView.getPurchasePrice()),
+//                        Format.formatPrice(partToView.getSellingPrice()),
+//                        partToView.isStockTracked() ? "Evet" : "Hayır");
+//
+//                JOptionPane.showMessageDialog(PartsNotesInfoPanel.this, details, "Parça Detayı", JOptionPane.INFORMATION_MESSAGE);
             }
         }));
     }
@@ -163,21 +163,21 @@ public class PartsNotesInfoPanel extends ServicePanel {
     // YENİ METOT: DB'den güncel parça listesini çekip arayüzü (State) temizler.
     private void pullLatestParts() {
         if (service == null || service.getId() <= 0) return;
-        repairService.getServiceParts(service.getId()).thenAccept(guncelParcalar -> {
-            SwingUtilities.invokeLater(() -> {
-                service.setAddedParts(guncelParcalar); // Local state'i DB ile senkronize et
-                refreshTable();
-                updateTotals();
-            });
-        });
+//        repairService.getServiceParts(service.getId()).thenAccept(guncelParcalar -> {
+//            SwingUtilities.invokeLater(() -> {
+////                service.setAddedParts(guncelParcalar); // Local state'i DB ile senkronize et
+//                refreshTable();
+//                updateTotals();
+//            });
+//        });
     }
 
     private void refreshTable() {
-        if (service != null && service.getAddedParts() != null) {
-            tableModel.setData(new ArrayList<>(service.getAddedParts()));
-        } else {
-            tableModel.setData(new ArrayList<>());
-        }
+//        if (service != null && service.getAddedParts() != null) {
+//            tableModel.setData(new ArrayList<>(service.getAddedParts()));
+//        } else {
+//            tableModel.setData(new ArrayList<>());
+//        }
     }
 
     private void newPartCmd() {
@@ -201,16 +201,16 @@ public class PartsNotesInfoPanel extends ServicePanel {
                         newPart.setServiceId(service.getId());
                         newPart.setStockTracked(false);
 
-                        repairService.addServicePart(newPart).thenAccept(savedPart -> {
-                            SwingUtilities.invokeLater(() -> {
-                                pullLatestParts(); // Sadece arayüze ekleme, DB'den taze çek
-                                if (getListener() != null) getListener().onDataChanged();
-                                Toast.show(this, Toast.Type.SUCCESS, "Manuel parça eklendi.");
-                            });
-                        }).exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getCause().getMessage()));
-                            return null;
-                        });
+//                        repairService.addServicePart(newPart).thenAccept(savedPart -> {
+//                            SwingUtilities.invokeLater(() -> {
+//                                pullLatestParts(); // Sadece arayüze ekleme, DB'den taze çek
+//                                if (getListener() != null) getListener().onDataChanged();
+//                                Toast.show(this, Toast.Type.SUCCESS, "Manuel parça eklendi.");
+//                            });
+//                        }).exceptionally(ex -> {
+//                            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getCause().getMessage()));
+//                            return null;
+//                        });
                     }
                 }), id);
     }
@@ -235,16 +235,16 @@ public class PartsNotesInfoPanel extends ServicePanel {
                         }
 
                         // HATA ÇÖZÜMÜ: Artık addServicePart (Insert) değil, updateServicePart (Update) çağırıyoruz!
-                        repairService.updateServicePart(updatedPart).thenAccept(savedPart -> {
-                            SwingUtilities.invokeLater(() -> {
-                                pullLatestParts();
-                                if (getListener() != null) getListener().onDataChanged();
-                                Toast.show(this, Toast.Type.SUCCESS, "Parça başarıyla güncellendi.");
-                            });
-                        }).exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getCause().getMessage()));
-                            return null;
-                        });
+//                        repairService.updateServicePart(updatedPart).thenAccept(savedPart -> {
+//                            SwingUtilities.invokeLater(() -> {
+//                                pullLatestParts();
+//                                if (getListener() != null) getListener().onDataChanged();
+//                                Toast.show(this, Toast.Type.SUCCESS, "Parça başarıyla güncellendi.");
+//                            });
+//                        }).exceptionally(ex -> {
+//                            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getCause().getMessage()));
+//                            return null;
+//                        });
                     }
                 }), id);
     }
@@ -264,31 +264,34 @@ public class PartsNotesInfoPanel extends ServicePanel {
                         List<Part> selectedParts = panel.getSelected();
                         if (selectedParts == null || selectedParts.isEmpty()) return;
 
-                        // Tüm ekleme işlemlerini (Future'ları) bir listede toplayacağız
-                        List<CompletableFuture<AddedPart>> futures = new ArrayList<>();
+                        // TEKLİ EKLEME OPTİMİZASYONU: Listeyi dolaşmak yerine sadece ilk parçayı alıyoruz
+                        Part firstSelectedPart = selectedParts.get(0);
 
-                        for (Part p : selectedParts) {
-                            AddedPart addedPart = new AddedPart(p);
-                            addedPart.setServiceId(service.getId());
-                            // Her bir parçanın eklenme işlemini listeye ekle
-                            futures.add(repairService.addServicePart(addedPart));
-                        }
+                        AddedPart addedPart = new AddedPart(firstSelectedPart);
+                        addedPart.setServiceId(service.getId());
 
-                        Toast.show(this, Toast.Type.INFO, "Parçalar ekleniyor, lütfen bekleyin...");
+                        // Kullanıcıya işlemin başladığını bildiriyoruz (UI Thread)
+                        Toast.show(this, Toast.Type.INFO, "Parça ekleniyor, lütfen bekleyin...");
 
-                        // HATA ÇÖZÜMÜ: Tüm parçaların veritabanına eklenmesi bittikten sonra (allOf) listeyi tek seferde çek!
-                        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                                .thenRun(() -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        pullLatestParts();
-                                        if (getListener() != null) getListener().onDataChanged();
-                                        Toast.show(this, Toast.Type.SUCCESS, selectedParts.size() + " parça başarıyla eklendi.");
-                                    });
-                                })
-                                .exceptionally(ex -> {
-                                    SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Bazı parçalar eklenirken hata oluştu!"));
-                                    return null;
-                                });
+                        // Tekil Asenkron Zincir
+//                        repairService.addServicePart(addedPart)
+//                                .thenAccept(savedPart -> {
+//                                    // Başarılı durumda arayüz güncellemelerini kesinlikle EDT (Swing) thread'inde yapıyoruz
+//                                    SwingUtilities.invokeLater(() -> {
+//                                        pullLatestParts();
+//                                        if (getListener() != null) getListener().onDataChanged();
+//                                        Toast.show(this, Toast.Type.SUCCESS, "Parça başarıyla eklendi.");
+//                                    });
+//                                })
+//                                .exceptionally(ex -> {
+//                                    // Hata durumunda, asıl hatayı (ValidationException/IllegalStateException) yakalıyoruz
+//                                    SwingUtilities.invokeLater(() -> {
+//                                        String errorMessage = ex.getCause() != null ? ex.getCause().getMessage() : "Bilinmeyen bir hata oluştu!";
+//                                        Toast.show(this, Toast.Type.ERROR, "Eklemeye çalışırken hata: " + errorMessage);
+//                                        Servicio.getLogger().warn(errorMessage);
+//                                    });
+//                                    return null;
+//                                });
                     }
                 }), id);
     }
@@ -302,10 +305,10 @@ public class PartsNotesInfoPanel extends ServicePanel {
     }
 
     private void updateTotals() {
-        if (getListener() != null && service != null && service.getAddedParts() != null) {
-            double total = service.getAddedParts().stream().mapToDouble(AddedPart::getTotal).sum();
-            getListener().onPartChange(total);
-        }
+//        if (getListener() != null && service != null && service.getAddedParts() != null) {
+//            double total = service.getAddedParts().stream().mapToDouble(AddedPart::getTotal).sum();
+//            getListener().onPartChange(total);
+//        }
     }
 
     private void initComponent() {

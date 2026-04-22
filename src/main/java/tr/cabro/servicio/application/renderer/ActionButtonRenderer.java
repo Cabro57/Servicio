@@ -20,6 +20,7 @@ public class ActionButtonRenderer extends DefaultTableCellRenderer {
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
         Component com = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
         setVerticalAlignment(SwingConstants.CENTER);
+        setFocusable(false);
         panel.setBackground(com.getBackground());
 
         return panel;

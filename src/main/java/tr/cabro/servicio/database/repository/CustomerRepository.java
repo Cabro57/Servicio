@@ -1,7 +1,6 @@
 package tr.cabro.servicio.database.repository;
 
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
-import org.jdbi.v3.sqlobject.config.RegisterColumnMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindList;
@@ -16,34 +15,37 @@ import java.util.Optional;
 @RegisterBeanMapper(Customer.class)
 public interface CustomerRepository {
 
-    @SqlUpdate("INSERT INTO customers (business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at) " +
-            "VALUES (:businessName, :name, :surname, :phoneNumber1, :phoneNumber2, :idNo, :address, :email, :type, :note, :createdAt)")
+    @SqlUpdate("INSERT INTO customers (customer_type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at) " +
+            "VALUES (:type, :businessName, :firstName, :lastName, :identityNo, :taxNumber, :taxOffice, :phoneNumber1, :phoneNumber2, :email, :address, :note, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     int insert(@BindBean Customer customer);
 
-    @SqlUpdate("UPDATE customers SET business_name=:businessName, name=:name, surname=:surname, " +
-            "phone_number_1=:phoneNumber1, phone_number_2=:phoneNumber2, id_no=:idNo, address=:address, " +
-            "email=:email, status=:type, note=:note WHERE id=:id")
+    @SqlUpdate("UPDATE customers SET customer_type=:type, business_name=:businessName, first_name=:firstName, last_name=:lastName, " +
+            "identity_no=:identityNo, tax_number=:taxNumber, tax_office=:taxOffice, phone_number_1=:phoneNumber1, phone_number_2=:phoneNumber2, " +
+            "email=:email, address=:address, note=:note, updated_at=:updatedAt WHERE id=:id")
     void update(@BindBean Customer customer);
 
-    @SqlUpdate("DELETE FROM customers WHERE id = :id")
+    // --- SOFT DELETE İŞLEMLERİ ---
+    @SqlUpdate("UPDATE customers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
     void delete(@Bind("id") int id);
 
-    @SqlUpdate("DELETE FROM customers WHERE id IN (<ids>)")
+    @SqlUpdate("UPDATE customers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id IN (<ids>)")
     void deleteByIds(@BindList("ids") List<Integer> ids);
 
-    @SqlQuery("SELECT id, business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at FROM customers WHERE id = :id")
+    // --- SEÇME (SELECT) İŞLEMLERİ ---
+    // DÜZELTME: customer_type kolonu Java'daki "type" değişkeniyle eşleşmesi için "AS type" olarak seçildi
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE id = :id AND is_deleted = 0")
     Optional<Customer> findById(@Bind("id") int id);
 
-    @SqlQuery("SELECT id, business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at FROM customers WHERE id IN (<ids>)")
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE id IN (<ids>) AND is_deleted = 0")
     List<Customer> findByIds(@BindList("ids") List<Integer> ids);
 
-    @SqlQuery("SELECT id, business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at FROM customers ORDER BY created_at DESC")
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<Customer> findAll();
 
-    @SqlQuery("SELECT id, business_name, name, surname, phone_number_1, phone_number_2, id_no, address, email, status, note, created_at FROM customers WHERE " +
-            "name LIKE :search OR surname LIKE :search OR business_name LIKE :search OR " +
-            "phone_number_1 LIKE :search OR id_no LIKE :search " +
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE is_deleted = 0 AND " +
+            "(first_name LIKE :search OR last_name LIKE :search OR business_name LIKE :search OR " +
+            "phone_number_1 LIKE :search OR identity_no LIKE :search) " +
             "ORDER BY created_at DESC")
     List<Customer> search(@Bind("search") String searchTerm);
 }

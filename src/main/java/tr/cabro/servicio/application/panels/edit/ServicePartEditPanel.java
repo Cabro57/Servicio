@@ -9,11 +9,11 @@ import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
-import tr.cabro.servicio.util.Validator;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
     public ServicePartEditPanel(AddedPart data) {
@@ -32,10 +32,10 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         data.setDeviceType((String) device_type_combo.getSelectedItem());
         data.setModel(models_field.getText().trim());
         data.setPurchasePrice((Double) purchase_price_field.getValue());
-        data.setSellingPrice((Double) sale_price_field.getValue());
+        data.setSellingPrice((BigDecimal) sale_price_field.getValue());
         data.setAmount((Integer) amount_spinner.getValue());
         data.setWarrantyPeriod((Integer) warranty_period_spinner.getValue());
-        data.setPurchaseDate(purchase_picker.getSelectedDate());
+        data.setPurchaseDate(Format.formatDate(purchase_picker.getSelectedDate()));
         data.setDescription(description_area.getText().trim());
 
         return data;
@@ -53,16 +53,21 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         amount_spinner.setValue(data.getAmount());
         warranty_period_spinner.setValue(data.getWarrantyPeriod());
         if (data.getPurchaseDate() != null)
-            purchase_picker.setSelectedDate(data.getPurchaseDate());
+            purchase_picker.setSelectedDate(Format.formatDate(data.getPurchaseDate()));
         description_area.setText(data.getDescription());
 
         // Supplier seçimi
         if (data.getSupplierId() != null) {
-            Optional<Supplier> supplier = ServiceManager.getSupplierService().get(data.getSupplierId());
-            supplier_combo.setSelectedItem(supplier.orElse(null));
+            ServiceManager.getSupplierService().get(data.getSupplierId()).thenAccept(supplier -> {
+                supplier_combo.setSelectedItem(supplier.orElse(null));
+            }).exceptionally(ex -> {
+                Servicio.getLogger().error("Tedarikçi bilgisi çekilemedi", ex);
+                return null;
+            });
         } else {
             // ID yoksa seçim yapma
             supplier_combo.setSelectedItem(null);
+
         }
     }
 
@@ -112,12 +117,20 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         content.add(new JLabel("Tedarikçi"));
         supplierTypeComboBoxModel = new DefaultComboBoxModel<>();
         supplierTypeComboBoxModel.removeAllElements();
-        java.util.List<Supplier> suppliers = ServiceManager.getSupplierService().getAll();
-        for (Supplier supplier : suppliers) {
-            supplierTypeComboBoxModel.addElement(supplier);
-        }
         supplier_combo = new JComboBox<>(supplierTypeComboBoxModel);
         content.add(supplier_combo);
+
+        ServiceManager.getSupplierService().getAll().thenAccept(suppliers -> {
+            SwingUtilities.invokeLater(() -> {
+                supplierTypeComboBoxModel.removeAllElements();
+                for (Supplier supplier : suppliers) {
+                    supplierTypeComboBoxModel.addElement(supplier);
+                }
+            });
+        }).exceptionally(ex -> {
+            Servicio.getLogger().error("Tedarikçiler ComboBox'a yüklenemedi", ex);
+            return null;
+        });
 
         content.add(new JLabel("Cihaz Türü"));
         deviceTypeComboBoxModel = new DefaultComboBoxModel<>();

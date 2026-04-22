@@ -5,11 +5,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 public class DashboardStats {
     private int totalRecords;
     private int activeRecords;
     private int completedRecords;
-    private double totalRevenue;
+    private BigDecimal totalRevenue;
 }

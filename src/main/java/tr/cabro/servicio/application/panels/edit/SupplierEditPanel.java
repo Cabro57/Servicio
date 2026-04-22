@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.panels.edit;
 
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.component.PhoneField;
+import tr.cabro.servicio.application.component.PhoneField;
 import tr.cabro.servicio.model.Supplier;
 
 import javax.swing.*;
@@ -57,10 +57,10 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
         data.setBusinessName(business_name_field.getText().trim());
         data.setPhone(phone_field.getNormalizedNumber());
         data.setAddress(address_field.getText().trim());
-        data.setNotes(notes_field.getText().trim());
-        data.setIdNo(id_no_field.getText().trim());
+        data.setNote(notes_field.getText().trim());
+        //data.setTaxNumber(id_no_field.getText().trim());
         data.setEmail(email_field.getText().trim());
-        data.setTaxNo(tax_no_field.getText().trim());
+        data.setTaxNumber(tax_no_field.getText().trim());
         data.setTaxOffice(tax_office_field.getText().trim());
         return data;
     }
@@ -69,12 +69,12 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
     public void populateFormWith(Supplier data) {
         name_field.setText(data.getName());
         business_name_field.setText(data.getBusinessName());
-        phone_field.setText(data.getPhone());
+        phone_field.setNumber(data.getPhone());
         address_field.setText(data.getAddress());
-        notes_field.setText(data.getNotes());
-        id_no_field.setText(data.getIdNo());
+        notes_field.setText(data.getNote());
+        //id_no_field.setText(data.getIdNo());
         email_field.setText(data.getEmail());
-        tax_no_field.setText(data.getTaxNo());
+        tax_no_field.setText(data.getTaxNumber());
         tax_office_field.setText(data.getTaxOffice());
     }
 
@@ -82,7 +82,7 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
     public void clearForm() {
         name_field.setText("");
         business_name_field.setText("");
-        phone_field.setText("");
+        phone_field.setNumber("");
         address_field.setText("");
         notes_field.setText("");
         id_no_field.setText("");

@@ -2,10 +2,12 @@ package tr.cabro.servicio.model;
 
 import lombok.Getter;
 import lombok.Setter;
-import tr.cabro.servicio.model.enums.PaymentType;
+import org.jdbi.v3.core.mapper.reflect.ColumnName;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter @Setter
@@ -13,70 +15,73 @@ public class Service {
 
     private int id;
 
-    // Müşteri Bilgileri
+    @ColumnName("customer_id")
     private Integer customerId;
-    private Customer customer;
-    private LocalDateTime createdAt;
-    private LocalDateTime deliveryAt;
 
-    // Cihaz Bilgileri
-    private String deviceType; // Cihaz Türü
-    private String deviceBrand; // Marka
-    private String deviceModel; // Model
-    private String deviceSerial; // Seri numara / IMEI
-    private String devicePassword; // Şifre
-    private String deviceAccessory; // Aksesuar
+    @ColumnName("device_id")
+    private int deviceId;
 
-    // Fiyat Bilgileri
-    // private double material_cost; // Malzeme Ücretleri
-    private double laborCost; // İşçilik Ücretleri
-    private double paid; // Ödenen
-    private PaymentType paymentType; // Ödeme Türü
+    @ColumnName("technician_id")
+    private Integer technicianId; // Servisi üzerine alan ana teknisyen
 
-    // Garanti Bakım Bilgileri
-    private LocalDateTime warrantyDate;
-    private LocalDateTime maintenanceDate;
+    @ColumnName("reported_fault")
+    private String reportedFault;
 
-    // Arıza ve İşlem Bilgileri
-    private String reportedFault; // Bildirilen Arıza
-    private String detectedFault; // Tespit Edilen Arıza
-    private String actionTaken; // Yapılan İşlem
+    @ColumnName("detected_fault")
+    private String detectedFault;
 
-    // Parça Değişimi ve Notlar
-    private String Notes;
+    @ColumnName("action_taken")
+    private String actionTaken;
 
-    // Durum
-    private String urgencyStatus; // Aciliyet
+    @ColumnName("urgency_status")
+    private String urgencyStatus;
+
+    @ColumnName("service_status")
     private ServiceStatus serviceStatus;
 
-    private double totalPartsCost;
+    @ColumnName("warranty_end_date")
+    private LocalDateTime warrantyEndDate;
 
-    private List<AddedPart> addedParts;
+    @ColumnName("delivery_date")
+    private LocalDateTime deliveryDate;
 
+    // DİKKAT: 'private String note;' BURADAN TAMAMEN SİLİNDİ!
 
-    public Service(int customer, String type, String brand, String model) {
-        this.customerId = customer;
-        this.deviceType = type;
-        this.deviceBrand = brand;
-        this.deviceModel = model;
+    @ColumnName("created_at")
+    private LocalDateTime createdAt;
+
+    @ColumnName("updated_at")
+    private LocalDateTime updatedAt;
+
+    // --- İLİŞKİSEL VERİLER (DB'ye yazılmaz) ---
+    private Customer customer;
+    private Device device;
+
+    private List<ServiceItem> items = new ArrayList<>();
+    private List<ServicePayment> payments = new ArrayList<>();
+
+    // YENİ: Teknisyen Notları Listesi
+    private List<ServiceNote> technicianNotes = new ArrayList<>();
+
+    // =======================================================================
+    // FİNANSAL HESAPLAMA METODLARI
+    // =======================================================================
+
+    public BigDecimal getTotalServiceAmount() {
+        if (items == null || items.isEmpty()) return BigDecimal.ZERO;
+        return items.stream()
+                .map(ServiceItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Service() {}
-
-
-    public Device getDevice() {
-        Device device = new Device();
-
-        device.setSerial(deviceSerial);
-        device.setModel(deviceModel);
-        device.setBrand(deviceBrand);
-        device.setType(deviceType);
-
-        return device;
+    public BigDecimal getTotalPaid() {
+        if (payments == null || payments.isEmpty()) return BigDecimal.ZERO;
+        return payments.stream()
+                .map(ServicePayment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public double getRemainingAmount() {
-        return (getLaborCost() + totalPartsCost) - getPaid();
+    public BigDecimal getRemainingAmount() {
+        return getTotalServiceAmount().subtract(getTotalPaid());
     }
-
 }

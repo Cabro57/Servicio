@@ -54,6 +54,7 @@ public class PanelAction extends JPanel {
 
     private void initComponents() {
         setLayout(new MigLayout("insets 0, fill", "[grow, center][grow, center][grow, center]", "[center]"));
+        setFocusable(false);
 
         Color editColor = new Color(253, 126, 20);   // Şık bir Turuncu
         Color deleteColor = new Color(220, 53, 69); // Şık bir Kırmızı

@@ -47,10 +47,10 @@ public class SearchCustomerPanel extends JPanel {
     private void setupTable() {
         List<ColumnDef<Customer>> columns = Arrays.asList(
                 new ColumnDef<>("Tip", String.class, Customer::getType),
-                new ColumnDef<>("Ad Soyad", String.class, c -> c.getName() + " " + c.getSurname()),
+                new ColumnDef<>("Ad Soyad", String.class, Customer::getFullName),
                 new ColumnDef<>("Firma İsmi", String.class, Customer::getBusinessName),
                 new ColumnDef<>("Telefon", String.class, c -> Format.formatPhoneNumber(c.getPhoneNumber1())),
-                new ColumnDef<>("TC Kimlik No", String.class, Customer::getIdNo)
+                new ColumnDef<>("TC Kimlik No", String.class, Customer::getIdentityNo)
         );
 
         customerTableModel = new GenericTableModel<>(columns);

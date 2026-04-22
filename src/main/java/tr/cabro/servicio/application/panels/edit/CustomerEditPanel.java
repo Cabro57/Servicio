@@ -3,7 +3,7 @@ package tr.cabro.servicio.application.panels.edit;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.renderer.CustomerTypeRenderer;
-import tr.cabro.servicio.component.PhoneField;
+import tr.cabro.servicio.application.component.PhoneField;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.enums.CustomerType;
 
@@ -69,11 +69,11 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
     @Override
     protected Customer collectFormData(@NonNull Customer data) {
         data.setBusinessName(businessNameField.getText().trim());
-        data.setName(nameField.getText().trim());
-        data.setSurname(surnameField.getText().trim());
+        data.setFirstName(nameField.getText().trim());
+        data.setLastName(surnameField.getText().trim());
         data.setPhoneNumber1(phone1Field.getNormalizedNumber());
         data.setPhoneNumber2(phone2Field.getNormalizedNumber());
-        data.setIdNo(idNoField.getText().trim());
+        data.setIdentityNo(idNoField.getText().trim());
         data.setAddress(addressField.getText().trim());
         data.setEmail(emailField.getText().trim());
         data.setNote(notesField.getText().trim());
@@ -84,11 +84,11 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
     @Override
     public void populateFormWith(@NonNull Customer data) {
         businessNameField.setText(data.getBusinessName());
-        nameField.setText(data.getName());
-        surnameField.setText(data.getSurname());
+        nameField.setText(data.getFirstName());
+        surnameField.setText(data.getLastName());
         phone1Field.setNumber(data.getPhoneNumber1());
         phone2Field.setNumber(data.getPhoneNumber2());
-        idNoField.setText(data.getIdNo());
+        idNoField.setText(data.getIdentityNo());
         addressField.setText(data.getAddress());
         emailField.setText(data.getEmail());
         notesField.setText(data.getNote());

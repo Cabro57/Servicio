@@ -20,8 +20,11 @@ import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.ServicePayment;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
+import tr.cabro.servicio.service.RepairService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
@@ -29,19 +32,28 @@ import tr.cabro.servicio.util.PhoneHelper;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @SystemForm(name = "Müşteriler", description = "Müşteri veritabanını ve iletişim bilgilerini yönetin.")
 public class FormCustomers extends AbstractTableForm {
 
     private final CustomerService customerService;
+    private final RepairService repairService;
     private GenericTableModel<Customer> tableModel;
+
+    // Müşterilerin toplam harcamalarını RAM'de (önbellekte) tutmak için
+    private final Map<Integer, BigDecimal> customerSpentMap = new ConcurrentHashMap<>();
 
     public FormCustomers() {
         this.customerService = ServiceManager.getCustomerService();
+        this.repairService = ServiceManager.getRepairService();
     }
 
     // --- 1. ÜST KISIM VE ARAMA AYARLARI ---
@@ -53,7 +65,6 @@ public class FormCustomers extends AbstractTableForm {
 
     @Override
     protected String getNewButtonIconPath() {
-        // Yeni ikon yolunu kendine göre ayarla (Örn: user-plus.svg)
         return "icons/user-plus.svg";
     }
 
@@ -77,40 +88,10 @@ public class FormCustomers extends AbstractTableForm {
         cardBox.addCardItem(new Ikon("icons/badge-turkish-lira.svg", 0.7f), "Toplam Ciro");
     }
 
+    // Artık bu metodu tek başına çağırmıyoruz, refreshTable içinde her şeyi senkron yapıyoruz
     @Override
     protected void refreshStats() {
-        // Servis üzerinden asenkron olarak tüm müşterileri çekiyoruz
-        customerService.getAll().thenAccept(allCustomers -> {
-
-            // 1. Toplam Müşteri
-            long totalCount = allCustomers.size();
-
-            // 2. Normal Müşteriler
-            long normalCount = allCustomers.stream()
-                    .filter(c -> c.getType() == CustomerType.NORMAL)
-                    .count();
-
-            // 3. Ticari Müşteriler (Esnaf ve Bayi olanları Kurumsal gibi topluyoruz)
-            long businessCount = allCustomers.stream()
-                    .filter(c -> c.getType() == CustomerType.SMALL_BUSINESS || c.getType() == CustomerType.DEALER)
-                    .count();
-
-            // 4. Toplam Ciro (Veritabanında şu an ciro kolonu yok.
-            // İleride "Servisler" tablosu ile bu müşterilere ait ödenmiş servisleri toplayarak SQL'den çekebilirsin.)
-            double totalRevenue = 0.0;
-
-            // UI güncellemelerini mutlaka Swing EDT thread'inde yapıyoruz
-            SwingUtilities.invokeLater(() -> {
-                cardBox.setValueAt(0, String.valueOf(totalCount), "Sistemdeki tüm kayıtlar", "", true);
-                cardBox.setValueAt(1, String.valueOf(normalCount), "Bireysel kullanıcılar", "", true);
-                cardBox.setValueAt(2, String.valueOf(businessCount), "İşletme ve ticari hesaplar", "", true);
-                cardBox.setValueAt(3, Format.formatPrice(totalRevenue), "Bakım aşamasında", "", true);
-            });
-
-        }).exceptionally(ex -> {
-            Servicio.getLogger().error("Müşteri istatistikleri yüklenirken hata oluştu", ex);
-            return null;
-        });
+        // Boş bırakıldı. İşlemler refreshTable() içine taşındı.
     }
 
     // --- 3. TABLO YAPILANDIRMASI ---
@@ -121,10 +102,11 @@ public class FormCustomers extends AbstractTableForm {
 
         List<ColumnDef<Customer>> columns = Arrays.asList(
                 new ColumnDef<>("ID", String.class, c -> String.format("C-%03d", c.getId())),
-                new ColumnDef<>("Müşteri Adı", Customer.class, c -> c), // Özel renderer için nesneyi paslıyoruz
-                new ColumnDef<>("İletişim", Customer.class, c -> c),    // MultiLine için nesneyi paslıyoruz
-                new ColumnDef<>("Cihaz Sayısı", Integer.class, Customer::getDeviceCount), // Örnek alan
-                new ColumnDef<>("Toplam Harcama", String.class, c -> Format.formatPrice(500)), // Örnek alan
+                new ColumnDef<>("Müşteri Adı", Customer.class, c -> c),
+                new ColumnDef<>("İletişim", Customer.class, c -> c),
+                new ColumnDef<>("Cihaz Sayısı", Integer.class, Customer::getDeviceCount),
+                // DÜZELTME: Sabit "0" yerine, harita(map) üzerinden müşterinin toplam harcamasını çekiyoruz
+                new ColumnDef<>("Toplam Harcama", String.class, c -> Format.formatPrice(customerSpentMap.getOrDefault(c.getId(), BigDecimal.ZERO))),
                 new ColumnDef<>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(formatter) : "-"),
                 new ColumnDef<>("İşlem", String.class, c -> "Detay")
         );
@@ -136,9 +118,8 @@ public class FormCustomers extends AbstractTableForm {
     }
 
     private void configureTableColumns() {
-        // Hizalamalar (Görseldeki gibi: ID merkez, Sayılar merkez/sağ, diğerleri sol)
         Integer[] columnAlignments = {
-                SwingConstants.LEADING,   // ID
+                SwingConstants.LEADING,  // ID
                 SwingConstants.LEADING,  // Müşteri Adı
                 SwingConstants.LEADING,  // İletişim
                 SwingConstants.CENTER,   // Cihaz Sayısı
@@ -148,7 +129,6 @@ public class FormCustomers extends AbstractTableForm {
         };
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
 
-        // 0. Kolon: ID (Koyu renk font)
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -159,10 +139,8 @@ public class FormCustomers extends AbstractTableForm {
             }
         });
 
-        // 1. Kolon: Müşteri Adı TODO: buraya badge eklenecek müşteri tipi belirtilecek
         table.getColumnModel().getColumn(1).setCellRenderer(new CustomerTableCellRenderer());
 
-        // 2. Kolon: İletişim (Telefon üstte, e-posta altta)
         table.getColumnModel().getColumn(2).setCellRenderer(
                 new MultiLineTableCellRenderer<Customer>(
                         c -> PhoneHelper.formatForDisplay(c.getPhoneNumber1()),
@@ -200,28 +178,22 @@ public class FormCustomers extends AbstractTableForm {
             }
         });
 
-
-        // 6. Kolon: İşlem Butonları
         table.getColumnModel().getColumn(6).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(6).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onView(int row) {
-                // Müşteri Detay Ekranını açma (İleride eklenebilir)
                 int modelRow = table.convertRowIndexToModel(row);
                 Customer c = tableModel.getItemAt(modelRow);
                 customerService.get(c.getId()).thenAccept(response -> {
                     response.ifPresent(customer -> SwingUtilities.invokeLater(() -> {
                         Form formInstance = new FormCustomer(customer);
-                        Toast.show(FormCustomers.this, Toast.Type.INFO, customer.getName() + " detaylarına bakılıyor...");
+                        Toast.show(FormCustomers.this, Toast.Type.INFO, customer.getFirstName() + " detaylarına bakılıyor...");
                         FormManager.showForm(formInstance);
                     }));
                 }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(FormCustomers.this, Toast.Type.ERROR, ex.getMessage());
-                    });
+                    SwingUtilities.invokeLater(() -> Toast.show(FormCustomers.this, Toast.Type.ERROR, ex.getMessage()));
                     return null;
                 });
-
             }
 
             @Override
@@ -239,7 +211,7 @@ public class FormCustomers extends AbstractTableForm {
 
                 int confirm = JOptionPane.showConfirmDialog(
                         FormCustomers.this,
-                        selectedCustomer.getName() + " adlı müşteriyi silmek istediğinize emin misiniz?",
+                        selectedCustomer.getFullName() + " adlı müşteriyi silmek istediğinize emin misiniz?",
                         "Müşteri Sil",
                         JOptionPane.YES_NO_OPTION,
                         JOptionPane.WARNING_MESSAGE
@@ -256,7 +228,6 @@ public class FormCustomers extends AbstractTableForm {
             }
         }));
 
-        // Genişlik Ayarları
         table.getColumnModel().getColumn(0).setMaxWidth(80);
         table.getColumnModel().getColumn(1).setPreferredWidth(220);
         table.getColumnModel().getColumn(2).setPreferredWidth(180);
@@ -267,13 +238,57 @@ public class FormCustomers extends AbstractTableForm {
         table.getColumnModel().getColumn(6).setMinWidth(120);
     }
 
+    // DÜZELTME: Verileri ve istatistikleri aynı anda çeken asenkron yapı
     @Override
     protected void refreshTable() {
-        customerService.getAll().thenAccept(allCustomers -> {
+        CompletableFuture<List<Customer>> customersFuture = customerService.getAll();
+        CompletableFuture<List<Service>> servicesFuture = repairService.getAll();
+
+        CompletableFuture.allOf(customersFuture, servicesFuture).thenAccept(v -> {
+            List<Customer> allCustomers = customersFuture.join();
+            List<Service> allServices = servicesFuture.join();
+
+            customerSpentMap.clear();
+            BigDecimal totalGlobalRevenue = BigDecimal.ZERO;
+
+            // Müşterilerin servis ödemelerini hesapla (Ciro)
+            for (Service s : allServices) {
+                if (s.getCustomerId() == null || s.getCustomerId() <= 0) continue;
+
+                BigDecimal servicePaid = BigDecimal.ZERO;
+                if (s.getPayments() != null) {
+                    for (ServicePayment payment : s.getPayments()) {
+                        servicePaid = servicePaid.add(payment.getAmount());
+                    }
+                }
+
+                customerSpentMap.merge(s.getCustomerId(), servicePaid, BigDecimal::add);
+                totalGlobalRevenue = totalGlobalRevenue.add(servicePaid);
+            }
+
+            // Kart İstatistiklerini Hesapla
+            long totalCount = allCustomers.size();
+            long normalCount = allCustomers.stream()
+                    .filter(c -> c.getType() != null && c.getType() == CustomerType.NORMAL)
+                    .count();
+
+            long businessCount = allCustomers.stream()
+                    .filter(c -> c.getType() != null &&
+                            (c.getType() == CustomerType.SMALL_BUSINESS || c.getType() == CustomerType.DEALER))
+                    .count();
+
+            BigDecimal finalTotalRevenue = totalGlobalRevenue;
+
+            // Arayüzü (UI) Güvenli Şekilde Güncelle
             SwingUtilities.invokeLater(() -> {
                 tableModel.setData(allCustomers);
-                refreshStats(); // Tablo yenilendikten sonra üst kartları da güncelle
+
+                cardBox.setValueAt(0, String.valueOf(totalCount), "Sistemdeki tüm kayıtlar", "", true);
+                cardBox.setValueAt(1, String.valueOf(normalCount), "Bireysel kullanıcılar", "", true);
+                cardBox.setValueAt(2, String.valueOf(businessCount), "İşletme ve ticari hesaplar", "", true);
+                cardBox.setValueAt(3, Format.formatPrice(finalTotalRevenue), "Tüm zamanların cirosu", "", true);
             });
+
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
                 Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + ex.getMessage());
@@ -305,7 +320,7 @@ public class FormCustomers extends AbstractTableForm {
 
                 customerService.save(updated, false).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
+                        Toast.show(this, Toast.Type.SUCCESS, updated.getFullName() + " başarıyla eklendi.");
                         refreshTable();
                     });
                 }).exceptionally(ex -> {
@@ -341,7 +356,7 @@ public class FormCustomers extends AbstractTableForm {
 
                 customerService.save(updated, true).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
+                        Toast.show(this, Toast.Type.SUCCESS, updated.getFullName() + " başarıyla güncellendi.");
                         refreshTable();
                     });
                 }).exceptionally(ex -> {

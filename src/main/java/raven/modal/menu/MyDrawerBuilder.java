@@ -114,8 +114,8 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
         return new SimpleHeaderData()
                 .setIcon(icon)
-                .setTitle("Cabro")
-                .setDescription("cabro@gmail.com");
+                .setTitle("User")
+                .setDescription("user@example.com");
     }
 
     private void changeAvatarIconBorderColor(AvatarIcon icon) {
@@ -126,7 +126,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
     public SimpleFooterData getSimpleFooterData() {
         return new SimpleFooterData()
                 .setTitle("Servicio")
-                .setDescription("Version " + Servicio.getInstance().getAppVersion());
+                .setDescription("Version ");// + Servicio.getInstance().getAppVersion());
     }
 
     @Override

@@ -16,16 +16,31 @@ import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Barcode;
 
 import javax.swing.*;
+import java.awt.*;
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 public class PartEditPanel extends AbstractEditPanel<Part> {
 
-    PartService service;
+    private final PartService service;
+
+    // Arayüz Bileşenleri
+    private JTextField barcode_field;
+    private JTextField name_field;
+    private JTextField brand_field;
+    private JComboBox<String> device_type_combo;
+    private JTextField models_field;
+    private JFormattedTextField purchase_price_field;
+    private JFormattedTextField sale_price_field;
+    private JSpinner stock_spinner;
+    private JSpinner min_stock_spinner;
+    private JSpinner warranty_period_spinner;
+    private JTextArea description_area;
+    private JComboBox<Supplier> supplier_combo;
+    private DatePicker purchase_picker;
 
     public PartEditPanel(Part data) {
         super(data);
-
         service = ServiceManager.getPartService();
     }
 
@@ -37,7 +52,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         service.get(barcode).thenAccept(part -> {
             if (part.isPresent()) {
                 SwingUtilities.invokeLater(() -> {
-                    showValidationError(Toast.Type.ERROR, "Bu barkod da bir ürün mevcut.");
+                    showValidationError(Toast.Type.ERROR, "Bu barkodda bir ürün mevcut.");
                     setData(part.get());
                     barcode_field.putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_ERROR);
                 });
@@ -50,84 +65,51 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         });
     }
 
-//    @Override
-//    protected boolean validateForm() {
-//        // Barkod kontrolü
-//        if (Validator.isEmpty(barcode_field.getText())) {
-//            showValidationError("Barkod boş olamaz.");
-//            barcode_field.requestFocus();
-//            return false;
-//        }
-//
-//        // Marka kontrolü
-//        if (Validator.isEmpty(brand_field.getText())) {
-//            showValidationError("Marka boş olamaz.");
-//            brand_field.requestFocus();
-//            return false;
-//        }
-//
-//        // Ürün adı kontrolü
-//        if (Validator.isEmpty(name_field.getText())) {
-//            showValidationError("Ürün adı boş olamaz.");
-//            name_field.requestFocus();
-//            return false;
-//        }
-//
-//        // Fiyat ve stok değerlerini al
-//        double purchasePrice = (double) purchase_price_field.getValue();
-//        int stock = (int) stock_spinner.getValue();
-//        int minStock = (int) min_stock_spinner.getValue();
-//
-//        // Negatif sayı kontrolleri
-//        if (Validator.isNegative(purchasePrice)) {
-//            showValidationError("Alış fiyatı negatif olamaz.");
-//            purchase_date_field.requestFocus();
-//            return false;
-//        }
-//        if (Validator.isNegative(stock)) {
-//            showValidationError("Stok negatif olamaz.");
-//            stock_spinner.requestFocus();
-//            return false;
-//        }
-//        if (Validator.isNegative(minStock)) {
-//            showValidationError("Min stok negatif olamaz.");
-//            min_stock_spinner.requestFocus();
-//            return false;
-//        }
-//
-//        // Minimum stok uyarısı
-//        if (stock < minStock) {
-//            int confirm = JOptionPane.showConfirmDialog(
-//                    this,
-//                    "Stok miktarı minimum stok seviyesinin altında. Devam etmek istiyor musunuz?",
-//                    "Uyarı",
-//                    JOptionPane.YES_NO_OPTION,
-//                    JOptionPane.WARNING_MESSAGE
-//            );
-//            return confirm == JOptionPane.YES_OPTION;
-//        }
-//        return true;
-//    }
+    // --- KESİN ÇÖZÜM: Tedarikçi Yükleme Metodu ---
+    private void loadSuppliers(int selectedSupplierId) {
+        ServiceManager.getSupplierService().getAll().thenAccept(suppliers -> {
+            SwingUtilities.invokeLater(() -> {
+                supplier_combo.removeAllItems(); // Kutuyu temizle
+
+                Supplier target = null;
+                for (Supplier s : suppliers) {
+                    supplier_combo.addItem(s); // Nesneyi doğrudan ekle
+                    if (s.getId() == selectedSupplierId) {
+                        target = s; // Eşleşen ID varsa hedef olarak belirle
+                    }
+                }
+
+                // Hedef varsa seçili yap, yoksa hiçbir şeyi seçme
+                if (target != null) {
+                    supplier_combo.setSelectedItem(target);
+                } else {
+                    supplier_combo.setSelectedIndex(-1);
+                }
+            });
+        }).exceptionally(ex -> {
+            Servicio.getLogger().error("Tedarikçi listesi combobox'a yüklenemedi", ex);
+            return null;
+        });
+    }
 
     @Override
     protected Part collectFormData(@NonNull Part data) {
-
-        data.setBrand(brand_field.getText().trim());
         data.setName(name_field.getText().trim());
         data.setBarcode(barcode_field.getText().trim());
 
         Supplier selectedSupplier = (Supplier) supplier_combo.getSelectedItem();
         if (selectedSupplier != null) {
             data.setSupplierId(selectedSupplier.getId());
+        } else {
+            data.setSupplierId(0);
         }
-        data.setDeviceType((String) device_type_combo.getSelectedItem());
-        data.setModel(models_field.getText().trim());
-        data.setPurchasePrice((Double) purchase_price_field.getValue());
-        data.setSalePrice((Double) sale_price_field.getValue());
-        data.setStock((Integer) stock_spinner.getValue());
-        data.setMinStock((Integer) min_stock_spinner.getValue());
-        data.setWarrantyPeriod((Integer) warranty_period_spinner.getValue());
-        data.setPurchaseDate(purchase_picker.getSelectedDate());
+
+        data.setModelCompatibility(models_field.getText().trim());
+        data.setPurchasePrice((BigDecimal) purchase_price_field.getValue());
+        data.setSalePrice((BigDecimal) sale_price_field.getValue());
+        data.setStockQuantity((Integer) stock_spinner.getValue());
+        data.setMinStockLevel((Integer) min_stock_spinner.getValue());
+        //data.(purchase_picker.getSelectedDate());
         data.setDescription(description_area.getText().trim());
 
         return data;
@@ -136,28 +118,24 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
     @Override
     public void populateFormWith(Part data) {
         barcode_field.setText(data.getBarcode());
-        brand_field.setText(data.getBrand());
         name_field.setText(data.getName());
-        device_type_combo.setSelectedItem(data.getDeviceType());
-        models_field.setText(data.getModel());
+        models_field.setText(data.getModelCompatibility());
         purchase_price_field.setValue(data.getPurchasePrice());
         sale_price_field.setValue(data.getSalePrice());
-        stock_spinner.setValue(data.getStock());
-        min_stock_spinner.setValue(data.getMinStock());
-        warranty_period_spinner.setValue(data.getWarrantyPeriod());
-        if (data.getPurchaseDate() != null)
-            purchase_picker.setSelectedDate(data.getPurchaseDate());
+        stock_spinner.setValue(data.getStockQuantity());
+        min_stock_spinner.setValue(data.getMinStockLevel());
+//        if (data.get() != null)
+//            purchase_picker.setSelectedDate(data.getPurchaseDate());
         description_area.setText(data.getDescription());
 
-        // Supplier seçimi
-        Optional<Supplier> supplier = ServiceManager.getSupplierService().get(data.getSupplierId());
-        supplier_combo.setSelectedItem(supplier.orElse(null));
+        // Tedarikçileri yükle ve varsa seç
+        loadSuppliers(data.getSupplierId());
     }
 
     @Override
     public void clearForm() {
         brand_field.setText("");
-        supplier_combo.setSelectedItem(null);
+        supplier_combo.setSelectedIndex(-1);
         name_field.setText("");
         device_type_combo.setSelectedItem(null);
         models_field.setText("");
@@ -181,6 +159,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         barcode_field = new JTextField();
         barcode_field.setHorizontalAlignment(SwingConstants.CENTER);
         barcode_field.addActionListener(e -> handleBarcode(barcode_field.getText().trim()));
+
         JButton generate_barcode_button = new JButton(new Ikon("icons/barcode.svg", 0.03f, "MenuItem.foreground"));
         generate_barcode_button.setToolTipText("Rastgele barkod üret");
         generate_barcode_button.addActionListener(e -> {
@@ -189,6 +168,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
                 barcode_field.setText(randomBarcode);
             }
         });
+
         barcode_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, generate_barcode_button);
         barcode_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Parça barkodunu okutunuz veya girip Enter'a basınız.");
 
@@ -203,23 +183,27 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         add(brand_field);
 
         add(new JLabel("Tedarikçi"));
-        supplierTypeComboBoxModel = new DefaultComboBoxModel<>();
-        supplierTypeComboBoxModel.removeAllElements();
-        List<Supplier> suppliers = ServiceManager.getSupplierService().getAll();
-        for (Supplier supplier : suppliers) {
-            supplierTypeComboBoxModel.addElement(supplier);
-        }
-        supplier_combo = new JComboBox<>(supplierTypeComboBoxModel);
+        supplier_combo = new JComboBox<>();
+        supplier_combo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Supplier) {
+                    setText(((Supplier) value).getBusinessName());
+                } else if (value == null) {
+                    setText("Seçiniz...");
+                }
+                return this;
+            }
+        });
         add(supplier_combo);
 
         add(new JLabel("Cihaz Türü"));
-        deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
-        deviceTypeComboBoxModel.removeAllElements();
+        DefaultComboBoxModel<String> deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
         DeviceSettings settings = Servicio.getDeviceSettings();
         List<String> types = settings.getTypes();
-        for (String type : types) {
-            deviceTypeComboBoxModel.addElement(type);
-        }
+        types.forEach(deviceTypeComboBoxModel::addElement);
+
         device_type_combo = new JComboBox<>(deviceTypeComboBoxModel);
         add(device_type_combo);
 
@@ -248,7 +232,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         add(warranty_period_spinner);
 
         add(new JLabel("Alış Tarihi"));
-        purchase_date_field = new JFormattedTextField();
+        JFormattedTextField purchase_date_field = new JFormattedTextField();
         purchase_picker = new DatePicker();
         purchase_picker.setEditor(purchase_date_field);
         add(purchase_date_field);
@@ -258,33 +242,5 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         description_area.setLineWrap(true);
         description_area.setWrapStyleWord(true);
         add(new JScrollPane(description_area), "span, growx");
-
     }
-    private JTextField barcode_field;
-
-    private JTextField name_field;
-
-    private JTextField brand_field;
-
-    private JComboBox<String> device_type_combo;
-
-    private JTextField models_field;
-
-    private JFormattedTextField purchase_price_field;
-    private JFormattedTextField sale_price_field;
-
-    private JSpinner stock_spinner;
-    private JSpinner min_stock_spinner;
-
-    private JSpinner warranty_period_spinner;
-
-    private JFormattedTextField purchase_date_field;
-
-    private JTextArea description_area;
-
-    private JComboBox<Supplier> supplier_combo;
-
-    private DatePicker purchase_picker;
-    private DefaultComboBoxModel<String> deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
-    private DefaultComboBoxModel<Supplier> supplierTypeComboBoxModel = new DefaultComboBoxModel<>();
 }

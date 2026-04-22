@@ -53,8 +53,7 @@ public class WarrantyInfoPanel extends ServicePanel {
 
         isInitializing = true;
         try {
-            setWarrantyDate(service.getWarrantyDate());
-            setMaintenanceDate(service.getMaintenanceDate());
+            setWarrantyDate(service.getWarrantyEndDate());
         } finally {
             isInitializing = false;
         }

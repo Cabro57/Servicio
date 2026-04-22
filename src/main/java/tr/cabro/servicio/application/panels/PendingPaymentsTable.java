@@ -8,12 +8,11 @@ import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.application.forms.FormService;
 import tr.cabro.servicio.application.forms.FormServices;
-import tr.cabro.servicio.application.renderer.UniversalVisualizableRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.util.Format;
+import raven.swingpack.JPagination;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -21,6 +20,7 @@ import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -28,6 +28,11 @@ public class PendingPaymentsTable extends JPanel {
 
     private GenericTableModel<Service> tableModel;
     private JTable table;
+
+    // --- SAYFALAMA DEĞİŞKENLERİ ---
+    private List<Service> allData = new ArrayList<>();
+    private final int ITEMS_PER_PAGE = 5; // Her sayfada kaç veri gösterilecek
+    private JPagination pagination;
 
     public PendingPaymentsTable() {
         init();
@@ -37,16 +42,37 @@ public class PendingPaymentsTable extends JPanel {
         initComponent();
     }
 
+    // --- YENİ VERİ YÜKLEME METODU ---
     public void setData(List<Service> service) {
-        if (tableModel != null) {
-            tableModel.setData(service);
+        this.allData = service != null ? service : new ArrayList<>();
+
+        int totalPages = (int) Math.ceil((double) allData.size() / ITEMS_PER_PAGE);
+        if (totalPages == 0) totalPages = 1;
+
+        // Kütüphanenizin DOĞRU metodu: setPageRange(GuncelSayfa, ToplamSayfa)
+        if (pagination != null) {
+            pagination.setPageRange(1, totalPages);
+        }
+
+        // İlk sayfayı tabloya bas
+        updateTablePage(1);
+    }
+
+    // --- SAYFA GÜNCELLEME MOTORU ---
+    private void updateTablePage(int page) {
+        int startIndex = (page - 1) * ITEMS_PER_PAGE;
+        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, allData.size());
+
+        if (startIndex <= endIndex && tableModel != null) {
+            tableModel.setData(allData.subList(startIndex, endIndex));
             revalidate();
             repaint();
         }
     }
 
     private void initComponent() {
-        setLayout(new MigLayout("wrap, fillx, insets 15, gapy 0", "[fill]", "[pref!]15[pref!][pref!]"));
+        // MigLayout'un altına pagination için ekstra satır eklendi
+        setLayout(new MigLayout("wrap, fillx, insets 15, gapy 0", "[fill]", "[pref!]15[pref!][pref!]15[pref!]"));
         putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
 
         // --- 1. BAŞLIK BÖLÜMÜ ---
@@ -59,17 +85,19 @@ public class PendingPaymentsTable extends JPanel {
 
         JButton btnSeeAll = new JButton("Tümünü Gör \u2192");
         btnSeeAll.putClientProperty(FlatClientProperties.STYLE, "font: $medium.font");
-        btnSeeAll.putClientProperty( "JButton.buttonType", "toolBarButton" );
+        btnSeeAll.putClientProperty("JButton.buttonType", "toolBarButton");
         btnSeeAll.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        Form form = AllForms.getForm(FormServices.class);
-        btnSeeAll.addActionListener(e -> FormManager.showForm(form));
+        btnSeeAll.addActionListener(e -> {
+            Form form = AllForms.getForm(FormServices.class);
+            FormManager.showForm(form);
+        });
 
         headerPanel.add(title);
         headerPanel.add(btnSeeAll);
 
         // --- 2. TABLO BÖLÜMÜ ---
         List<ColumnDef<Service>> columns = Arrays.asList(
-                new ColumnDef<>("Müşteri", String.class, s -> s.getCustomer() != null ? s.getCustomer().getName() + " " + s.getCustomer().getSurname() : "-"),
+                new ColumnDef<>("Müşteri", String.class, s -> s.getCustomer() != null ? s.getCustomer().getFullName() : "-"),
                 new ColumnDef<>("Kayıt No", String.class, s -> "SRV-" + s.getId()),
                 new ColumnDef<>("Tutar", String.class, s -> Format.formatPrice(s.getRemainingAmount()))
         );
@@ -83,7 +111,6 @@ public class PendingPaymentsTable extends JPanel {
         applyTableStyles(table);
 
         // -- ÖZEL RENDERER İŞLEMLERİ --
-
         TableCellRenderer defaultHeaderRenderer = table.getTableHeader().getDefaultRenderer();
         table.getTableHeader().setDefaultRenderer((t, value, isSelected, hasFocus, row, column) -> {
             JLabel label = (JLabel) defaultHeaderRenderer.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, column);
@@ -128,12 +155,11 @@ public class PendingPaymentsTable extends JPanel {
             }
         });
 
-        // -- TEK TIKLAMA İLE YÖNLENDİRME (Mükemmel UX) --
         table.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int viewRow = table.rowAtPoint(e.getPoint());
-                if (viewRow >= 0 && e.getClickCount() == 1) { // Sadece Tek Tık
+                if (viewRow >= 0 && e.getClickCount() == 1) {
                     int modelRow = table.convertRowIndexToModel(viewRow);
                     Service selectedService = tableModel.getItemAt(modelRow);
                     if (selectedService != null) {
@@ -143,10 +169,20 @@ public class PendingPaymentsTable extends JPanel {
             }
         });
 
+        // --- 3. SAYFALAMA (PAGINATION) BİLEŞENİ ---
+        // (Maksimum 5 görünür buton, başlangıç sayfası 1, toplam sayfa 1)
+        pagination = new JPagination(5, 1, 1);
+        pagination.addChangeListener(e -> {
+            // Kütüphanenizin DOĞRU metodu: getSelectedPage()
+            int page = pagination.getSelectedPage();
+            updateTablePage(page);
+        });
+
         // Bileşenleri ana panele ekle
         add(headerPanel);
         add(table.getTableHeader());
         add(table);
+        add(pagination, "align center"); // Sayfalamayı en alta, merkeze hizala
     }
 
     private void applyTableStyles(JTable table) {
@@ -164,6 +200,6 @@ public class PendingPaymentsTable extends JPanel {
     }
 
     private Icon createIcon(String icon, Color color) {
-        return new FlatSVGIcon(icon, 1).setColorFilter(new FlatSVGIcon.ColorFilter(color1 -> color));
+        return new FlatSVGIcon(icon, 1f).setColorFilter(new FlatSVGIcon.ColorFilter(color1 -> color));
     }
 }

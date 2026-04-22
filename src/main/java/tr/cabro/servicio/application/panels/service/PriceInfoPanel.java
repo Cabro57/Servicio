@@ -40,16 +40,14 @@ public class PriceInfoPanel extends ServicePanel {
         // Form doldurulurken tetiklenen Listener'ları susturmak için bayrağı açıyoruz
         isInitializing = true;
         try {
-            // Service modeli içindeki verileri arayüze basıyoruz
-            setMaterialCost(service.getTotalPartsCost());
-            setLaborCost(service.getLaborCost());
-            setPaid(service.getPaid());
 
-            if (service.getPaymentType() != null) {
-                payment_type_combo.setSelectedItem(service.getPaymentType());
-            } else {
-                payment_type_combo.setSelectedItem(PaymentType.CASH);
-            }
+            setPaid(service.getTotalPaid());
+
+//            if (service.getPaymentType() != null) {
+//                payment_type_combo.setSelectedItem(service.getPaymentType());
+//            } else {
+//                payment_type_combo.setSelectedItem(PaymentType.CASH);
+//            }
 
             // Veriler dolduktan sonra matematiksel hesabı bir kez çalıştır
             recalculate();
@@ -115,8 +113,8 @@ public class PriceInfoPanel extends ServicePanel {
     }
 
     // Ana formun (FormService) parçalar güncellendiğinde buraya fiyat basması için kullanılır
-    public void setMaterialCost(double amount) {
-        BigDecimal value = BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP);
+    public void setMaterialCost(BigDecimal amount) {
+        BigDecimal value = amount.setScale(2, RoundingMode.HALF_UP);
         material_cost_field.setValue(value);
         recalculate();
     }
@@ -127,8 +125,8 @@ public class PriceInfoPanel extends ServicePanel {
         recalculate();
     }
 
-    public void setPaid(double amount) {
-        BigDecimal value = BigDecimal.valueOf(amount).setScale(2, RoundingMode.HALF_UP);
+    public void setPaid(BigDecimal amount) {
+        BigDecimal value = amount.setScale(2, RoundingMode.HALF_UP);
         paid_field.setValue(value);
         recalculate();
     }
@@ -152,9 +150,9 @@ public class PriceInfoPanel extends ServicePanel {
     }
 
     // --- İşlemler Eklendiğinde Otomatik Artırma/Azaltma Metotları ---
-    public void addLaborCost(double amount) {
+    public void addLaborCost(BigDecimal amount) {
         BigDecimal current = getFieldValue(labor_cost_field);
-        BigDecimal added = current.add(BigDecimal.valueOf(amount));
+        BigDecimal added = current.add(amount);
         labor_cost_field.setValue(added);
         // recalculate() DocumentListener sayesinde otomatik tetiklenecektir.
     }

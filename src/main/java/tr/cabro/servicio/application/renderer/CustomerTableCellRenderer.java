@@ -17,7 +17,7 @@ public class CustomerTableCellRenderer extends DefaultTableCellRenderer {
 
         if (value instanceof Customer) {
             Customer ct = (Customer) value;
-            label.setText(ct.toString());
+            label.setText(ct.getFullName());
 
             // GÜVENLİK ÖNLEMİ: Type null ise varsayılan ikonu (NORMAL) kullan veya boş geç
             if (ct.getType() != null) {

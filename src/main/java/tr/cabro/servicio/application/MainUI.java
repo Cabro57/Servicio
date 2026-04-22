@@ -30,6 +30,8 @@ public class MainUI extends JFrame {
         User user = new User();
         MyDrawerBuilder.getInstance().setUser(user);
         FormManager.install(this);
+
+        setIconImage(new ImageIcon(getClass().getResource("/logo.png")).getImage());
     }
 
     private void setupWindowSize() {

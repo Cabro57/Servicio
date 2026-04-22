@@ -47,19 +47,19 @@ public class DeviceInfoPanel extends ServicePanel {
         if (service == null) return;
 
         isInitializing = true; // Dinleyicileri (Listeners) geçici olarak sağır et
-        try {
-            // DİKKAT: Sıralama çok önemlidir! Önce Tür, Sonra Marka seçilmeli.
-            setDeviceType(service.getDeviceType());
-            setDeviceBrand(service.getDeviceBrand());
-
-            model_field.setText(service.getDeviceModel() != null ? service.getDeviceModel() : "");
-            seri_no_field.setText(service.getDeviceSerial() != null ? service.getDeviceSerial() : "");
-            password_field.setText(service.getDevicePassword() != null ? service.getDevicePassword() : "");
-            accessory_field.setText(service.getDeviceAccessory() != null ? service.getDeviceAccessory() : "");
-
-        } finally {
-            isInitializing = false; // Form doldu, dinleyicileri tekrar aç
-        }
+//        try {
+//            // DİKKAT: Sıralama çok önemlidir! Önce Tür, Sonra Marka seçilmeli.
+////            setDeviceType(service.getDeviceType());
+//            setDeviceBrand(service.getDeviceBrand());
+//
+//            model_field.setText(service.getDeviceModel() != null ? service.getDeviceModel() : "");
+//            seri_no_field.setText(service.getDeviceSerial() != null ? service.getDeviceSerial() : "");
+//            password_field.setText(service.getDevicePassword() != null ? service.getDevicePassword() : "");
+//            accessory_field.setText(service.getDeviceAccessory() != null ? service.getDeviceAccessory() : "");
+//
+//        } finally {
+//            isInitializing = false; // Form doldu, dinleyicileri tekrar aç
+//        }
     }
 
     private void addListeners() {

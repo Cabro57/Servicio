@@ -8,6 +8,7 @@ import tr.cabro.servicio.util.Validator;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public class SupplierService {
 
@@ -17,12 +18,11 @@ public class SupplierService {
         this.repository = repository;
     }
 
-    public Supplier save(Supplier supplier, boolean update) {
-        // --- Validasyon ---
+    public CompletableFuture<Supplier> save(Supplier supplier, boolean update) {
+        // --- Senkron Validasyon (Hata varsa UI'da anında fırlatılır) ---
         if (Validator.isEmpty(supplier.getName())) throw new ValidationException("Ad alanı boş olamaz.");
         if (Validator.isEmpty(supplier.getBusinessName())) throw new ValidationException("Firma adı boş olamaz.");
 
-        // Telefon Normalizasyonu
         try {
             if (!Validator.isEmpty(supplier.getPhone())) {
                 supplier.setPhone(PhoneHelper.normalize("TR", supplier.getPhone()));
@@ -35,26 +35,27 @@ public class SupplierService {
             throw new ValidationException("Geçersiz e-posta formatı.");
         }
 
-        // --- DB İşlemi ---
-        if (!update) {
-            int id = repository.insert(supplier);
-            supplier.setId(id);
+        // --- Veritabanı İşlemi (Arka Plan Thread) ---
+        return CompletableFuture.supplyAsync(() -> {
+            if (!update) {
+                int id = repository.insert(supplier);
+                supplier.setId(id);
+            } else {
+                repository.update(supplier);
+            }
             return supplier;
-        } else {
-            repository.update(supplier);
-            return supplier;
-        }
+        });
     }
 
-    public void delete(int id) {
-        repository.delete(id);
+    public CompletableFuture<Void> delete(int id) {
+        return CompletableFuture.runAsync(() -> repository.delete(id));
     }
 
-    public Optional<Supplier> get(int id) {
-        return repository.findById(id);
+    public CompletableFuture<Optional<Supplier>> get(int id) {
+        return CompletableFuture.supplyAsync(() -> repository.findById(id));
     }
 
-    public List<Supplier> getAll() {
-        return repository.findAll();
+    public CompletableFuture<List<Supplier>> getAll() {
+        return CompletableFuture.supplyAsync(repository::findAll);
     }
 }

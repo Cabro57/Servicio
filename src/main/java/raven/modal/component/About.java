@@ -55,11 +55,8 @@ public class About extends JPanel {
     }
 
     private String getDescriptionText() {
-        String text = "This is a demo project for the Modal Dialog library, " +
-                "built using FlatLaf Look and Feel and MigLayout library.<br>" +
-                "For source code, visit the <a href=\"https://github.com/DJ-Raven/swing-modal-dialog/\">GitHub Project.</a>";
 
-        text =  "    <p>\n" +
+        return "    <p>\n" +
                 "      Servicio, teknik servis s&#252;re&#231;lerini daha h&#305;zl&#305;, d&#252;zenli ve takip \n" +
                 "      edilebilir hale getirmek i&#231;in geli&#351;tirilen bir y&#246;netim uygulamas&#305;d&#305;r.\n" +
                 "    </p>\n" +
@@ -72,8 +69,6 @@ public class About extends JPanel {
                 "      bildirimlerinizle daha iyi bir Servicio deneyimi olu&#351;turulmas&#305;na katk&#305;da \n" +
                 "      bulunabilirsiniz.\n" +
                 "    </p>\n";
-
-        return text;
     }
 
     private String getSystemInformationText() {

@@ -1,23 +1,31 @@
 package tr.cabro.servicio.application.forms;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.simple.SimpleMessageModal;
 import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.editors.ActionButtonEditor;
+import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.edit.SupplierEditPanel;
-import tr.cabro.servicio.application.renderer.ProfileTableRenderer;
+import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
+import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.SupplierService;
+import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import java.awt.*;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -25,59 +33,160 @@ import java.util.List;
 @SystemForm(name = "Tedarikçiler", description = "Tüm tedarikçileri listeler")
 public class FormSuppliers extends AbstractTableForm {
 
-    private final SupplierService service;
-    private GenericTableModel<Supplier> supplierTableModel;
+    private final SupplierService supplierService;
+    private GenericTableModel<Supplier> tableModel;
 
     public FormSuppliers() {
-        this.service = ServiceManager.getSupplierService();
+        this.supplierService = ServiceManager.getSupplierService();
+    }
+
+    @Override
+    protected String getNewButtonText() {
+        return "Yeni Tedarikçi Ekle";
+    }
+
+    @Override
+    protected String getTableTitleText() {
+        return "Tüm Tedarikçiler";
+    }
+
+    @Override
+    protected String getSearchPlaceholder() {
+        return "Firma, ilgili kişi veya e-posta ara...";
+    }
+
+    @Override
+    protected void initCards() {
+        cardBox.addCardItem(new Ikon("icons/package-check.svg", 0.7f), "Toplam Tedarikçi");
+    }
+
+    @Override
+    protected void refreshStats() {
+        supplierService.getAll().thenAccept(suppliers -> {
+            long supplierCount = suppliers.size();
+            SwingUtilities.invokeLater(() -> {
+                cardBox.setValueAt(0, String.valueOf(supplierCount), "Tüm kayıtlılar", "", true);
+            });
+        }).exceptionally(ex -> {
+            Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
+            SwingUtilities.invokeLater(() -> {
+                raven.modal.Toast.show(FormSuppliers.this, raven.modal.Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
+            });
+            return null;
+        });
+
     }
 
     @Override
     protected void setupTable() {
         List<ColumnDef<Supplier>> columns = Arrays.asList(
+                new ColumnDef<>("ID", String.class, supplier -> "S-" + supplier.getId()),
                 new ColumnDef<>("Firma İsmi", String.class, Supplier::getBusinessName),
-                new ColumnDef<>("Ad Soyad", String.class, Supplier::getName),
-                new ColumnDef<>("Telefon", String.class, s -> Format.formatPhoneNumber(s.getPhone())),
+                new ColumnDef<>("İlgili Kişi", String.class, Supplier::getName),
+                new ColumnDef<>("İletişim", String.class, s -> Format.formatPhoneNumber(s.getPhone())),
                 new ColumnDef<>("Adres", String.class, Supplier::getAddress),
-                new ColumnDef<>("Kayıt Tarihi", String.class, s -> Format.formatDate(s.getCreated_at()))
+                new ColumnDef<>("Kayıt Tarihi", String.class, s -> Format.formatDate(s.getCreatedAt())),
+                new ColumnDef<>("İşlem", String.class, supplier -> "Detay")
         );
-        supplierTableModel = new GenericTableModel<>(columns);
-        setTableModel(supplierTableModel);
+        tableModel = new GenericTableModel<>(columns);
+        setTableModel(tableModel);
+
         configureTableColumns();
-    }
-
-    @Override
-    protected void refreshTable() {
-        try {
-            List<Supplier> allSuppliers = service.getAll();
-
-            supplierTableModel.setData(allSuppliers);
-
-
-        } catch (Exception e) {
-            Toast.show(this, Toast.Type.ERROR, "Tedarikçi listesi alınamadı: " + e.getMessage());
-        }
     }
 
     private void configureTableColumns() {
         Integer[] columnAlignments = {
-                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
-                SwingConstants.LEADING, SwingConstants.LEADING
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.CENTER
         };
 
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
 
-        if (table.getColumnCount() > 1) {
-            table.getColumnModel().getColumn(1).setCellRenderer(new ProfileTableRenderer(table));
-            table.getColumnModel().getColumn(1).setPreferredWidth(150);
-        }
+        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                ((JLabel) c).setHorizontalAlignment(SwingConstants.LEADING);
+                ((JLabel) c).putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: +1");
+                return c;
+            }
+        });
+
+        table.getColumnModel().getColumn(3).setCellRenderer(new MultiLineTableCellRenderer<Supplier>(
+                supplier -> Format.formatPhoneNumber(supplier.getPhone()),
+                Supplier::getEmail
+
+        ));
+
+        table.getColumnModel().getColumn(6).setCellRenderer(new ActionButtonRenderer());
+        table.getColumnModel().getColumn(6).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+            @Override
+            public void onEdit(int row) {
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+                int modelRow = table.convertRowIndexToModel(row);
+                System.out.println(tableModel.getItemAt(modelRow).getPhone());
+                openEditModal(tableModel.getItemAt(modelRow));
+            }
+
+            @Override
+            public void onDelete(int row) {
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+                int modelRow = table.convertRowIndexToModel(row);
+                Supplier selectedSupplier = tableModel.getItemAt(modelRow);
+
+                ModalDialog.showModal(FormSuppliers.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
+                        "Tedarikçiyi silmek istediğinizden emin misiniz?", "Silme Onayı",
+                        SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
+                    if (action == SimpleModalBorder.YES_OPTION) {
+                        supplierService.delete(selectedSupplier.getId()).thenRun(() -> {
+                            SwingUtilities.invokeLater(() -> {
+                                Toast.show(FormSuppliers.this, Toast.Type.SUCCESS, "Tedarikçi silindi.");
+                                refreshTable();
+                            });
+                        }).exceptionally(ex -> {
+                            Servicio.getLogger().error("Silme hatası ID: {}", selectedSupplier.getId(), ex);
+                            SwingUtilities.invokeLater(() -> Toast.show(FormSuppliers.this, Toast.Type.ERROR, "Silinemedi: " + ex.getCause().getMessage()));
+                            return null;
+                        });
+                    }
+                }));
+            }
+
+            @Override
+            public void onView(int row) {
+
+            }
+        }));
+
+        table.getColumnModel().getColumn(0).setMaxWidth(80);
+        table.getColumnModel().getColumn(1).setPreferredWidth(150);
+        table.getColumnModel().getColumn(6).setMaxWidth(180);
+        table.getColumnModel().getColumn(6).setMinWidth(120);
     }
 
-    /** Tabloda seçili satırlardaki tedarikçi nesnelerini döndürür. */
-    private List<Supplier> getSelectedSuppliers() {
-        return supplierTableModel.getSelectedItems(table.getSelectedRows());
+    // Tabloyu Güncelleme (Asenkron)
+    @Override
+    protected void refreshTable() {
+        supplierService.getAll().thenAccept(allSuppliers -> {
+            SwingUtilities.invokeLater(() -> {
+                tableModel.setData(allSuppliers);
+                refreshStats(); // İstatistikleri veriler gelince güncelle
+            });
+        }).exceptionally(e -> {
+            Servicio.getLogger().error("Tedarikçi listesi alınamadı: ", e);
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(FormSuppliers.this, Toast.Type.ERROR, "Tedarikçi listesi alınamadı!");
+            });
+            return null;
+        });
     }
 
+    // Yeni Ekleme Modalı (Asenkron)
     @Override
     protected void onNew() {
         final String id = "SupplierNew";
@@ -88,119 +197,82 @@ public class FormSuppliers extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Yeni Tedarikçi Ekle", options,
-                        (controller, action) -> {
-                            if (action == SimpleModalBorder.OPENED) {
-                                //panel.clearForm();
-                            } else if (action == SimpleModalBorder.OK_OPTION) {
-                                Supplier updated = panel.getData();
-                                if (updated == null) {
-                                    controller.consume();
-                                    return;
-                                }
+        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Yeni Tedarikçi Ekle", options,
+                (controller, action) -> {
+                    if (action == SimpleModalBorder.OK_OPTION) {
+                        Supplier updated = panel.getData();
+                        if (updated == null) {
+                            controller.consume();
+                            return;
+                        }
 
-                                try {
-                                    updated.setCreated_at(LocalDateTime.now());
-                                    service.save(updated, false);
+                        try {
+                            updated.setCreatedAt(LocalDateTime.now());
 
-                                    Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
+                            // 1. Senkron doğrulama burada çalışır. Hata varsa catch'e düşer, modal kapanmaz.
+                            // 2. Doğrulama başarılıysa modal kapanır, arka planda veritabanına yazılır.
+                            supplierService.save(updated, false).thenAccept(saved -> {
+                                SwingUtilities.invokeLater(() -> {
+                                    Toast.show(this, Toast.Type.SUCCESS, saved.getName() + " başarıyla eklendi.");
                                     refreshTable();
+                                });
+                            }).exceptionally(ex -> {
+                                Servicio.getLogger().error("Tedarikçi DB ekleme hatası", ex);
+                                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Kayıt Hatası: " + ex.getCause().getMessage()));
+                                return null;
+                            });
 
-                                } catch (Exception e) {
-                                    controller.consume();
-                                    Toast.show(this, Toast.Type.ERROR, "Hata: " + e.getMessage());
-                                    Servicio.getLogger().error("Tedarikçi ekleme hatası", e);
-                                }
-                            }
-                        })
-                , id);
+                        } catch (ValidationException e) {
+                            controller.consume(); // Form doğrulama hatası, modalı açık tut.
+                            Toast.show(this, Toast.Type.ERROR, e.getMessage());
+                        } catch (Exception e) {
+                            controller.consume();
+                            Servicio.getLogger().error("Tedarikçi ekleme beklenmeyen hata", e);
+                        }
+                    }
+                }), id);
     }
 
-//    @Override
-//    protected void onEdit() {
-//        List<Supplier> selected = getSelectedSuppliers();
-//
-//        if (selected.isEmpty()) {
-//            Toast.show(this, Toast.Type.INFO, "Lütfen düzenlemek için bir tedarikçi seçin.");
-//            return;
-//        }
-//        if (selected.size() > 1) {
-//            Toast.show(this, Toast.Type.INFO, "Düzenlemek için sadece 1 tedarikçi seçin.");
-//            return;
-//        }
-//
-//        final String id = "SupplierEdit";
-//        Supplier supplier = selected.get(0);
-//        SupplierEditPanel panel = new SupplierEditPanel(supplier);
-//
-//        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-//                new SimpleModalBorder.Option("Güncelle", 0),
-//                new SimpleModalBorder.Option("İptal", 2)
-//        };
-//
-//        ModalDialog.showModal(this, new SimpleModalBorder(
-//                        panel, "Tedarikçi Düzenle", options,
-//                        (controller, action) -> {
-//                            if (action == SimpleModalBorder.OPENED) {
-//                                //panel.populateFormWith(supplier);
-//                            } else if (action == SimpleModalBorder.OK_OPTION) {
-//                                Supplier updated = panel.getData();
-//                                if (updated == null) {
-//                                    controller.consume();
-//                                    return;
-//                                }
-//
-//                                try {
-//                                    updated.setId(supplier.getId());
-//                                    updated.setCreated_at(supplier.getCreated_at());
-//
-//                                    service.save(updated, true);
-//
-//                                    Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
-//                                    refreshTable();
-//
-//                                } catch (Exception e) {
-//                                    controller.consume();
-//                                    Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + e.getMessage());
-//                                    Servicio.getLogger().error("Tedarikçi güncelleme hatası", e);
-//                                }
-//                            }
-//                        })
-//                , id);
-//    }
-//
-//    @Override
-//    protected void onDelete() {
-//        List<Supplier> cs = getSelectedSuppliers();
-//
-//        if (cs.isEmpty()) {
-//            Toast.show(this, Toast.Type.INFO, "Lütfen silmek için bir tedarikçi seçin.");
-//            return;
-//        }
-//
-//        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-//                "Seçilen " + cs.size() + " tedarikçiyi silmek istediğinizden emin misiniz?", "Silme Onayı",
-//                SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-//            if (action == 0) {
-//                int successCount = 0;
-//                int errorCount = 0;
-//
-//                for (Supplier s : cs) {
-//                    try {
-//                        service.delete(s.getId());
-//                        successCount++;
-//                    } catch (Exception e) {
-//                        errorCount++;
-//                        Servicio.getLogger().error("Silme hatası ID: " + s.getId(), e);
-//                    }
-//                }
-//
-//                if (successCount > 0) Toast.show(this, Toast.Type.SUCCESS, successCount + " adet tedarikçi silindi.");
-//                if (errorCount > 0) Toast.show(this, Toast.Type.WARNING, errorCount + " adet tedarikçi silinemedi.");
-//
-//                refreshTable();
-//            }
-//        }));
-//    }
+    // Düzenleme Modalı (Asenkron)
+    protected void openEditModal(Supplier supplier) {
+        final String id = "SupplierEdit";
+        SupplierEditPanel panel = new SupplierEditPanel(supplier);
+
+        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Güncelle", 0),
+                new SimpleModalBorder.Option("İptal", 2)
+        };
+
+        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Tedarikçi Düzenle", options,
+                (controller, action) -> {
+                    if (action == SimpleModalBorder.OK_OPTION) {
+                        Supplier updated = panel.getData();
+                        if (updated == null) {
+                            controller.consume();
+                            return;
+                        }
+
+                        try {
+                            updated.setId(supplier.getId());
+                            updated.setCreatedAt(supplier.getCreatedAt());
+
+                            supplierService.save(updated, true).thenAccept(saved -> {
+                                SwingUtilities.invokeLater(() -> {
+                                    Toast.show(this, Toast.Type.SUCCESS, saved.getName() + " başarıyla güncellendi.");
+                                    refreshTable();
+                                });
+                            }).exceptionally(ex -> {
+                                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getCause().getMessage()));
+                                return null;
+                            });
+
+                        } catch (ValidationException e) {
+                            controller.consume(); // Form doğrulama hatası
+                            Toast.show(this, Toast.Type.ERROR, e.getMessage());
+                        } catch (Exception e) {
+                            controller.consume();
+                        }
+                    }
+                }), id);
+    }
 }

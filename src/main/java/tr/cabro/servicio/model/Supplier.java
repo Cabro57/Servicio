@@ -1,41 +1,60 @@
 package tr.cabro.servicio.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jdbi.v3.core.mapper.reflect.ColumnName;
 
 import java.time.LocalDateTime;
 
 @Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Supplier {
 
     private int id;
 
     private String name;
+
+    @ColumnName("business_name")
     private String businessName;
-    private String idNo;
-    private String taxNo;
+
+    @ColumnName("tax_number")
+    private String taxNumber;
+
+    @ColumnName("tax_office")
     private String taxOffice;
+
     private String email;
     private String phone;
     private String address;
-    private String notes;
 
-    private LocalDateTime created_at;
+    @ColumnName("note")
+    private String note;
 
+    // Denetim (Audit) & Soft Delete Alanları
+    @ColumnName("is_deleted")
+    private boolean isDeleted;
+
+    @ColumnName("created_at")
+    private LocalDateTime createdAt;
+
+    @ColumnName("updated_at")
+    private LocalDateTime updatedAt;
+
+    // Geriye dönük uyumluluk için eski Constructor
     public Supplier(int id, String name, String businessName) {
         this.id = id;
         this.name = name;
         this.businessName = businessName;
-        this.created_at = LocalDateTime.now();
-    }
-
-    public Supplier() {
-        this.created_at = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     @Override
     public String toString() {
-        return businessName;
+        return businessName != null && !businessName.isEmpty() ? businessName : name;
     }
 
     @Override

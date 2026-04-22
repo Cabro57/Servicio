@@ -22,7 +22,11 @@ public class ServiceSearchResult implements ISearchableResult {
 
     @Override
     public String getDisplayName() {
-        return String.format("%s %s", service.getDeviceBrand(), service.getDeviceModel());
+        // FIX: device_brand/model artık ayrı Device entity'si üzerinden geliyor
+        if (service.getDevice() != null) {
+            return String.format("%s %s", service.getDevice().getBrand(), service.getDevice().getModel());
+        }
+        return "Servis #" + service.getId();
     }
 
     @Override
@@ -34,9 +38,8 @@ public class ServiceSearchResult implements ISearchableResult {
                     .join();
 
             return customerOpt
-                    .map(customer -> String.format("%s %s adlı müşterinin servisi",
-                            customer.getName(),
-                            customer.getSurname()))
+                    .map(customer -> String.format("%s adlı müşterinin servisi",
+                            customer.getFullName()))
                     .orElse("Silinmiş Müşterinin Servisi");
 
         } catch (Exception e) {

@@ -7,6 +7,7 @@ import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.model.Process;
 
 import javax.swing.*;
+import java.math.BigDecimal;
 import java.util.List;
 
 public class ProcessEditPanel extends Modal {
@@ -57,7 +58,7 @@ public class ProcessEditPanel extends Modal {
         return new Process(
                 name.getText(),
                 comment.getText(),
-                (Double) price.getValue()
+                (BigDecimal) price.getValue()
         );
     }
 

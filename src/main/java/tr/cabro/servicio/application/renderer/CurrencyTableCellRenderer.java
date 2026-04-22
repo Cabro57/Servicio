@@ -14,11 +14,11 @@ public class CurrencyTableCellRenderer extends DefaultTableCellRenderer {
 
     @Override
     public void setValue(Object value) {
-        if (value instanceof Number) {
-            setText(Format.formatPrice(((Number) value).doubleValue()));
-            setHorizontalAlignment(SwingConstants.RIGHT);
-        } else {
-            setText("");
-        }
+//        if (value instanceof Number) {
+//            setText(Format.formatPrice(((Number) value).doubleValue()));
+//            setHorizontalAlignment(SwingConstants.RIGHT);
+//        } else {
+//            setText("");
+//        }
     }
 }

@@ -16,11 +16,27 @@ public class Customer {
 
     private int id;
 
+    @ColumnName("customer_type")
+    private CustomerType type;
+
     @ColumnName("business_name")
     private String businessName;
 
-    private String name;
-    private String surname;
+    // Kurumsal standart: first_name / last_name
+    @ColumnName("first_name")
+    private String firstName;
+
+    @ColumnName("last_name")
+    private String lastName;
+
+    @ColumnName("identity_no")
+    private String identityNo;
+
+    @ColumnName("tax_number")
+    private String taxNumber;
+
+    @ColumnName("tax_office")
+    private String taxOffice;
 
     @ColumnName("phone_number_1")
     private String phoneNumber1;
@@ -28,37 +44,47 @@ public class Customer {
     @ColumnName("phone_number_2")
     private String phoneNumber2;
 
-    @ColumnName("id_no")
-    private String idNo;
-
-    private String address;
     private String email;
-
-    @ColumnName("status")
-    private CustomerType type;
+    private String address;
     private String note;
 
-    private int deviceCount;
+    // Denetim (Audit) & Soft Delete Alanları
+    // DİKKAT: "deleted" olarak tutulmalı — Lombok, boolean isDeleted için isIsDeleted() üretir (JDBI hatası).
+    @ColumnName("is_deleted")
+    private boolean deleted;
 
     @ColumnName("created_at")
     private LocalDateTime createdAt;
 
-    public Customer (int Id, String name, String surname) {
-        this.id = Id;
-        this.name = name;
-        this.surname = surname;
+    @ColumnName("updated_at")
+    private LocalDateTime updatedAt;
+
+    // Tabloda olmayan ama UI/Raporlama için kullanılan alan
+    private int deviceCount;
+
+    // Geriye dönük uyumluluk için basit Constructor
+    public Customer(int id, String firstName, String lastName) {
+        this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
     }
 
-    public CustomerType getStatus() {
-        return type;
-    }
-    public void setStatus(CustomerType status) {
-        this.type = status;
+    public String getFullName() {
+        return firstName + " " + lastName;
     }
 
     @Override
     public String toString() {
-        return name + " " + surname;
+        return "Customer{" +
+                "id=" + id +
+                ", type=" + type +
+                ", businessName='" + businessName + '\'' +
+                ", firstName='" + firstName + '\'' +
+                ", lastName='" + lastName + '\'' +
+                ", identityNo='" + identityNo + '\'' +
+                ", phoneNumber1='" + phoneNumber1 + '\'' +
+                ", deleted=" + deleted +
+                ", createdAt=" + createdAt +
+                '}';
     }
-
 }

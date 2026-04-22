@@ -18,7 +18,7 @@ public class CustomerSearchResult implements ISearchableResult {
 
     @Override
     public String getDisplayName() {
-        return String.format("%s %s", customer.getName(), customer.getSurname());
+        return customer.getFullName();
     }
 
     @Override

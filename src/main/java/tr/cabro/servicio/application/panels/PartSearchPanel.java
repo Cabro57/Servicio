@@ -58,11 +58,10 @@ public class PartSearchPanel extends JPanel {
     private void setupTable() {
         List<ColumnDef<Part>> columns = Arrays.asList(
                 new ColumnDef<>("Barkod", String.class, Part::getBarcode),
-                new ColumnDef<>("Marka", String.class, Part::getBrand),
                 new ColumnDef<>("Ürün Adı", String.class, Part::getName),
-                new ColumnDef<>("Cihaz Türü", String.class, Part::getDeviceType),
-                new ColumnDef<>("Uyumlu Model", String.class, Part::getModel),
-                new ColumnDef<>("Stok", Integer.class, Part::getStock),
+                new ColumnDef<>("Kategori", String.class, Part::getCategory),
+                new ColumnDef<>("Uyumlu Model", String.class, Part::getModelCompatibility),
+                new ColumnDef<>("Stok", Integer.class, Part::getStockQuantity),
                 new ColumnDef<>("Alış Fiyatı", String.class, p -> Format.formatPrice(p.getPurchasePrice())),
                 new ColumnDef<>("Satış Fiyatı", String.class, p -> Format.formatPrice(p.getSalePrice()))
         );
@@ -150,14 +149,14 @@ public class PartSearchPanel extends JPanel {
 
                 // Cihaz türü filtresi
                 if (selectedType != null && !selectedType.equals("(Tümü)") && !selectedType.isEmpty()) {
-                    if (!selectedType.equalsIgnoreCase(p.getDeviceType())) {
+                    if (!selectedType.equalsIgnoreCase(p.getCategory())) {
                         return false;
                     }
                 }
 
                 // Stok filtresi
-                if (onlyInStock && p.getStock() <= 0) return false;
-                if (onlyOutStock && p.getStock() > 0) return false;
+                if (onlyInStock && p.getStockQuantity() <= 0) return false;
+                if (onlyOutStock && p.getStockQuantity() > 0) return false;
 
                 return true;
             }

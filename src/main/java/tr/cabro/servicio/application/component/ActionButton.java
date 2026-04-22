@@ -20,8 +20,8 @@ public class ActionButton extends JButton {
     public ActionButton(FlatSVGIcon icon, Color hoverColor) {
         super(icon);
         this.hoverColor = hoverColor;
-        setContentAreaFilled(false);
         setBorder(new EmptyBorder(3, 3, 3, 3));
+        putClientProperty( "JButton.buttonType", "toolBarButton" );
 
         addMouseListener(new MouseAdapter() {
             @Override

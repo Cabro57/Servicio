@@ -4,18 +4,19 @@ import lombok.Getter;
 import lombok.Setter;
 import org.jdbi.v3.core.mapper.reflect.ColumnName;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Getter @Setter
+@Getter @Setter @Deprecated
 public class AddedPart {
 
     private int id;
 
-    private int serviceId; // Hangi servis kaydına ait
+    @ColumnName("service_id")
+    private int serviceId;
 
     @ColumnName("part_barcode")
-    private String partBarcode; // Stoktaki parçanın gerçek barkodu
+    private String partBarcode;
 
     @ColumnName("is_stock_tracked")
     private boolean stockTracked;
@@ -23,56 +24,59 @@ public class AddedPart {
     private transient boolean returnToStockOnDelete;
 
     @ColumnName("series_no")
-    private String seriesNo; // Parça Seri Numarası
-    private String brand; // Ürün Markası
-    private String name; // Ürün Adı
-    private Integer supplierId; // Tedarikçi
-    private String deviceType; // Ürün Cihaz Türü
-    private String model; // Ürün uyumlu modelleri
-    private int amount; // Parça Adeti
-    private double purchasePrice; //Parça Alış Fiyatı
+    private String seriesNo;
+
+    private String brand;
+    private String name;
+
+    @ColumnName("supplier_id")
+    private Integer supplierId;
+
+    @ColumnName("device_type")
+    private String deviceType;
+
+    private String model;
+    private int amount;
+
+    @ColumnName("purchase_price")
+    private double purchasePrice;
 
     @ColumnName("sale_price")
-    private double sellingPrice; // Parça Satış Fiyatı
+    private BigDecimal sellingPrice;
 
-    private int warrantyPeriod; // Garanti Süresi
+    @ColumnName("warranty_period")
+    private int warrantyPeriod;
 
-    private LocalDate purchaseDate; // Alınma Tarihi
-    private String description; // Açıklama - Ürün hakkında not
+    @ColumnName("purchase_date")
+    private String purchaseDate;  // TEXT olarak tutulur (nullable)
 
+    private String description;
+
+    @ColumnName("created_at")
     private LocalDateTime createdAt;
 
     public AddedPart() {
         this.createdAt = LocalDateTime.now();
     }
 
-    public AddedPart(Part data, Integer amount) {
+    public AddedPart(Part data, int amount) {
         this(data);
         this.amount = amount;
     }
 
     public AddedPart(Part data) {
         this();
-        this.partBarcode = data.getBarcode(); // Asıl referans bağlandı!
+        this.partBarcode = data.getBarcode();
         this.stockTracked = true;
-
-        this.brand = data.getBrand();
         this.name = data.getName();
         this.supplierId = data.getSupplierId();
-        this.deviceType = data.getDeviceType();
-        this.model = data.getModel();
+        this.model = data.getModelCompatibility();  // FIX: eski `model` → `modelCompatibility`
         this.amount = 1;
-        this.purchasePrice = data.getPurchasePrice();
+        // FIX: BigDecimal → double (.doubleValue())
+        this.purchasePrice = data.getPurchasePrice() != null ? data.getPurchasePrice().doubleValue() : 0.0;
         this.sellingPrice = data.getSalePrice();
-        this.warrantyPeriod = data.getWarrantyPeriod();
-        this.purchaseDate = data.getPurchaseDate();
+        // FIX: Part.purchaseDate kaldırıldı — boş bırakılıyor
+        this.purchaseDate = null;
         this.description = data.getDescription();
     }
-
-    public double getTotal() {
-        return sellingPrice * amount;
-    }
-
 }
-
-

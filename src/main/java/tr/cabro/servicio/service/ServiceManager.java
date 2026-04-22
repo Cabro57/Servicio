@@ -3,7 +3,7 @@ package tr.cabro.servicio.service;
 import lombok.Getter;
 import org.jdbi.v3.core.Jdbi;
 import tr.cabro.servicio.database.DatabaseManager;
-import tr.cabro.servicio.database.repository.*; // Önceki cevapta oluşturduğumuz Interface'ler
+import tr.cabro.servicio.database.repository.*;
 
 public final class ServiceManager {
 
@@ -11,26 +11,50 @@ public final class ServiceManager {
     @Getter private static RepairService repairService;
     @Getter private static CustomerService customerService;
     @Getter private static SupplierService supplierService;
+    @Getter private static DeviceService deviceService;
+    @Getter private static ServiceItemManager serviceItemManager;
     @Getter private static UserService userService;
 
+    // --- YENİ EKLENEN YÖNETİCİLER ---
+    @Getter private static DeviceDictionaryManager deviceDictionaryManager;
+    @Getter private static LaborManager laborManager;
+    @Getter private static ReportManager reportManager;
+    @Getter private static ServiceNoteManager serviceNoteManager;
+    @Getter private static ServicePaymentManager servicePaymentManager;
+
     public static void initialize() {
-        // 1. JDBI Nesnesini Al
         Jdbi jdbi = DatabaseManager.getJdbi();
 
-        // 2. Repository'leri Oluştur (JDBI Interface Proxy'leri)
-        CustomerRepository customerRepo = jdbi.onDemand(CustomerRepository.class);
-        PartRepository partRepo = jdbi.onDemand(PartRepository.class);
-        ServiceRepository repairRepo = jdbi.onDemand(ServiceRepository.class);
-        SupplierRepository supplierRepo = jdbi.onDemand(SupplierRepository.class);
-        UserRepository userRepo = jdbi.onDemand(UserRepository.class);
+        // --- Temel Repository'ler ---
+        CustomerRepository customerRepo     = jdbi.onDemand(CustomerRepository.class);
+        PartRepository partRepo             = jdbi.onDemand(PartRepository.class);
+        ServiceRepository serviceRepo       = jdbi.onDemand(ServiceRepository.class);
+        SupplierRepository supplierRepo     = jdbi.onDemand(SupplierRepository.class);
+        UserRepository userRepo             = jdbi.onDemand(UserRepository.class);
+        ServiceItemRepository itemRepo      = jdbi.onDemand(ServiceItemRepository.class);
+        ServicePaymentRepository paymentRepo= jdbi.onDemand(ServicePaymentRepository.class);
+        DeviceRepository deviceRepo         = jdbi.onDemand(DeviceRepository.class);
 
-        // 3. Servislere Enjekte Et (Constructor Injection)
-        // Artık Servisler veritabanı bağlantısını kendileri oluşturmuyor,
-        // dışarıdan "hazır repository" alıyorlar.
-        partService = new PartService(partRepo);
-        repairService = new RepairService(repairRepo);
-        customerService = new CustomerService(customerRepo, repairService);
-        supplierService = new SupplierService(supplierRepo);
-        userService = new UserService(userRepo);
+        // --- Yeni Kurumsal Repository'ler ---
+        DeviceDictionaryRepository dictRepo = jdbi.onDemand(DeviceDictionaryRepository.class);
+        LaborRepository laborRepo           = jdbi.onDemand(LaborRepository.class);
+        ReportRepository reportRepo         = jdbi.onDemand(ReportRepository.class);
+        ServiceNoteRepository noteRepo      = jdbi.onDemand(ServiceNoteRepository.class);
+
+        // --- Servislerin Başlatılması ---
+        partService       = new PartService(partRepo, supplierRepo);
+        deviceService     = new DeviceService(deviceRepo);
+        repairService     = new RepairService(serviceRepo, customerRepo, deviceRepo, itemRepo, paymentRepo);
+        customerService   = new CustomerService(customerRepo, repairService);
+        supplierService   = new SupplierService(supplierRepo);
+        userService       = new UserService(userRepo);
+        serviceItemManager= new ServiceItemManager(itemRepo, partRepo);
+
+        // --- Yeni Servislerin Başlatılması ---
+        deviceDictionaryManager = new DeviceDictionaryManager(dictRepo);
+        laborManager            = new LaborManager(laborRepo);
+        reportManager           = new ReportManager(reportRepo);
+        serviceNoteManager      = new ServiceNoteManager(noteRepo);
+        servicePaymentManager = new ServicePaymentManager(paymentRepo);
     }
 }

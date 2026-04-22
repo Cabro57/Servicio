@@ -21,6 +21,7 @@ import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.Service;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
@@ -34,29 +35,23 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.regex.Pattern;
-
 
 @SystemForm(name = "Servis Kayıtları", description = "Tüm servis kayıtlarını oluşturmak için kullanılabilir")
 public class FormServices extends AbstractTableForm {
 
     private final RepairService service;
+    private final ReportManager reportManager;
     private GenericTableModel<Service> tableModal;
+    private ServiceStatus currentStatusFilter;
 
     public FormServices() {
         this.service = ServiceManager.getRepairService();
+        this.reportManager = ServiceManager.getReportManager(); // YENİ: İstatistikler için eklendi
     }
 
     @Override
     protected String getNewButtonText() {
         return "Yeni Kayıt Oluştur";
-    }
-
-    @Override
-    protected String getNewButtonIconPath() {
-        // Yeni ikon yolunu kendine göre ayarla (Örn: user-plus.svg)
-        return "icons/plus.svg";
     }
 
     @Override
@@ -69,18 +64,15 @@ public class FormServices extends AbstractTableForm {
         return "Müşteri, cihaz veya ID ara...";
     }
 
-
     @Override
     protected boolean hasFilterCombo() {
         return true;
     }
 
-    private ServiceStatus currentStatusFilter;
-
     @Override
     protected JComboBox<Object> createFilterCombo() {
         DefaultComboBoxModel<Object> comboModel = new DefaultComboBoxModel<>();
-        comboModel.addElement("Tümü"); // null referansı yerine görsel bir String
+        comboModel.addElement("Tümü");
         for (ServiceStatus status : ServiceStatus.values()) {
             comboModel.addElement(status);
         }
@@ -101,7 +93,7 @@ public class FormServices extends AbstractTableForm {
         filterCombo.addActionListener(e -> {
             Object selected = filterCombo.getSelectedItem();
             if (selected instanceof ServiceStatus) {
-                currentStatusFilter = (ServiceStatus) selected; // Doğrudan nesneyi sakla
+                currentStatusFilter = (ServiceStatus) selected;
             } else {
                 currentStatusFilter = null; // "Tümü" seçildi
             }
@@ -114,18 +106,15 @@ public class FormServices extends AbstractTableForm {
     @Override
     protected RowFilter<TableModel, Object> getCustomFilter() {
         RowFilter<TableModel, Object> filter = null;
-
-        // DÜZELTME: Durum kolonu artık 6. indekste.
         if (currentStatusFilter != null) {
             filter = new RowFilter<TableModel, Object>() {
                 @Override
                 public boolean include(Entry<? extends TableModel, ? extends Object> entry) {
-                    Object cellValue = entry.getValue(6);
+                    Object cellValue = entry.getValue(6); // 6. Kolon = Durum
                     return cellValue == currentStatusFilter;
                 }
             };
         }
-
         return filter;
     }
 
@@ -139,59 +128,53 @@ public class FormServices extends AbstractTableForm {
 
     @Override
     protected void refreshStats() {
-        service.getDashboardStats().thenAccept(stats -> {
+        // YENİ: İstatistikleri artık RepairService'den değil, ReportManager'dan alıyoruz (Tüm Zamanlar)
+        reportManager.getDashboardSummaryCards("2000-01-01", "2100-01-01").thenAccept(stats -> {
             SwingUtilities.invokeLater(() -> {
-                // 0: Toplam Kayıt
+
+                int completed = stats.getTotalRecords() - stats.getActiveRecords();
+
                 cardBox.setValueAt(0,
                         String.valueOf(stats.getTotalRecords()),
                         "Tüm zamanların toplam kaydı",
-                        "",     // Değişim oranı (Şu an hesaplanmıyor)
-                        true);  // Yön (true: yeşil/yukarı, false: kırmızı/aşağı)
+                        "", true);
 
-                // 1: Aktif İşlemler
                 cardBox.setValueAt(1,
                         String.valueOf(stats.getActiveRecords()),
                         "Şu an atölyede bekleyen cihazlar",
-                        "",
-                        true);
+                        "", true);
 
-                // 2: Tamamlanan
                 cardBox.setValueAt(2,
-                        String.valueOf(stats.getCompletedRecords()),
-                        "Teslim edilen veya hazır olanlar",
-                        "",
-                        true);
+                        String.valueOf(completed),
+                        "Teslim edilen veya iptal edilenler",
+                        "", true);
 
-                // 3: Toplam Ciro
                 cardBox.setValueAt(3,
                         Format.formatPrice(stats.getTotalRevenue()),
-                        "Sistemdeki toplam gelir",
-                        "",
-                        true);
+                        "Sistemdeki brüt toplam ciro",
+                        "", true);
             });
         }).exceptionally(ex -> {
-            Servicio.getLogger().error("Müşteri istatistikleri yüklenirken hata oluştu", ex);
+            Servicio.getLogger().error("Servis istatistikleri yüklenirken hata oluştu", ex);
             return null;
         });
     }
 
     @Override
     protected void setupTable() {
-
         List<ColumnDef<Service>> columns = Arrays.asList(
-                new ColumnDef<>("Kayıt No", String.class, s -> "SRV-" + s.getId()), // ID formatlandı
+                new ColumnDef<>("Kayıt No", String.class, s -> "SRV-" + s.getId()),
                 new ColumnDef<>("Müşteri Bilgisi", Customer.class, Service::getCustomer),
-                new ColumnDef<>("Cihaz Bilgisi", Device.class, Device::new),
-                new ColumnDef<>("Arıza / İşlem", String.class, Service::getDetectedFault), // Veya hangi değişkende tutuyorsan
+                new ColumnDef<>("Cihaz Bilgisi", Device.class, Service::getDevice),
+                new ColumnDef<>("Arıza / İşlem", String.class, Service::getDetectedFault),
                 new ColumnDef<>("Tarih", Service.class, s -> s),
-                new ColumnDef<>("Ücret", String.class, s -> Format.formatPrice(s.getRemainingAmount())),
+                new ColumnDef<>("Kalan Ücret", String.class, s -> Format.formatPrice(s.getRemainingAmount())),
                 new ColumnDef<>("Durum", ServiceStatus.class, Service::getServiceStatus),
                 new ColumnDef<>("İşlem", String.class, s -> "Detay")
         );
 
         tableModal = new GenericTableModel<>(columns);
         setTableModel(tableModal);
-
         configureTableColumns();
     }
 
@@ -199,24 +182,21 @@ public class FormServices extends AbstractTableForm {
     protected void initTableFilter(TableModel model) {
         sorter = new TableRowSorter<>(tableModal);
 
-        // --- MİMARİ DÜZELTME: Sorter'a karmaşık nesneleri nasıl sıralayacağını öğretiyoruz ---
-
-        // 1. Kolon (Müşteri nesnesi taşıyor): İsme göre sırala
         sorter.setComparator(1, Comparator.comparing(c -> {
+            if (c == null) return "";
             Customer cust = (Customer) c;
-            return cust.getName() + " " + cust.getSurname() + " " + cust.getPhoneNumber1();
+            return cust.getFullName() + " " + cust.getPhoneNumber1();
         }));
 
-        // 2. Kolon (Cihaz için Service nesnesi taşıyor): Marka ve Modele göre sırala
         sorter.setComparator(2, Comparator.comparing(s -> {
-            Service srv = (Service) s;
-            return srv.getDeviceBrand() + " " + srv.getDeviceModel();
+            if (s == null) return "";
+            Device device = (Device) s;
+            return device.getBrand() + " " + device.getModel();
         }));
 
-        // 4. Kolon (Tarih için Service nesnesi taşıyor): Oluşturulma Tarihine göre sırala
         sorter.setComparator(4, Comparator.comparing(s -> {
+            if (s == null) return LocalDateTime.MIN;
             LocalDateTime date = ((Service) s).getCreatedAt();
-            // NullPointerException yememek için eğer tarih yoksa en eski tarihi veriyoruz
             return date != null ? date : LocalDateTime.MIN;
         }));
 
@@ -226,21 +206,18 @@ public class FormServices extends AbstractTableForm {
     }
 
     private void configureTableColumns() {
-
-        // HİZALAMALAR (Yeni 7 Sütunlu yapıya uyarlandı)
         Integer[] columnAlignments = {
-                SwingConstants.CENTER,  // 0: Kayıt No
-                SwingConstants.LEADING, // 1: Müşteri
-                SwingConstants.LEADING, // 2: Cihaz
-                SwingConstants.LEADING, // 3: Arıza
-                SwingConstants.LEADING, // 4: Tarih (Çift satır olacağı için sola veya merkeze yaslayabilirsin)
-                SwingConstants.TRAILING,// 5: Ücret
-                SwingConstants.CENTER,  // 6: Durum
-                SwingConstants.CENTER   // 7: İşlem
+                SwingConstants.CENTER,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.LEADING,
+                SwingConstants.TRAILING,
+                SwingConstants.CENTER,
+                SwingConstants.CENTER
         };
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
 
-        // 0. KAYIT NO VURGUSU (Bold ve Büyük)
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -251,81 +228,59 @@ public class FormServices extends AbstractTableForm {
             }
         });
 
-        // 1. MÜŞTERİ RENDERER
         table.getColumnModel().getColumn(1).setCellRenderer(
                 new MultiLineTableCellRenderer<Customer>(
-                        customer -> customer.getName() + " " + customer.getSurname(),
-                        customer -> PhoneHelper.formatForDisplay(customer.getPhoneNumber1())
+                        customer -> customer != null ? customer.getFullName() : "Bilinmeyen Müşteri",
+                        customer -> customer != null ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1()) : ""
                 )
         );
 
-        // 2. CİHAZ RENDERER
         table.getColumnModel().getColumn(2).setCellRenderer(
                 new MultiLineTableCellRenderer<Device>(
-                        device -> device.getBrand() + " " + device.getModel(),
-                        device -> "SN: " + (device.getSerial() != null ? device.getSerial() : "Bilinmiyor")
+                        device -> device != null ? device.getBrand() + " " + device.getModel() : "Bilinmeyen Cihaz",
+                        device -> "SN: " + (device != null && device.getSerialNo() != null ? device.getSerialNo() : "Bilinmiyor")
                 )
         );
 
-        // 4. TARİH RENDERER (Dinamik Renklendirme ile)
+        table.getColumnModel().getColumn(3).setCellRenderer(new TooltipCellRenderer());
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", new Locale("tr", "TR"));
         table.getColumnModel().getColumn(4).setCellRenderer(
                 new MultiLineTableCellRenderer<Service>(
-                        // 1. Parametre: ÜST METİN (Kayıt Tarihi)
                         service -> service.getCreatedAt() != null ? service.getCreatedAt().format(formatter) : "Tarih Yok",
-
-                        // 2. Parametre: ALT METİN (Bitiş / Tahmini)
                         service -> {
                             if (service.getServiceStatus() == ServiceStatus.DELIVERED || service.getServiceStatus() == ServiceStatus.RETURN) {
-                                return "Bitiş: " + (service.getDeliveryAt() != null ? service.getDeliveryAt().format(formatter) : "-");
+                                return "Bitiş: " + (service.getDeliveryDate() != null ? service.getDeliveryDate().format(formatter) : "-");
                             } else {
                                 LocalDateTime estimated = service.getCreatedAt() != null ? service.getCreatedAt().plusDays(3) : null;
                                 return "Tahmini: " + (estimated != null ? estimated.format(formatter) : "-");
                             }
                         },
-
-                        // 3. Parametre: Üst Metin Rengi (null bırakıyoruz, varsayılanı kullansın)
                         service -> null,
-
-                        // 4. Parametre: Alt Metin Rengi (Duruma göre yeşil veya varsayılan gri)
                         service -> {
                             if (service.getServiceStatus() == ServiceStatus.DELIVERED || service.getServiceStatus() == ServiceStatus.RETURN) {
-                                // Resimdeki gibi tatlı, neon bir yeşil tonu (RGB)
                                 return new Color(46, 204, 113);
                             }
-                            // Teslim edilmemişse null dönerek FlatLaf'ın varsayılan gri rengini kullanmasını sağla
                             return null;
                         }
                 )
         );
 
-        // 6. DURUM RENDERER
         table.getColumnModel().getColumn(6).setCellRenderer(new UniversalVisualizableRenderer());
 
-        // 7. İŞLEM (BUTON) RENDERER
         table.getColumnModel().getColumn(7).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(7).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onEdit(int row) {
-                if (table.isEditing()) {
-                    table.getCellEditor().cancelCellEditing();
-                }
-
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
                 Service selectedService = tableModal.getItemAt(modelRow);
-
-                if (selectedService != null) {
-                    openEditModal(selectedService);
-                    btnNew.addActionListener(e -> onNew());
-                }
+                if (selectedService != null) openEditModal(selectedService);
             }
 
             @Override
             public void onDelete(int row) {
-                if (table.isEditing()) {
-                    table.getCellEditor().cancelCellEditing();
-                }
-
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
                 Service selectedService = tableModal.getItemAt(modelRow);
 
@@ -340,17 +295,12 @@ public class FormServices extends AbstractTableForm {
 
                     if (confirm == JOptionPane.YES_OPTION) {
                         service.delete(selectedService.getId()).thenAccept(v -> {
-                            // Başarılı olduğunda arayüzü (EDT) güncelle
                             SwingUtilities.invokeLater(() -> {
                                 Toast.show(FormServices.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
-                                refreshTable(); // Tabloyu yenile
-                                refreshStats(); // Üstteki istatistik kutularını yenile
+                                refreshTable();
                             });
                         }).exceptionally(ex -> {
-                            // Hata durumunda kullanıcıya mesaj göster
-                            SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormServices.this, Toast.Type.ERROR, "Silme işlemi başarısız: " + ex.getCause().getMessage());
-                            });
+                            SwingUtilities.invokeLater(() -> Toast.show(FormServices.this, Toast.Type.ERROR, "Silme işlemi başarısız: " + ex.getCause().getMessage()));
                             return null;
                         });
                     }
@@ -359,20 +309,13 @@ public class FormServices extends AbstractTableForm {
 
             @Override
             public void onView(int row) {
-                if (table.isEditing()) {
-                    table.getCellEditor().cancelCellEditing();
-                }
-
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
                 Service selectedService = tableModal.getItemAt(modelRow);
-
-                if (selectedService != null) {
-                    FormManager.showForm(new FormService(selectedService));
-                }
+                if (selectedService != null) FormManager.showForm(new FormService(selectedService));
             }
         }));
 
-        // GENİŞLİKLER (Yeni 7 Sütuna göre ayarlandı)
         table.getColumnModel().getColumn(0).setMaxWidth(100);
         table.getColumnModel().getColumn(0).setPreferredWidth(90);
         table.getColumnModel().getColumn(1).setPreferredWidth(180);
@@ -387,7 +330,10 @@ public class FormServices extends AbstractTableForm {
     protected void refreshTable() {
         if (tableModal != null) {
             service.getAll().thenAccept(serviceList ->
-                    SwingUtilities.invokeLater(() -> tableModal.setData(serviceList))
+                    SwingUtilities.invokeLater(() -> {
+                        tableModal.setData(serviceList);
+                        refreshStats(); // Tablo yenilendikten sonra üst istatistikleri de tazele
+                    })
             ).exceptionally(ex -> {
                 SwingUtilities.invokeLater(() -> {
                     Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + ex.getMessage());
@@ -413,60 +359,47 @@ public class FormServices extends AbstractTableForm {
 
             if (action == SimpleModalBorder.OPENED) {
                 intakePanel.formOpen();
-            }else if (action == QuickIntakePanel.NEW_CUSTOMER_ACTION) {
+            } else if (action == QuickIntakePanel.NEW_CUSTOMER_ACTION) {
                 controller.consume(); // Ana modalı kapatma!
 
                 CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
                 ModalDialog.pushModal(new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
-                    if (a1 == SimpleModalBorder.OPENED) {
-
-                    } else if (a1 == SimpleModalBorder.YES_OPTION) {
+                    if (a1 == SimpleModalBorder.YES_OPTION) {
                         Customer newCustomer = newCustomerPanel.getData();
                         if (newCustomer != null) {
                             c1.consume();
                             newCustomer.setCreatedAt(LocalDateTime.now());
-
                             ServiceManager.getCustomerService().save(newCustomer, false).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                                intakePanel.appendNewCustomer(saved); // Combobox'a ekle ve seç
-                                ModalDialog.popModal(INTAKE_MODAL_ID); // Geri kay
+                                intakePanel.appendNewCustomer(saved);
+                                ModalDialog.popModal(INTAKE_MODAL_ID);
                             }));
                         }
                     }
                 }), INTAKE_MODAL_ID);
-            }
-
-            else if (action == SimpleModalBorder.NO_OPTION) {
+            } else if (action == SimpleModalBorder.NO_OPTION) {
                 Service updated = intakePanel.getData();
-                if (updated == null) {
-                    controller.consume();
-                    return;
-                }
+                if (updated == null) { controller.consume(); return; }
 
                 service.save(updated, false).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, "servis başarıyla kayıt edildi.");
+                        Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla kayıt edildi.");
                         refreshTable();
-                        FormService form = new FormService(saved);
-                        FormManager.showForm(form);
+                        FormManager.showForm(new FormService(saved));
                     });
                 }).exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
                         controller.consume();
                         Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
                     });
-                    Servicio.getLogger().error("Müşteri ekleme hatası", ex.getMessage());
                     return null;
                 });
             } else if (action == SimpleModalBorder.OK_OPTION) {
                 Service updated = intakePanel.getData();
-                if (updated == null) {
-                    controller.consume();
-                    return;
-                }
+                if (updated == null) { controller.consume(); return; }
 
                 service.save(updated, false).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, "servis başarıyla kayıt edildi.");
+                        Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla kayıt edildi.");
                         refreshTable();
                     });
                 }).exceptionally(ex -> {
@@ -474,37 +407,29 @@ public class FormServices extends AbstractTableForm {
                         controller.consume();
                         Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
                     });
-                    Servicio.getLogger().error("Müşteri ekleme hatası", ex.getMessage());
                     return null;
                 });
             }
-
         }), INTAKE_MODAL_ID);
     }
 
-    private void openEditModal(Service service) {
-        if (service == null || service.getId() <= 0) return;
+    private void openEditModal(Service editService) {
+        if (editService == null || editService.getId() <= 0) return;
 
         final String EDIT_MODAL_ID = "service_edit_modal";
 
-        // Ağır işlemleri (Panelin çizilmesi ve verilerin yüklenmesini) arka planda başlatıyoruz
-        CompletableFuture.supplyAsync(() -> {
-
-            // 1. Paneli oluşturma işlemi ana arayüzü (EDT) kilitlenmeden arka planda yapılır
-            QuickIntakePanel editPanel = new QuickIntakePanel(service);
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            QuickIntakePanel editPanel = new QuickIntakePanel(editService);
 
             SimpleModalBorder.Option[] options = {
                     new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
                     new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
             };
 
-            // 2. Modalı saracak çerçeveyi arka planda hazırla
-            return new SimpleModalBorder(editPanel, "Kayıt Düzenle (SRV-" + service.getId() + ")", options, (controller, action) -> {
-
+            return new SimpleModalBorder(editPanel, "Kayıt Düzenle (SRV-" + editService.getId() + ")", options, (controller, action) -> {
                 if (action == SimpleModalBorder.OPENED) {
                     editPanel.formOpen();
-                }
-                else if (action == QuickIntakePanel.NEW_CUSTOMER_ACTION) {
+                } else if (action == QuickIntakePanel.NEW_CUSTOMER_ACTION) {
                     controller.consume();
                     CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
                     ModalDialog.pushModal(new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri Ekle", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
@@ -520,17 +445,16 @@ public class FormServices extends AbstractTableForm {
                             }
                         }
                     }), EDIT_MODAL_ID);
-                }
-                else if (action == SimpleModalBorder.YES_OPTION) {
+                } else if (action == SimpleModalBorder.YES_OPTION) {
                     Service updatedData = editPanel.getData();
                     if (updatedData == null) {
                         controller.consume();
                         return;
                     }
-                    RepairService repairService = ServiceManager.getRepairService();
-                    repairService.save(updatedData, true).thenAccept(saved -> {
+                    service.save(updatedData, true).thenAccept(saved -> {
                         SwingUtilities.invokeLater(() -> {
                             Toast.show(this, Toast.Type.SUCCESS, "Servis bilgileri güncellendi.");
+                            refreshTable();
                         });
                     }).exceptionally(ex -> {
                         SwingUtilities.invokeLater(() -> {
@@ -541,16 +465,6 @@ public class FormServices extends AbstractTableForm {
                     });
                 }
             });
-
-        }).thenAccept(modalBorder -> {
-
-            // 3. Her şey arka planda hazırlandıktan sonra, modalı ekranda
-            // göstermek için güvenli bir şekilde ana arayüze (SwingUtilities) geri dön
-            SwingUtilities.invokeLater(() -> {
-                ModalDialog.showModal(this, modalBorder, EDIT_MODAL_ID);
-            });
-
-        });
+        }).thenAccept(modalBorder -> SwingUtilities.invokeLater(() -> ModalDialog.showModal(this, modalBorder, EDIT_MODAL_ID)));
     }
-
 }

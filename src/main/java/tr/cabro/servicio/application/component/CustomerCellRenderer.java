@@ -9,19 +9,20 @@ import java.awt.*;
 
 public class CustomerCellRenderer extends DefaultListCellRenderer {
 
-    JPanel content;
-    JLabel topLabel;
-    JLabel bottomLabel;
+    private JPanel content;
+    private JLabel topLabel;
+    private JLabel bottomLabel;
 
     public CustomerCellRenderer() {
         content = new JPanel();
-        content.setLayout(new MigLayout("insets 2 5 2 5, fill, aligny center", "[grow]", "[]1[]"));
-        content.putClientProperty(FlatClientProperties.STYLE, "arc:20; background:$List.background;");
+        // insets ile iç boşlukları (padding) artırdık, gapy ile isim ve telefon arasını hafif açtık
+        content.setLayout(new MigLayout("insets 8 12 8 12, fill, aligny center", "[grow]", "[]2[]"));
 
-        setOpaque(true);
+        // Kenarları hafif yuvarlak yapıyoruz
+        content.putClientProperty(FlatClientProperties.STYLE, "arc: 10;");
 
         topLabel = new JLabel();
-        topLabel.putClientProperty(FlatClientProperties.STYLE, "font: bold +0");
+        topLabel.putClientProperty(FlatClientProperties.STYLE, "font: bold +1"); // İsmi biraz daha büyüttük
 
         bottomLabel = new JLabel();
         bottomLabel.putClientProperty(FlatClientProperties.STYLE, "font: -1");
@@ -32,29 +33,34 @@ public class CustomerCellRenderer extends DefaultListCellRenderer {
 
     @Override
     public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-        // Varsayılan hücre çizimini al
-        JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-
         if (value instanceof Customer) {
             Customer customer = (Customer) value;
 
-            String name = customer.getName() != null ? customer.toString() : "İsimsiz";
+            String name = customer.getFirstName() != null ? customer.getFullName() : "İsimsiz";
             String phone = customer.getPhoneNumber1() != null ? customer.getPhoneNumber1() : "Telefon Yok";
-
-            // Seçili olma durumuna göre metin rengini ayarla
-            String textColor = isSelected ? "white" : "#666666";
 
             topLabel.setText(name);
             bottomLabel.setText(phone);
 
-            // Hücrelere biraz boşluk verelim
-//            label.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+            // SEÇİLİ OLMA DURUMUNA GÖRE RENKLENDİRME (FlatLaf tema renklerini kullanır)
+            if (isSelected) {
+                content.setBackground(UIManager.getColor("List.selectionBackground"));
+                topLabel.setForeground(UIManager.getColor("List.selectionForeground"));
+                bottomLabel.setForeground(UIManager.getColor("List.selectionForeground"));
+            } else {
+                content.setBackground(UIManager.getColor("List.background"));
+                topLabel.setForeground(UIManager.getColor("List.foreground"));
+                // Alt metni (telefonu) normal durumda biraz daha soluk (gri) gösteririz
+                bottomLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
+            }
+
+            // Elemanların arasına ince bir ayırıcı çizgi (Border) çekmek için:
+            // Sadece alt tarafa 1px'lik tema renginde bir çizgi ekler
+            content.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, UIManager.getColor("Component.borderColor")));
 
             return content;
-        } else {
-            topLabel.setText("Hata");
         }
 
-        return label;
+        return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
     }
 }
