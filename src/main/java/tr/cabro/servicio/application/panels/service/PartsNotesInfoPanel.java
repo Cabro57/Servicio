@@ -6,7 +6,6 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.PartSearchPanel;
@@ -18,24 +17,21 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Part;
-import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
-import java.awt.*;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
+@Deprecated
 public class PartsNotesInfoPanel extends ServicePanel {
 
     private GenericTableModel<AddedPart> tableModel;
-    private final RepairService repairService;
+    private final WorkOrderService workOrderService;
 
     public PartsNotesInfoPanel() {
-        this.repairService = ServiceManager.getRepairService();
+        this.workOrderService = ServiceManager.getWorkOrderService();
         init();
     }
 
@@ -49,11 +45,11 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
     @Override
     protected void onServiceSet() {
-        if (service == null) return;
+        if (workOrder == null) return;
 
-//        notes_field.setText(service.getNotes() != null ? service.getNotes() : "");
+//        notes_field.setText(workOrder.getNotes() != null ? workOrder.getNotes() : "");
 
-        boolean isRegistered = service.getId() > 0;
+        boolean isRegistered = workOrder.getId() > 0;
         part_add_button.setEnabled(isRegistered);
         new_part_add_button.setEnabled(isRegistered);
 
@@ -116,9 +112,9 @@ public class PartsNotesInfoPanel extends ServicePanel {
             @Override
             public void onDelete(int row) {
                 if (parts_table.isEditing()) parts_table.getCellEditor().stopCellEditing();
-//                if (row < 0 || row >= service.getAddedParts().size()) return;
+//                if (row < 0 || row >= workOrder.getAddedParts().size()) return;
 //
-//                AddedPart partToDelete = service.getAddedParts().get(row);
+//                AddedPart partToDelete = workOrder.getAddedParts().get(row);
 
                 int choice = JOptionPane.showConfirmDialog(PartsNotesInfoPanel.this,
                         "Bu parçayı servisten çıkarmak istediğinize emin misiniz?\n(Stoklu ürün ise stoğa iade edilecek)",
@@ -127,7 +123,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
                 if (choice == JOptionPane.YES_OPTION) {
 //                    partToDelete.setReturnToStockOnDelete(true);
 
-//                    repairService.removeServicePart(partToDelete).thenAccept(v -> {
+//                    workOrderService.removeServicePart(partToDelete).thenAccept(v -> {
 //                        SwingUtilities.invokeLater(() -> {
 //                            // DÜZELTME: Doğrudan listeyi yenile.
 //                            pullLatestParts();
@@ -144,9 +140,9 @@ public class PartsNotesInfoPanel extends ServicePanel {
             @Override
             public void onView(int row) {
                 if (parts_table.isEditing()) parts_table.getCellEditor().stopCellEditing();
-//                if (row < 0 || row >= service.getAddedParts().size()) return;
+//                if (row < 0 || row >= workOrder.getAddedParts().size()) return;
 
-//                AddedPart partToView = service.getAddedParts().get(row);
+//                AddedPart partToView = workOrder.getAddedParts().get(row);
                 // Şimdilik basit bir mesaj kutusu ile detayı gösterelim
 //                String details = String.format("Parça Adı: %s\nAdet: %d\nAlış Fiyatı: %s\nSatış Fiyatı: %s\nStok Takibi: %s",
 //                        partToView.getName(),
@@ -162,10 +158,10 @@ public class PartsNotesInfoPanel extends ServicePanel {
 
     // YENİ METOT: DB'den güncel parça listesini çekip arayüzü (State) temizler.
     private void pullLatestParts() {
-        if (service == null || service.getId() <= 0) return;
-//        repairService.getServiceParts(service.getId()).thenAccept(guncelParcalar -> {
+        if (workOrder == null || workOrder.getId() <= 0) return;
+//        workOrderService.getServiceParts(workOrder.getId()).thenAccept(guncelParcalar -> {
 //            SwingUtilities.invokeLater(() -> {
-////                service.setAddedParts(guncelParcalar); // Local state'i DB ile senkronize et
+////                workOrder.setAddedParts(guncelParcalar); // Local state'i DB ile senkronize et
 //                refreshTable();
 //                updateTotals();
 //            });
@@ -173,8 +169,8 @@ public class PartsNotesInfoPanel extends ServicePanel {
     }
 
     private void refreshTable() {
-//        if (service != null && service.getAddedParts() != null) {
-//            tableModel.setData(new ArrayList<>(service.getAddedParts()));
+//        if (workOrder != null && workOrder.getAddedParts() != null) {
+//            tableModel.setData(new ArrayList<>(workOrder.getAddedParts()));
 //        } else {
 //            tableModel.setData(new ArrayList<>());
 //        }
@@ -198,10 +194,10 @@ public class PartsNotesInfoPanel extends ServicePanel {
                             return;
                         }
 
-                        newPart.setServiceId(service.getId());
+                        newPart.setServiceId(workOrder.getId());
                         newPart.setStockTracked(false);
 
-//                        repairService.addServicePart(newPart).thenAccept(savedPart -> {
+//                        workOrderService.addServicePart(newPart).thenAccept(savedPart -> {
 //                            SwingUtilities.invokeLater(() -> {
 //                                pullLatestParts(); // Sadece arayüze ekleme, DB'den taze çek
 //                                if (getListener() != null) getListener().onDataChanged();
@@ -235,7 +231,7 @@ public class PartsNotesInfoPanel extends ServicePanel {
                         }
 
                         // HATA ÇÖZÜMÜ: Artık addServicePart (Insert) değil, updateServicePart (Update) çağırıyoruz!
-//                        repairService.updateServicePart(updatedPart).thenAccept(savedPart -> {
+//                        workOrderService.updateServicePart(updatedPart).thenAccept(savedPart -> {
 //                            SwingUtilities.invokeLater(() -> {
 //                                pullLatestParts();
 //                                if (getListener() != null) getListener().onDataChanged();
@@ -268,13 +264,13 @@ public class PartsNotesInfoPanel extends ServicePanel {
                         Part firstSelectedPart = selectedParts.get(0);
 
                         AddedPart addedPart = new AddedPart(firstSelectedPart);
-                        addedPart.setServiceId(service.getId());
+                        addedPart.setServiceId(workOrder.getId());
 
                         // Kullanıcıya işlemin başladığını bildiriyoruz (UI Thread)
                         Toast.show(this, Toast.Type.INFO, "Parça ekleniyor, lütfen bekleyin...");
 
                         // Tekil Asenkron Zincir
-//                        repairService.addServicePart(addedPart)
+//                        workOrderService.addServicePart(addedPart)
 //                                .thenAccept(savedPart -> {
 //                                    // Başarılı durumda arayüz güncellemelerini kesinlikle EDT (Swing) thread'inde yapıyoruz
 //                                    SwingUtilities.invokeLater(() -> {
@@ -305,8 +301,8 @@ public class PartsNotesInfoPanel extends ServicePanel {
     }
 
     private void updateTotals() {
-//        if (getListener() != null && service != null && service.getAddedParts() != null) {
-//            double total = service.getAddedParts().stream().mapToDouble(AddedPart::getTotal).sum();
+//        if (getListener() != null && workOrder != null && workOrder.getAddedParts() != null) {
+//            double total = workOrder.getAddedParts().stream().mapToDouble(AddedPart::getTotal).sum();
 //            getListener().onPartChange(total);
 //        }
     }

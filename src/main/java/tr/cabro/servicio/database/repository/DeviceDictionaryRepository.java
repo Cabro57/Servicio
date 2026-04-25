@@ -23,26 +23,26 @@ public interface DeviceDictionaryRepository {
     int insertType(@Bind("name") String name);
 
     @SqlUpdate("DELETE FROM device_types WHERE id = :id")
-    void deleteType(@Bind("id") int id);
+    void deleteType(@Bind("id") Long id);
 
     // --- MARKALAR (Brands) ---
     // Sadece belirli bir Türe (Örn: Telefon) ait markaları getirir (Çoka-Çok JOIN ile)
     @SqlQuery("SELECT db.* FROM device_brands db " +
             "JOIN device_type_brand dtb ON db.id = dtb.brand_id " +
             "WHERE dtb.type_id = :typeId ORDER BY db.name ASC")
-    List<DeviceBrand> findBrandsByTypeId(@Bind("typeId") int typeId);
+    List<DeviceBrand> findBrandsByTypeId(@Bind("typeId") Long typeId);
 
     @SqlUpdate("INSERT INTO device_brands (name) VALUES (:name)")
     @GetGeneratedKeys
     int insertBrand(@Bind("name") String name);
 
     @SqlUpdate("DELETE FROM device_brands WHERE id = :id")
-    void deleteBrand(@Bind("id") int id);
+    void deleteBrand(@Bind("id") Long id);
 
     // --- ÇOKA-ÇOK İLİŞKİ YÖNETİMİ ---
     @SqlUpdate("INSERT OR IGNORE INTO device_type_brand (type_id, brand_id) VALUES (:typeId, :brandId)")
-    void linkTypeAndBrand(@Bind("typeId") int typeId, @Bind("brandId") int brandId);
+    void linkTypeAndBrand(@Bind("typeId") Long typeId, @Bind("brandId") Long brandId);
 
     @SqlUpdate("DELETE FROM device_type_brand WHERE type_id = :typeId AND brand_id = :brandId")
-    void unlinkTypeAndBrand(@Bind("typeId") int typeId, @Bind("brandId") int brandId);
+    void unlinkTypeAndBrand(@Bind("typeId") Long typeId, @Bind("brandId") Long brandId);
 }

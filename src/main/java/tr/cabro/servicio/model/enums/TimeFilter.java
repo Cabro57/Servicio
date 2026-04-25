@@ -2,7 +2,7 @@ package tr.cabro.servicio.model.enums;
 
 import java.time.LocalDate;
 
-public enum TimeFilter {
+public enum  TimeFilter {
     DAY_1("1G", 1, 0, 0),
     DAY_3("3G", 3, 0, 0),
     WEEK_1("1H", 7, 0, 0),

@@ -7,28 +7,25 @@ import raven.modal.Toast;
 import raven.modal.component.ModalBorderAction;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.component.CustomerCellRenderer;
 import tr.cabro.servicio.application.component.CustomerSelectBox;
-import tr.cabro.servicio.application.component.EmbeddedComboBox;
 import tr.cabro.servicio.application.panels.edit.AbstractEditPanel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 
-public class QuickIntakePanel extends AbstractEditPanel<Service> {
+public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
     public static final int NEW_CUSTOMER_ACTION = 50;
 
@@ -47,9 +44,9 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     private DefaultComboBoxModel<Customer> listModel;
 
     // YENİ: Eğer cihaz sistemde varsa, aynı ID'yi korumak için tutuyoruz
-    private int currentDeviceId = 0;
+    private Long currentDeviceId = 0L;
 
-    public QuickIntakePanel(Service data) {
+    public QuickIntakePanel(WorkOrder data) {
         super(data);
         initData();
         initEvents();
@@ -170,7 +167,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
                 });
             } else {
                 SwingUtilities.invokeLater(() -> {
-                    currentDeviceId = 0; // Yeni cihaz olarak işaretle
+                    currentDeviceId = 0L; // Yeni cihaz olarak işaretle
                     Toast.show(this, Toast.Type.INFO, "Bu seri numarasına sahip cihaz bulunamadı. Yeni cihaz olarak kaydedilecek.");
                 });
             }
@@ -183,7 +180,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     }
 
     @Override
-    protected Service collectFormData(Service data) {
+    protected WorkOrder collectFormData(WorkOrder data) {
         Customer selectedCustomer = customerCombo.getSelectedItem();
 
         if (selectedCustomer == null) {
@@ -211,7 +208,6 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
         device.setSerialNo(seri_no_field.getText().trim());
         device.setPassword(password_field.getText().trim());
         device.setAccessory(accessory_field.getText().trim());
-        device.setCustomerId(selectedCustomer.getId()); // Cihazı müşteriye bağla
 
         // Cihazı Servise Bağla
         data.setDevice(device);
@@ -224,7 +220,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     }
 
     @Override
-    protected void populateFormWith(Service data) {
+    protected void populateFormWith(WorkOrder data) {
         if (data == null) return;
 
         if (data.getCustomer() != null) {
@@ -250,7 +246,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
             password_field.setText(device.getPassword() != null ? device.getPassword() : "");
             accessory_field.setText(device.getAccessory() != null ? device.getAccessory() : "");
         } else {
-            currentDeviceId = 0;
+            currentDeviceId = 0L;
             device_type_combo.setSelectedItem(null);
             brand_combo.setSelectedItem(null);
         }
@@ -262,7 +258,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     protected void clearForm() {
         customerCombo.setSelectedItem(null);
 
-        currentDeviceId = 0; // Sıfırla
+        currentDeviceId = 0L; // Sıfırla
         device_type_combo.setSelectedItem(null);
         brandComboBoxModel.removeAllElements();
 
@@ -274,8 +270,8 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
     }
 
     @Override
-    protected Service createEmptyObject() {
-        return new Service();
+    protected WorkOrder createEmptyObject() {
+        return new WorkOrder();
     }
 
     // --- YARDIMCI METODLAR ---
@@ -288,7 +284,7 @@ public class QuickIntakePanel extends AbstractEditPanel<Service> {
 
                 if (currentSelection != null) {
                     for (Customer c : customers) {
-                        if (c.getId() == currentSelection.getId()) {
+                        if (Objects.equals(c.getId(), currentSelection.getId())) {
                             customerCombo.setSelectedItem(c);
                             break;
                         }

@@ -11,10 +11,7 @@ import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
-import tr.cabro.servicio.model.Labor;
-import tr.cabro.servicio.model.Part;
-import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.model.ServiceItem;
+import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ItemType;
 import tr.cabro.servicio.model.enums.SourceType;
 import tr.cabro.servicio.service.ServiceManager;
@@ -29,14 +26,14 @@ import java.util.List;
 
 public class ServiceItemAddPanel extends JPanel {
 
-    private final Service service;
+    private final WorkOrder workOrder;
     private final Runnable onDataChanged;
 
     private GenericTableModel<Part> partTableModel;
     private GenericTableModel<Labor> laborTableModel;
 
-    public ServiceItemAddPanel(Service service, Runnable onDataChanged) {
-        this.service = service;
+    public ServiceItemAddPanel(WorkOrder workOrder, Runnable onDataChanged) {
+        this.workOrder = workOrder;
         this.onDataChanged = onDataChanged;
         init();
     }
@@ -60,7 +57,7 @@ public class ServiceItemAddPanel extends JPanel {
             SwingUtilities.invokeLater(() -> partTableModel.setData(parts));
         });
 
-        ServiceManager.getLaborManager().getAllLabors().thenAccept(labors -> {
+        ServiceManager.getLaborService().getAll().thenAccept(labors -> {
             SwingUtilities.invokeLater(() -> laborTableModel.setData(labors));
         });
     }
@@ -107,8 +104,8 @@ public class ServiceItemAddPanel extends JPanel {
                 String serialNo = JOptionPane.showInputDialog(ServiceItemAddPanel.this,
                         "Kullanılan parçanın Seri Numarasını girin (Opsiyonel):", "Seri No", JOptionPane.QUESTION_MESSAGE);
 
-                ServiceItem item = new ServiceItem();
-                item.setServiceId(service.getId());
+                WorkOrderItem item = new WorkOrderItem();
+                item.setServiceId(workOrder.getId());
                 item.setItemType(ItemType.PART);
                 item.setSourceType(SourceType.PRESET);
                 item.setPartId(part.getId());
@@ -168,8 +165,8 @@ public class ServiceItemAddPanel extends JPanel {
             @Override public void onDelete(int row) {}
             @Override public void onView(int row) {
                 Labor labor = laborTableModel.getItemAt(table.convertRowIndexToModel(row));
-                ServiceItem item = new ServiceItem();
-                item.setServiceId(service.getId());
+                WorkOrderItem item = new WorkOrderItem();
+                item.setServiceId(workOrder.getId());
                 item.setItemType(ItemType.LABOR);
                 item.setSourceType(SourceType.PRESET);
                 item.setLaborId(labor.getId());
@@ -230,8 +227,8 @@ public class ServiceItemAddPanel extends JPanel {
                 return;
             }
 
-            ServiceItem item = new ServiceItem();
-            item.setServiceId(service.getId());
+            WorkOrderItem item = new WorkOrderItem();
+            item.setServiceId(workOrder.getId());
             item.setItemType(cmbType.getSelectedIndex() == 0 ? ItemType.PART : ItemType.LABOR);
             item.setSourceType(SourceType.MANUAL);
             item.setItemName(txtName.getText().trim());

@@ -6,23 +6,23 @@ import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import tr.cabro.servicio.model.ServiceNote;
+import tr.cabro.servicio.model.WorkOrderNote;
 
 import java.util.List;
 
-@RegisterBeanMapper(ServiceNote.class)
+@RegisterBeanMapper(WorkOrderNote.class)
 public interface ServiceNoteRepository {
 
     @SqlUpdate("INSERT INTO service_notes (service_id, technician_id, note, created_at) " +
             "VALUES (:serviceId, :technicianId, :note, :createdAt)")
     @GetGeneratedKeys
-    int insert(@BindBean ServiceNote note);
+    Long insert(@BindBean WorkOrderNote note);
 
     // Bir servise ait tüm notları kronolojik olarak (en yeni en üstte) getirir
     @SqlQuery("SELECT * FROM service_notes WHERE service_id = :serviceId ORDER BY created_at DESC")
-    List<ServiceNote> findByServiceId(@Bind("serviceId") int serviceId);
+    List<WorkOrderNote> findByServiceId(@Bind("serviceId") Long serviceId);
 
     // Yanlış yazılan bir notu silmek için
     @SqlUpdate("DELETE FROM service_notes WHERE id = :id")
-    void delete(@Bind("id") int id);
+    void delete(@Bind("id") Long id);
 }

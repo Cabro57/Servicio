@@ -38,7 +38,7 @@ public class SupplierService {
         // --- Veritabanı İşlemi (Arka Plan Thread) ---
         return CompletableFuture.supplyAsync(() -> {
             if (!update) {
-                int id = repository.insert(supplier);
+                Long id = repository.insert(supplier);
                 supplier.setId(id);
             } else {
                 repository.update(supplier);
@@ -47,11 +47,11 @@ public class SupplierService {
         });
     }
 
-    public CompletableFuture<Void> delete(int id) {
+    public CompletableFuture<Void> delete(Long id) {
         return CompletableFuture.runAsync(() -> repository.delete(id));
     }
 
-    public CompletableFuture<Optional<Supplier>> get(int id) {
+    public CompletableFuture<Optional<Supplier>> get(Long id) {
         return CompletableFuture.supplyAsync(() -> repository.findById(id));
     }
 

@@ -8,13 +8,13 @@ import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 
 import java.util.List;
 import java.util.Optional;
 
-@RegisterBeanMapper(Service.class)
+@RegisterBeanMapper(WorkOrder.class)
 public interface ServiceRepository {
 
     @SqlUpdate("INSERT INTO services (customer_id, device_id, technician_id, reported_fault, detected_fault, " +
@@ -22,35 +22,35 @@ public interface ServiceRepository {
             "VALUES (:customerId, :deviceId, :technicianId, :reportedFault, :detectedFault, " +
             ":actionTaken, :urgencyStatus, :serviceStatus, :warrantyEndDate, :deliveryDate, :createdAt, :updatedAt)")
     @GetGeneratedKeys
-    int insertService(@BindBean Service service);
+    Long insert(@BindBean WorkOrder workOrder);
 
     @SqlUpdate("UPDATE services SET customer_id=:customerId, device_id=:deviceId, technician_id=:technicianId, " +
             "reported_fault=:reportedFault, detected_fault=:detectedFault, action_taken=:actionTaken, " +
             "urgency_status=:urgencyStatus, service_status=:serviceStatus, " +
             "warranty_end_date=:warrantyEndDate, delivery_date=:deliveryDate, updated_at=:updatedAt " +
             "WHERE id=:id")
-    void updateService(@BindBean Service service);
+    void update(@BindBean WorkOrder workOrder);
 
     @SqlQuery("SELECT * FROM services WHERE id = :id")
-    Optional<Service> findById(@Bind("id") int id);
+    Optional<WorkOrder> findById(@Bind("id") Long id);
 
     @SqlUpdate("DELETE FROM services WHERE id = :id")
-    void deleteById(@Bind("id") int id);
+    void delete(@Bind("id") Long id);
 
     @SqlQuery("SELECT * FROM services ORDER BY created_at DESC")
-    List<Service> findAll();
+    List<WorkOrder> findAll();
 
     @SqlQuery("SELECT * FROM services WHERE customer_id = :customerId ORDER BY created_at DESC")
-    List<Service> findByCustomerId(@Bind("customerId") int customerId);
+    List<WorkOrder> findByCustomerId(@Bind("customerId") Long customerId);
 
     @SqlQuery("SELECT * FROM services WHERE device_id = :deviceId ORDER BY created_at DESC")
-    List<Service> findByDeviceId(@Bind("deviceId") int deviceId);
+    List<WorkOrder> findByDeviceId(@Bind("deviceId") Long deviceId);
 
     @SqlQuery("SELECT * FROM services WHERE service_status IN (<statuses>) ORDER BY created_at DESC")
-    List<Service> findByStatuses(@BindList("statuses") List<ServiceStatus> statuses);
+    List<WorkOrder> findByStatuses(@BindList("statuses") List<ServiceStatus> statuses);
 
     @SqlQuery("SELECT * FROM services WHERE service_status NOT IN (<statuses>) ORDER BY created_at DESC")
-    List<Service> findByStatusesExcluded(@BindList("statuses") List<ServiceStatus> statuses);
+    List<WorkOrder> findByStatusesExcluded(@BindList("statuses") List<ServiceStatus> statuses);
 
     @SqlQuery("SELECT s.* FROM services s " +
             "LEFT JOIN devices d ON d.id = s.device_id " +
@@ -58,21 +58,5 @@ public interface ServiceRepository {
             "   OR s.reported_fault LIKE :search " +
             "   OR EXISTS (SELECT 1 FROM service_notes sn WHERE sn.service_id = s.id AND sn.note LIKE :search) " +
             "ORDER BY s.created_at DESC")
-    List<Service> search(@Bind("search") String searchTerm);
-
-    @Transaction
-    default Service saveFullService(Service service, boolean isUpdate) {
-        if (!isUpdate) {
-            int id = insertService(service);
-            service.setId(id);
-        } else {
-            updateService(service);
-        }
-        return service;
-    }
-
-    @Transaction
-    default void deleteService(int id) {
-        deleteById(id);
-    }
+    List<WorkOrder> search(@Bind("search") String searchTerm);
 }

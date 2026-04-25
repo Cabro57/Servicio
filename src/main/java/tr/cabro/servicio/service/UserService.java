@@ -30,21 +30,21 @@ public class UserService {
             if (!update) {
                 // KRİTİK: Sisteme ilk kez kayıt olunuyorsa, id'yi 1'e zorla.
                 // Eğer id=1 zaten varsa SQLite hata fırlatır ve 2. kişinin kaydını reddeder.
-                user.setId(1);
+                user.setId(1L);
                 repository.insert(user); // SQL'ini "INSERT INTO users (id, name... )" şeklinde güncellemelisin
             } else {
-                user.setId(1); // Güncellemede de her zaman 1. kullanıcıyı güncelle
+                user.setId(1L); // Güncellemede de her zaman 1. kullanıcıyı güncelle
                 repository.update(user);
             }
             return user;
         });
     }
 
-    public CompletableFuture<Void> delete(int id) {
+    public CompletableFuture<Void> delete(Long id) {
         return CompletableFuture.runAsync(() -> repository.delete(id));
     }
 
-    public CompletableFuture<Optional<User>> get(int id) {
+    public CompletableFuture<Optional<User>> get(Long id) {
         return CompletableFuture.supplyAsync(() -> repository.findById(id));
     }
 
@@ -66,7 +66,7 @@ public class UserService {
 
             // Kurulum aşamasında (SetupPanel) kullanıcının ID'sini hep 1'e zorlamıştık.
             // Bu yüzden direkt 1 numaralı kullanıcıyı veritabanından çekiyoruz.
-            Optional<User> userOpt = repository.findById(1);
+            Optional<User> userOpt = repository.findById(1L);
 
             // Kullanıcı veritabanında varsa ve şifresi girilen PIN ile birebir aynıysa
             if (userOpt.isPresent() && userOpt.get().getPassword().equals(pin)) {

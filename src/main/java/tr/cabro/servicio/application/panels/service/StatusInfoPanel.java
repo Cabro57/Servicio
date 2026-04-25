@@ -8,7 +8,7 @@ import tr.cabro.servicio.model.enums.ServiceStatus;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
-
+@Deprecated
 public class StatusInfoPanel extends ServicePanel {
 
     private final ButtonGroup status_group = new ButtonGroup();
@@ -42,20 +42,20 @@ public class StatusInfoPanel extends ServicePanel {
 
     @Override
     protected void onServiceSet() {
-        if (service == null) return;
+        if (workOrder == null) return;
 
         isInitializing = true;
         try {
             // Eğer servis teslim edilmişse, durumu Form üzerinden değiştirilemez.
             // "Teslim Et" butonu kullanılmalıdır. (Kurumsal Kural)
-            boolean isDelivered = service.getServiceStatus() == ServiceStatus.DELIVERED;
+            boolean isDelivered = workOrder.getServiceStatus() == ServiceStatus.DELIVERED;
 
             for (AbstractButton button : java.util.Collections.list(status_group.getElements())) {
                 button.setEnabled(!isDelivered);
             }
 
-            if (service.getServiceStatus() != null) {
-                setSelected(service.getServiceStatus().getDisplayName());
+            if (workOrder.getServiceStatus() != null) {
+                setSelected(workOrder.getServiceStatus().getDisplayName());
             } else {
                 under_repair_radio.setSelected(true);
             }

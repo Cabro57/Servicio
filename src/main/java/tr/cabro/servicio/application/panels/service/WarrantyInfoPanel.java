@@ -10,7 +10,7 @@ import java.awt.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-
+@Deprecated
 public class WarrantyInfoPanel extends ServicePanel {
 
     private DatePicker warrantyDatePicker;
@@ -49,11 +49,11 @@ public class WarrantyInfoPanel extends ServicePanel {
 
     @Override
     protected void onServiceSet() {
-        if (service == null) return;
+        if (workOrder == null) return;
 
         isInitializing = true;
         try {
-            setWarrantyDate(service.getWarrantyEndDate());
+            setWarrantyDate(workOrder.getWarrantyEndDate());
         } finally {
             isInitializing = false;
         }

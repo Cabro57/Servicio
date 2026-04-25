@@ -21,7 +21,7 @@ public interface PartRepository {
             "VALUES (:barcode, :name, :category, :modelCompatibility, :supplierId, " +
             ":purchasePrice, :salePrice, :stockQuantity, :minStockLevel, :description, :createdAt, :updatedAt)")
     @GetGeneratedKeys
-    int insert(@BindBean Part part);
+    Long insert(@BindBean Part part);
 
     // --- UPDATE ---
     @SqlUpdate("UPDATE parts SET barcode=:barcode, name=:name, category=:category, model_compatibility=:modelCompatibility, " +
@@ -32,10 +32,10 @@ public interface PartRepository {
 
     // --- SOFT DELETE ---
     @SqlUpdate("UPDATE parts SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
-    void delete(@Bind("id") int id);
+    void delete(@Bind("id") Long id);
 
     @SqlUpdate("UPDATE parts SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id IN (<ids>)")
-    void deleteByIds(@BindList("ids") List<Integer> ids);
+    void deleteByIds(@BindList("ids") List<Long> ids);
 
     @SqlUpdate("UPDATE parts SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE barcode = :barcode")
     void deleteByBarcode(@Bind("barcode") String barcode);
@@ -45,15 +45,15 @@ public interface PartRepository {
 
     // --- STOK GÜNCELLEME ---
     @SqlUpdate("UPDATE parts SET stock_quantity = stock_quantity + :amount, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
-    void adjustStock(@Bind("id") int id, @Bind("amount") int amount);
+    void adjustStock(@Bind("id") Long id, @Bind("amount") Integer amount);
 
     @SqlUpdate("UPDATE parts SET stock_quantity = stock_quantity + :amount, updated_at = CURRENT_TIMESTAMP " +
             "WHERE barcode = :barcode AND is_deleted = 0")
-    void increaseStockAtomically(@Bind("barcode") String barcode, @Bind("amount") int amount);
+    void increaseStockAtomically(@Bind("barcode") String barcode, @Bind("amount") Integer amount);
 
     @SqlUpdate("UPDATE parts SET stock_quantity = stock_quantity - :amount, updated_at = CURRENT_TIMESTAMP " +
             "WHERE barcode = :barcode AND is_deleted = 0 AND stock_quantity >= :amount")
-    int decreaseStockAtomically(@Bind("barcode") String barcode, @Bind("amount") int amount);
+    int decreaseStockAtomically(@Bind("barcode") String barcode, @Bind("amount") Integer amount);
 
     @SqlQuery("SELECT COUNT(*) > 0 FROM parts WHERE barcode = :barcode AND is_deleted = 0")
     boolean existsByBarcode(@Bind("barcode") String barcode);
@@ -62,7 +62,7 @@ public interface PartRepository {
     @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE id = :id AND is_deleted = 0")
-    Optional<Part> findById(@Bind("id") int id);
+    Optional<Part> findById(@Bind("id") Long id);
 
     @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +

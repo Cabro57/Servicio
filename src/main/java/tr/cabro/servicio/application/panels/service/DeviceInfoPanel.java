@@ -13,7 +13,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.event.ActionEvent;
 import java.util.List;
-
+@Deprecated
 public class DeviceInfoPanel extends ServicePanel {
 
     // Form yüklenirken sahte "Veri Değişti" sinyallerini engellemek için
@@ -44,18 +44,18 @@ public class DeviceInfoPanel extends ServicePanel {
 
     @Override
     protected void onServiceSet() {
-        if (service == null) return;
+        if (workOrder == null) return;
 
         isInitializing = true; // Dinleyicileri (Listeners) geçici olarak sağır et
 //        try {
 //            // DİKKAT: Sıralama çok önemlidir! Önce Tür, Sonra Marka seçilmeli.
-////            setDeviceType(service.getDeviceType());
-//            setDeviceBrand(service.getDeviceBrand());
+////            setDeviceType(workOrder.getDeviceType());
+//            setDeviceBrand(workOrder.getDeviceBrand());
 //
-//            model_field.setText(service.getDeviceModel() != null ? service.getDeviceModel() : "");
-//            seri_no_field.setText(service.getDeviceSerial() != null ? service.getDeviceSerial() : "");
-//            password_field.setText(service.getDevicePassword() != null ? service.getDevicePassword() : "");
-//            accessory_field.setText(service.getDeviceAccessory() != null ? service.getDeviceAccessory() : "");
+//            model_field.setText(workOrder.getDeviceModel() != null ? workOrder.getDeviceModel() : "");
+//            seri_no_field.setText(workOrder.getDeviceSerial() != null ? workOrder.getDeviceSerial() : "");
+//            password_field.setText(workOrder.getDevicePassword() != null ? workOrder.getDevicePassword() : "");
+//            accessory_field.setText(workOrder.getDeviceAccessory() != null ? workOrder.getDeviceAccessory() : "");
 //
 //        } finally {
 //            isInitializing = false; // Form doldu, dinleyicileri tekrar aç

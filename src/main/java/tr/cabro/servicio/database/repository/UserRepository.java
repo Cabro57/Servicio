@@ -24,13 +24,13 @@ public interface UserRepository {
     void update(@BindBean User user);
 
     @SqlUpdate("DELETE FROM users WHERE id = :id")
-    void delete(@Bind("id") int id);
+    void delete(@Bind("id") Long id);
 
     @SqlQuery("SELECT * FROM users WHERE email = :email")
     Optional<User> findByEmail(@Bind("email") String email);
 
     @SqlQuery("SELECT * FROM users WHERE id = :id")
-    Optional<User> findById(@Bind("id") int id);
+    Optional<User> findById(@Bind("id") Long id);
 
     @SqlQuery("SELECT * FROM users ORDER BY name ASC")
     List<User> findAll();

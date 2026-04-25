@@ -1,8 +1,8 @@
-import tr.cabro.servicio.application.forms.FormService;
-import tr.cabro.servicio.application.forms.example.ServiceRecordsPanel;
+import tr.cabro.servicio.application.forms.FormWorkOrder;
+import tr.cabro.servicio.application.forms.example.WorkOrderPanel;
 import tr.cabro.servicio.application.panels.PinPanel;
 import tr.cabro.servicio.application.panels.SetupPanel;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.WorkOrder;
 
 import javax.swing.*;
 import java.awt.*;
@@ -39,9 +39,9 @@ public class testMain extends JFrame {
             // 2. Sekmeye PIN Giriş Panelini ekle
             tabbedPane.addTab("PIN Giriş Ekranı", new PinPanel());
 
-            tabbedPane.add("Servis Kayıtları", new ServiceRecordsPanel());
+            tabbedPane.add("Servis Kayıtları", new WorkOrderPanel());
 
-            tabbedPane.add("Servis Dashboard", new FormService(new Service()));
+            tabbedPane.add("Servis Dashboard", new FormWorkOrder(new WorkOrder()));
             // Sekmeleri ana frame'e ekle
             frame.add(tabbedPane, BorderLayout.CENTER);
 

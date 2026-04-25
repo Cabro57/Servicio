@@ -1,11 +1,12 @@
 package tr.cabro.servicio.service;
 
 import tr.cabro.servicio.database.repository.ServiceNoteRepository;
-import tr.cabro.servicio.model.ServiceNote;
+import tr.cabro.servicio.model.WorkOrderNote;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-
+// TODO bu servis sınıfı WorkOrder Servisine taşınacak
+@Deprecated
 public class ServiceNoteManager {
 
     private final ServiceNoteRepository repository;
@@ -14,19 +15,19 @@ public class ServiceNoteManager {
         this.repository = repository;
     }
 
-    public CompletableFuture<ServiceNote> addNote(ServiceNote note) {
+    public CompletableFuture<WorkOrderNote> addNote(WorkOrderNote note) {
         return CompletableFuture.supplyAsync(() -> {
-            int id = repository.insert(note);
+            Long id = repository.insert(note);
             note.setId(id);
             return note;
         });
     }
 
-    public CompletableFuture<Void> deleteNote(int id) {
+    public CompletableFuture<Void> deleteNote(Long id) {
         return CompletableFuture.runAsync(() -> repository.delete(id));
     }
 
-    public CompletableFuture<List<ServiceNote>> getNotesForService(int serviceId) {
+    public CompletableFuture<List<WorkOrderNote>> getNotesForService(Long serviceId) {
         return CompletableFuture.supplyAsync(() -> repository.findByServiceId(serviceId));
     }
 }

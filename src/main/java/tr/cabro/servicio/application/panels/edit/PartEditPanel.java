@@ -66,7 +66,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
     }
 
     // --- KESİN ÇÖZÜM: Tedarikçi Yükleme Metodu ---
-    private void loadSuppliers(int selectedSupplierId) {
+    private void loadSuppliers(Long selectedSupplierId) {
         ServiceManager.getSupplierService().getAll().thenAccept(suppliers -> {
             SwingUtilities.invokeLater(() -> {
                 supplier_combo.removeAllItems(); // Kutuyu temizle
@@ -101,7 +101,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         if (selectedSupplier != null) {
             data.setSupplierId(selectedSupplier.getId());
         } else {
-            data.setSupplierId(0);
+            data.setSupplierId(0L);
         }
 
         data.setModelCompatibility(models_field.getText().trim());

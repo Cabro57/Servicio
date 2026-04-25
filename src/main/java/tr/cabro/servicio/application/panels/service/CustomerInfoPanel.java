@@ -21,7 +21,7 @@ import javax.swing.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-
+@Deprecated
 public class CustomerInfoPanel extends ServicePanel {
 
     private final CustomerService customerService;
@@ -35,10 +35,10 @@ public class CustomerInfoPanel extends ServicePanel {
     protected void onServiceSet() {
         // Hydration sayesinde customer nesnesi servisin içinde zaten dolu geliyor!
         // Ekstra veritabanı sorgusuna gerek yok.
-        if (service != null) {
-            updateCustomerUI(service.getCustomer());
-            setRecordDate(service.getCreatedAt());
-            setDeliverDate(service.getDeliveryDate());
+        if (workOrder != null) {
+            updateCustomerUI(workOrder.getCustomer());
+            setRecordDate(workOrder.getCreatedAt());
+            setDeliverDate(workOrder.getDeliveryDate());
         }
     }
 
@@ -93,7 +93,7 @@ public class CustomerInfoPanel extends ServicePanel {
 
                                     newCustomer.setCreatedAt(LocalDateTime.now());
 
-                                    // KRİTİK DÜZELTME: service.save yerine customerService.saveAsync
+                                    // KRİTİK DÜZELTME: workOrder.save yerine customerService.saveAsync
                                     customerService.save(newCustomer, false).thenAccept(savedCustomer -> {
                                         SwingUtilities.invokeLater(() -> {
                                             updateCustomerSelection(savedCustomer);
@@ -134,9 +134,9 @@ public class CustomerInfoPanel extends ServicePanel {
      * Hem UI'ı, hem Servis modelini günceller, hem de Ana Formu uyarır.
      */
     private void updateCustomerSelection(Customer customer) {
-        if (service != null) {
-            service.setCustomer(customer);
-            service.setCustomerId(customer != null ? customer.getId() : null);
+        if (workOrder != null) {
+            workOrder.setCustomer(customer);
+            workOrder.setCustomerId(customer != null ? customer.getId() : null);
         }
         updateCustomerUI(customer);
         notifyDataChanged();
@@ -161,7 +161,7 @@ public class CustomerInfoPanel extends ServicePanel {
 
     // Ana formun collectForm metodu için kullanışlı getter
     public Customer getSelectedCustomer() {
-        return service != null ? service.getCustomer() : null;
+        return workOrder != null ? workOrder.getCustomer() : null;
     }
 
     // --- TARİH GETTER / SETTER METOTLARI ---

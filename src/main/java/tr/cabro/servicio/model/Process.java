@@ -6,7 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
-@Getter @Setter
+@Getter @Setter @Deprecated
 public class Process extends OkaeriConfig {
     private String name;
     private String comment;

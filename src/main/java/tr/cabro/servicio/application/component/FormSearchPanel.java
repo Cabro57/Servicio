@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.icons.FlatMenuArrowIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.component.ModalContainer;
@@ -12,9 +11,9 @@ import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.service.CustomerService;
-import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.searchableresult.CustomerSearchResult;
 import tr.cabro.servicio.util.searchableresult.ISearchableResult;
@@ -156,9 +155,9 @@ public class FormSearchPanel extends JPanel {
         }
 
         // 2. Paralel Asenkron Aramaları Başlat
-        RepairService repairService = ServiceManager.getRepairService();
+        WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
         CustomerService customerService = ServiceManager.getCustomerService();
-        CompletableFuture<List<Service>> servicesFuture = repairService.search(st);
+        CompletableFuture<List<WorkOrder>> servicesFuture = workOrderService.search(st);
         CompletableFuture<List<Customer>> customersFuture = customerService.search(st);
 
         // 3. Statik Form Araması (Lokal ve çok hızlı olduğu için UI thread'ini yormaz,
@@ -336,8 +335,8 @@ public class FormSearchPanel extends JPanel {
                     }
                 }
             } else if (sp[0].equals("SERVICE")) {
-                RepairService repairService = ServiceManager.getRepairService();
-                repairService.get(Integer.parseInt(sp[1])).thenAccept(serviceOptional -> {
+                WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
+                workOrderService.get(Integer.parseInt(sp[1])).thenAccept(serviceOptional -> {
                     serviceOptional.ifPresent(service -> {
                         ServiceSearchResult result = new ServiceSearchResult(service);
                         Item item = new Item(result, true, favorite);
@@ -347,7 +346,7 @@ public class FormSearchPanel extends JPanel {
 
             } else if (sp[0].equals("CUSTOMER")) {
                 CustomerService service = ServiceManager.getCustomerService();
-                service.get(Integer.parseInt(sp[1])).thenAccept(customerOptional -> {
+                service.get(Long.parseLong(sp[1])).thenAccept(customerOptional -> {
                     customerOptional.ifPresent(customer -> {
                         CustomerSearchResult result = new CustomerSearchResult(customer);
                         Item item = new Item(result, true, favorite);

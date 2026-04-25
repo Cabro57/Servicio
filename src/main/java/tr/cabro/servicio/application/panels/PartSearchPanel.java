@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.renderer.ProfileTableRenderer;

@@ -23,7 +23,7 @@ monthly_data AS (
         COALESCE(SUM(is2.part_income), 0)                                       AS part_income,
         COALESCE(SUM(is2.part_expense), 0)                                      AS part_expense,
         COALESCE(SUM(is2.labor_income), 0)                                      AS labor_income
-    FROM services s
+    FROM workOrders s
     LEFT JOIN item_summary is2 ON is2.service_id = s.id
     WHERE s.created_at IS NOT NULL
     GROUP BY strftime('%Y-%m', s.created_at)

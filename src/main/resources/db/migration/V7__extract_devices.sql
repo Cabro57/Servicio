@@ -206,14 +206,14 @@ INSERT INTO device_type_brand (type_id, brand_id) VALUES
 
 -- Eskiden kalan farklı marka/türleri de kaybetmemek için içeri alıyoruz
 INSERT OR IGNORE INTO device_types (name)
-SELECT DISTINCT TRIM(device_type) FROM services WHERE device_type IS NOT NULL AND TRIM(device_type) != '';
+SELECT DISTINCT TRIM(device_type) FROM workOrders WHERE device_type IS NOT NULL AND TRIM(device_type) != '';
 
 INSERT OR IGNORE INTO device_brands (name)
-SELECT DISTINCT TRIM(device_brand) FROM services WHERE device_brand IS NOT NULL AND TRIM(device_brand) != '';
+SELECT DISTINCT TRIM(device_brand) FROM workOrders WHERE device_brand IS NOT NULL AND TRIM(device_brand) != '';
 
 INSERT OR IGNORE INTO device_type_brand (type_id, brand_id)
 SELECT DISTINCT dt.id, db.id
-FROM services s
+FROM workOrders s
          JOIN device_types dt ON dt.name = TRIM(s.device_type)
          JOIN device_brands db ON db.name = TRIM(s.device_brand)
 WHERE s.device_type IS NOT NULL AND s.device_brand IS NOT NULL;
@@ -231,7 +231,7 @@ SELECT
         WHEN LENGTH(TRIM(device_serial)) < 3 THEN 'SN_UNKNOWN_' || id
         ELSE TRIM(device_serial)
         END as safe_serial
-FROM services;
+FROM workOrders;
 
 -- 2. ADIM: Cihazları Tekilleştirerek Ekle (Geçici tablodan okuyarak)
 INSERT INTO devices_new (customer_id, device_type, brand, model, serial_no, password, accessory, created_at)
@@ -277,7 +277,7 @@ SELECT id, paid,
            ELSE 'CASH'
            END,
        'Eski Sistem Aktarımı', COALESCE(delivery_at, created_at, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP
-FROM services WHERE paid > 0;
+FROM workOrders WHERE paid > 0;
 
 -- F) SERVICE_ITEMS (Eski Eklenen Parçalar -> items tablosuna, yeni Parts tablosu ile ilişkilendirilerek aktarılır)
 INSERT INTO service_items (service_id, item_type, source_type, part_id, item_name, used_serial_no, quantity, purchase_price, unit_price)
@@ -290,14 +290,14 @@ FROM added_part ap
 -- G) SERVICE_ITEMS (Eski İşçilikler)
 INSERT INTO service_items (service_id, item_type, source_type, item_name, quantity, unit_price)
 SELECT id, 'LABOR', 'MANUAL', COALESCE(NULLIF(TRIM(action_taken), ''), 'Genel İşçilik'), 1, labor_cost
-FROM services WHERE labor_cost > 0;
+FROM workOrders WHERE labor_cost > 0;
 
 -- H) SERVICE_NOTES (Teknisyen Notları)
 INSERT INTO service_notes (service_id, note, created_at)
-SELECT id, Notes, created_at FROM services WHERE Notes IS NOT NULL AND TRIM(Notes) != '';
+SELECT id, Notes, created_at FROM workOrders WHERE Notes IS NOT NULL AND TRIM(Notes) != '';
 
 INSERT INTO service_notes (service_id, note, created_at)
-SELECT id, 'Tespit Edilen Arıza: ' || detected_fault, created_at FROM services WHERE detected_fault IS NOT NULL AND TRIM(detected_fault) != '';
+SELECT id, 'Tespit Edilen Arıza: ' || detected_fault, created_at FROM workOrders WHERE detected_fault IS NOT NULL AND TRIM(detected_fault) != '';
 
 -- I) HAZIR İŞÇİLİK KATALOĞU SEED DATA
 INSERT INTO labors (name, description, category, default_price) VALUES ('Arıza Tespiti', 'Cihazın sökülmesi ve arıza tespiti', 'Genel', 0.0);
@@ -310,18 +310,18 @@ INSERT INTO labors (name, description, category, default_price) VALUES ('Sıvı 
 -- ---------------------------------------------------------
 DROP TABLE added_part;
 DROP TABLE part;
-DROP TABLE services;
+DROP TABLE workOrders;
 DROP TABLE suppliers;
 DROP TABLE customers;
 
 ALTER TABLE customers_new RENAME TO customers;
 ALTER TABLE suppliers_new RENAME TO suppliers;
 ALTER TABLE devices_new RENAME TO devices;
-ALTER TABLE services_new RENAME TO services;
+ALTER TABLE services_new RENAME TO workOrders;
 
 CREATE INDEX idx_customers_phone ON customers(phone_number_1);
-CREATE INDEX idx_services_customer ON services(customer_id);
-CREATE INDEX idx_services_device ON services(device_id);
+CREATE INDEX idx_services_customer ON workOrders(customer_id);
+CREATE INDEX idx_services_device ON workOrders(device_id);
 CREATE INDEX idx_service_items_service ON service_items(service_id);
 CREATE INDEX idx_service_payments_service ON service_payments(service_id);
 CREATE INDEX idx_service_notes_service ON service_notes(service_id);

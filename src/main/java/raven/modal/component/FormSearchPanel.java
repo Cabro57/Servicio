@@ -1,7 +1,6 @@
 package raven.modal.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.icons.FlatMenuArrowIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.menu.MyMenuValidation;
@@ -9,14 +8,7 @@ import raven.modal.system.Form;
 import raven.modal.utils.DemoPreferences;
 import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.application.util.Ikon;
-import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.service.CustomerService;
-import tr.cabro.servicio.service.RepairService;
-import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.util.searchableresult.CustomerSearchResult;
 import tr.cabro.servicio.util.searchableresult.ISearchableResult;
-import tr.cabro.servicio.util.searchableresult.ServiceSearchResult;
 import tr.cabro.servicio.util.searchableresult.StaticFormResult;
 
 import javax.swing.*;
@@ -168,11 +160,11 @@ public class FormSearchPanel extends JPanel {
                     }
                 }
 
-//                RepairService repairService = ServiceManager.getRepairService();
-//                List<Service> services = repairService.search(st);
-//                for (Service service : services) {
+//                WorkOrderService repairService = ServiceManager.getWorkOrderService();
+//                List<WorkOrder> services = repairService.search(st);
+//                for (WorkOrder workOrder : services) {
 //                    if (isCancelled()) return null;
-//                    publish(new ServiceSearchResult(service));
+//                    publish(new ServiceSearchResult(workOrder));
 //                }
 
 //                CustomerService customerService = ServiceManager.getCustomerService();
@@ -339,8 +331,8 @@ public class FormSearchPanel extends JPanel {
                     }
                 }
 //            } else if (sp[0].equals("SERVICE")) {
-//                Service service = ServiceManager.getRepairService().get(Integer.parseInt(sp[1])).get();
-//                ServiceSearchResult result = new ServiceSearchResult(service);
+//                WorkOrder workOrder = ServiceManager.getWorkOrderService().get(Integer.parseInt(sp[1])).get();
+//                ServiceSearchResult result = new ServiceSearchResult(workOrder);
 //                Item item = new Item(result, true, favorite);
 //
 //                list.add(item);

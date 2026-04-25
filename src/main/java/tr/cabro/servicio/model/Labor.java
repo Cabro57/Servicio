@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Getter @Setter
 public class Labor {
 
-    private int id;
+    private Long id;
     private String name;
     private String description;
     private String category;

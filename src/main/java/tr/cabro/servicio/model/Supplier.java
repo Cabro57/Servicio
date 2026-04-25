@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Supplier {
 
-    private int id;
+    private Long id;
 
     private String name;
 
@@ -44,7 +44,7 @@ public class Supplier {
     private LocalDateTime updatedAt;
 
     // Geriye dönük uyumluluk için eski Constructor
-    public Supplier(int id, String name, String businessName) {
+    public Supplier(Long id, String name, String businessName) {
         this.id = id;
         this.name = name;
         this.businessName = businessName;
@@ -62,11 +62,11 @@ public class Supplier {
         if (this == o) return true;
         if (!(o instanceof Supplier)) return false;
         Supplier other = (Supplier) o;
-        return this.id == other.id;
+        return this.id.equals(other.id);
     }
 
     @Override
     public int hashCode() {
-        return Integer.hashCode(id);
+        return id.hashCode();
     }
 }

@@ -9,12 +9,12 @@ import tr.cabro.servicio.model.enums.SourceType;
 import java.math.BigDecimal;
 
 @Getter @Setter
-public class ServiceItem {
+public class WorkOrderItem {
 
-    private int id;
+    private Long id;
 
     @ColumnName("service_id")
-    private int serviceId;
+    private Long serviceId;
 
     // --- Tür Bilgileri ---
     @ColumnName("item_type")
@@ -25,10 +25,10 @@ public class ServiceItem {
 
     // --- Referanslar (Sadece PRESET ise dolu olur, MANUAL ise NULL kalır) ---
     @ColumnName("part_id")
-    private Integer partId; // Veritabanındaki parts tablosuna referans
+    private Long partId; // Veritabanındaki parts tablosuna referans
 
     @ColumnName("labor_id")
-    private Integer laborId; // Gelecekte eklenebilecek Hazır İşçilikler (labor_definitions) tablosu için
+    private Long laborId; // Gelecekte eklenebilecek Hazır İşçilikler (labor_definitions) tablosu için
 
     // --- SNAPSHOT (Anlık Görüntü) ALANLARI ---
     @ColumnName("item_name")
@@ -37,7 +37,8 @@ public class ServiceItem {
     @ColumnName("used_serial_no")
     private String usedSerialNo; // Sadece PART ise zorunlu olabilir (Garanti takibi)
 
-    private int quantity = 1;
+    // TODO: bu primitive değeri araştır.
+    private Integer quantity = 1;
 
     // Finansal Snapshot
     @ColumnName("purchase_price")

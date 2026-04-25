@@ -1,9 +1,8 @@
 package tr.cabro.servicio.application.panels.service;
 
-import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.CurrencyField;
-import tr.cabro.servicio.model.ServiceItem;
+import tr.cabro.servicio.model.WorkOrderItem;
 import tr.cabro.servicio.model.enums.ItemType;
 
 import javax.swing.*;
@@ -11,14 +10,14 @@ import java.math.BigDecimal;
 
 public class ServiceItemEditPanel extends JPanel {
 
-    private final ServiceItem item;
+    private final WorkOrderItem item;
 
     private JTextField txtName;
     private JFormattedTextField txtPurchasePrice;
     private JFormattedTextField txtSalePrice;
     private JTextField txtSerialNo;
 
-    public ServiceItemEditPanel(ServiceItem item) {
+    public ServiceItemEditPanel(WorkOrderItem item) {
         this.item = item;
         init();
     }
@@ -46,7 +45,7 @@ public class ServiceItemEditPanel extends JPanel {
         add(new JLabel("Seri No:")); add(txtSerialNo, "growx, wrap");
     }
 
-    public ServiceItem getUpdatedItem() {
+    public WorkOrderItem getUpdatedItem() {
         if (txtName.getText().trim().isEmpty()) return null;
 
         item.setItemName(txtName.getText().trim());

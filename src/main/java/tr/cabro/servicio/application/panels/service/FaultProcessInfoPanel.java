@@ -7,7 +7,7 @@ import tr.cabro.servicio.application.panels.ServicePanel;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-
+@Deprecated
 public class FaultProcessInfoPanel extends ServicePanel {
 
     // Veri yüklenirken sahte tetiklemeleri engellemek için
@@ -24,13 +24,13 @@ public class FaultProcessInfoPanel extends ServicePanel {
 
     @Override
     protected void onServiceSet() {
-        if (service == null) return;
+        if (workOrder == null) return;
 
         isInitializing = true;
         try {
-            reported_fault_field.setText(service.getReportedFault() != null ? service.getReportedFault() : "");
-            detected_fault_field.setText(service.getDetectedFault() != null ? service.getDetectedFault() : "");
-            action_taken_field.setText(service.getActionTaken() != null ? service.getActionTaken() : "");
+            reported_fault_field.setText(workOrder.getReportedFault() != null ? workOrder.getReportedFault() : "");
+            detected_fault_field.setText(workOrder.getDetectedFault() != null ? workOrder.getDetectedFault() : "");
+            action_taken_field.setText(workOrder.getActionTaken() != null ? workOrder.getActionTaken() : "");
         } finally {
             isInitializing = false;
         }

@@ -24,12 +24,12 @@ public class DeviceDictionaryManager {
         return CompletableFuture.supplyAsync(() -> repository.insertType(name));
     }
 
-    public CompletableFuture<Void> deleteType(int id) {
+    public CompletableFuture<Void> deleteType(Long id) {
         return CompletableFuture.runAsync(() -> repository.deleteType(id));
     }
 
     // --- MARKALAR (Brands) ---
-    public CompletableFuture<List<DeviceBrand>> getBrandsByTypeId(int typeId) {
+    public CompletableFuture<List<DeviceBrand>> getBrandsByTypeId(Long typeId) {
         return CompletableFuture.supplyAsync(() -> repository.findBrandsByTypeId(typeId));
     }
 
@@ -37,16 +37,16 @@ public class DeviceDictionaryManager {
         return CompletableFuture.supplyAsync(() -> repository.insertBrand(name));
     }
 
-    public CompletableFuture<Void> deleteBrand(int id) {
+    public CompletableFuture<Void> deleteBrand(Long id) {
         return CompletableFuture.runAsync(() -> repository.deleteBrand(id));
     }
 
     // --- İLİŞKİLENDİRME (Bağlantı Tablosu) ---
-    public CompletableFuture<Void> linkBrandToType(int typeId, int brandId) {
+    public CompletableFuture<Void> linkBrandToType(Long typeId, Long brandId) {
         return CompletableFuture.runAsync(() -> repository.linkTypeAndBrand(typeId, brandId));
     }
 
-    public CompletableFuture<Void> unlinkBrandFromType(int typeId, int brandId) {
+    public CompletableFuture<Void> unlinkBrandFromType(Long typeId, Long brandId) {
         return CompletableFuture.runAsync(() -> repository.unlinkTypeAndBrand(typeId, brandId));
     }
 }

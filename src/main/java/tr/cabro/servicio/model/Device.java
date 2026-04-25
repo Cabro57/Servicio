@@ -13,11 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Device {
 
-    private int id;
-
-    // Cihazın kime ait olduğunu tutmak performansı artırır (İsteğe bağlı, doğrudan müşteriyle eşleşmesi için)
-    @ColumnName("customer_id")
-    private Integer customerId;
+    private Long id;
 
     @ColumnName("device_type")
     private String deviceType;
@@ -26,16 +22,19 @@ public class Device {
     private String model;
 
     @ColumnName("serial_no")
-    private String serialNo; // UNIQUE olmalı (IMEI vb.)
+    private String serialNo;
 
     private String password;
     private String accessory;
 
+    @ColumnName("is_deleted")
+    private boolean deleted;
+
+    @ColumnName("updated_at")
+    private LocalDateTime updatedAt;
+
     @ColumnName("created_at")
     private LocalDateTime createdAt;
-
-    // JOIN işlemleri için İlişkisel Nesne (Veritabanına direkt yazılmaz)
-    private Customer customer;
 
     @Override
     public String toString() {

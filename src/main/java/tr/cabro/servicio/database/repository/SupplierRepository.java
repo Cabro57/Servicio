@@ -18,7 +18,7 @@ public interface SupplierRepository {
     @SqlUpdate("INSERT INTO suppliers (name, business_name, tax_number, tax_office, email, phone, address, note, created_at, updated_at) " +
             "VALUES (:name, :businessName, :taxNumber, :taxOffice, :email, :phone, :address, :note, :createdAt, :updatedAt)")
     @GetGeneratedKeys
-    int insert(@BindBean Supplier supplier);
+    Long insert(@BindBean Supplier supplier);
 
     @SqlUpdate("UPDATE suppliers SET name=:name, business_name=:businessName, tax_number=:taxNumber, " +
             "tax_office=:taxOffice, email=:email, phone=:phone, address=:address, note=:note, updated_at=:updatedAt WHERE id=:id")
@@ -26,18 +26,18 @@ public interface SupplierRepository {
 
     // --- SOFT DELETE İŞLEMLERİ ---
     @SqlUpdate("UPDATE suppliers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
-    void delete(@Bind("id") int id);
+    void delete(@Bind("id") Long id);
 
     @SqlUpdate("UPDATE suppliers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id IN (<ids>)")
-    void deleteByIds(@BindList("ids") List<Integer> ids);
+    void deleteByIds(@BindList("ids") List<Long> ids);
 
     // --- SEÇME (SELECT) İŞLEMLERİ ---
     // SELECT * yerine performansı ve güvenilirliği artırmak için kolon isimlerini açıkça yazmak kurumsal bir best-practice'dir.
     @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers WHERE id = :id AND is_deleted = 0")
-    Optional<Supplier> findById(@Bind("id") int id);
+    Optional<Supplier> findById(@Bind("id") Long id);
 
     @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers WHERE id IN (<ids>) AND is_deleted = 0")
-    List<Supplier> findByIds(@BindList("ids") List<Integer> ids);
+    List<Supplier> findByIds(@BindList("ids") List<Long> ids);
 
     @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers WHERE is_deleted = 0 ORDER BY name")
     List<Supplier> findAll();

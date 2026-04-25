@@ -9,22 +9,16 @@ import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.AllForms;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.Badge;
 import tr.cabro.servicio.application.component.CurrencyField;
-import tr.cabro.servicio.application.panels.ProcessSelectedPanel;
 import tr.cabro.servicio.application.panels.service.ServiceItemAddPanel;
 import tr.cabro.servicio.application.panels.service.ServiceItemEditPanel;
 import tr.cabro.servicio.application.util.Ikon;
-import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.model.*;
-import tr.cabro.servicio.model.Process;
 import tr.cabro.servicio.model.enums.ItemType;
 import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
-import tr.cabro.servicio.model.enums.SourceType;
 import tr.cabro.servicio.service.*;
-import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
 
@@ -36,15 +30,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class FormService extends Form {
+public class FormWorkOrder extends Form {
 
-    private Service service;
-    private List<ServiceNote> serviceNotes;
+    private WorkOrder workOrder;
+    private List<WorkOrderNote> workOrderNotes;
 
-    private final RepairService repairService;
-    private final ServiceItemManager itemManager;
-    private final ServiceNoteManager noteManager;
-    private final ServicePaymentManager paymentManager; // MİMARİ DÜZELTME: Artık Repo değil, Manager kullanıyoruz
+    private final WorkOrderService workOrderService;
 
     // --- UI Bileşenleri ---
     private JLabel lblHeaderTitle;
@@ -60,29 +51,26 @@ public class FormService extends Form {
     private JTextArea txtReportedFault;
     private JLabel lblDateArrival, lblDateEstimated;
 
-    public FormService(Service service) {
-        this.repairService = ServiceManager.getRepairService();
-        this.itemManager = ServiceManager.getServiceItemManager();
-        this.noteManager = ServiceManager.getServiceNoteManager();
-        this.paymentManager = ServiceManager.getServicePaymentManager(); // MİMARİ DÜZELTME
+    public FormWorkOrder(WorkOrder workOrder) {
+        this.workOrderService = ServiceManager.getWorkOrderService();
 
         initComponent();
-        setService(service);
+        setService(workOrder);
     }
 
-    public void setService(@NonNull Service service) {
-        this.service = service;
+    public void setService(@NonNull WorkOrder workOrder) {
+        this.workOrder = workOrder;
         reloadServiceData();
     }
 
     private void reloadServiceData() {
-        if (service == null || service.getId() <= 0) return;
+        if (workOrder == null || workOrder.getId() <= 0) return;
 
-        repairService.get(service.getId()).thenAccept(opt -> {
+        workOrderService.get(workOrder.getId()).thenAccept(opt -> {
             opt.ifPresent(s -> {
-                this.service = s;
-                noteManager.getNotesForService(s.getId()).thenAccept(notes -> {
-                    this.serviceNotes = notes;
+                this.workOrder = s;
+                workOrderService.getNotes(s.getId()).thenAccept(notes -> {
+                    this.workOrderNotes = notes;
                     SwingUtilities.invokeLater(() -> {
                         hydrateLeftUI();
                         buildRightColumn();
@@ -93,13 +81,13 @@ public class FormService extends Form {
     }
 
     private void hydrateLeftUI() {
-        lblHeaderTitle.setText("SRV-" + service.getId());
+        lblHeaderTitle.setText("SRV-" + workOrder.getId());
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new java.util.Locale("tr", "TR"));
-        String dateStr = service.getCreatedAt() != null ? service.getCreatedAt().format(formatter) : "-";
+        String dateStr = workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().format(formatter) : "-";
         lblHeaderSubtitle.setText("Kayıt Tarihi: " + dateStr);
 
-        ServiceStatus currentStatus = service.getServiceStatus() != null ? service.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
+        ServiceStatus currentStatus = workOrder.getServiceStatus() != null ? workOrder.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
         lblHeaderBadge.setVisualizable(currentStatus);
 
         ActionListener[] listeners = statusComboBox.getActionListeners();
@@ -107,13 +95,13 @@ public class FormService extends Form {
         statusComboBox.setSelectedItem(currentStatus);
         for (ActionListener l : listeners) statusComboBox.addActionListener(l);
 
-        if (service.getCustomer() != null) {
-            lblCustomerName.setText(service.getCustomer().getFullName());
-            lblCustomerPhone.setText(service.getCustomer().getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(service.getCustomer().getPhoneNumber1()) : "-");
-            lblCustomerEmail.setText(service.getCustomer().getEmail() != null ? service.getCustomer().getEmail() : "-");
+        if (workOrder.getCustomer() != null) {
+            lblCustomerName.setText(workOrder.getCustomer().getFullName());
+            lblCustomerPhone.setText(workOrder.getCustomer().getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(workOrder.getCustomer().getPhoneNumber1()) : "-");
+            lblCustomerEmail.setText(workOrder.getCustomer().getEmail() != null ? workOrder.getCustomer().getEmail() : "-");
         }
 
-        Device device = service.getDevice();
+        Device device = workOrder.getDevice();
         if (device != null) {
             lblDeviceType.setText(device.getDeviceType() != null ? device.getDeviceType() : "-");
             lblDeviceBrand.setText(device.getBrand() != null ? device.getBrand() : "-");
@@ -121,9 +109,9 @@ public class FormService extends Form {
             lblDeviceSerial.setText(device.getSerialNo() != null ? device.getSerialNo() : "-");
         }
 
-        txtReportedFault.setText(service.getReportedFault() != null ? service.getReportedFault() : "Belirtilmemiş.");
+        txtReportedFault.setText(workOrder.getReportedFault() != null ? workOrder.getReportedFault() : "Belirtilmemiş.");
         lblDateArrival.setText(dateStr);
-        lblDateEstimated.setText(service.getCreatedAt() != null ? service.getCreatedAt().plusDays(3).format(formatter) : "-");
+        lblDateEstimated.setText(workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().plusDays(3).format(formatter) : "-");
     }
 
     private void initComponent() {
@@ -190,11 +178,11 @@ public class FormService extends Form {
         listHeader.add(new JLabel(""), "wrap");
         card.add(listHeader, "span 2, growx, wrap");
 
-        if (service.getItems() == null || service.getItems().isEmpty()) {
+        if (workOrder.getItems() == null || workOrder.getItems().isEmpty()) {
             JLabel empty = createMutedLabel("Henüz işlem veya parça eklenmedi.");
             card.add(empty, "span 2, gapy 10");
         } else {
-            for (ServiceItem item : service.getItems()) {
+            for (WorkOrderItem item : workOrder.getItems()) {
                 JPanel row = new JPanel(new MigLayout("insets 10, fillx", "[80!][grow][150!][100!][70!]", ""));
                 row.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
                 row.setOpaque(false);
@@ -222,7 +210,7 @@ public class FormService extends Form {
                 btnDelete.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
                 btnDelete.setCursor(new Cursor(Cursor.HAND_CURSOR));
                 btnDelete.addActionListener(e -> {
-                    itemManager.deleteItem(item).thenAccept(v -> reloadServiceData());
+                    workOrderService.deleteItem(item.getId()).thenAccept(v -> reloadServiceData());
                 });
 
                 JPanel actions = new JPanel(new MigLayout("insets 0, gap 5", "[][]", ""));
@@ -250,10 +238,10 @@ public class FormService extends Form {
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
         card.add(title, "wrap");
 
-        if (service.getPayments() == null || service.getPayments().isEmpty()) {
+        if (workOrder.getPayments() == null || workOrder.getPayments().isEmpty()) {
             card.add(createMutedLabel("Henüz ödeme alınmadı."), "wrap");
         } else {
-            for (ServicePayment p : service.getPayments()) {
+            for (WorkOrderPayment p : workOrder.getPayments()) {
                 JPanel row = new JPanel(new MigLayout("insets 5, fillx", "[grow][100!][40!]", ""));
                 row.setOpaque(false);
                 row.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
@@ -268,7 +256,7 @@ public class FormService extends Form {
                 JButton btnDel = new JButton(new Ikon("icons/x.svg", 0.7f));
                 btnDel.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
                 btnDel.addActionListener(e -> {
-                    paymentManager.deletePayment(p.getId()).thenAccept(v -> reloadServiceData());
+                    workOrderService.deletePayment(p.getId()).thenAccept(v -> reloadServiceData());
                 });
                 row.add(btnDel, "align center");
                 card.add(row, "wrap, growx");
@@ -291,7 +279,7 @@ public class FormService extends Form {
             }
         });
         JFormattedTextField txtAmount = new CurrencyField();
-        txtAmount.setValue(service.getRemainingAmount());
+        txtAmount.setValue(workOrder.getRemainingAmount());
 
         JButton btnAddPayment = new JButton("+ Tahsilat Ekle");
         btnAddPayment.putClientProperty(FlatClientProperties.STYLE, "background: #0b4a3a; foreground: #2ecc71; arc: 8; font: bold; borderWidth: 0");
@@ -300,13 +288,13 @@ public class FormService extends Form {
             BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
             if (amt.compareTo(BigDecimal.ZERO) <= 0) return;
 
-            ServicePayment sp = new ServicePayment();
-            sp.setServiceId(service.getId());
+            WorkOrderPayment sp = new WorkOrderPayment();
+            sp.setServiceId(workOrder.getId());
             sp.setAmount(amt);
             sp.setPaymentType((PaymentType) cmbMethod.getSelectedItem());
             sp.setPaymentDate(LocalDateTime.now());
 
-            paymentManager.addPayment(sp).thenAccept(v -> reloadServiceData());
+            workOrderService.addPayment(sp).thenAccept(v -> reloadServiceData());
         });
 
         inputRow.add(cmbMethod, "growx");
@@ -319,10 +307,10 @@ public class FormService extends Form {
         summaryBox.putClientProperty(FlatClientProperties.STYLE, "background: darken($Panel.background, 2%); arc: 15");
 
         summaryBox.add(createMutedLabel("Hizmet & Parça Toplamı:"));
-        summaryBox.add(new JLabel(Format.formatPrice(service.getTotalServiceAmount())), "align right, wrap");
+        summaryBox.add(new JLabel(Format.formatPrice(workOrder.getTotalServiceAmount())), "align right, wrap");
 
         summaryBox.add(createMutedLabel("Alınan Ödeme:"));
-        JLabel lblPaid = new JLabel("- " + Format.formatPrice(service.getTotalPaid()));
+        JLabel lblPaid = new JLabel("- " + Format.formatPrice(workOrder.getTotalPaid()));
         lblPaid.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71");
         summaryBox.add(lblPaid, "align right, wrap");
 
@@ -332,9 +320,9 @@ public class FormService extends Form {
         lblRemainText.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");
         summaryBox.add(lblRemainText);
 
-        BigDecimal remain = service.getRemainingAmount();
-        BigDecimal totalPaid = service.getTotalPaid();
-        BigDecimal totalCost = service.getTotalServiceAmount();
+        BigDecimal remain = workOrder.getRemainingAmount();
+        BigDecimal totalPaid = workOrder.getTotalPaid();
+        BigDecimal totalCost = workOrder.getTotalServiceAmount();
 
         JLabel lblRemainVal = new JLabel(Format.formatPrice(remain));
         String remainColor = remain.compareTo(BigDecimal.ZERO) > 0 ? "#e74c3c" : "#2ecc71";
@@ -373,9 +361,9 @@ public class FormService extends Form {
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
         card.add(title, "wrap");
 
-        if (serviceNotes != null && !serviceNotes.isEmpty()) {
+        if (workOrderNotes != null && !workOrderNotes.isEmpty()) {
             DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new java.util.Locale("tr", "TR"));
-            for (ServiceNote n : serviceNotes) {
+            for (WorkOrderNote n : workOrderNotes) {
                 JPanel noteRow = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "[]5[]"));
                 noteRow.setOpaque(false);
 
@@ -407,10 +395,10 @@ public class FormService extends Form {
         btnAddNote.putClientProperty(FlatClientProperties.STYLE, "background: #1e3a8a; foreground: #3498db; arc: 10; font: bold; borderWidth: 0");
         btnAddNote.addActionListener(e -> {
             if (txtNewNote.getText().trim().isEmpty()) return;
-            ServiceNote n = new ServiceNote();
-            n.setServiceId(service.getId());
+            WorkOrderNote n = new WorkOrderNote();
+            n.setServiceId(workOrder.getId());
             n.setNote(txtNewNote.getText().trim());
-            noteManager.addNote(n).thenAccept(v -> reloadServiceData());
+            workOrderService.addNote(n).thenAccept(v -> reloadServiceData());
         });
 
         card.add(btnAddNote, "align right");
@@ -423,7 +411,7 @@ public class FormService extends Form {
 
         JButton btnBack = new JButton(new Ikon("icons/arrow-left.svg", 0.5f));
         btnBack.putClientProperty(FlatClientProperties.STYLE, "arc: 999; background: lighten($Panel.background, 5%);");
-        btnBack.addActionListener(e -> FormManager.showForm(AllForms.getForm(FormServices.class)));
+        btnBack.addActionListener(e -> FormManager.showForm(AllForms.getForm(FormWorkOrders.class)));
 
         JPanel titlePanel = new JPanel(new MigLayout("insets 0, gapy 2", "[fill]", "[][]"));
         titlePanel.setOpaque(false);
@@ -454,9 +442,9 @@ public class FormService extends Form {
 
         statusComboBox.addActionListener(e -> {
             ServiceStatus newStatus = (ServiceStatus) statusComboBox.getSelectedItem();
-            if (newStatus != null && service != null && service.getServiceStatus() != newStatus) {
-                service.setServiceStatus(newStatus);
-                repairService.save(service, true).thenAccept(s -> reloadServiceData());
+            if (newStatus != null && workOrder != null && workOrder.getServiceStatus() != newStatus) {
+                workOrder.setServiceStatus(newStatus);
+                workOrderService.save(workOrder, true).thenAccept(s -> reloadServiceData());
             }
         });
 
@@ -473,7 +461,7 @@ public class FormService extends Form {
     }
 
     private void onActionTaken() {
-        ServiceItemAddPanel addPanel = new ServiceItemAddPanel(service, this::reloadServiceData);
+        ServiceItemAddPanel addPanel = new ServiceItemAddPanel(workOrder, this::reloadServiceData);
 
         SimpleModalBorder.Option[] options = {
                 new SimpleModalBorder.Option("Pencereyi Kapat", SimpleModalBorder.CANCEL_OPTION)
@@ -487,7 +475,7 @@ public class FormService extends Form {
         }), "itemAddModal");
     }
 
-    private void openItemEditModal(ServiceItem item) {
+    private void openItemEditModal(WorkOrderItem item) {
         ServiceItemEditPanel editPanel = new ServiceItemEditPanel(item);
 
         SimpleModalBorder.Option[] options = {
@@ -497,15 +485,14 @@ public class FormService extends Form {
 
         ModalDialog.showModal(this, new SimpleModalBorder(editPanel, "Kalemi Düzenle", options, (controller, action) -> {
             if (action == SimpleModalBorder.YES_OPTION) {
-                ServiceItem updated = editPanel.getUpdatedItem();
+                WorkOrderItem updated = editPanel.getUpdatedItem();
                 if (updated == null) {
                     Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bir isim girin.");
                     controller.consume();
                     return;
                 }
 
-                // MİMARİ DÜZELTME: Doğrudan Repo yerine ItemManager kullanıyoruz.
-                itemManager.updateItem(updated).thenAccept(v -> {
+                workOrderService.updateItem(updated).thenAccept(v -> {
                     SwingUtilities.invokeLater(() -> {
                         Toast.show(this, Toast.Type.SUCCESS, "Kalem başarıyla güncellendi.");
                         reloadServiceData();

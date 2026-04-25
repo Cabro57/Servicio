@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.jdbi.v3.core.mapper.reflect.ColumnName;
 import tr.cabro.servicio.model.enums.CustomerType;
 
+import java.beans.Transient;
 import java.time.LocalDateTime;
 
 @Getter @Setter
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Customer {
 
-    private int id;
+    private Long id;
 
     @ColumnName("customer_type")
     private CustomerType type;
@@ -60,10 +61,10 @@ public class Customer {
     private LocalDateTime updatedAt;
 
     // Tabloda olmayan ama UI/Raporlama için kullanılan alan
-    private int deviceCount;
+    private transient Integer deviceCount;
 
     // Geriye dönük uyumluluk için basit Constructor
-    public Customer(int id, String firstName, String lastName) {
+    public Customer(Long id, String firstName, String lastName) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;

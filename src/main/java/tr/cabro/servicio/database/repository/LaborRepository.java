@@ -17,7 +17,7 @@ public interface LaborRepository {
     @SqlUpdate("INSERT INTO labors (name, description, category, default_price, created_at, updated_at) " +
             "VALUES (:name, :description, :category, :defaultPrice, :createdAt, :updatedAt)")
     @GetGeneratedKeys
-    int insert(@BindBean Labor labor);
+    Long insert(@BindBean Labor labor);
 
     @SqlUpdate("UPDATE labors SET name=:name, description=:description, category=:category, " +
             "default_price=:defaultPrice, updated_at=:updatedAt WHERE id=:id")
@@ -25,10 +25,10 @@ public interface LaborRepository {
 
     // Soft Delete: İşçilik kalemini silmeyip gizliyoruz
     @SqlUpdate("UPDATE labors SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
-    void delete(@Bind("id") int id);
+    void delete(@Bind("id") Long id);
 
     @SqlQuery("SELECT * FROM labors WHERE id = :id AND is_deleted = 0")
-    Optional<Labor> findById(@Bind("id") int id);
+    Optional<Labor> findById(@Bind("id") Long id);
 
     @SqlQuery("SELECT * FROM labors WHERE is_deleted = 0 ORDER BY category, name")
     List<Labor> findAll();

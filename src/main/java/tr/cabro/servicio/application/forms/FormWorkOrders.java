@@ -18,9 +18,9 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.enums.ServiceStatus;
-import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
@@ -37,15 +37,15 @@ import java.util.*;
 import java.util.List;
 
 @SystemForm(name = "Servis Kayıtları", description = "Tüm servis kayıtlarını oluşturmak için kullanılabilir")
-public class FormServices extends AbstractTableForm {
+public class FormWorkOrders extends AbstractTableForm {
 
-    private final RepairService service;
+    private final WorkOrderService service;
     private final ReportManager reportManager;
-    private GenericTableModel<Service> tableModal;
+    private GenericTableModel<WorkOrder> tableModal;
     private ServiceStatus currentStatusFilter;
 
-    public FormServices() {
-        this.service = ServiceManager.getRepairService();
+    public FormWorkOrders() {
+        this.service = ServiceManager.getWorkOrderService();
         this.reportManager = ServiceManager.getReportManager(); // YENİ: İstatistikler için eklendi
     }
 
@@ -128,7 +128,7 @@ public class FormServices extends AbstractTableForm {
 
     @Override
     protected void refreshStats() {
-        // YENİ: İstatistikleri artık RepairService'den değil, ReportManager'dan alıyoruz (Tüm Zamanlar)
+        // YENİ: İstatistikleri artık WorkOrderService'den değil, ReportManager'dan alıyoruz (Tüm Zamanlar)
         reportManager.getDashboardSummaryCards("2000-01-01", "2100-01-01").thenAccept(stats -> {
             SwingUtilities.invokeLater(() -> {
 
@@ -162,14 +162,14 @@ public class FormServices extends AbstractTableForm {
 
     @Override
     protected void setupTable() {
-        List<ColumnDef<Service>> columns = Arrays.asList(
+        List<ColumnDef<WorkOrder>> columns = Arrays.asList(
                 new ColumnDef<>("Kayıt No", String.class, s -> "SRV-" + s.getId()),
-                new ColumnDef<>("Müşteri Bilgisi", Customer.class, Service::getCustomer),
-                new ColumnDef<>("Cihaz Bilgisi", Device.class, Service::getDevice),
-                new ColumnDef<>("Arıza / İşlem", String.class, Service::getDetectedFault),
-                new ColumnDef<>("Tarih", Service.class, s -> s),
+                new ColumnDef<>("Müşteri Bilgisi", Customer.class, WorkOrder::getCustomer),
+                new ColumnDef<>("Cihaz Bilgisi", Device.class, WorkOrder::getDevice),
+                new ColumnDef<>("Arıza / İşlem", String.class, WorkOrder::getDetectedFault),
+                new ColumnDef<>("Tarih", WorkOrder.class, s -> s),
                 new ColumnDef<>("Kalan Ücret", String.class, s -> Format.formatPrice(s.getRemainingAmount())),
-                new ColumnDef<>("Durum", ServiceStatus.class, Service::getServiceStatus),
+                new ColumnDef<>("Durum", ServiceStatus.class, WorkOrder::getServiceStatus),
                 new ColumnDef<>("İşlem", String.class, s -> "Detay")
         );
 
@@ -196,7 +196,7 @@ public class FormServices extends AbstractTableForm {
 
         sorter.setComparator(4, Comparator.comparing(s -> {
             if (s == null) return LocalDateTime.MIN;
-            LocalDateTime date = ((Service) s).getCreatedAt();
+            LocalDateTime date = ((WorkOrder) s).getCreatedAt();
             return date != null ? date : LocalDateTime.MIN;
         }));
 
@@ -246,7 +246,7 @@ public class FormServices extends AbstractTableForm {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", new Locale("tr", "TR"));
         table.getColumnModel().getColumn(4).setCellRenderer(
-                new MultiLineTableCellRenderer<Service>(
+                new MultiLineTableCellRenderer<WorkOrder>(
                         service -> service.getCreatedAt() != null ? service.getCreatedAt().format(formatter) : "Tarih Yok",
                         service -> {
                             if (service.getServiceStatus() == ServiceStatus.DELIVERED || service.getServiceStatus() == ServiceStatus.RETURN) {
@@ -274,33 +274,33 @@ public class FormServices extends AbstractTableForm {
             public void onEdit(int row) {
                 if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
-                Service selectedService = tableModal.getItemAt(modelRow);
-                if (selectedService != null) openEditModal(selectedService);
+                WorkOrder selectedWorkOrder = tableModal.getItemAt(modelRow);
+                if (selectedWorkOrder != null) openEditModal(selectedWorkOrder);
             }
 
             @Override
             public void onDelete(int row) {
                 if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
-                Service selectedService = tableModal.getItemAt(modelRow);
+                WorkOrder selectedWorkOrder = tableModal.getItemAt(modelRow);
 
-                if (selectedService != null) {
+                if (selectedWorkOrder != null) {
                     int confirm = JOptionPane.showConfirmDialog(
-                            FormServices.this,
-                            "SRV-" + selectedService.getId() + " numaralı servis kaydını silmek istediğinize emin misiniz?\nBu işlem geri alınamaz.",
+                            FormWorkOrders.this,
+                            "SRV-" + selectedWorkOrder.getId() + " numaralı servis kaydını silmek istediğinize emin misiniz?\nBu işlem geri alınamaz.",
                             "Silme Onayı",
                             JOptionPane.YES_NO_OPTION,
                             JOptionPane.WARNING_MESSAGE
                     );
 
                     if (confirm == JOptionPane.YES_OPTION) {
-                        service.delete(selectedService.getId()).thenAccept(v -> {
+                        service.delete(selectedWorkOrder.getId()).thenAccept(v -> {
                             SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormServices.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
+                                Toast.show(FormWorkOrders.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
                                 refreshTable();
                             });
                         }).exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() -> Toast.show(FormServices.this, Toast.Type.ERROR, "Silme işlemi başarısız: " + ex.getCause().getMessage()));
+                            SwingUtilities.invokeLater(() -> Toast.show(FormWorkOrders.this, Toast.Type.ERROR, "Silme işlemi başarısız: " + ex.getCause().getMessage()));
                             return null;
                         });
                     }
@@ -311,8 +311,8 @@ public class FormServices extends AbstractTableForm {
             public void onView(int row) {
                 if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
-                Service selectedService = tableModal.getItemAt(modelRow);
-                if (selectedService != null) FormManager.showForm(new FormService(selectedService));
+                WorkOrder selectedWorkOrder = tableModal.getItemAt(modelRow);
+                if (selectedWorkOrder != null) FormManager.showForm(new FormWorkOrder(selectedWorkOrder));
             }
         }));
 
@@ -347,7 +347,7 @@ public class FormServices extends AbstractTableForm {
     @Override
     protected void onNew() {
         final String INTAKE_MODAL_ID = "quick_intake_modal";
-        QuickIntakePanel intakePanel = new QuickIntakePanel(new Service());
+        QuickIntakePanel intakePanel = new QuickIntakePanel(new WorkOrder());
 
         SimpleModalBorder.Option[] options = {
                 new SimpleModalBorder.Option("Servisi Kaydet", SimpleModalBorder.OK_OPTION),
@@ -377,14 +377,14 @@ public class FormServices extends AbstractTableForm {
                     }
                 }), INTAKE_MODAL_ID);
             } else if (action == SimpleModalBorder.NO_OPTION) {
-                Service updated = intakePanel.getData();
+                WorkOrder updated = intakePanel.getData();
                 if (updated == null) { controller.consume(); return; }
 
                 service.save(updated, false).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
                         Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla kayıt edildi.");
                         refreshTable();
-                        FormManager.showForm(new FormService(saved));
+                        FormManager.showForm(new FormWorkOrder(saved));
                     });
                 }).exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
@@ -394,7 +394,7 @@ public class FormServices extends AbstractTableForm {
                     return null;
                 });
             } else if (action == SimpleModalBorder.OK_OPTION) {
-                Service updated = intakePanel.getData();
+                WorkOrder updated = intakePanel.getData();
                 if (updated == null) { controller.consume(); return; }
 
                 service.save(updated, false).thenAccept(saved -> {
@@ -413,20 +413,20 @@ public class FormServices extends AbstractTableForm {
         }), INTAKE_MODAL_ID);
     }
 
-    private void openEditModal(Service editService) {
-        if (editService == null || editService.getId() <= 0) return;
+    private void openEditModal(WorkOrder editWorkOrder) {
+        if (editWorkOrder == null || editWorkOrder.getId() <= 0) return;
 
         final String EDIT_MODAL_ID = "service_edit_modal";
 
         java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-            QuickIntakePanel editPanel = new QuickIntakePanel(editService);
+            QuickIntakePanel editPanel = new QuickIntakePanel(editWorkOrder);
 
             SimpleModalBorder.Option[] options = {
                     new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
                     new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
             };
 
-            return new SimpleModalBorder(editPanel, "Kayıt Düzenle (SRV-" + editService.getId() + ")", options, (controller, action) -> {
+            return new SimpleModalBorder(editPanel, "Kayıt Düzenle (SRV-" + editWorkOrder.getId() + ")", options, (controller, action) -> {
                 if (action == SimpleModalBorder.OPENED) {
                     editPanel.formOpen();
                 } else if (action == QuickIntakePanel.NEW_CUSTOMER_ACTION) {
@@ -446,7 +446,7 @@ public class FormServices extends AbstractTableForm {
                         }
                     }), EDIT_MODAL_ID);
                 } else if (action == SimpleModalBorder.YES_OPTION) {
-                    Service updatedData = editPanel.getData();
+                    WorkOrder updatedData = editPanel.getData();
                     if (updatedData == null) {
                         controller.consume();
                         return;

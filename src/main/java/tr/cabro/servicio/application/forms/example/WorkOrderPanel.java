@@ -7,13 +7,13 @@ import tr.cabro.servicio.application.component.StatCard;
 import javax.swing.*;
 import java.awt.*;
 
-public class ServiceRecordsPanel extends JPanel {
+public class WorkOrderPanel extends JPanel {
 
     private JTable table;
     private JTextField searchField;
     private JComboBox<String> filterCombo;
 
-    public ServiceRecordsPanel() {
+    public WorkOrderPanel() {
         // Ana Layout: Yukarıdan aşağıya 3 satır: Header, Stats, TableArea
         setLayout(new MigLayout("debug, fill, insets 20, gapy 20", "[grow]", "[pref][pref][grow, fill]"));
 

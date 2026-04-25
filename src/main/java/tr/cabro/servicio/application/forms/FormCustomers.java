@@ -20,11 +20,11 @@ import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.model.ServicePayment;
+import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.WorkOrderPayment;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
-import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
@@ -45,7 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FormCustomers extends AbstractTableForm {
 
     private final CustomerService customerService;
-    private final RepairService repairService;
+    private final WorkOrderService workOrderService;
     private GenericTableModel<Customer> tableModel;
 
     // Müşterilerin toplam harcamalarını RAM'de (önbellekte) tutmak için
@@ -53,7 +53,7 @@ public class FormCustomers extends AbstractTableForm {
 
     public FormCustomers() {
         this.customerService = ServiceManager.getCustomerService();
-        this.repairService = ServiceManager.getRepairService();
+        this.workOrderService = ServiceManager.getWorkOrderService();
     }
 
     // --- 1. ÜST KISIM VE ARAMA AYARLARI ---
@@ -242,22 +242,22 @@ public class FormCustomers extends AbstractTableForm {
     @Override
     protected void refreshTable() {
         CompletableFuture<List<Customer>> customersFuture = customerService.getAll();
-        CompletableFuture<List<Service>> servicesFuture = repairService.getAll();
+        CompletableFuture<List<WorkOrder>> servicesFuture = workOrderService.getAll();
 
         CompletableFuture.allOf(customersFuture, servicesFuture).thenAccept(v -> {
             List<Customer> allCustomers = customersFuture.join();
-            List<Service> allServices = servicesFuture.join();
+            List<WorkOrder> allWorkOrders = servicesFuture.join();
 
             customerSpentMap.clear();
             BigDecimal totalGlobalRevenue = BigDecimal.ZERO;
 
             // Müşterilerin servis ödemelerini hesapla (Ciro)
-            for (Service s : allServices) {
+            for (WorkOrder s : allWorkOrders) {
                 if (s.getCustomerId() == null || s.getCustomerId() <= 0) continue;
 
                 BigDecimal servicePaid = BigDecimal.ZERO;
                 if (s.getPayments() != null) {
-                    for (ServicePayment payment : s.getPayments()) {
+                    for (WorkOrderPayment payment : s.getPayments()) {
                         servicePaid = servicePaid.add(payment.getAmount());
                     }
                 }

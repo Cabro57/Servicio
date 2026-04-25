@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 
 @Getter @Setter
 public class Part {
-    private int id;
+    private Long id;
+
     private String barcode;
 
     private String name;
@@ -18,7 +19,7 @@ public class Part {
     private String modelCompatibility;
 
     @ColumnName("supplier_id")
-    private Integer supplierId;
+    private Long supplierId;
 
     private Supplier supplier;
 
@@ -29,10 +30,10 @@ public class Part {
     private BigDecimal salePrice = BigDecimal.ZERO;
 
     @ColumnName("stock_quantity")
-    private int stockQuantity;
+    private Integer stockQuantity;
 
     @ColumnName("min_stock_level")
-    private int minStockLevel;
+    private Integer minStockLevel;
 
     private String description;
 

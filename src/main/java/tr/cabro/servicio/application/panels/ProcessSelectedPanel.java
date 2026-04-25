@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
+@Deprecated
 public class ProcessSelectedPanel extends JPanel {
 
     private GenericTableModel<Process> model;

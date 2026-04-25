@@ -7,15 +7,15 @@ import org.jdbi.v3.core.mapper.reflect.ColumnName;
 import java.time.LocalDateTime;
 
 @Getter @Setter
-public class ServiceNote {
+public class WorkOrderNote {
 
-    private int id;
+    private Long id;
 
     @ColumnName("service_id")
-    private int serviceId;
+    private Long serviceId;
 
     @ColumnName("technician_id")
-    private Integer technicianId; // Notu yazan User'ın ID'si
+    private Long technicianId; // Notu yazan User'ın ID'si
 
     private String note;
 
@@ -25,7 +25,7 @@ public class ServiceNote {
     // --- İLİŞKİSEL VERİLER (Veritabanına yazılmaz, UI'da göstermek için) ---
     private User technician; // Notu yazan kişinin detayları (Ad, Soyad vb.)
 
-    public ServiceNote() {
+    public WorkOrderNote() {
         this.createdAt = LocalDateTime.now();
     }
 }

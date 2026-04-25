@@ -11,18 +11,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter @Setter
-public class Service {
+public class WorkOrder {
 
-    private int id;
+    private Long id;
 
     @ColumnName("customer_id")
-    private Integer customerId;
+    private Long customerId;
 
     @ColumnName("device_id")
-    private int deviceId;
+    private Long deviceId;
 
     @ColumnName("technician_id")
-    private Integer technicianId; // Servisi üzerine alan ana teknisyen
+    private Long technicianId; // Servisi üzerine alan ana teknisyen
 
     @ColumnName("reported_fault")
     private String reportedFault;
@@ -45,7 +45,8 @@ public class Service {
     @ColumnName("delivery_date")
     private LocalDateTime deliveryDate;
 
-    // DİKKAT: 'private String note;' BURADAN TAMAMEN SİLİNDİ!
+    @ColumnName("is_deleted")
+    private boolean isDeleted;
 
     @ColumnName("created_at")
     private LocalDateTime createdAt;
@@ -57,11 +58,9 @@ public class Service {
     private Customer customer;
     private Device device;
 
-    private List<ServiceItem> items = new ArrayList<>();
-    private List<ServicePayment> payments = new ArrayList<>();
-
-    // YENİ: Teknisyen Notları Listesi
-    private List<ServiceNote> technicianNotes = new ArrayList<>();
+    private List<WorkOrderItem> items = new ArrayList<>();
+    private List<WorkOrderPayment> payments = new ArrayList<>();
+    private List<WorkOrderNote> technicianNotes = new ArrayList<>();
 
     // =======================================================================
     // FİNANSAL HESAPLAMA METODLARI
@@ -70,14 +69,14 @@ public class Service {
     public BigDecimal getTotalServiceAmount() {
         if (items == null || items.isEmpty()) return BigDecimal.ZERO;
         return items.stream()
-                .map(ServiceItem::getTotalPrice)
+                .map(WorkOrderItem::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public BigDecimal getTotalPaid() {
         if (payments == null || payments.isEmpty()) return BigDecimal.ZERO;
         return payments.stream()
-                .map(ServicePayment::getAmount)
+                .map(WorkOrderPayment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 

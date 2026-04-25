@@ -21,7 +21,7 @@ CREATE TABLE added_part (
     description TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
-    FOREIGN KEY (service_id) REFERENCES services(id)
+    FOREIGN KEY (service_id) REFERENCES workOrders(id)
 );
 
 -- 3. Eski added_part verilerini part tablosuyla birleştirerek taşı

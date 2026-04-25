@@ -8,7 +8,7 @@ import java.awt.*;
 import java.util.function.Function;
 
 /**
- * @param <T> Hücreye gelen verinin tipi (Örn: Customer, Service vb.)
+ * @param <T> Hücreye gelen verinin tipi (Örn: Customer, WorkOrder vb.)
  */
 public class MultiLineTableCellRenderer<T> extends JPanel implements TableCellRenderer {
 

@@ -5,28 +5,28 @@ import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import raven.modal.system.FormSearch;
 import raven.modal.utils.DemoPreferences;
-import tr.cabro.servicio.application.forms.FormService;
+import tr.cabro.servicio.application.forms.FormWorkOrder;
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.service.ServiceManager;
 
 import java.util.Optional;
 
 public class ServiceSearchResult implements ISearchableResult {
 
-    private final Service service;
+    private final WorkOrder workOrder;
 
-    public ServiceSearchResult(Service service) {
-        this.service = service;
+    public ServiceSearchResult(WorkOrder workOrder) {
+        this.workOrder = workOrder;
     }
 
     @Override
     public String getDisplayName() {
         // FIX: device_brand/model artık ayrı Device entity'si üzerinden geliyor
-        if (service.getDevice() != null) {
-            return String.format("%s %s", service.getDevice().getBrand(), service.getDevice().getModel());
+        if (workOrder.getDevice() != null) {
+            return String.format("%s %s", workOrder.getDevice().getBrand(), workOrder.getDevice().getModel());
         }
-        return "Servis #" + service.getId();
+        return "Servis #" + workOrder.getId();
     }
 
     @Override
@@ -34,7 +34,7 @@ public class ServiceSearchResult implements ISearchableResult {
         try {
             // join() metodu asenkron işlemin tamamlanmasını bekler ve sonucu döndürür.
             Optional<Customer> customerOpt = ServiceManager.getCustomerService()
-                    .get(service.getCustomerId())
+                    .get(workOrder.getCustomerId())
                     .join();
 
             return customerOpt
@@ -50,7 +50,7 @@ public class ServiceSearchResult implements ISearchableResult {
 
     @Override
     public String getUniqueId() {
-        return "SERVICE:"+service.getId();
+        return "SERVICE:"+ workOrder.getId();
     }
 
     @Override
@@ -59,7 +59,7 @@ public class ServiceSearchResult implements ISearchableResult {
 
         // SİZİN MİMARİNİZDEKİ DOĞRU ÇAĞRI:
         // Yeni, veri odaklı formu 'new' ile oluştur
-        Form formInstance = new FormService(service);
+        Form formInstance = new FormWorkOrder(workOrder);
         // FormManager'a göster komutu ver
         FormManager.showForm(formInstance);
 

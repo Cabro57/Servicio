@@ -150,7 +150,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
         MenuItem[] items = new MenuItem[]{
                 new Item("Ana Sayfa", "layout-dashboard.svg", FormDashboard.class),
-                new Item("Servis Kayıtları", "wrench.svg", FormServices.class),
+                new Item("Servis Kayıtları", "wrench.svg", FormWorkOrders.class),
                 new Item("Müşteriler", "user-search.svg", FormCustomers.class),
                 new Item("Parçalar", "circuit-board.svg", FormParts.class),
                 new Item("Tedarikçiler", "store.svg", FormSuppliers.class),

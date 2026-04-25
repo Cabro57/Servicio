@@ -8,19 +8,19 @@ import tr.cabro.servicio.database.repository.*;
 public final class ServiceManager {
 
     @Getter private static PartService partService;
-    @Getter private static RepairService repairService;
+    @Getter private static WorkOrderService workOrderService;
     @Getter private static CustomerService customerService;
     @Getter private static SupplierService supplierService;
     @Getter private static DeviceService deviceService;
-    @Getter private static ServiceItemManager serviceItemManager;
     @Getter private static UserService userService;
 
     // --- YENİ EKLENEN YÖNETİCİLER ---
-    @Getter private static DeviceDictionaryManager deviceDictionaryManager;
-    @Getter private static LaborManager laborManager;
-    @Getter private static ReportManager reportManager;
-    @Getter private static ServiceNoteManager serviceNoteManager;
+    @Getter private static ServiceItemManager serviceItemManager;
     @Getter private static ServicePaymentManager servicePaymentManager;
+    @Getter private static ServiceNoteManager serviceNoteManager;
+    @Getter private static DeviceDictionaryManager deviceDictionaryManager;
+    @Getter private static LaborService laborService;
+    @Getter private static ReportManager reportManager;
 
     public static void initialize() {
         Jdbi jdbi = DatabaseManager.getJdbi();
@@ -44,15 +44,15 @@ public final class ServiceManager {
         // --- Servislerin Başlatılması ---
         partService       = new PartService(partRepo, supplierRepo);
         deviceService     = new DeviceService(deviceRepo);
-        repairService     = new RepairService(serviceRepo, customerRepo, deviceRepo, itemRepo, paymentRepo);
-        customerService   = new CustomerService(customerRepo, repairService);
+        workOrderService = new WorkOrderService(serviceRepo, customerRepo, deviceRepo, itemRepo, paymentRepo);
+        customerService   = new CustomerService(customerRepo, workOrderService);
         supplierService   = new SupplierService(supplierRepo);
         userService       = new UserService(userRepo);
         serviceItemManager= new ServiceItemManager(itemRepo, partRepo);
 
         // --- Yeni Servislerin Başlatılması ---
         deviceDictionaryManager = new DeviceDictionaryManager(dictRepo);
-        laborManager            = new LaborManager(laborRepo);
+        laborService = new LaborService(laborRepo);
         reportManager           = new ReportManager(reportRepo);
         serviceNoteManager      = new ServiceNoteManager(noteRepo);
         servicePaymentManager = new ServicePaymentManager(paymentRepo);

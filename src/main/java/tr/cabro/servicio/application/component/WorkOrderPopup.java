@@ -3,19 +3,19 @@ package tr.cabro.servicio.application.component;
 import raven.modal.Toast;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.forms.FormService;
-import tr.cabro.servicio.model.Service;
-import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.application.forms.FormWorkOrder;
+import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 
-public class ServicePopup extends JPopupMenu {
+public class WorkOrderPopup extends JPopupMenu {
 
-    private final Service service;
+    private final WorkOrder workOrder;
 
-    public ServicePopup(Service service) {
-        this.service = service;
+    public WorkOrderPopup(WorkOrder workOrder) {
+        this.workOrder = workOrder;
         init();
     }
 
@@ -23,7 +23,7 @@ public class ServicePopup extends JPopupMenu {
         initComponent();
 
         add(item("Servis Kaydını Aç", () -> {
-            FormService form = new FormService(service);
+            FormWorkOrder form = new FormWorkOrder(workOrder);
             FormManager.showForm(form);
         }));
 
@@ -31,8 +31,8 @@ public class ServicePopup extends JPopupMenu {
 
         add(item("Teslim Et", () -> {
 
-            RepairService repairService = ServiceManager.getRepairService();
-            repairService.setDelivered(service.getId()).thenAccept(repair -> {
+            WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
+            workOrderService.setDelivered(workOrder.getId()).thenAccept(repair -> {
                 Toast.show(FormManager.getFrame(), Toast.Type.SUCCESS, "Başarılı şekilde teslim edildi.");
             }).exceptionally(ex -> {
                 Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());

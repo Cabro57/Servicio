@@ -6,14 +6,14 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.system.AllForms;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
-import tr.cabro.servicio.application.forms.FormService;
-import tr.cabro.servicio.application.forms.FormServices;
+import tr.cabro.servicio.application.forms.FormWorkOrder;
+import tr.cabro.servicio.application.forms.FormWorkOrders;
 import tr.cabro.servicio.application.renderer.UniversalVisualizableRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import raven.swingpack.JPagination;
 
@@ -29,11 +29,11 @@ import java.util.List;
 
 public class ActiveServiceTable extends JPanel {
 
-    private GenericTableModel<Service> tableModel;
+    private GenericTableModel<WorkOrder> tableModel;
     private JTable table;
 
     // --- SAYFALAMA DEĞİŞKENLERİ ---
-    private List<Service> allData = new ArrayList<>();
+    private List<WorkOrder> allData = new ArrayList<>();
     private final int ITEMS_PER_PAGE = 5; // Her sayfada kaç veri gösterilecek
     private JPagination pagination;
 
@@ -46,8 +46,8 @@ public class ActiveServiceTable extends JPanel {
     }
 
     // --- YENİ VERİ YÜKLEME METODU ---
-    public void setData(List<Service> service) {
-        this.allData = service != null ? service : new ArrayList<>();
+    public void setData(List<WorkOrder> workOrder) {
+        this.allData = workOrder != null ? workOrder : new ArrayList<>();
 
         int totalPages = (int) Math.ceil((double) allData.size() / ITEMS_PER_PAGE);
         if (totalPages == 0) totalPages = 1;
@@ -90,7 +90,7 @@ public class ActiveServiceTable extends JPanel {
         btnSeeAll.putClientProperty( "JButton.buttonType", "toolBarButton" );
         btnSeeAll.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnSeeAll.addActionListener(e -> {
-            Form form = AllForms.getForm(FormServices.class);
+            Form form = AllForms.getForm(FormWorkOrders.class);
             FormManager.showForm(form);
         });
 
@@ -98,10 +98,10 @@ public class ActiveServiceTable extends JPanel {
         headerPanel.add(btnSeeAll);
 
         // --- 2. TABLO BÖLÜMÜ ---
-        List<ColumnDef<Service>> columns = Arrays.asList(
+        List<ColumnDef<WorkOrder>> columns = Arrays.asList(
                 new ColumnDef<>("Müşteri", Customer.class, s -> s.getCustomer() != null ? s.getCustomer().getFullName() : "-"),
-                new ColumnDef<>("Cihaz", Device.class, Service::getDevice),
-                new ColumnDef<>("Durum", ServiceStatus.class, Service::getServiceStatus)
+                new ColumnDef<>("Cihaz", Device.class, WorkOrder::getDevice),
+                new ColumnDef<>("Durum", ServiceStatus.class, WorkOrder::getServiceStatus)
         );
 
         tableModel = new GenericTableModel<>(columns);
@@ -148,9 +148,9 @@ public class ActiveServiceTable extends JPanel {
                 int viewRow = table.rowAtPoint(e.getPoint());
                 if (viewRow >= 0 && e.getClickCount() == 1) { // Sadece Tek Tık
                     int modelRow = table.convertRowIndexToModel(viewRow);
-                    Service selectedService = tableModel.getItemAt(modelRow);
-                    if (selectedService != null) {
-                        FormManager.showForm(new FormService(selectedService));
+                    WorkOrder selectedWorkOrder = tableModel.getItemAt(modelRow);
+                    if (selectedWorkOrder != null) {
+                        FormManager.showForm(new FormWorkOrder(selectedWorkOrder));
                     }
                 }
             }

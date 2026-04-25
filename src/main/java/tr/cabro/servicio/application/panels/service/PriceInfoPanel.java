@@ -13,7 +13,7 @@ import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-
+@Deprecated
 public class PriceInfoPanel extends ServicePanel {
 
     // Veri yüklenirken gereksiz onDataChanged sinyallerini engellemek için bayrak
@@ -35,16 +35,16 @@ public class PriceInfoPanel extends ServicePanel {
 
     @Override
     protected void onServiceSet() {
-        if (service == null) return;
+        if (workOrder == null) return;
 
         // Form doldurulurken tetiklenen Listener'ları susturmak için bayrağı açıyoruz
         isInitializing = true;
         try {
 
-            setPaid(service.getTotalPaid());
+            setPaid(workOrder.getTotalPaid());
 
-//            if (service.getPaymentType() != null) {
-//                payment_type_combo.setSelectedItem(service.getPaymentType());
+//            if (workOrder.getPaymentType() != null) {
+//                payment_type_combo.setSelectedItem(workOrder.getPaymentType());
 //            } else {
 //                payment_type_combo.setSelectedItem(PaymentType.CASH);
 //            }

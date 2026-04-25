@@ -1,11 +1,11 @@
 package tr.cabro.servicio.application.panels;
 
 import tr.cabro.servicio.application.listeners.ServiceEditListener;
-import tr.cabro.servicio.model.Service;
+import tr.cabro.servicio.model.WorkOrder;
 import javax.swing.JPanel;
 
 public abstract class ServicePanel extends JPanel {
-    protected Service service;
+    protected WorkOrder workOrder;
     protected ServiceEditListener listener;
 
     public ServicePanel() {
@@ -13,8 +13,8 @@ public abstract class ServicePanel extends JPanel {
     }
 
     // Ana form (FormService) veri yüklendiğinde bu metodu çağıracak
-    public final void bindService(Service service) {
-        this.service = service;
+    public final void bindService(WorkOrder workOrder) {
+        this.workOrder = workOrder;
         onServiceSet(); // Alt panel kendi içini doldursun
     }
 

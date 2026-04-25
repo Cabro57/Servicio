@@ -44,7 +44,7 @@ public class PartService {
                 if (partRepository.existsByBarcode(part.getBarcode())) {
                     throw new ValidationException("Bu barkod (" + part.getBarcode() + ") zaten sistemde kayıtlı!");
                 }
-                int id = partRepository.insert(part);
+                Long id = partRepository.insert(part);
                 part.setId(id);
             } else {
                 partRepository.update(part);
@@ -54,7 +54,7 @@ public class PartService {
     }
 
     /** ID tabanlı silme */
-    public CompletableFuture<Void> delete(int id) {
+    public CompletableFuture<Void> delete(Long id) {
         return CompletableFuture.runAsync(() -> partRepository.delete(id));
     }
 
@@ -81,7 +81,7 @@ public class PartService {
         });
     }
 
-    public CompletableFuture<Optional<Part>> getById(int id) {
+    public CompletableFuture<Optional<Part>> getById(Long id) {
         return CompletableFuture.supplyAsync(() -> {
             Optional<Part> optPart = partRepository.findById(id);
             optPart.ifPresent(p -> hydrateParts(Collections.singletonList(p)));
@@ -127,7 +127,7 @@ public class PartService {
     private List<Part> hydrateParts(List<Part> parts) {
         if (parts == null || parts.isEmpty()) return parts;
 
-        List<Integer> supplierIds = parts.stream()
+        List<Long> supplierIds = parts.stream()
                 .map(Part::getSupplierId)
                 .filter(id -> id != null && id > 0)
                 .distinct()
@@ -138,7 +138,7 @@ public class PartService {
             return parts;
         }
 
-        Map<Integer, Supplier> supplierMap = supplierRepository.findByIds(supplierIds).stream()
+        Map<Long, Supplier> supplierMap = supplierRepository.findByIds(supplierIds).stream()
                 .collect(Collectors.toMap(Supplier::getId, s -> s));
 
         for (Part part : parts) {

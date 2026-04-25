@@ -18,7 +18,7 @@ import javax.swing.table.TableRowSorter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
-
+@Deprecated
 public class SearchCustomerPanel extends JPanel {
 
     private final CustomerService service;

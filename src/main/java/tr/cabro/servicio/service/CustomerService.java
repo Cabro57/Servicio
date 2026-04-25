@@ -15,11 +15,11 @@ import java.util.stream.Collectors;
 public class CustomerService {
 
     private final CustomerRepository repository;
-    private final RepairService repairService;
+    private final WorkOrderService workOrderService;
 
-    public CustomerService(CustomerRepository repository, RepairService repairService) {
+    public CustomerService(CustomerRepository repository, WorkOrderService workOrderService) {
         this.repository = repository;
-        this.repairService = repairService;
+        this.workOrderService = workOrderService;
     }
 
     public CompletableFuture<Customer> save(Customer customer, boolean update) {
@@ -29,7 +29,7 @@ public class CustomerService {
         return CompletableFuture.supplyAsync(() -> {
             // --- 2. Veritabanı İşlemi ---
             if (!update) {
-                int id = repository.insert(customer);
+                Long id = repository.insert(customer);
                 customer.setId(id);
                 return customer;
             } else {
@@ -39,15 +39,15 @@ public class CustomerService {
         });
     }
 
-    public CompletableFuture<Void> delete(int id) {
+    public CompletableFuture<Void> delete(Long id) {
         return CompletableFuture.runAsync(() -> repository.delete(id));
     }
 
-    public CompletableFuture<Void> deleteMultiple(List<Integer> ids) {
+    public CompletableFuture<Void> deleteMultiple(List<Long> ids) {
         return CompletableFuture.runAsync(() -> repository.deleteByIds(ids));
     }
 
-    public CompletableFuture<Optional<Customer>> get(int id) {
+    public CompletableFuture<Optional<Customer>> get(Long id) {
         // Tekil müşteri çekerken de cihaz sayısını almak isteyebiliriz
         return CompletableFuture.supplyAsync(() -> repository.findById(id))
                 .thenCompose(optionalCustomer -> {
@@ -74,11 +74,11 @@ public class CustomerService {
             return CompletableFuture.completedFuture(customers);
         }
 
-        List<Integer> customerIds = customers.stream()
+        List<Long> customerIds = customers.stream()
                 .map(Customer::getId)
                 .collect(Collectors.toList());
 
-        return repairService.getDeviceCountsByCustomerIds(customerIds)
+        return workOrderService.getDeviceCountsByCustomerIds(customerIds)
                 .thenApply(countsMap -> {
                     for (Customer c : customers) {
                         // Eğer müşterinin hiç servisi yoksa Map'ten null döner, bu yüzden getOrDefault(id, 0)

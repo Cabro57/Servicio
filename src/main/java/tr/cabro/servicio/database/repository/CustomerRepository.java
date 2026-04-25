@@ -18,7 +18,7 @@ public interface CustomerRepository {
     @SqlUpdate("INSERT INTO customers (customer_type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at) " +
             "VALUES (:type, :businessName, :firstName, :lastName, :identityNo, :taxNumber, :taxOffice, :phoneNumber1, :phoneNumber2, :email, :address, :note, :createdAt, :updatedAt)")
     @GetGeneratedKeys
-    int insert(@BindBean Customer customer);
+    Long insert(@BindBean Customer customer);
 
     @SqlUpdate("UPDATE customers SET customer_type=:type, business_name=:businessName, first_name=:firstName, last_name=:lastName, " +
             "identity_no=:identityNo, tax_number=:taxNumber, tax_office=:taxOffice, phone_number_1=:phoneNumber1, phone_number_2=:phoneNumber2, " +
@@ -27,18 +27,18 @@ public interface CustomerRepository {
 
     // --- SOFT DELETE İŞLEMLERİ ---
     @SqlUpdate("UPDATE customers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
-    void delete(@Bind("id") int id);
+    void delete(@Bind("id") Long id);
 
     @SqlUpdate("UPDATE customers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id IN (<ids>)")
-    void deleteByIds(@BindList("ids") List<Integer> ids);
+    void deleteByIds(@BindList("ids") List<Long> ids);
 
     // --- SEÇME (SELECT) İŞLEMLERİ ---
     // DÜZELTME: customer_type kolonu Java'daki "type" değişkeniyle eşleşmesi için "AS type" olarak seçildi
     @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE id = :id AND is_deleted = 0")
-    Optional<Customer> findById(@Bind("id") int id);
+    Optional<Customer> findById(@Bind("id") Long id);
 
     @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE id IN (<ids>) AND is_deleted = 0")
-    List<Customer> findByIds(@BindList("ids") List<Integer> ids);
+    List<Customer> findByIds(@BindList("ids") List<Long> ids);
 
     @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<Customer> findAll();

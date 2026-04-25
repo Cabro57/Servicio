@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter @Setter
 public class DeviceBrand {
-    private int id;
+    private Long id;
     private String name;
 
     @Override

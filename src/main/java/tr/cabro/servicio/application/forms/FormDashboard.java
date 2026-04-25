@@ -20,7 +20,7 @@ import tr.cabro.servicio.application.panels.PendingPaymentsTable;
 import tr.cabro.servicio.model.dto.ChartDataDto;
 import tr.cabro.servicio.model.dto.SummaryCardDto;
 import tr.cabro.servicio.model.enums.TimeFilter;
-import tr.cabro.servicio.service.RepairService;
+import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
 
@@ -74,7 +74,7 @@ public class FormDashboard extends Form {
 
     private void loadData() {
         ReportManager reportManager = ServiceManager.getReportManager();
-        RepairService repairService = ServiceManager.getRepairService();
+        WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
 
         // Tarihleri Enum'dan doğrudan alıyoruz (Switch-case'e gerek kalmadı)
         LocalDate[] dates = selectedTimeFilter.getRanges();
@@ -152,8 +152,8 @@ public class FormDashboard extends Form {
         );
 
         // ALT TABLOLAR
-        repairService.getAll("OPEN").thenAccept(services -> SwingUtilities.invokeLater(() -> activeServiceTable.setData(services)));
-        repairService.getServicesWithDebt().thenAccept(services -> SwingUtilities.invokeLater(() -> pendingPaymentsTable.setData(services)));
+        workOrderService.getAll("OPEN").thenAccept(services -> SwingUtilities.invokeLater(() -> activeServiceTable.setData(services)));
+        workOrderService.getServicesWithDebt().thenAccept(services -> SwingUtilities.invokeLater(() -> pendingPaymentsTable.setData(services)));
     }
 
     /**
@@ -259,6 +259,7 @@ public class FormDashboard extends Form {
         panelLayout.add(panel);
     }
 
+    // TODO: tek bir panel yap 2 tabblonun arasına ayırıcı koy
     private void createOtherTable() {
         JPanel panel = new JPanel(new MigLayout("fillx,gap 14", "[fill, 50%][fill, 50%]", "[300]"));
         activeServiceTable = new ActiveServiceTable();

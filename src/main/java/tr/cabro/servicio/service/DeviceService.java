@@ -6,7 +6,6 @@ import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.Validator;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -33,7 +32,7 @@ public class DeviceService {
                 if (device.getCreatedAt() == null) {
                     device.setCreatedAt(LocalDateTime.now());
                 }
-                int id = deviceRepository.insertDevice(device);
+                Long id = deviceRepository.insertDevice(device);
                 device.setId(id);
             } else {
                 deviceRepository.updateDevice(device);
@@ -42,11 +41,11 @@ public class DeviceService {
         });
     }
 
-    public CompletableFuture<Void> delete(int id) {
+    public CompletableFuture<Void> delete(Long id) {
         return CompletableFuture.runAsync(() -> deviceRepository.deleteDevice(id));
     }
 
-    public CompletableFuture<Optional<Device>> get(int id) {
+    public CompletableFuture<Optional<Device>> get(Long id) {
         return CompletableFuture.supplyAsync(() -> deviceRepository.findById(id));
     }
 
@@ -56,10 +55,6 @@ public class DeviceService {
 
     public CompletableFuture<List<Device>> getAll() {
         return CompletableFuture.supplyAsync(deviceRepository::findAll);
-    }
-
-    public CompletableFuture<List<Device>> getAllByCustomer(int customerId) {
-        return CompletableFuture.supplyAsync(() -> deviceRepository.findByCustomerId(customerId));
     }
 
     public CompletableFuture<List<Device>> search(String searchTerm) {

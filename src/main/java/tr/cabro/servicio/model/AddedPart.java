@@ -10,10 +10,10 @@ import java.time.LocalDateTime;
 @Getter @Setter @Deprecated
 public class AddedPart {
 
-    private int id;
+    private Long id;
 
     @ColumnName("service_id")
-    private int serviceId;
+    private Long serviceId;
 
     @ColumnName("part_barcode")
     private String partBarcode;
@@ -30,25 +30,25 @@ public class AddedPart {
     private String name;
 
     @ColumnName("supplier_id")
-    private Integer supplierId;
+    private Long supplierId;
 
     @ColumnName("device_type")
     private String deviceType;
 
     private String model;
-    private int amount;
+    private Integer amount;
 
     @ColumnName("purchase_price")
-    private double purchasePrice;
+    private BigDecimal purchasePrice;
 
     @ColumnName("sale_price")
     private BigDecimal sellingPrice;
 
     @ColumnName("warranty_period")
-    private int warrantyPeriod;
+    private Integer warrantyPeriod;
 
     @ColumnName("purchase_date")
-    private String purchaseDate;  // TEXT olarak tutulur (nullable)
+    private LocalDateTime purchaseDate;
 
     private String description;
 
@@ -59,7 +59,7 @@ public class AddedPart {
         this.createdAt = LocalDateTime.now();
     }
 
-    public AddedPart(Part data, int amount) {
+    public AddedPart(Part data, Integer amount) {
         this(data);
         this.amount = amount;
     }
@@ -73,7 +73,7 @@ public class AddedPart {
         this.model = data.getModelCompatibility();  // FIX: eski `model` → `modelCompatibility`
         this.amount = 1;
         // FIX: BigDecimal → double (.doubleValue())
-        this.purchasePrice = data.getPurchasePrice() != null ? data.getPurchasePrice().doubleValue() : 0.0;
+        this.purchasePrice = BigDecimal.valueOf(data.getPurchasePrice() != null ? data.getPurchasePrice().doubleValue() : 0.0);
         this.sellingPrice = data.getSalePrice();
         // FIX: Part.purchaseDate kaldırıldı — boş bırakılıyor
         this.purchaseDate = null;

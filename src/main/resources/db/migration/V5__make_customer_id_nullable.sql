@@ -24,7 +24,7 @@ CREATE TABLE services_new (
     FOREIGN KEY (customer_id) REFERENCES customers(id)
 );
 
--- 2. Verileri services -> services_new tablosuna taşı
+-- 2. Verileri workOrders -> services_new tablosuna taşı
 -- (LEFT JOIN ile olmayan müşteri ID'lerini NULL yapıyoruz)
 INSERT INTO services_new (
     id, customer_id, created_at, delivery_at, device_type, device_brand, device_model,
@@ -39,7 +39,7 @@ SELECT
     s.device_serial, s.device_password, s.device_accessory, s.labor_cost, s.paid, s.payment_type,
     s.warranty_date, s.maintenance_date, s.reported_fault, s.detected_fault, s.action_taken,
     s.urgency_status, s.service_status, s.Notes
-FROM services s
+FROM workOrders s
 LEFT JOIN customers c ON s.customer_id = c.id;
 
 -- 3. ENGELİ KALDIR: added_part tablosunu geçici bir tabloya yedekle
@@ -48,11 +48,11 @@ CREATE TABLE added_part_temp AS SELECT * FROM added_part;
 -- 4. Bağımlı tabloyu (added_part) SİL
 DROP TABLE added_part;
 
--- 5. Eski services tablosunu SİL
-DROP TABLE services;
+-- 5. Eski workOrders tablosunu SİL
+DROP TABLE workOrders;
 
 -- 6. Yeni tabloyu isimlendir
-ALTER TABLE services_new RENAME TO services;
+ALTER TABLE services_new RENAME TO workOrders;
 
 -- 7. added_part tablosunu TEKRAR OLUŞTUR
 CREATE TABLE added_part (
@@ -72,7 +72,7 @@ CREATE TABLE added_part (
     description TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
-    FOREIGN KEY (service_id) REFERENCES services(id)
+    FOREIGN KEY (service_id) REFERENCES workOrders(id)
 );
 
 -- 8. Yedeklenen parça verilerini GÜVENLİ ŞEKİLDE geri yükle
@@ -80,7 +80,7 @@ CREATE TABLE added_part (
 -- Sadece Suppliers tablosunda ID'si var olan (veya boş olan) tedarikçilerin parçalarını al
 INSERT INTO added_part
 SELECT * FROM added_part_temp
-WHERE service_id IN (SELECT id FROM services)
+WHERE service_id IN (SELECT id FROM workOrders)
   AND (supplier_id IS NULL OR supplier_id IN (SELECT id FROM suppliers));
 
 -- 9. Geçici tabloyu temizle
