@@ -15,9 +15,6 @@ public final class ServiceManager {
     @Getter private static UserService userService;
 
     // --- YENİ EKLENEN YÖNETİCİLER ---
-    @Getter private static ServiceItemManager serviceItemManager;
-    @Getter private static ServicePaymentManager servicePaymentManager;
-    @Getter private static ServiceNoteManager serviceNoteManager;
     @Getter private static DeviceDictionaryManager deviceDictionaryManager;
     @Getter private static LaborService laborService;
     @Getter private static ReportManager reportManager;
@@ -26,35 +23,32 @@ public final class ServiceManager {
         Jdbi jdbi = DatabaseManager.getJdbi();
 
         // --- Temel Repository'ler ---
-        CustomerRepository customerRepo     = jdbi.onDemand(CustomerRepository.class);
-        PartRepository partRepo             = jdbi.onDemand(PartRepository.class);
-        ServiceRepository serviceRepo       = jdbi.onDemand(ServiceRepository.class);
-        SupplierRepository supplierRepo     = jdbi.onDemand(SupplierRepository.class);
-        UserRepository userRepo             = jdbi.onDemand(UserRepository.class);
-        ServiceItemRepository itemRepo      = jdbi.onDemand(ServiceItemRepository.class);
-        ServicePaymentRepository paymentRepo= jdbi.onDemand(ServicePaymentRepository.class);
-        DeviceRepository deviceRepo         = jdbi.onDemand(DeviceRepository.class);
+        CustomerRepository customerRepo = jdbi.onDemand(CustomerRepository.class);
+        PartRepository partRepo = jdbi.onDemand(PartRepository.class);
+        ServiceRepository serviceRepo = jdbi.onDemand(ServiceRepository.class);
+        SupplierRepository supplierRepo = jdbi.onDemand(SupplierRepository.class);
+        UserRepository userRepo = jdbi.onDemand(UserRepository.class);
+        ServiceItemRepository itemRepo = jdbi.onDemand(ServiceItemRepository.class);
+        ServicePaymentRepository paymentRepo = jdbi.onDemand(ServicePaymentRepository.class);
+        DeviceRepository deviceRepo = jdbi.onDemand(DeviceRepository.class);
 
         // --- Yeni Kurumsal Repository'ler ---
         DeviceDictionaryRepository dictRepo = jdbi.onDemand(DeviceDictionaryRepository.class);
-        LaborRepository laborRepo           = jdbi.onDemand(LaborRepository.class);
-        ReportRepository reportRepo         = jdbi.onDemand(ReportRepository.class);
-        ServiceNoteRepository noteRepo      = jdbi.onDemand(ServiceNoteRepository.class);
+        LaborRepository laborRepo = jdbi.onDemand(LaborRepository.class);
+        ReportRepository reportRepo = jdbi.onDemand(ReportRepository.class);
+        ServiceNoteRepository noteRepo = jdbi.onDemand(ServiceNoteRepository.class);
 
         // --- Servislerin Başlatılması ---
-        partService       = new PartService(partRepo, supplierRepo);
-        deviceService     = new DeviceService(deviceRepo);
-        workOrderService = new WorkOrderService(serviceRepo, customerRepo, deviceRepo, itemRepo, paymentRepo);
-        customerService   = new CustomerService(customerRepo, workOrderService);
-        supplierService   = new SupplierService(supplierRepo);
-        userService       = new UserService(userRepo);
-        serviceItemManager= new ServiceItemManager(itemRepo, partRepo);
+        partService = new PartService(partRepo, supplierRepo);
+        deviceService = new DeviceService(deviceRepo);
+        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo);
+        customerService = new CustomerService(customerRepo);
+        supplierService = new SupplierService(supplierRepo);
+        userService = new UserService(userRepo);
 
         // --- Yeni Servislerin Başlatılması ---
         deviceDictionaryManager = new DeviceDictionaryManager(dictRepo);
         laborService = new LaborService(laborRepo);
-        reportManager           = new ReportManager(reportRepo);
-        serviceNoteManager      = new ServiceNoteManager(noteRepo);
-        servicePaymentManager = new ServicePaymentManager(paymentRepo);
+        reportManager = new ReportManager(reportRepo);
     }
 }

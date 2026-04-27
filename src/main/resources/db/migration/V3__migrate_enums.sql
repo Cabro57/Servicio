@@ -1,18 +1,18 @@
 -- Eski Türkçe metinleri, Java Enum sabitlerine (UPPER_CASE) dönüştürüyoruz.
 
 -- 1. ServiceStatus Dönüşümü
-UPDATE workOrders SET service_status = 'UNDER_REPAIR' WHERE service_status = 'Tamirde';
-UPDATE workOrders SET service_status = 'READY' WHERE service_status = 'Hazır';
-UPDATE workOrders SET service_status = 'ANOTHER_SERVICE' WHERE service_status = 'Başka Serviste';
-UPDATE workOrders SET service_status = 'DELIVERED' WHERE service_status IN ('Teslim edildi', 'Teslim Edildi');
-UPDATE workOrders SET service_status = 'RETURN' WHERE service_status = 'İade';
-UPDATE workOrders SET service_status = 'WAITING_FOR_PART' WHERE service_status = 'Parça Bekliyor';
+UPDATE services SET service_status = 'UNDER_REPAIR' WHERE service_status = 'Tamirde';
+UPDATE services SET service_status = 'READY' WHERE service_status = 'Hazır';
+UPDATE services SET service_status = 'ANOTHER_SERVICE' WHERE service_status = 'Başka Serviste';
+UPDATE services SET service_status = 'DELIVERED' WHERE service_status IN ('Teslim edildi', 'Teslim Edildi');
+UPDATE services SET service_status = 'RETURN' WHERE service_status = 'İade';
+UPDATE services SET service_status = 'WAITING_FOR_PART' WHERE service_status = 'Parça Bekliyor';
 
 -- 2. PaymentType Dönüşümü
-UPDATE workOrders SET payment_type = 'CASH' WHERE payment_type = 'Nakit';
-UPDATE workOrders SET payment_type = 'CARD' WHERE payment_type IN ('Banka/Kredi Kartı', 'Kredi Kartı');
-UPDATE workOrders SET payment_type = 'TRANSFER' WHERE payment_type = 'Banka Havale/EFT';
-UPDATE workOrders SET payment_type = 'ON_ACCOUNT' WHERE payment_type = 'Veresiye';
+UPDATE services SET payment_type = 'CASH' WHERE payment_type = 'Nakit';
+UPDATE services SET payment_type = 'CARD' WHERE payment_type IN ('Banka/Kredi Kartı', 'Kredi Kartı');
+UPDATE services SET payment_type = 'TRANSFER' WHERE payment_type = 'Banka Havale/EFT';
+UPDATE services SET payment_type = 'ON_ACCOUNT' WHERE payment_type = 'Veresiye';
 
 -- 3. CustomerType Dönüşümü
 UPDATE customers SET status = 'NORMAL' WHERE status = 'Normal';

@@ -60,9 +60,6 @@ public class Customer {
     @ColumnName("updated_at")
     private LocalDateTime updatedAt;
 
-    // Tabloda olmayan ama UI/Raporlama için kullanılan alan
-    private transient Integer deviceCount;
-
     // Geriye dönük uyumluluk için basit Constructor
     public Customer(Long id, String firstName, String lastName) {
         this.id = id;

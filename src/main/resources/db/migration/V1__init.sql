@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS part (
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
 );
 
-CREATE TABLE IF NOT EXISTS workOrders (
+CREATE TABLE IF NOT EXISTS services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     -- Müşteri Bilgileri
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS added_part (
     added_date TEXT,
 
     FOREIGN KEY (barcode) REFERENCES part(barcode),
-    FOREIGN KEY (service_id) REFERENCES workOrders(id)
+    FOREIGN KEY (service_id) REFERENCES services(id)
 );
 
 

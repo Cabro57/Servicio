@@ -96,18 +96,16 @@ CREATE TABLE parts (
 
 CREATE TABLE devices_new (
                              id INTEGER PRIMARY KEY AUTOINCREMENT,
-                             customer_id INTEGER,
                              device_type VARCHAR(50) NOT NULL,
                              brand VARCHAR(50) NOT NULL,
                              model VARCHAR(100) NOT NULL,
                              serial_no VARCHAR(100) UNIQUE,
                              password VARCHAR(50),
                              accessory TEXT,
-                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                             FOREIGN KEY (customer_id) REFERENCES customers_new(id) ON DELETE SET NULL
+                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE services_new (
+CREATE TABLE work_orders (
                               id INTEGER PRIMARY KEY AUTOINCREMENT,
                               customer_id INTEGER,
                               device_id INTEGER NOT NULL,
@@ -125,7 +123,7 @@ CREATE TABLE services_new (
                               FOREIGN KEY (device_id) REFERENCES devices_new(id) ON DELETE RESTRICT
 );
 
-CREATE TABLE service_items (
+CREATE TABLE work_order_items (
                                id INTEGER PRIMARY KEY AUTOINCREMENT,
                                service_id INTEGER NOT NULL,
                                item_type VARCHAR(20) NOT NULL,
@@ -138,12 +136,12 @@ CREATE TABLE service_items (
                                purchase_price DECIMAL(12,2) DEFAULT 0.0,
                                unit_price DECIMAL(12,2) NOT NULL,
                                tax_rate DECIMAL(5,2) DEFAULT 0.0,
-                               FOREIGN KEY (service_id) REFERENCES services_new(id) ON DELETE CASCADE,
+                               FOREIGN KEY (service_id) REFERENCES work_orders(id) ON DELETE CASCADE,
                                FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE SET NULL,
                                FOREIGN KEY (labor_id) REFERENCES labors(id) ON DELETE SET NULL
 );
 
-CREATE TABLE service_payments (
+CREATE TABLE work_order_payments (
                                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                                   service_id INTEGER NOT NULL,
                                   amount DECIMAL(12,2) NOT NULL,
@@ -151,23 +149,42 @@ CREATE TABLE service_payments (
                                   note TEXT,
                                   payment_date TIMESTAMP,
                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                  FOREIGN KEY (service_id) REFERENCES services_new(id) ON DELETE CASCADE
+                                  FOREIGN KEY (service_id) REFERENCES work_orders(id) ON DELETE CASCADE
 );
 
-CREATE TABLE service_notes (
+CREATE TABLE work_order_notes (
                                id INTEGER PRIMARY KEY AUTOINCREMENT,
                                service_id INTEGER NOT NULL,
                                technician_id INTEGER,
                                note TEXT NOT NULL,
                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                               FOREIGN KEY (service_id) REFERENCES services_new(id) ON DELETE CASCADE,
+                               FOREIGN KEY (service_id) REFERENCES work_orders(id) ON DELETE CASCADE,
                                FOREIGN KEY (technician_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+CREATE TABLE warehouses (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE TABLE stock_movements (
+                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                 product_id INTEGER NOT NULL, -- Parts tablosundaki ID
+                                 warehouse_id INTEGER NOT NULL,
+                                 quantity INTEGER NOT NULL, -- Giren/Çıkan Miktar
+                                 type VARCHAR(10) NOT NULL, -- 'IN' (Giriş) veya 'OUT' (Çıkış)
+                                 reference_type VARCHAR(50), -- 'SERVICE', 'PURCHASE', 'MANUAL', 'MIGRATION'
+                                 reference_id INTEGER, -- Servis ID veya Alış Faturası ID'si
+                                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                 FOREIGN KEY (product_id) REFERENCES parts(id) ON DELETE RESTRICT,
+                                 FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT
+);
 
 -- ---------------------------------------------------------
 -- 4. VERİ TAŞIMA VE OTOMATİK DOLDURMA (MIGRATION)
 -- ---------------------------------------------------------
+
+INSERT INTO warehouses (id, name) VALUES (1,'Ana Depo');
 
 -- A) MÜŞTERİLER VE TEDARİKÇİLER
 INSERT INTO customers_new (id, customer_type, business_name, first_name, last_name, identity_no, phone_number_1, phone_number_2, email, address, note, created_at)
@@ -190,7 +207,7 @@ SELECT barcode,
            WHEN brand IS NOT NULL AND TRIM(brand) != '' THEN TRIM(brand) || ' ' || TRIM(name)
            ELSE TRIM(name)
            END,
-       'Genel', model, supplier_id, purchase_price, sale_price, stock, min_stock, description, created_at
+       'Genel', model, supplier_id, purchase_price, sale_price, 0, min_stock, description, created_at
 FROM part;
 
 -- C) HAZIR BAŞLANGIÇ VERİLERİ (SEED DATA: Türler ve Markalar)
@@ -206,17 +223,45 @@ INSERT INTO device_type_brand (type_id, brand_id) VALUES
 
 -- Eskiden kalan farklı marka/türleri de kaybetmemek için içeri alıyoruz
 INSERT OR IGNORE INTO device_types (name)
-SELECT DISTINCT TRIM(device_type) FROM workOrders WHERE device_type IS NOT NULL AND TRIM(device_type) != '';
+SELECT DISTINCT TRIM(device_type) FROM services WHERE device_type IS NOT NULL AND TRIM(device_type) != '';
 
 INSERT OR IGNORE INTO device_brands (name)
-SELECT DISTINCT TRIM(device_brand) FROM workOrders WHERE device_brand IS NOT NULL AND TRIM(device_brand) != '';
+SELECT DISTINCT TRIM(device_brand) FROM services WHERE device_brand IS NOT NULL AND TRIM(device_brand) != '';
 
 INSERT OR IGNORE INTO device_type_brand (type_id, brand_id)
 SELECT DISTINCT dt.id, db.id
-FROM workOrders s
+FROM services s
          JOIN device_types dt ON dt.name = TRIM(s.device_type)
          JOIN device_brands db ON db.name = TRIM(s.device_brand)
 WHERE s.device_type IS NOT NULL AND s.device_brand IS NOT NULL;
+
+INSERT INTO stock_movements (product_id, warehouse_id, quantity, type, reference_type, reference_id, created_at)
+SELECT
+    p.id, 1,
+    (p_eski.stock + COALESCE((SELECT SUM(ap.amount) FROM added_part ap WHERE ap.part_barcode = p.barcode), 0)),
+    'IN', 'MIGRATION_INITIAL', NULL, p.created_at
+FROM parts p
+         JOIN part p_eski ON p.barcode = p_eski.barcode;
+
+-- B) Çıkışlar (Servis kullanımları)
+INSERT INTO stock_movements (product_id, warehouse_id, quantity, type, reference_type, reference_id, created_at)
+SELECT
+    p.id, 1, ap.amount,
+    'OUT', 'SERVICE_CONSUMPTION', ap.service_id, ap.created_at
+FROM added_part ap
+         JOIN parts p ON p.barcode = ap.part_barcode;
+
+CREATE INDEX temp_idx_stock_mov_product ON stock_movements(product_id);
+
+UPDATE parts
+SET stock_quantity = (
+    SELECT
+        COALESCE(SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END), 0)
+    FROM stock_movements
+    WHERE stock_movements.product_id = parts.id
+);
+
+DROP INDEX temp_idx_stock_mov_product;
 
 -- D) CİHAZLARI AYRIŞTIR VE SERVİSLERİ BAĞLA (GLOBAL STANDART & SQLITE UYUMLU)
 
@@ -226,17 +271,16 @@ SELECT
     *,
     CASE
         -- Boş, null veya anlamsız kısa karakterler için global etiket
-        WHEN device_serial IS NULL OR TRIM(device_serial) IN ('', '-', '_', '.', '0', 'yok', 'YOK', 'Yok', 'na', 'N/A') THEN 'SN_UNKNOWN_' || id
+        WHEN device_serial IS NULL OR TRIM(device_serial) IN ('alınamadı', 'alınacak', 'Gizli', 'Bilinmiyor', '- ALINAMADI -', 'Yok, Basit Kulaklık', '-', '_', '.', '0', 'yok', 'YOK', 'Yok', 'na', 'N/A') THEN 'SN_UNKNOWN_' || id
         -- En az 3 karakterli, anlamlı bir veri mi?
         WHEN LENGTH(TRIM(device_serial)) < 3 THEN 'SN_UNKNOWN_' || id
         ELSE TRIM(device_serial)
         END as safe_serial
-FROM workOrders;
+FROM services;
 
 -- 2. ADIM: Cihazları Tekilleştirerek Ekle (Geçici tablodan okuyarak)
-INSERT INTO devices_new (customer_id, device_type, brand, model, serial_no, password, accessory, created_at)
+INSERT INTO devices_new (device_type, brand, model, serial_no, password, accessory, created_at)
 SELECT
-    customer_id,
     device_type,
     device_brand,
     device_model,
@@ -248,7 +292,7 @@ FROM temp_cleaned_serials
 GROUP BY safe_serial;
 
 -- 3. ADIM: Servis Kayıtlarını Yeni ID'ler ile Güncelle (Geçici tablodan okuyarak)
-INSERT INTO services_new (id, customer_id, device_id, reported_fault, detected_fault, action_taken, urgency_status, service_status, warranty_end_date, delivery_date, created_at)
+INSERT INTO work_orders (id, customer_id, device_id, reported_fault, detected_fault, action_taken, urgency_status, service_status, warranty_end_date, delivery_date, created_at)
 SELECT
     cs.id,
     cs.customer_id,
@@ -268,7 +312,7 @@ FROM temp_cleaned_serials cs
 DROP TABLE temp_cleaned_serials;
 
 -- E) TAHSİLATLAR
-INSERT INTO service_payments (service_id, amount, payment_type, note, payment_date, created_at)
+INSERT INTO work_order_payments (service_id, amount, payment_type, note, payment_date, created_at)
 SELECT id, paid,
        CASE
            WHEN UPPER(payment_type) IN ('KART', 'KREDI_KARTI', 'CREDIT_CARD', 'CARD', 'KREDI KARTI', 'KREDİ KARTI') THEN 'CREDIT_CARD'
@@ -277,10 +321,10 @@ SELECT id, paid,
            ELSE 'CASH'
            END,
        'Eski Sistem Aktarımı', COALESCE(delivery_at, created_at, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP
-FROM workOrders WHERE paid > 0;
+FROM services WHERE paid > 0;
 
 -- F) SERVICE_ITEMS (Eski Eklenen Parçalar -> items tablosuna, yeni Parts tablosu ile ilişkilendirilerek aktarılır)
-INSERT INTO service_items (service_id, item_type, source_type, part_id, item_name, used_serial_no, quantity, purchase_price, unit_price)
+INSERT INTO work_order_items (service_id, item_type, source_type, part_id, item_name, used_serial_no, quantity, purchase_price, unit_price)
 SELECT ap.service_id, 'PART',
        CASE WHEN p.id IS NOT NULL THEN 'PRESET' ELSE 'MANUAL' END,
        p.id, COALESCE(ap.name, 'Bilinmeyen Parça'), ap.series_no, ap.amount, ap.purchase_price, ap.sale_price
@@ -288,16 +332,16 @@ FROM added_part ap
          LEFT JOIN parts p ON p.barcode = ap.part_barcode;
 
 -- G) SERVICE_ITEMS (Eski İşçilikler)
-INSERT INTO service_items (service_id, item_type, source_type, item_name, quantity, unit_price)
+INSERT INTO work_order_items (service_id, item_type, source_type, item_name, quantity, unit_price)
 SELECT id, 'LABOR', 'MANUAL', COALESCE(NULLIF(TRIM(action_taken), ''), 'Genel İşçilik'), 1, labor_cost
-FROM workOrders WHERE labor_cost > 0;
+FROM services WHERE labor_cost > 0;
 
 -- H) SERVICE_NOTES (Teknisyen Notları)
-INSERT INTO service_notes (service_id, note, created_at)
-SELECT id, Notes, created_at FROM workOrders WHERE Notes IS NOT NULL AND TRIM(Notes) != '';
+INSERT INTO work_order_notes (service_id, note, created_at)
+SELECT id, Notes, created_at FROM services WHERE Notes IS NOT NULL AND TRIM(Notes) != '';
 
-INSERT INTO service_notes (service_id, note, created_at)
-SELECT id, 'Tespit Edilen Arıza: ' || detected_fault, created_at FROM workOrders WHERE detected_fault IS NOT NULL AND TRIM(detected_fault) != '';
+INSERT INTO work_order_notes (service_id, note, created_at)
+SELECT id, 'Tespit Edilen Arıza: ' || detected_fault, created_at FROM services WHERE detected_fault IS NOT NULL AND TRIM(detected_fault) != '';
 
 -- I) HAZIR İŞÇİLİK KATALOĞU SEED DATA
 INSERT INTO labors (name, description, category, default_price) VALUES ('Arıza Tespiti', 'Cihazın sökülmesi ve arıza tespiti', 'Genel', 0.0);
@@ -310,18 +354,31 @@ INSERT INTO labors (name, description, category, default_price) VALUES ('Sıvı 
 -- ---------------------------------------------------------
 DROP TABLE added_part;
 DROP TABLE part;
-DROP TABLE workOrders;
+DROP TABLE services;
 DROP TABLE suppliers;
 DROP TABLE customers;
 
 ALTER TABLE customers_new RENAME TO customers;
 ALTER TABLE suppliers_new RENAME TO suppliers;
 ALTER TABLE devices_new RENAME TO devices;
-ALTER TABLE services_new RENAME TO workOrders;
 
 CREATE INDEX idx_customers_phone ON customers(phone_number_1);
-CREATE INDEX idx_services_customer ON workOrders(customer_id);
-CREATE INDEX idx_services_device ON workOrders(device_id);
-CREATE INDEX idx_service_items_service ON service_items(service_id);
-CREATE INDEX idx_service_payments_service ON service_payments(service_id);
-CREATE INDEX idx_service_notes_service ON service_notes(service_id);
+CREATE INDEX idx_services_customer ON work_orders(customer_id);
+CREATE INDEX idx_services_device ON work_orders(device_id);
+CREATE INDEX idx_service_items_service ON work_order_items(service_id);
+CREATE INDEX idx_service_payments_service ON work_order_payments(service_id);
+CREATE INDEX idx_service_notes_service ON work_order_notes(service_id);
+
+CREATE TRIGGER trg_stock_movement_in
+    AFTER INSERT ON stock_movements
+    WHEN NEW.type = 'IN'
+BEGIN
+    UPDATE parts SET stock_quantity = stock_quantity + NEW.quantity WHERE id = NEW.product_id;
+END;
+
+CREATE TRIGGER trg_stock_movement_out
+    AFTER INSERT ON stock_movements
+    WHEN NEW.type = 'OUT'
+BEGIN
+    UPDATE parts SET stock_quantity = stock_quantity - NEW.quantity WHERE id = NEW.product_id;
+END;

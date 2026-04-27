@@ -98,25 +98,6 @@ public class PartService {
         return CompletableFuture.supplyAsync(() -> !partRepository.existsByBarcode(barcode));
     }
 
-    public CompletableFuture<Void> increaseStock(String barcode, int amount) {
-        if (amount <= 0) throw new ValidationException("Artırılacak miktar 0'dan büyük olmalıdır.");
-        // FIX: increaseStockAtomically(barcode, amount) metodu eklendi
-        return CompletableFuture.runAsync(() -> partRepository.increaseStockAtomically(barcode, amount));
-    }
-
-    public CompletableFuture<Void> decreaseStock(String barcode, int amount) {
-        if (amount <= 0) throw new ValidationException("Azaltılacak miktar 0'dan büyük olmalıdır.");
-
-        // FIX: decreaseStockAtomically(barcode, amount) metodu eklendi
-        return CompletableFuture.runAsync(() -> {
-            int updatedRows = partRepository.decreaseStockAtomically(barcode, amount);
-            if (updatedRows == 0) {
-                throw new ValidationException(
-                        String.format("İşlem Başarısız! Barkod: %s için yeterli stok bulunamadı veya ürün yok.", barcode));
-            }
-        });
-    }
-
     public CompletableFuture<List<Part>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
         return CompletableFuture.supplyAsync(

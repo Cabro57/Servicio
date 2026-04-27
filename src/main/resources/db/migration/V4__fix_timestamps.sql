@@ -1,18 +1,18 @@
 -- Services Tablosu
 -- Sadece rakamdan oluşan ve içinde '-' (tire) işareti OLMAYANLARI timestamp kabul et
-UPDATE workOrders
+UPDATE services
 SET created_at = REPLACE(datetime(created_at / 1000, 'unixepoch', 'localtime'), ' ', 'T')
 WHERE created_at GLOB '[0-9]*' AND created_at NOT LIKE '%-%';
 
-UPDATE workOrders
+UPDATE services
 SET delivery_at = REPLACE(datetime(delivery_at / 1000, 'unixepoch', 'localtime'), ' ', 'T')
 WHERE delivery_at GLOB '[0-9]*' AND delivery_at NOT LIKE '%-%';
 
-UPDATE workOrders
+UPDATE services
 SET warranty_date = REPLACE(datetime(warranty_date / 1000, 'unixepoch', 'localtime'), ' ', 'T')
 WHERE warranty_date GLOB '[0-9]*' AND warranty_date NOT LIKE '%-%';
 
-UPDATE workOrders
+UPDATE services
 SET maintenance_date = REPLACE(datetime(maintenance_date / 1000, 'unixepoch', 'localtime'), ' ', 'T')
 WHERE maintenance_date GLOB '[0-9]*' AND maintenance_date NOT LIKE '%-%';
 

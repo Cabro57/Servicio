@@ -15,11 +15,9 @@ import java.util.stream.Collectors;
 public class CustomerService {
 
     private final CustomerRepository repository;
-    private final WorkOrderService workOrderService;
 
-    public CustomerService(CustomerRepository repository, WorkOrderService workOrderService) {
+    public CustomerService(CustomerRepository repository) {
         this.repository = repository;
-        this.workOrderService = workOrderService;
     }
 
     public CompletableFuture<Customer> save(Customer customer, boolean update) {
@@ -43,50 +41,50 @@ public class CustomerService {
         return CompletableFuture.runAsync(() -> repository.delete(id));
     }
 
-    public CompletableFuture<Void> deleteMultiple(List<Long> ids) {
-        return CompletableFuture.runAsync(() -> repository.deleteByIds(ids));
-    }
-
     public CompletableFuture<Optional<Customer>> get(Long id) {
         // Tekil müşteri çekerken de cihaz sayısını almak isteyebiliriz
-        return CompletableFuture.supplyAsync(() -> repository.findById(id))
-                .thenCompose(optionalCustomer -> {
-                    return optionalCustomer.map(customer -> populateDeviceCounts(Collections.singletonList(customer))
-                            .thenApply(list -> Optional.of(list.get(0)))).orElseGet(() -> CompletableFuture.completedFuture(Optional.empty()));
-                });
+        return CompletableFuture.supplyAsync(() -> repository.findById(id));
     }
 
     public CompletableFuture<List<Customer>> getAll() {
-        return CompletableFuture.supplyAsync(repository::findAll)
-                .thenCompose(this::populateDeviceCounts); // Çekilen listeyi cihaz sayısıyla doldur
+        return CompletableFuture.supplyAsync(repository::findAll); // Çekilen listeyi cihaz sayısıyla doldur
+    }
+
+    public CompletableFuture<List<Customer>> getAll(List<Long> customerIds) {
+        if (customerIds== null || customerIds.isEmpty()) {
+            throw new ValidationException("BOŞ");
+        }
+        return CompletableFuture.supplyAsync(() -> repository.findByIds(customerIds)); // Çekilen listeyi cihaz sayısıyla doldur
     }
 
     public CompletableFuture<List<Customer>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return getAll();
         }
-        return CompletableFuture.supplyAsync(() -> repository.search("%" + searchTerm.trim() + "%"))
-                .thenCompose(this::populateDeviceCounts); // Arama sonucunu cihaz sayısıyla doldur
+        return CompletableFuture.supplyAsync(() -> repository.search("%" + searchTerm.trim() + "%")); // Arama sonucunu cihaz sayısıyla doldur
     }
 
-    private CompletableFuture<List<Customer>> populateDeviceCounts(List<Customer> customers) {
-        if (customers.isEmpty()) {
-            return CompletableFuture.completedFuture(customers);
-        }
-
-        List<Long> customerIds = customers.stream()
-                .map(Customer::getId)
-                .collect(Collectors.toList());
-
-        return workOrderService.getDeviceCountsByCustomerIds(customerIds)
-                .thenApply(countsMap -> {
-                    for (Customer c : customers) {
-                        // Eğer müşterinin hiç servisi yoksa Map'ten null döner, bu yüzden getOrDefault(id, 0)
-                        c.setDeviceCount(countsMap.getOrDefault(c.getId(), 0));
-                    }
-                    return customers;
-                });
-    }
+//    private CompletableFuture<List<Customer>> populateDeviceCounts(List<Customer> customers) {
+//        if (customers.isEmpty()) {
+//            return CompletableFuture.completedFuture(customers);
+//        }
+//
+//        List<Long> customerIds = customers.stream()
+//                .map(Customer::getId)
+//                .collect(Collectors.toList());
+//
+//        WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
+//
+//        // TODO: bunu workorder servisinden kaldırdık ve gerekli bir yerden çekmeliyiz.
+//        return workOrderService.getAll(customerIds)
+//                .thenApply(countsMap -> {
+//                    for (Customer c : customers) {
+//                        // Eğer müşterinin hiç servisi yoksa Map'ten null döner, bu yüzden getOrDefault(id, 0)
+//                        c.setDeviceCount(countsMap.getOrDefault(c.getId(), 0));
+//                    }
+//                    return customers;
+//                });
+//    }
 
     private void validateCustomer(Customer customer) {
         // --- 1. Validasyon ve Normalizasyon ---

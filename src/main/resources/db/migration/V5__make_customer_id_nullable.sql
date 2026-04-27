@@ -24,7 +24,7 @@ CREATE TABLE services_new (
     FOREIGN KEY (customer_id) REFERENCES customers(id)
 );
 
--- 2. Verileri workOrders -> services_new tablosuna taşı
+-- 2. Verileri services -> services_new tablosuna taşı
 -- (LEFT JOIN ile olmayan müşteri ID'lerini NULL yapıyoruz)
 INSERT INTO services_new (
     id, customer_id, created_at, delivery_at, device_type, device_brand, device_model,
@@ -39,7 +39,7 @@ SELECT
     s.device_serial, s.device_password, s.device_accessory, s.labor_cost, s.paid, s.payment_type,
     s.warranty_date, s.maintenance_date, s.reported_fault, s.detected_fault, s.action_taken,
     s.urgency_status, s.service_status, s.Notes
-FROM workOrders s
+FROM services s
 LEFT JOIN customers c ON s.customer_id = c.id;
 
 -- 3. ENGELİ KALDIR: added_part tablosunu geçici bir tabloya yedekle
@@ -49,10 +49,10 @@ CREATE TABLE added_part_temp AS SELECT * FROM added_part;
 DROP TABLE added_part;
 
 -- 5. Eski workOrders tablosunu SİL
-DROP TABLE workOrders;
+DROP TABLE services;
 
 -- 6. Yeni tabloyu isimlendir
-ALTER TABLE services_new RENAME TO workOrders;
+ALTER TABLE services_new RENAME TO services;
 
 -- 7. added_part tablosunu TEKRAR OLUŞTUR
 CREATE TABLE added_part (

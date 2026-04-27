@@ -151,6 +151,7 @@ public class WorkOrderService {
                 .collect(Collectors.toList());
 
         // TODO customer ve device servislerinden listeyi çek
+        CustomerService customerService = ServiceManager.getCustomerService();
         Map<Long, Customer> customerMap = customerIds.isEmpty()
                 ? Collections.emptyMap()
                 : customerRepo.findByIds(customerIds).stream()

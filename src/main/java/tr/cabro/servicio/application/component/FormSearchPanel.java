@@ -336,7 +336,7 @@ public class FormSearchPanel extends JPanel {
                 }
             } else if (sp[0].equals("SERVICE")) {
                 WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
-                workOrderService.get(Integer.parseInt(sp[1])).thenAccept(serviceOptional -> {
+                workOrderService.get(Long.parseLong(sp[1])).thenAccept(serviceOptional -> {
                     serviceOptional.ifPresent(service -> {
                         ServiceSearchResult result = new ServiceSearchResult(service);
                         Item item = new Item(result, true, favorite);
