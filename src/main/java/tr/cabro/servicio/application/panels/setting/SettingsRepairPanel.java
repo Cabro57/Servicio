@@ -5,36 +5,48 @@ import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.editors.ActionButtonEditor;
+import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.forms.FormCustomers;
 import tr.cabro.servicio.application.panels.ProcessEditPanel;
-import tr.cabro.servicio.application.renderer.CheckBoxTableHeaderRenderer;
+import tr.cabro.servicio.application.panels.ServicePanel;
+import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.Labor;
 import tr.cabro.servicio.model.Process;
+import tr.cabro.servicio.model.dictionary.DeviceType;
+import tr.cabro.servicio.service.DeviceDictionaryManager;
+import tr.cabro.servicio.service.LaborService;
+import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class SettingsRepairPanel extends JPanel {
 
-    private final DefaultComboBoxModel<String> comboBoxModel = new DefaultComboBoxModel<>();
-    private GenericTableModel<Process> tableModal;
+    private final DefaultComboBoxModel<DeviceType> comboBoxModel = new DefaultComboBoxModel<>();
+    private GenericTableModel<Labor> tableModal;
 
-    private final DeviceSettings settings;
+    private final LaborService laborService;
 
     public SettingsRepairPanel() {
-        settings = Servicio.getDeviceSettings();
+        laborService = ServiceManager.getLaborService();
 
-        List<ColumnDef<Process>> columns = Arrays.asList(
-                new ColumnDef<>("İşlem Adı", String.class, Process::getName),
-                new ColumnDef<>("Açıklama", String.class, Process::getComment),
-                new ColumnDef<>("Fiyat", String.class, p -> Format.formatPrice(p.getPrice()))
+        List<ColumnDef<Labor>> columns = Arrays.asList(
+                new ColumnDef<>("İşlem Adı", String.class, Labor::getName),
+                new ColumnDef<>("Açıklama", String.class, Labor::getDescription),
+                new ColumnDef<>("Fiyat", BigDecimal.class, Labor::getDefaultPrice),
+                new ColumnDef<>("İşlem", String.class, labor -> "Detay")
         );
-        tableModal = new GenericTableModel<>(new ArrayList<>(), columns);
+        tableModal = new GenericTableModel<>(columns);
 
         init();
     }
@@ -44,17 +56,7 @@ public class SettingsRepairPanel extends JPanel {
 
         initTable();
 
-        device_type_combo.setModel(comboBoxModel);
-
         add_button.addActionListener(e -> onProcessAdd());
-        edit_button.addActionListener(e -> onProcessEdit());
-        delete_button.addActionListener(e -> onProcessDel());
-
-        settings.getTypes().forEach(comboBoxModel::addElement);
-
-        device_type_combo.addActionListener((ActionEvent e) -> loadProcesses());
-
-        device_type_combo.setSelectedItem(null);
     }
 
     private void onProcessAdd() {
@@ -107,7 +109,7 @@ public class SettingsRepairPanel extends JPanel {
             return;
         }
 
-        List<Process> processes = tableModal.getSelectedItems(process_table.getSelectedRows());
+        List<Process> processes = tableModal.getSelectedItems(table.getSelectedRows());
         if (processes.size() != 1) {
             Toast.show(this, Toast.Type.WARNING, "Birden fazla işlem seçili.");
             return;
@@ -153,12 +155,14 @@ public class SettingsRepairPanel extends JPanel {
     }
 
     private void onProcessDel() {
-        String type = (String) comboBoxModel.getSelectedItem();
+//        String type = (String) comboBoxModel.getSelectedItem();
 
-        if (type == null || type.isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, "Cihaz türü seçili değil.");
-            return;
-        }
+//        if (type == null || type.isEmpty()) {
+//            Toast.show(this, Toast.Type.WARNING, "Cihaz türü seçili değil.");
+//            return;
+//        }
+
+
 
         List<Process> selected = tableModal.getSelectedItems(process_table.getSelectedRows());
         if (selected.isEmpty()) {
@@ -168,7 +172,7 @@ public class SettingsRepairPanel extends JPanel {
 
         int errorCount = 0;
         for (Process process : selected) {
-            if (!settings.removeProcess(type, process.getName())) {
+            if (!.removeProcess(type, process.getName())) {
                 Toast.show(this, Toast.Type.ERROR, process.getName() + " adlı işlem silinemedi.");
                 errorCount++;
             }
@@ -179,20 +183,61 @@ public class SettingsRepairPanel extends JPanel {
         }
 
         // Tabloyu güncel listeyle yenile
-        loadProcesses();
+//        loadProcesses();
         Toast.show(this, Toast.Type.SUCCESS, "Tüm işlemler başarılı şekilde silindi.");
     }
 
-    private void loadProcesses() {
-        String selectedType = (String) device_type_combo.getSelectedItem();
-        List<Process> processes = settings.getProcesses(selectedType);
-        tableModal.setData(processes);
-    }
+//    private void loadProcesses() {
+//        DeviceType selectedType = (DeviceType) comboBoxModel.getSelectedItem();
+//
+//        deviceDictService.getBrandsByTypeId(selectedType.getId()).thenAccept(brands -> {
+//
+//        })
+//        List<Process> processes = .getProcesses(selectedType);
+//        tableModal.setData(processes);
+//    }
 
     private void initTable() {
-        process_table.setModel(tableModal);
+        table.setModel(tableModal);
 
-        process_table.getColumnModel().getColumn(2).setMaxWidth(100);
+        table.getColumnModel().getColumn(3).setCellRenderer(new ActionButtonRenderer());
+        table.getColumnModel().getColumn(3).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+            @Override
+            public void onEdit(int row) {
+
+            }
+
+            @Override
+            public void onDelete(int row) {
+                int modelRow = table.convertRowIndexToModel(row);
+                Labor l = tableModal.getItemAt(modelRow);
+
+                int confirm = JOptionPane.showConfirmDialog(
+                        SettingsRepairPanel.this,
+                        l.getName() + " adlı işçiliği silmek istediğinize emin misiniz?",
+                        "İşçilik Sil",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                );
+
+                if (confirm == JOptionPane.YES_OPTION) {
+                    laborService.delete(l.getId()).thenAccept(response -> {
+                        SwingUtilities.invokeLater(() -> {
+                            Toast.show(SettingsRepairPanel.this, Toast.Type.SUCCESS, "Müşteri silindi.");
+                            refreshTable();
+                        });
+                    });
+                }
+
+            }
+
+            @Override
+            public void onView(int row) {
+
+            }
+        }));
+
+        table.getColumnModel().getColumn(2).setMaxWidth(100);
     }
 
     private void initComponent() {
@@ -213,13 +258,13 @@ public class SettingsRepairPanel extends JPanel {
         add(delete_button, "wrap");
 
         // Tablo + scrollpane
-        process_table = new JTable();
-        JScrollPane table_scroll = new JScrollPane(process_table);
+        table = new JTable();
+        JScrollPane table_scroll = new JScrollPane(table);
         add(table_scroll, "span, grow, pushy");
     }
 
-    JTable process_table;
-    JComboBox<String> device_type_combo;
+    JTable table;
+    JComboBox<DeviceType> device_type_combo;
     JButton add_button;
     JButton edit_button;
     JButton delete_button;

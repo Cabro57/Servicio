@@ -114,7 +114,7 @@ public class ServiceItemAddPanel extends JPanel {
                 item.setUnitPrice(part.getSalePrice());
                 item.setUsedSerialNo(serialNo != null && !serialNo.trim().isEmpty() ? serialNo.trim() : null);
 
-                ServiceManager.getServiceItemManager().addItemToService(item).thenAccept(i -> {
+                ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
                     SwingUtilities.invokeLater(() -> {
                         Toast.show(ServiceItemAddPanel.this, Toast.Type.SUCCESS, "Parça eklendi ve stoktan düşüldü.");
                         onDataChanged.run();
@@ -174,7 +174,7 @@ public class ServiceItemAddPanel extends JPanel {
                 item.setPurchasePrice(BigDecimal.ZERO); // İşçiliğin alışı yoktur
                 item.setUnitPrice(labor.getDefaultPrice());
 
-                ServiceManager.getServiceItemManager().addItemToService(item).thenAccept(i -> {
+                ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
                     SwingUtilities.invokeLater(() -> {
                         Toast.show(ServiceItemAddPanel.this, Toast.Type.SUCCESS, "İşçilik başarıyla eklendi.");
                         onDataChanged.run();
@@ -236,7 +236,7 @@ public class ServiceItemAddPanel extends JPanel {
             item.setUnitPrice(new BigDecimal(txtSalePrice.getValue().toString()));
             item.setUsedSerialNo(txtSerialNo.getText().trim());
 
-            ServiceManager.getServiceItemManager().addItemToService(item).thenAccept(i -> {
+            ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
                 SwingUtilities.invokeLater(() -> {
                     Toast.show(this, Toast.Type.SUCCESS, "Manuel kalem başarıyla eklendi.");
                     txtName.setText("");

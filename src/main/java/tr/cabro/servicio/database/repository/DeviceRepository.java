@@ -18,21 +18,25 @@ public interface DeviceRepository {
     @SqlUpdate("INSERT INTO devices (device_type, brand, model, serial_no, password, accessory, created_at) " +
             "VALUES (:deviceType, :brand, :model, :serialNo, :password, :accessory, :createdAt)")
     @GetGeneratedKeys
-    Long insertDevice(@BindBean Device device);
+    Long insert(@BindBean Device device);
 
     // --- UPDATE ---
     @SqlUpdate("UPDATE devices SET device_type=:deviceType, brand=:brand, model=:model, " +
             "serial_no=:serialNo, password=:password, accessory=:accessory WHERE id=:id")
-    void updateDevice(@BindBean Device device);
+    void update(@BindBean Device device);
 
     // --- DELETE ---
     @SqlUpdate("DELETE FROM devices WHERE id = :id")
-    void deleteDevice(@Bind("id") Long id);
+    void delete(@Bind("id") Long id);
 
     // --- SELECT ---
     @SqlQuery("SELECT id, device_type, brand, model, serial_no, password, accessory, created_at " +
             "FROM devices WHERE id = :id")
     Optional<Device> findById(@Bind("id") Long id);
+
+    @SqlQuery("SELECT id, device_type, brand, model, serial_no, password, accessory, created_at " +
+            "FROM devices WHERE id IN (<ids>) AND is_deleted = 0")
+    List<Device> findByIds(@Bind("ids") List<Long> ids);
 
     @SqlQuery("SELECT id, device_type, brand, model, serial_no, password, accessory, created_at " +
             "FROM devices WHERE serial_no = :serialNo")

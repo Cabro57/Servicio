@@ -15,6 +15,7 @@ import javax.swing.*;
 import java.math.BigDecimal;
 import java.util.List;
 
+@Deprecated
 public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
     public ServicePartEditPanel(AddedPart data) {
         super(data);
@@ -31,11 +32,11 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         data.setName(name_field.getText().trim());
         data.setDeviceType((String) device_type_combo.getSelectedItem());
         data.setModel(models_field.getText().trim());
-        data.setPurchasePrice((Double) purchase_price_field.getValue());
+//        data.setPurchasePrice((Double) purchase_price_field.getValue());
         data.setSellingPrice((BigDecimal) sale_price_field.getValue());
         data.setAmount((Integer) amount_spinner.getValue());
         data.setWarrantyPeriod((Integer) warranty_period_spinner.getValue());
-        data.setPurchaseDate(Format.formatDate(purchase_picker.getSelectedDate()));
+//        data.setPurchaseDate(Format.formatDate(purchase_picker.getSelectedDate()));
         data.setDescription(description_area.getText().trim());
 
         return data;
@@ -52,8 +53,8 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         sale_price_field.setValue(data.getSellingPrice());
         amount_spinner.setValue(data.getAmount());
         warranty_period_spinner.setValue(data.getWarrantyPeriod());
-        if (data.getPurchaseDate() != null)
-            purchase_picker.setSelectedDate(Format.formatDate(data.getPurchaseDate()));
+//        if (data.getPurchaseDate() != null)
+//            purchase_picker.setSelectedDate(Format.formatDate(data.getPurchaseDate()));
         description_area.setText(data.getDescription());
 
         // Supplier seçimi
@@ -136,10 +137,10 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
         deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
         deviceTypeComboBoxModel.removeAllElements();
         DeviceSettings settings = Servicio.getDeviceSettings();
-        List<String> types = settings.getTypes();
-        for (String type : types) {
-            deviceTypeComboBoxModel.addElement(type);
-        }
+//        List<String> types = settings.getTypes();
+//        for (String type : types) {
+//            deviceTypeComboBoxModel.addElement(type);
+//        }
         device_type_combo = new JComboBox<>(deviceTypeComboBoxModel);
         content.add(device_type_combo);
 

@@ -1,14 +1,17 @@
 package tr.cabro.servicio.service;
 
+import org.mapstruct.factory.Mappers;
 import tr.cabro.servicio.database.repository.CustomerRepository;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.dto.CustomersTableDto;
+import tr.cabro.servicio.model.mapper.CustomerMapper;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.util.Validator;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -48,6 +51,46 @@ public class CustomerService {
 
     public CompletableFuture<List<Customer>> getAll() {
         return CompletableFuture.supplyAsync(repository::findAll); // Çekilen listeyi cihaz sayısıyla doldur
+    }
+
+    public CompletableFuture<List<CustomersTableDto>> getAllTable() {
+        return CompletableFuture.supplyAsync(() -> {
+            List<Customer> customers = repository.findAll();
+            WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
+            List<WorkOrder> allWorkOrders = workOrderService.getAll().join();
+
+            Map<Long, List<WorkOrder>> workOrdersByCustomer = allWorkOrders.stream()
+                    .filter(workOrder -> workOrder.getCustomerId() != null)
+                    .collect(Collectors.groupingBy(WorkOrder::getCustomerId));
+
+            CustomerMapper customerMapper = Mappers.getMapper(CustomerMapper.class);
+
+            return customers.stream()
+                    .map(customer -> {
+                        CustomersTableDto dto = customerMapper.toDto(customer);
+
+                        List<WorkOrder> customerWorkOrders = workOrdersByCustomer
+                                .getOrDefault(customer.getId(), Collections.emptyList());
+
+                        long deviceCount = customerWorkOrders.stream()
+                                .map(WorkOrder::getDeviceId)
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .count();
+
+                        dto.setDeviceCount((int) deviceCount);
+
+                        BigDecimal totalSpent = customerWorkOrders.stream()
+                                .filter(wo -> wo.getPayments() != null)
+                                .map(WorkOrder::getTotalPaid)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                        dto.setSpent(totalSpent);
+
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+        });
     }
 
     public CompletableFuture<List<Customer>> getAll(List<Long> customerIds) {

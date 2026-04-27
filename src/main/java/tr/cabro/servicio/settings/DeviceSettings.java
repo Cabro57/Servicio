@@ -6,16 +6,16 @@ import tr.cabro.servicio.model.Process;
 import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import lombok.Setter;
+import tr.cabro.servicio.model.dictionary.DeviceType;
 
-import java.math.BigDecimal;
 import java.text.Collator;
 import java.util.*;
 
 @Getter
-@Setter
+@Setter @Deprecated
 public class DeviceSettings extends OkaeriConfig {
 
-    private List<String> types = new ArrayList<>();
+    private List<DeviceType> types = new ArrayList<>();
 
     private Map<String, List<String>> brands = new HashMap<>();
 
@@ -26,7 +26,7 @@ public class DeviceSettings extends OkaeriConfig {
     private static final Collator TR_COLLATOR = Collator.getInstance(new Locale("tr", "TR"));
 
     // 1. Types listesini alfabetik olarak döndürüyoruz (Lombok'un metodunu ezer)
-    public List<String> getTypes() {
+    public List<DeviceType> getTypes() {
         if (types != null) {
             types.sort(TR_COLLATOR);
         }
@@ -53,14 +53,14 @@ public class DeviceSettings extends OkaeriConfig {
         return Collections.emptyList();
     }
 
-    public boolean addDeviceType(String typeName) {
-        if (typeName == null || typeName.trim().isEmpty()) return false;
-        if (!types.contains(typeName)) {
-            types.add(typeName);
-            return true;
-        }
-        return false;
-    }
+//    public boolean addDeviceType(String typeName) {
+//        if (typeName == null || typeName.trim().isEmpty()) return false;
+//        if (!types.contains(typeName)) {
+//            types.add(typeName);
+//            return true;
+//        }
+//        return false;
+//    }
 
     public boolean removeDeviceType(String typeName) {
         boolean removed = types.remove(typeName);
@@ -71,17 +71,17 @@ public class DeviceSettings extends OkaeriConfig {
         return removed;
     }
 
-    public boolean addBrand(String typeName, String brandName) {
-        if (brandName == null || brandName.trim().isEmpty()) return false;
-        if (!types.contains(typeName)) addDeviceType(typeName);
-
-        List<String> brandList = brands.computeIfAbsent(typeName, k -> new ArrayList<>());
-        if (!brandList.contains(brandName)) {
-            brandList.add(brandName);
-            return true;
-        }
-        return false;
-    }
+//    public boolean addBrand(String typeName, String brandName) {
+//        if (brandName == null || brandName.trim().isEmpty()) return false;
+//        if (!types.contains(typeName)) addDeviceType(typeName);
+//
+//        List<String> brandList = brands.computeIfAbsent(typeName, k -> new ArrayList<>());
+//        if (!brandList.contains(brandName)) {
+//            brandList.add(brandName);
+//            return true;
+//        }
+//        return false;
+//    }
 
     public boolean removeBrand(String typeName, String brandName) {
         List<String> brandList = brands.get(typeName);
@@ -94,21 +94,21 @@ public class DeviceSettings extends OkaeriConfig {
         return false;
     }
 
-    public boolean addProcess(String typeName, String name, String comment, BigDecimal price) {
-        if (!types.contains(typeName)) addDeviceType(typeName);
+//    public boolean addProcess(String typeName, String name, String comment, BigDecimal price) {
+//        if (!types.contains(typeName)) addDeviceType(typeName);
+//
+//        List<tr.cabro.servicio.model.Process> list = processes.computeIfAbsent(typeName, k -> new ArrayList<>());
+//        boolean exists = list.stream().anyMatch(p -> p.getName().equalsIgnoreCase(name));
+//        if (!exists) {
+//            list.add(new Process(name, comment, price));
+//            return true;
+//        }
+//        return false;
+//    }
 
-        List<tr.cabro.servicio.model.Process> list = processes.computeIfAbsent(typeName, k -> new ArrayList<>());
-        boolean exists = list.stream().anyMatch(p -> p.getName().equalsIgnoreCase(name));
-        if (!exists) {
-            list.add(new Process(name, comment, price));
-            return true;
-        }
-        return false;
-    }
-
-    public boolean addProcess(String typeName, Process process) {
-        return addProcess(typeName, process.getName(), process.getComment(), process.getPrice());
-    }
+//    public boolean addProcess(String typeName, Process process) {
+//        return addProcess(typeName, process.getName(), process.getComment(), process.getPrice());
+//    }
 
     public boolean updateProcess(String typeName, String oldName, Process newProcess) {
         List<Process> list = processes.get(typeName);

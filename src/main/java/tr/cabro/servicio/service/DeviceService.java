@@ -32,17 +32,17 @@ public class DeviceService {
                 if (device.getCreatedAt() == null) {
                     device.setCreatedAt(LocalDateTime.now());
                 }
-                Long id = deviceRepository.insertDevice(device);
+                Long id = deviceRepository.insert(device);
                 device.setId(id);
             } else {
-                deviceRepository.updateDevice(device);
+                deviceRepository.update(device);
             }
             return device;
         });
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> deviceRepository.deleteDevice(id));
+        return CompletableFuture.runAsync(() -> deviceRepository.delete(id));
     }
 
     public CompletableFuture<Optional<Device>> get(Long id) {
@@ -55,6 +55,10 @@ public class DeviceService {
 
     public CompletableFuture<List<Device>> getAll() {
         return CompletableFuture.supplyAsync(deviceRepository::findAll);
+    }
+
+    public CompletableFuture<List<Device>> getAll(List<Long> ids) {
+        return CompletableFuture.supplyAsync(() -> deviceRepository.findByIds(ids));
     }
 
     public CompletableFuture<List<Device>> search(String searchTerm) {

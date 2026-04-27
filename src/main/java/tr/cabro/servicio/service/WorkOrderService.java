@@ -65,6 +65,10 @@ public class WorkOrderService {
         return CompletableFuture.supplyAsync(() -> hydrateServices(serviceRepository.findAll()));
     }
 
+    public CompletableFuture<List<WorkOrder>> getAllSoft() {
+        return CompletableFuture.supplyAsync(serviceRepository::findAll);
+    }
+
     public CompletableFuture<List<WorkOrder>> getAll(Long customerId) {
         return CompletableFuture.supplyAsync(() -> hydrateServices(serviceRepository.findByCustomerId(customerId)));
     }
@@ -154,14 +158,15 @@ public class WorkOrderService {
         CustomerService customerService = ServiceManager.getCustomerService();
         Map<Long, Customer> customerMap = customerIds.isEmpty()
                 ? Collections.emptyMap()
-                : customerRepo.findByIds(customerIds).stream()
+                : customerService.getAll(customerIds).join().stream()
                   .collect(Collectors.toMap(Customer::getId, c -> c));
 
         // 2. Cihazları çek
-        Map<Long, Device> deviceMap = new HashMap<>();
-        for (Long deviceId : deviceIds) {
-            deviceRepo.findById(deviceId).ifPresent(d -> deviceMap.put(d.getId(), d));
-        }
+        DeviceService deviceService = ServiceManager.getDeviceService();
+        Map<Long, Device> deviceMap = deviceIds.isEmpty()
+                ? Collections.emptyMap()
+                : deviceService.getAll(deviceIds).join().stream()
+                  .collect(Collectors.toMap(Device::getId, d -> d));
 
         // 3. ServiceItems ve Payments yükle (itemsTotalMap tamamen SİLİNDİ)
         for (WorkOrder s : workOrders) {

@@ -22,6 +22,7 @@ import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderPayment;
+import tr.cabro.servicio.model.dto.CustomersTableDto;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.WorkOrderService;
@@ -46,10 +47,10 @@ public class FormCustomers extends AbstractTableForm {
 
     private final CustomerService customerService;
     private final WorkOrderService workOrderService;
-    private GenericTableModel<Customer> tableModel;
+    private GenericTableModel<CustomersTableDto> tableModel;
 
     // Müşterilerin toplam harcamalarını RAM'de (önbellekte) tutmak için
-    private final Map<Integer, BigDecimal> customerSpentMap = new ConcurrentHashMap<>();
+    private final Map<Long, BigDecimal> customerSpentMap = new ConcurrentHashMap<>();
 
     public FormCustomers() {
         this.customerService = ServiceManager.getCustomerService();
@@ -100,12 +101,11 @@ public class FormCustomers extends AbstractTableForm {
     protected void setupTable() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
 
-        List<ColumnDef<Customer>> columns = Arrays.asList(
+        List<ColumnDef<CustomersTableDto>> columns = Arrays.asList(
                 new ColumnDef<>("ID", String.class, c -> String.format("C-%03d", c.getId())),
                 new ColumnDef<>("Müşteri Adı", Customer.class, c -> c),
                 new ColumnDef<>("İletişim", Customer.class, c -> c),
-                new ColumnDef<>("Cihaz Sayısı", Integer.class, Customer::getDeviceCount),
-                // DÜZELTME: Sabit "0" yerine, harita(map) üzerinden müşterinin toplam harcamasını çekiyoruz
+                new ColumnDef<>("Cihaz Sayısı", Integer.class, CustomersTableDto::getDeviceCount),
                 new ColumnDef<>("Toplam Harcama", String.class, c -> Format.formatPrice(customerSpentMap.getOrDefault(c.getId(), BigDecimal.ZERO))),
                 new ColumnDef<>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(formatter) : "-"),
                 new ColumnDef<>("İşlem", String.class, c -> "Detay")
