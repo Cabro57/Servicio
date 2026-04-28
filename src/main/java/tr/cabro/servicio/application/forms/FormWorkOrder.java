@@ -103,8 +103,8 @@ public class FormWorkOrder extends Form {
 
         Device device = workOrder.getDevice();
         if (device != null) {
-            lblDeviceType.setText(device.getDeviceType() != null ? device.getDeviceType() : "-");
-            lblDeviceBrand.setText(device.getBrand() != null ? device.getBrand() : "-");
+            lblDeviceType.setText(device.getDeviceType() != null ? device.getDeviceType().getName() : "-");
+            lblDeviceBrand.setText(device.getBrand() != null ? device.getBrand().getName() : "-");
             lblDeviceModel.setText(device.getModel() != null ? device.getModel() : "-");
             lblDeviceSerial.setText(device.getSerialNo() != null ? device.getSerialNo() : "-");
         }

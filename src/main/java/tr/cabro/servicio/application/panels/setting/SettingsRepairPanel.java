@@ -7,26 +7,17 @@ import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
-import tr.cabro.servicio.application.forms.FormCustomers;
 import tr.cabro.servicio.application.panels.ProcessEditPanel;
-import tr.cabro.servicio.application.panels.ServicePanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
-import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Labor;
-import tr.cabro.servicio.model.Process;
 import tr.cabro.servicio.model.dictionary.DeviceType;
-import tr.cabro.servicio.service.DeviceDictionaryManager;
 import tr.cabro.servicio.service.LaborService;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.settings.DeviceSettings;
-import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
-import java.awt.event.ActionEvent;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,6 +31,21 @@ public class SettingsRepairPanel extends JPanel {
     public SettingsRepairPanel() {
         laborService = ServiceManager.getLaborService();
 
+        init();
+    }
+
+    private void init() {
+        initComponent();
+
+        setupTable();
+        refreshTable();
+
+        add_button.addActionListener(e -> {
+            setupEditModal("LABOR_ADD", false, new Labor());
+        });
+    }
+
+    private void setupTable() {
         List<ColumnDef<Labor>> columns = Arrays.asList(
                 new ColumnDef<>("İşlem Adı", String.class, Labor::getName),
                 new ColumnDef<>("Açıklama", String.class, Labor::getDescription),
@@ -48,163 +54,72 @@ public class SettingsRepairPanel extends JPanel {
         );
         tableModal = new GenericTableModel<>(columns);
 
-        init();
-    }
-
-    private void init() {
-        initComponent();
-
-        initTable();
-
-        add_button.addActionListener(e -> onProcessAdd());
-    }
-
-    private void onProcessAdd() {
-        final String id = "ProcessAdd";
-        String type = (String) comboBoxModel.getSelectedItem();
-
-        ProcessEditPanel panel = new ProcessEditPanel();
-
-        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Tamam", 0),
-                new SimpleModalBorder.Option("İptal", 2)
-        };
-
-        ModalDialog.showModal(this, new SimpleModalBorder(
-                panel, "İşlem Kayıt Formu", options,
-                (controller, action) -> {
-                    if (action == SimpleModalBorder.OPENED) {
-                        panel.formOpen();
-                        panel.setType(settings.getTypes());
-                        panel.setSelectedType(type);
-
-                    } else if (action == SimpleModalBorder.OK_OPTION) {
-                        Process process = panel.getProcess();
-                        String t = panel.getSelectedType();
-
-                        if (t == null || t.equals("Seçiniz...")) {
-                            Toast.show(panel, Toast.Type.WARNING, "Lütfen cihaz türü seçiniz.");
-                            return;
-                        }
-
-                        boolean added = settings.addProcess(t, process);
-
-                        if (added) {
-                            // Tabloyu güncel işlem listesiyle yenile
-                            tableModal.setData(settings.getProcesses(t));
-                            Toast.show(this, Toast.Type.SUCCESS, process.getName() + " adlı işlem eklendi.");
-                        } else {
-                            Toast.show(this, Toast.Type.WARNING, process.getName() + " adlı işlem zaten mevcut.");
-                        }
-                    }
-                })
-        , id);
-    }
-
-    private void onProcessEdit() {
-        final String id = "ProcessEdit";
-        String type = (String) comboBoxModel.getSelectedItem();
-        if (type == null || type.isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, "Cihaz türü seçili değil.");
-            return;
-        }
-
-        List<Process> processes = tableModal.getSelectedItems(table.getSelectedRows());
-        if (processes.size() != 1) {
-            Toast.show(this, Toast.Type.WARNING, "Birden fazla işlem seçili.");
-            return;
-        }
-
-        ProcessEditPanel panel = new ProcessEditPanel();
-
-        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                new SimpleModalBorder.Option("Tamam", 0),
-                new SimpleModalBorder.Option("İptal", 2)
-        };
-
-        ModalDialog.showModal(this, new SimpleModalBorder(
-                panel, "İşlem Kayıt Formu", options,
-                (controller, action) -> {
-                    if (action == SimpleModalBorder.OPENED) {
-                        panel.formOpen();
-                        panel.setType(settings.getTypes());
-                        panel.formFill(type, processes.get(0));
-
-                    } else if (action == SimpleModalBorder.OK_OPTION) {
-
-                        Process process = panel.getProcess();
-                        String t = panel.getSelectedType();
-
-                        if (t == null || t.equals("Seçiniz...")) {
-                            Toast.show(panel, Toast.Type.WARNING, "Lütfen cihaz türü seçiniz.");
-                            return;
-                        }
-
-                        Process oldProcess = processes.get(0);
-                        boolean updated = settings.updateProcess(t, oldProcess.getName(), process);
-
-                        if (updated) {
-                            Toast.show(this, Toast.Type.SUCCESS, "İşlem güncellendi.");
-                            loadProcesses(); // tabloyu yenile
-                        } else {
-                            Toast.show(this, Toast.Type.ERROR, "İşlem güncellenemedi (aynı isimli işlem olabilir).");
-                        }
-                    }
-                })
-        , id);
-    }
-
-    private void onProcessDel() {
-//        String type = (String) comboBoxModel.getSelectedItem();
-
-//        if (type == null || type.isEmpty()) {
-//            Toast.show(this, Toast.Type.WARNING, "Cihaz türü seçili değil.");
-//            return;
-//        }
-
-
-
-        List<Process> selected = tableModal.getSelectedItems(process_table.getSelectedRows());
-        if (selected.isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, "Seçili işlem yok.");
-            return;
-        }
-
-        int errorCount = 0;
-        for (Process process : selected) {
-            if (!.removeProcess(type, process.getName())) {
-                Toast.show(this, Toast.Type.ERROR, process.getName() + " adlı işlem silinemedi.");
-                errorCount++;
-            }
-        }
-
-        if (errorCount > 0) {
-            Toast.show(this, Toast.Type.WARNING, errorCount + " işlem silinemedi.");
-        }
-
-        // Tabloyu güncel listeyle yenile
-//        loadProcesses();
-        Toast.show(this, Toast.Type.SUCCESS, "Tüm işlemler başarılı şekilde silindi.");
-    }
-
-//    private void loadProcesses() {
-//        DeviceType selectedType = (DeviceType) comboBoxModel.getSelectedItem();
-//
-//        deviceDictService.getBrandsByTypeId(selectedType.getId()).thenAccept(brands -> {
-//
-//        })
-//        List<Process> processes = .getProcesses(selectedType);
-//        tableModal.setData(processes);
-//    }
-
-    private void initTable() {
         table.setModel(tableModal);
+
+        configureTableColumns();
+    }
+
+    private void setupEditModal(String id, boolean updated, Labor labor) {
+
+        ProcessEditPanel panel = new ProcessEditPanel();
+
+        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Kaydet", 0),
+                new SimpleModalBorder.Option("Çık", 2)
+        };
+
+        ModalDialog.showModal(this, new SimpleModalBorder(
+                panel, "İşçilik Formu", options,
+                (controller, action) -> {
+                    if (action == SimpleModalBorder.OPENED) {
+                        panel.formOpen();
+                        panel.formFill(labor);
+
+                    } else if (action == SimpleModalBorder.OK_OPTION) {
+                        Labor newLabor = panel.getLabor();
+
+                        laborService.save(newLabor, updated)
+                                .thenAccept(labor1 -> {
+                                   SwingUtilities.invokeLater(() -> {
+                                       refreshTable();
+                                       Toast.show(this, Toast.Type.SUCCESS, labor1.getName() + " adlı işçilik eklendi.");
+                                   });
+                                }).exceptionally(ex -> {
+                                    SwingUtilities.invokeLater(() -> {
+                                        controller.consume();
+                                        Toast.show(this, Toast.Type.ERROR, ex.getMessage());
+                                    });
+                                    return null;
+                                });
+                    }
+                })
+        , id);
+    }
+
+    private void refreshTable() {
+        laborService.getAll().thenAccept(labors -> {
+            SwingUtilities.invokeLater(() -> {
+                tableModal.setData(labors);
+            });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + ex.getMessage());
+                Servicio.getLogger().error("Tablo yenileme hatası", ex);
+            });
+            return null;
+        });
+    }
+
+    private void configureTableColumns() {
 
         table.getColumnModel().getColumn(3).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(3).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onEdit(int row) {
+                int modelRow = table.convertRowIndexToModel(row);
+                Labor l = tableModal.getItemAt(modelRow);
 
+                setupEditModal("LABOR_EDIT", true, l);
             }
 
             @Override

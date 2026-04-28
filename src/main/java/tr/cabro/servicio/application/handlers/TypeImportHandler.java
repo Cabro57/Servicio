@@ -3,7 +3,10 @@ package tr.cabro.servicio.application.handlers;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.panels.setting.SettingsDevicePanel;
-import tr.cabro.servicio.settings.DeviceSettings;
+import tr.cabro.servicio.model.dictionary.DeviceBrand;
+import tr.cabro.servicio.model.dictionary.DeviceType;
+import tr.cabro.servicio.service.DeviceDictionaryManager;
+import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 import java.awt.datatransfer.DataFlavor;
@@ -12,11 +15,11 @@ import java.io.IOException;
 
 public class TypeImportHandler extends TransferHandler {
     private final SettingsDevicePanel panel;
-    private final DeviceSettings settings;
+    private final DeviceDictionaryManager deviceDictService;
 
     public TypeImportHandler(SettingsDevicePanel panel) {
         this.panel = panel;
-        this.settings = Servicio.getDeviceSettings();
+        this.deviceDictService = ServiceManager.getDeviceDictionaryManager();
     }
 
     @Override
@@ -29,26 +32,28 @@ public class TypeImportHandler extends TransferHandler {
         if (!canImport(support)) return false;
 
         try {
-            String brandName = (String) support.getTransferable()
+            DeviceBrand brand = (DeviceBrand) support.getTransferable()
                     .getTransferData(DataFlavor.stringFlavor);
 
             JList.DropLocation dl = (JList.DropLocation) support.getDropLocation();
             int index = dl.getIndex();
-            String targetType = panel.type_list.getModel().getElementAt(index);
+            DeviceType targetType = panel.type_list.getModel().getElementAt(index);
 
-            String sourceType = panel.type_list.getSelectedValue();
+            DeviceType sourceType = panel.type_list.getSelectedValue();
 
             if (sourceType != null && targetType != null && !sourceType.equals(targetType)) {
-                if (settings.removeBrand(sourceType, brandName)) {
-                    settings.addBrand(targetType, brandName);
+                deviceDictService.unlinkBrandFromType(sourceType.getId(), brand.getId()).thenAccept(Void -> {
+                    deviceDictService.linkBrandToType(targetType.getId(), brand.getId());
 
-                    // Kaynak ve hedef listeleri sıralı şekilde yenile
-                    panel.loadBrands(sourceType);
-                    panel.loadBrands(targetType);
+                    SwingUtilities.invokeLater(() -> {
+                        panel.loadBrands(sourceType);
+                        panel.loadBrands(targetType);
 
-                    Toast.show(panel, Toast.Type.INFO,
-                            "↔️ " + brandName + " markası '" + sourceType + "' türünden '" + targetType + "' türüne taşındı.");
-                }
+                        Toast.show(panel, Toast.Type.INFO,
+                                "↔️ " + brand.getName() + " markası '" + sourceType.getName() + "' türünden '" + targetType.getName() + "' türüne taşındı.");
+
+                    });
+                });
 
             }
             return true;

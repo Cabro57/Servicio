@@ -13,17 +13,17 @@ import java.util.stream.Collectors;
 
 public class WorkOrderService {
 
-    private final ServiceRepository serviceRepository;
+    private final WorkOrderRepository workOrderRepository;
 
     private final ServiceItemRepository itemRepository;
     private final ServicePaymentRepository paymentRepository;
     private final ServiceNoteRepository noteRepository;
 
-    public WorkOrderService(ServiceRepository serviceRepository,
+    public WorkOrderService(WorkOrderRepository workOrderRepository,
                             ServiceItemRepository itemRepository,
                             ServicePaymentRepository paymentRepo,
                             ServiceNoteRepository noteRepository) {
-        this.serviceRepository = serviceRepository;
+        this.workOrderRepository = workOrderRepository;
         this.itemRepository = itemRepository;
         this.paymentRepository = paymentRepo;
         this.noteRepository = noteRepository;
@@ -40,41 +40,41 @@ public class WorkOrderService {
 
         return CompletableFuture.supplyAsync(() -> {
             if (!update) {
-                Long id = serviceRepository.insert(workOrder);
+                Long id = workOrderRepository.insert(workOrder);
                 workOrder.setId(id);
             } else {
-                serviceRepository.update(workOrder);
+                workOrderRepository.update(workOrder);
             }
             return workOrder;
         });
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> serviceRepository.delete(id));
+        return CompletableFuture.runAsync(() -> workOrderRepository.delete(id));
     }
 
     public CompletableFuture<Optional<WorkOrder>> get(Long id) {
         return CompletableFuture.supplyAsync(() -> {
-            Optional<WorkOrder> optService = serviceRepository.findById(id);
+            Optional<WorkOrder> optService = workOrderRepository.findById(id);
             optService.ifPresent(s -> hydrateServices(Collections.singletonList(s)));
             return optService;
         });
     }
 
     public CompletableFuture<List<WorkOrder>> getAll() {
-        return CompletableFuture.supplyAsync(() -> hydrateServices(serviceRepository.findAll()));
+        return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findAll()));
     }
 
     public CompletableFuture<List<WorkOrder>> getAllSoft() {
-        return CompletableFuture.supplyAsync(serviceRepository::findAll);
+        return CompletableFuture.supplyAsync(workOrderRepository::findAll);
     }
 
     public CompletableFuture<List<WorkOrder>> getAll(Long customerId) {
-        return CompletableFuture.supplyAsync(() -> hydrateServices(serviceRepository.findByCustomerId(customerId)));
+        return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findByCustomerId(customerId)));
     }
 
     public CompletableFuture<List<WorkOrder>> getAllByDevice(Long deviceId) {
-        return CompletableFuture.supplyAsync(() -> hydrateServices(serviceRepository.findByDeviceId(deviceId)));
+        return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findByDeviceId(deviceId)));
     }
 
     public CompletableFuture<List<WorkOrder>> getAll(String statusStr) {
@@ -85,13 +85,13 @@ public class WorkOrderService {
         if (statusStr.equalsIgnoreCase("OPEN")) {
             return CompletableFuture.supplyAsync(() -> {
                 List<ServiceStatus> closedStatuses = Arrays.asList(ServiceStatus.DELIVERED, ServiceStatus.RETURN);
-                return hydrateServices(serviceRepository.findByStatusesExcluded(closedStatuses));
+                return hydrateServices(workOrderRepository.findByStatusesExcluded(closedStatuses));
             });
         }
 
         return CompletableFuture.supplyAsync(() -> {
             ServiceStatus status = ServiceStatus.of(statusStr);
-            return hydrateServices(serviceRepository.findByStatuses(Collections.singletonList(status)));
+            return hydrateServices(workOrderRepository.findByStatuses(Collections.singletonList(status)));
         });
     }
 
@@ -103,14 +103,14 @@ public class WorkOrderService {
 
     public CompletableFuture<Void> setDelivered(Long serviceId) {
         return CompletableFuture.runAsync(() -> {
-            Optional<WorkOrder> opt = serviceRepository.findById(serviceId);
+            Optional<WorkOrder> opt = workOrderRepository.findById(serviceId);
             if (opt.isPresent()) {
                 WorkOrder workOrder = opt.get();
                 workOrder.setServiceStatus(ServiceStatus.DELIVERED);
                 if (workOrder.getDeliveryDate() == null) {
                     workOrder.setDeliveryDate(LocalDateTime.now());
                 }
-                serviceRepository.update(workOrder);
+                workOrderRepository.update(workOrder);
             } else {
                 throw new ValidationException("Servis bulunamadı ID: " + serviceId);
             }
@@ -120,7 +120,7 @@ public class WorkOrderService {
     public CompletableFuture<List<WorkOrder>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
         return CompletableFuture.supplyAsync(
-                () -> hydrateServices(serviceRepository.search("%" + searchTerm.trim() + "%")));
+                () -> hydrateServices(workOrderRepository.search("%" + searchTerm.trim() + "%")));
     }
 
     // =========================================================================
@@ -131,7 +131,7 @@ public class WorkOrderService {
 //        if (customerIds == null || customerIds.isEmpty()) {
 //            return CompletableFuture.completedFuture(Collections.emptyMap());
 //        }
-//        // DÜZELTME: Artık ServiceRepository değil, mantıken DeviceRepository üzerinden çekiyoruz
+//        // DÜZELTME: Artık WorkOrderRepository değil, mantıken DeviceRepository üzerinden çekiyoruz
 //        return CompletableFuture.supplyAsync(() -> deviceRepo.getDeviceCountsByCustomerIds(customerIds));
 //    }
 
@@ -154,7 +154,6 @@ public class WorkOrderService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // TODO customer ve device servislerinden listeyi çek
         CustomerService customerService = ServiceManager.getCustomerService();
         Map<Long, Customer> customerMap = customerIds.isEmpty()
                 ? Collections.emptyMap()

@@ -7,6 +7,7 @@ import net.miginfocom.swing.MigLayout;
 import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.time.Month;
 import org.jfree.data.time.TimeTableXYDataset;
+import raven.modal.Toast;
 import raven.modal.component.ToolBarSelection;
 import raven.modal.component.chart.PieChart;
 import raven.modal.component.chart.TimeSeriesChart;
@@ -15,6 +16,7 @@ import raven.modal.component.chart.utils.ToolBarTimeSeriesChartRenderer;
 import raven.modal.component.dashboard.CardBox;
 import raven.modal.system.Form;
 import raven.modal.utils.SystemForm;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.panels.ActiveServiceTable;
 import tr.cabro.servicio.application.panels.PendingPaymentsTable;
 import tr.cabro.servicio.model.dto.ChartDataDto;
@@ -145,14 +147,35 @@ public class FormDashboard extends Form {
         // PASTA GRAFİKLER (Küçük dilimler %3'ün altındaysa "Diğer" grubuna alınır)
         reportManager.getDeviceTypePieChart(startCurrent, endCurrent).thenAccept(data ->
                 SwingUtilities.invokeLater(() -> deviceTypePieChart.setDataset(createGroupedPieDataset(data, 3.0)))
-        );
+        ).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+            });
+            Servicio.getLogger().error("Hata", ex);
+            return null;
+        });
 
         reportManager.getBrandPieChart(startCurrent, endCurrent).thenAccept(data ->
                 SwingUtilities.invokeLater(() -> brandPieChart.setDataset(createGroupedPieDataset(data, 3.0)))
-        );
+        ).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+            });
+            Servicio.getLogger().error("Hata", ex);
+            return null;
+        });;
 
         // ALT TABLOLAR
-        workOrderService.getAll("OPEN").thenAccept(services -> SwingUtilities.invokeLater(() -> activeServiceTable.setData(services)));
+        workOrderService.getAll("OPEN")
+                .thenAccept(services -> {
+                    SwingUtilities.invokeLater(() -> activeServiceTable.setData(services));
+                }).exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+                    });
+                    Servicio.getLogger().error(ex.getMessage());
+                    return null;
+                });
         workOrderService.getServicesWithDebt().thenAccept(services -> SwingUtilities.invokeLater(() -> pendingPaymentsTable.setData(services)));
     }
 

@@ -4,22 +4,46 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/dto/CustomersTableDto.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/mapper/CustomerMapper.java" afterDir="false" />
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="Service Entity sınıfı WorkOrder oldu ve buna göre tüm projede isimlendirmeler değişiti.&#10;Primitive değer tipleri yerin wrapper tipler eklendi.&#10;Servis katmanındaki bazı sınıflar WorkOrderService sınıfında birleştirildi.">
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/exception/AlreadyExistsException.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormCustomers.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormCustomers.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/manager/UpdateManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ProcessSelectedPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ProcessSelectedPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormDashboard.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormDashboard.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormWorkOrder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormWorkOrder.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/handlers/TypeImportHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/handlers/TypeImportHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ActiveServiceTable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ActiveServiceTable.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/PartSearchPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/PartSearchPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ProcessEditPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ProcessEditPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/PartEditPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/PartEditPanel.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/ServicePartEditPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/ServicePartEditPanel.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/ServiceItemAddPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/ServiceItemAddPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/DeviceInfoPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/DeviceInfoPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/QuickIntakePanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/QuickIntakePanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsDevicePanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsDevicePanel.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsRepairPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsRepairPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/DeviceTableCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/DeviceTableCellRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/DeviceDictionaryRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/DeviceDictionaryRepository.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/DeviceRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/DeviceRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ReportRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ReportRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceItemRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceItemRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceNoteRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceNoteRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServicePaymentRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServicePaymentRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/WorkOrderRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/Device.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/Device.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/dictionary/DeviceBrand.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/dictionary/DeviceBrand.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/dictionary/DeviceType.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/dictionary/DeviceType.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/mapper/CustomerMapper.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/mapper/CustomerMapper.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/CustomerService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/CustomerService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/DeviceDictionaryManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/DeviceDictionaryManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/DeviceService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/DeviceService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/ServiceManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/ServiceManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/settings/DeviceSettings.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/settings/DeviceSettings.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/db/migration/V2__added_part_refactor.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/db/migration/V2__added_part_refactor.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/db/migration/V5__make_customer_id_nullable.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/db/migration/V5__make_customer_id_nullable.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/db/migration/V7__extract_devices.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/db/migration/V7__extract_devices.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/tr/cabro/servicio/database/repository/ServiceRepository/dashboardStats.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/tr/cabro/servicio/database/repository/ServiceRepository/dashboardStats.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/tr/cabro/servicio/database/repository/ServiceRepository/financeRecords.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/tr/cabro/servicio/database/repository/ServiceRepository/financeRecords.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,14 +51,15 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="602" />
+    <option name="cachedIndexableFilesCount" value="595" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Enum" />
-        <option value="Class" />
         <option value="Interface" />
+        <option value="Class" />
+        <option value="Enum" />
+        <option value="Exception" />
       </list>
     </option>
   </component>
@@ -47,12 +72,12 @@
     &quot;assignee&quot;: &quot;Cabro57&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/Cabro57/Servicio.git&quot;,
-    &quot;accountId&quot;: &quot;4dbf82b9-08aa-487c-a4ef-9b6165819a0e&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Cabro57/Servicio.git",
+    "accountId": "66088443-5ae7-4d66-8f5c-0180f0a95921"
   }
-}</component>
+}]]></component>
   <component name="KubernetesApiPersistence">{}</component>
   <component name="KubernetesApiProvider">{
   &quot;isMigrated&quot;: true
@@ -75,11 +100,11 @@
     "Application.App.executor": "Run",
     "Application.Servicio.executor": "Run",
     "Application.SplashScreenTest.executor": "Run",
-    "Application.TestDrawer.executor": "Run",
     "Application.testMain.executor": "Run",
     "Maven.Servicio [clean,package,-U].executor": "Run",
     "Maven.Servicio [clean,package].executor": "Run",
     "Maven.Servicio.executor": "Run",
+    "OverrideImplement.generate.javadoc": "true",
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
@@ -92,17 +117,17 @@
     "ignore.virus.scanning.warn.message": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Projelerim/Servicio/.servicio",
+    "last_opened_file_path": "C:/Projelerim/Servicio",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "onboarding.tips.debug.path": "C:/Projelerim/Servicio/src/main/java/org/example/Main.java",
-    "project.structure.last.edited": "SDKs",
+    "project.structure.last.edited": "Libraries",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.30229884",
-    "settings.editor.selected.configurable": "jvm.logging",
+    "settings.editor.selected.configurable": "reference.projectsettings.compiler.annotationProcessors",
     "to.speed.mode.migration.done": "true",
     "vue.rearranger.settings.migration": "true"
   },
@@ -114,13 +139,11 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Projelerim\Servicio\.servicio" />
       <recent name="C:\Projelerim\Servicio\src\main\resources" />
       <recent name="C:\Projelerim\Servicio\src\main\resources\icons" />
       <recent name="C:\Projelerim\Servicio" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="C:\Projelerim\Servicio\src\main\resources" />
       <recent name="C:\Projelerim\Servicio\src\main\resources\tr\cabro\servicio\database\repository\ServiceRepository" />
       <recent name="C:\Projelerim\Servicio\src\main\resources\tr\cabro\servicio\database\repository" />
       <recent name="C:\Projelerim\Servicio\src\main\resources\icons" />
@@ -196,18 +219,7 @@
       <updated>1774442434296</updated>
       <workItem from="1776005134812" duration="179000" />
       <workItem from="1776005347898" duration="349000" />
-      <workItem from="1776005795327" duration="12077000" />
-      <workItem from="1776018864854" duration="6749000" />
-      <workItem from="1776108768511" duration="7393000" />
-      <workItem from="1776192552065" duration="8000" />
-      <workItem from="1776442721488" duration="18901000" />
-      <workItem from="1776586767605" duration="46390000" />
-      <workItem from="1776703652661" duration="1299000" />
-      <workItem from="1776706037280" duration="2286000" />
-      <workItem from="1776795810548" duration="4321000" />
-      <workItem from="1777326639258" duration="590000" />
-      <workItem from="1777327408016" duration="736000" />
-      <workItem from="1777328294698" duration="1812000" />
+      <workItem from="1776005795327" duration="11162000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü.">
       <option name="closed" value="true" />
@@ -225,13 +237,13 @@
       <option name="project" value="LOCAL" />
       <updated>1775862114954</updated>
     </task>
-    <task id="LOCAL-00003" summary="feat: implement core service management logic and repair workflow with asynchronous repository operations">
+    <task id="LOCAL-00003" summary="Service Entity sınıfı WorkOrder oldu ve buna göre tüm projede isimlendirmeler değişiti.&#10;Primitive değer tipleri yerin wrapper tipler eklendi.&#10;Servis katmanındaki bazı sınıflar WorkOrderService sınıfında birleştirildi.">
       <option name="closed" value="true" />
-      <created>1776018162830</created>
+      <created>1777129866612</created>
       <option name="number" value="00003" />
       <option name="presentableId" value="LOCAL-00003" />
       <option name="project" value="LOCAL" />
-      <updated>1776018162830</updated>
+      <updated>1777129866612</updated>
     </task>
     <option name="localTasksCounter" value="4" />
     <servers />
@@ -239,11 +251,22 @@
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü." />
     <MESSAGE value="feat: implement core application architecture, service management modules, and UI components" />
-    <MESSAGE value="feat: implement core service management logic and repair workflow with asynchronous repository operations" />
-    <option name="LAST_COMMIT_MESSAGE" value="feat: implement core service management logic and repair workflow with asynchronous repository operations" />
+    <MESSAGE value="Service Entity sınıfı WorkOrder oldu ve buna göre tüm projede isimlendirmeler değişiti.&#10;Primitive değer tipleri yerin wrapper tipler eklendi.&#10;Servis katmanındaki bazı sınıflar WorkOrderService sınıfında birleştirildi." />
+    <option name="LAST_COMMIT_MESSAGE" value="Service Entity sınıfı WorkOrder oldu ve buna göre tüm projede isimlendirmeler değişiti.&#10;Primitive değer tipleri yerin wrapper tipler eklendi.&#10;Servis katmanındaki bazı sınıflar WorkOrderService sınıfında birleştirildi." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -253,6 +276,10 @@
           <line>13</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="java.lang.IllegalArgumentException" package="java.lang" />
+          <option name="timeStamp" value="2" />
+        </breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>

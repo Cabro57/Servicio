@@ -4,7 +4,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jdbi.v3.core.mapper.Nested;
 import org.jdbi.v3.core.mapper.reflect.ColumnName;
+import tr.cabro.servicio.model.dictionary.DeviceBrand;
+import tr.cabro.servicio.model.dictionary.DeviceType;
 
 import java.time.LocalDateTime;
 
@@ -15,10 +18,11 @@ public class Device {
 
     private Long id;
 
-    @ColumnName("device_type")
-    private String deviceType;
+    @Nested
+    private DeviceType deviceType;
 
-    private String brand;
+    @Nested
+    private DeviceBrand brand;
     private String model;
 
     @ColumnName("serial_no")
@@ -35,6 +39,15 @@ public class Device {
 
     @ColumnName("created_at")
     private LocalDateTime createdAt;
+
+    public String getDisplayName() {
+        if (getBrand() != null) {
+            String brandName = getBrand().getName();
+            return String.format("%s %s", brandName, getModel());
+        }
+
+        return "-";
+    }
 
     @Override
     public String toString() {

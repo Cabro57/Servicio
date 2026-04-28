@@ -35,7 +35,7 @@ public class DeviceInfoPanel extends ServicePanel {
         brand_combo.setModel(brandComboBoxModel);
         AutoCompleteDecorator.decorate(brand_combo);
 
-        loadDeviceTypes();
+//        loadDeviceTypes();
         device_type_combo.setSelectedItem(null);
 
         // Dinleyicileri (Listeners) aktifleştir
@@ -76,13 +76,13 @@ public class DeviceInfoPanel extends ServicePanel {
         accessory_field.getDocument().addDocumentListener(documentListener);
 
         // Cihaz Türü değiştiğinde markaları yükle ve ana formu uyar
-        device_type_combo.addActionListener((ActionEvent e) -> {
-            if (!isInitializing) {
-                String selectedType = (String) device_type_combo.getSelectedItem();
-                loadBrands(selectedType);
-                notifyDataChanged();
-            }
-        });
+//        device_type_combo.addActionListener((ActionEvent e) -> {
+//            if (!isInitializing) {
+//                String selectedType = (String) device_type_combo.getSelectedItem();
+//                loadBrands(selectedType);
+//                notifyDataChanged();
+//            }
+//        });
 
         // Marka değiştiğinde ana formu uyar
         brand_combo.addActionListener(e -> {
@@ -96,37 +96,37 @@ public class DeviceInfoPanel extends ServicePanel {
         }
     }
 
-    private void loadDeviceTypes() {
-        deviceTypeComboBoxModel.removeAllElements();
-        DeviceSettings settings = Servicio.getDeviceSettings();
-        List<String> types = settings.getTypes();
-        for (String type : types) {
-            deviceTypeComboBoxModel.addElement(type);
-        }
-    }
+//    private void loadDeviceTypes() {
+//        deviceTypeComboBoxModel.removeAllElements();
+//        DeviceSettings settings = Servicio.getDeviceSettings();
+//        List<String> types = settings.getTypes();
+//        for (String type : types) {
+//            deviceTypeComboBoxModel.addElement(type);
+//        }
+//    }
 
-    private void loadBrands(String typeName) {
-        brandComboBoxModel.removeAllElements();
-        if (typeName != null) {
-            DeviceSettings settings = Servicio.getDeviceSettings();
-            List<String> brands = settings.getBrands(typeName);
-            for (String brand : brands) {
-                brandComboBoxModel.addElement(brand);
-            }
-        }
-        brand_combo.setSelectedItem(null);
-    }
+//    private void loadBrands(String typeName) {
+//        brandComboBoxModel.removeAllElements();
+//        if (typeName != null) {
+//            DeviceSettings settings = Servicio.getDeviceSettings();
+//            List<String> brands = settings.getBrands(typeName);
+//            for (String brand : brands) {
+//                brandComboBoxModel.addElement(brand);
+//            }
+//        }
+//        brand_combo.setSelectedItem(null);
+//    }
 
-    public void setDeviceType(String type) {
-        if (type != null) {
-            device_type_combo.setSelectedItem(type);
-            // Eğer isInitializing True ise Listener tetiklenmeyeceği için markaları manuel yüklüyoruz
-            if (isInitializing) loadBrands(type);
-        } else {
-            device_type_combo.setSelectedItem(null);
-            brandComboBoxModel.removeAllElements();
-        }
-    }
+//    public void setDeviceType(String type) {
+//        if (type != null) {
+//            device_type_combo.setSelectedItem(type);
+//            // Eğer isInitializing True ise Listener tetiklenmeyeceği için markaları manuel yüklüyoruz
+//            if (isInitializing) loadBrands(type);
+//        } else {
+//            device_type_combo.setSelectedItem(null);
+//            brandComboBoxModel.removeAllElements();
+//        }
+//    }
 
     public void setDeviceBrand(String brand) {
         brand_combo.setSelectedItem(brand);

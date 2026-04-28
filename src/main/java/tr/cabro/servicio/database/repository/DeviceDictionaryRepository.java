@@ -9,6 +9,7 @@ import tr.cabro.servicio.model.dictionary.DeviceBrand;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 
 import java.util.List;
+import java.util.Optional;
 
 @RegisterBeanMapper(DeviceType.class)
 @RegisterBeanMapper(DeviceBrand.class)
@@ -25,6 +26,9 @@ public interface DeviceDictionaryRepository {
     @SqlUpdate("DELETE FROM device_types WHERE id = :id")
     void deleteType(@Bind("id") Long id);
 
+    @SqlQuery("SELECT * FROM device_types WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    Optional<DeviceType> findTypeByName(@Bind("name") String name);
+
     // --- MARKALAR (Brands) ---
     // Sadece belirli bir Türe (Örn: Telefon) ait markaları getirir (Çoka-Çok JOIN ile)
     @SqlQuery("SELECT db.* FROM device_brands db " +
@@ -38,6 +42,9 @@ public interface DeviceDictionaryRepository {
 
     @SqlUpdate("DELETE FROM device_brands WHERE id = :id")
     void deleteBrand(@Bind("id") Long id);
+
+    @SqlQuery("SELECT * FROM device_brands WHERE LOWER(name) = LOWER(:name) LIMIT 1")
+    Optional<DeviceBrand> findBrandByName(@Bind("name") String name);
 
     // --- ÇOKA-ÇOK İLİŞKİ YÖNETİMİ ---
     @SqlUpdate("INSERT OR IGNORE INTO device_type_brand (type_id, brand_id) VALUES (:typeId, :brandId)")

@@ -23,9 +23,16 @@ public class DeviceService {
     }
 
     public CompletableFuture<Device> save(Device device, boolean update) {
-        if (Validator.isEmpty(device.getDeviceType())) throw new ValidationException("Cihaz türü zorunludur.");
-        if (Validator.isEmpty(device.getBrand())) throw new ValidationException("Cihaz markası zorunludur.");
-        if (Validator.isEmpty(device.getModel())) throw new ValidationException("Cihaz modeli zorunludur.");
+        // Artık String isme değil, doğrudan nesnelerin ve ID'lerin varlığına bakıyoruz
+        if (device.getDeviceType() == null || device.getDeviceType().getId() == null) {
+            throw new ValidationException("Cihaz türü seçilmek zorundadır.");
+        }
+        if (device.getBrand() == null || device.getBrand().getId() == null) {
+            throw new ValidationException("Cihaz markası seçilmek zorundadır.");
+        }
+        if (Validator.isEmpty(device.getModel())) {
+            throw new ValidationException("Cihaz modeli zorunludur.");
+        }
 
         return CompletableFuture.supplyAsync(() -> {
             if (!update) {

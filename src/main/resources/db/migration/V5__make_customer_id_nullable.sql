@@ -48,7 +48,7 @@ CREATE TABLE added_part_temp AS SELECT * FROM added_part;
 -- 4. Bağımlı tabloyu (added_part) SİL
 DROP TABLE added_part;
 
--- 5. Eski workOrders tablosunu SİL
+-- 5. Eski services tablosunu SİL
 DROP TABLE services;
 
 -- 6. Yeni tabloyu isimlendir
@@ -72,7 +72,7 @@ CREATE TABLE added_part (
     description TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
-    FOREIGN KEY (service_id) REFERENCES workOrders(id)
+    FOREIGN KEY (service_id) REFERENCES services(id)
 );
 
 -- 8. Yedeklenen parça verilerini GÜVENLİ ŞEKİLDE geri yükle
@@ -80,7 +80,7 @@ CREATE TABLE added_part (
 -- Sadece Suppliers tablosunda ID'si var olan (veya boş olan) tedarikçilerin parçalarını al
 INSERT INTO added_part
 SELECT * FROM added_part_temp
-WHERE service_id IN (SELECT id FROM workOrders)
+WHERE service_id IN (SELECT id FROM services)
   AND (supplier_id IS NULL OR supplier_id IN (SELECT id FROM suppliers));
 
 -- 9. Geçici tabloyu temizle

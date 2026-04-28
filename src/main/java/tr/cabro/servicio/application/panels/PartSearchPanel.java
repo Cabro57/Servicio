@@ -9,7 +9,10 @@ import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.model.dictionary.DeviceType;
+import tr.cabro.servicio.service.DeviceDictionaryManager;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
@@ -17,13 +20,14 @@ import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
 public class PartSearchPanel extends JPanel {
 
     private GenericTableModel<Part> partTableModel;
-    private final DefaultComboBoxModel<String> deviceTypeComboBoxModel;
+    private final DefaultComboBoxModel<DeviceType> deviceTypeComboBoxModel;
     private TableRowSorter<GenericTableModel<Part>> sorter = new TableRowSorter<>();
     private PartService partService;
 
@@ -201,12 +205,13 @@ public class PartSearchPanel extends JPanel {
 
     private void loadDeviceTypes() {
         deviceTypeComboBoxModel.removeAllElements();
-        deviceTypeComboBoxModel.addElement("(Tümü)");
-        DeviceSettings settings = Servicio.getDeviceSettings();
-        List<String> types = settings.getTypes();
-        for (String type : types) {
-            deviceTypeComboBoxModel.addElement(type);
-        }
+        deviceTypeComboBoxModel.addElement(new DeviceType());
+        DeviceDictionaryManager deviceDictService = ServiceManager.getDeviceDictionaryManager();
+        deviceDictService.getAllTypes().thenAccept(deviceTypes -> {
+            SwingUtilities.invokeLater(() -> {
+                deviceTypes.forEach(deviceTypeComboBoxModel::addElement);
+            });
+        });
     }
 
     private void initComponent() {
@@ -242,7 +247,7 @@ public class PartSearchPanel extends JPanel {
     private JButton allPartsButton;
     private JButton inStockButton;
     private JButton outStockButton;
-    private JComboBox<String> deviceTypeCombo;
+    private JComboBox<DeviceType> deviceTypeCombo;
     private JTextField searchField;
     private JTable productTable;
 }

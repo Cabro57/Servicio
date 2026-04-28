@@ -1,9 +1,10 @@
 package tr.cabro.servicio.model.dictionary;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Getter @Setter
+@Getter @Setter @NoArgsConstructor
 public class DeviceBrand {
     private Long id;
     private String name;

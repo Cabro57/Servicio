@@ -10,15 +10,15 @@ import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.model.dictionary.DeviceType;
+import tr.cabro.servicio.service.DeviceDictionaryManager;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Barcode;
 
 import javax.swing.*;
 import java.awt.*;
 import java.math.BigDecimal;
-import java.util.List;
 
 public class PartEditPanel extends AbstractEditPanel<Part> {
 
@@ -28,7 +28,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
     private JTextField barcode_field;
     private JTextField name_field;
     private JTextField brand_field;
-    private JComboBox<String> device_type_combo;
+    private JComboBox<DeviceType> device_type_combo;
     private JTextField models_field;
     private JFormattedTextField purchase_price_field;
     private JFormattedTextField sale_price_field;
@@ -199,10 +199,14 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         add(supplier_combo);
 
         add(new JLabel("Cihaz Türü"));
-        DefaultComboBoxModel<String> deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
-        DeviceSettings settings = Servicio.getDeviceSettings();
-        List<String> types = settings.getTypes();
-        types.forEach(deviceTypeComboBoxModel::addElement);
+        DefaultComboBoxModel<DeviceType> deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
+
+        DeviceDictionaryManager deviceDictService = ServiceManager.getDeviceDictionaryManager();
+        deviceDictService.getAllTypes().thenAccept(deviceTypes -> {
+            SwingUtilities.invokeLater(() -> {
+                deviceTypes.forEach(deviceTypeComboBoxModel::addElement);
+            });
+        });
 
         device_type_combo = new JComboBox<>(deviceTypeComboBoxModel);
         add(device_type_combo);

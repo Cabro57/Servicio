@@ -4,11 +4,10 @@ import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.component.Modal;
 import tr.cabro.servicio.application.component.CurrencyField;
-import tr.cabro.servicio.model.Process;
+import tr.cabro.servicio.model.Labor;
 
 import javax.swing.*;
 import java.math.BigDecimal;
-import java.util.List;
 
 public class ProcessEditPanel extends Modal {
 
@@ -26,40 +25,22 @@ public class ProcessEditPanel extends Modal {
         initComponent();
     }
 
-    public void  formFill(@NonNull String type, @NonNull Process process) {
-        setSelectedType(type);
-
-        name.setText(process.getName());
-        price.setValue(process.getPrice());
-        comment.setText(process.getComment());
+    public void  formFill(@NonNull Labor labor) {
+        name.setText(labor.getName());
+        price.setValue(labor.getDefaultPrice());
+        comment.setText(labor.getDescription());
     }
 
     public void formOpen() {
         name.grabFocus();
     }
 
-    public void setType(List<String> types) {
-        model.removeAllElements();
+    public Labor getLabor() {
+        Labor labor = new Labor();
+        labor.setName(name.getText().trim());
+        labor.setDescription(comment.getText().trim());
 
-        model.addElement("Seçiniz...");
-        types.forEach(model::addElement);
-    }
-
-    public void setSelectedType(String type) {
-
-        model.setSelectedItem(type);
-    }
-
-    public String getSelectedType() {
-        return (String) model.getSelectedItem();
-    }
-
-    public Process getProcess() {
-        return new Process(
-                name.getText(),
-                comment.getText(),
-                (BigDecimal) price.getValue()
-        );
+        return labor;
     }
 
     private void initComponent() {

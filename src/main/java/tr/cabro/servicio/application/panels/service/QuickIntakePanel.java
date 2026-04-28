@@ -6,23 +6,23 @@ import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 import raven.modal.Toast;
 import raven.modal.component.ModalBorderAction;
 import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CustomerSelectBox;
 import tr.cabro.servicio.application.panels.edit.AbstractEditPanel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.dictionary.DeviceBrand;
+import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
+import tr.cabro.servicio.service.DeviceDictionaryManager;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.settings.DeviceSettings;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Objects;
 
 public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
@@ -31,23 +31,26 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
     private CustomerSelectBox customerCombo;
     private JTextArea reportedFaultArea;
-    private JComboBox<String> device_type_combo;
-    private JComboBox<String> brand_combo;
+    private JComboBox<DeviceType> device_type_combo;
+    private JComboBox<DeviceBrand> brand_combo;
     private JTextField model_field;
     private JTextField seri_no_field;
     private JTextField password_field;
     private JTextField accessory_field;
     private JButton btnCheckSerial; // YENİ: Sorgulama Butonu
 
-    private DefaultComboBoxModel<String> deviceTypeComboBoxModel;
-    private DefaultComboBoxModel<String> brandComboBoxModel;
+    private DefaultComboBoxModel<DeviceType> deviceTypeComboBoxModel;
+    private DefaultComboBoxModel<DeviceBrand> brandComboBoxModel;
     private DefaultComboBoxModel<Customer> listModel;
 
     // YENİ: Eğer cihaz sistemde varsa, aynı ID'yi korumak için tutuyoruz
     private Long currentDeviceId = 0L;
 
+
+    private final DeviceDictionaryManager deviceDictService;
     public QuickIntakePanel(WorkOrder data) {
         super(data);
+        deviceDictService = ServiceManager.getDeviceDictionaryManager();
         initData();
         initEvents();
     }
@@ -188,10 +191,10 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
             return null;
         }
 
-        String dType = (String) device_type_combo.getSelectedItem();
-        String dBrand = (String) brand_combo.getSelectedItem();
+        DeviceType dType = (DeviceType) device_type_combo.getSelectedItem();
+        DeviceBrand dBrand = (DeviceBrand) brand_combo.getSelectedItem();
 
-        if (dType == null || dType.trim().isEmpty() || dBrand == null || dBrand.trim().isEmpty()) {
+        if (dType == null || dBrand == null ) {
             showValidationError(Toast.Type.WARNING, "Cihaz türü ve markası seçmek zorunludur.");
             return null;
         }
@@ -233,7 +236,7 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         if (device != null) {
             currentDeviceId = device.getId(); // Düzenleme yapılıyorsa ID'yi koru
 
-            if (device.getDeviceType() != null && !device.getDeviceType().isEmpty()) {
+            if (device.getDeviceType() != null) {
                 device_type_combo.setSelectedItem(device.getDeviceType());
                 loadBrands(device.getDeviceType());
 
@@ -299,38 +302,34 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
     private void initEvents() {
         device_type_combo.addActionListener((ActionEvent e) -> {
-            String selectedType = (String) device_type_combo.getSelectedItem();
+            DeviceType selectedType = (DeviceType) device_type_combo.getSelectedItem();
             loadBrands(selectedType);
         });
     }
 
     private void loadDeviceTypes() {
         deviceTypeComboBoxModel.removeAllElements();
-        DeviceSettings settings = Servicio.getDeviceSettings();
-        if (settings != null) {
-            List<String> types = settings.getTypes();
-            for (String type : types) {
-                deviceTypeComboBoxModel.addElement(type);
-            }
 
-            String selectedType = (String) device_type_combo.getSelectedItem();
-            if (selectedType != null) {
+        deviceDictService.getAllTypes().thenAccept(deviceTypes -> {
+            SwingUtilities.invokeLater(() -> {
+                deviceTypes.forEach(deviceTypeComboBoxModel::addElement);
+
+                DeviceType selectedType = (DeviceType) device_type_combo.getSelectedItem();
                 loadBrands(selectedType);
-            }
-        }
+            });
+        });
     }
 
-    private void loadBrands(String typeName) {
+    private void loadBrands(DeviceType type) {
         brandComboBoxModel.removeAllElements();
-        if (typeName != null) {
-            DeviceSettings settings = Servicio.getDeviceSettings();
-            if (settings != null) {
-                List<String> brands = settings.getBrands(typeName);
-                for (String brand : brands) {
-                    brandComboBoxModel.addElement(brand);
-                }
-            }
+
+        if (type == null) {
+            return;
         }
+
+        deviceDictService.getBrandsByTypeId(type.getId()).thenAccept(deviceBrands -> {
+            deviceBrands.forEach(brandComboBoxModel::addElement);
+        });
     }
 
     public void appendNewCustomer(Customer newCustomer) {

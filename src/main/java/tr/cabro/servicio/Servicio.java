@@ -2,8 +2,6 @@ package tr.cabro.servicio;
 
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
-import com.formdev.flatlaf.util.FontUtils;
-import com.formdev.flatlaf.util.UIScale;
 import eu.okaeri.configs.ConfigManager;
 import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
@@ -18,7 +16,6 @@ import tr.cabro.servicio.application.listeners.InactivityMonitor;
 import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.settings.Settings;
 import tr.cabro.servicio.util.AppLock;
 
@@ -33,7 +30,6 @@ public final class Servicio {
 
     @Getter private static Servicio instance;
     @Getter private static Settings settings;
-    @Getter private static DeviceSettings deviceSettings;
     @Getter private final File dataFolder;
     @Getter private MainUI frame;
     @Getter private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
@@ -106,15 +102,6 @@ public final class Servicio {
 
     private void initSettings() {
         File configFile = new File(getDataFolder(), "config.json");
-        File deviceFile = new File(getDataFolder(), "device_config.json");
-
-        deviceSettings = ConfigManager.create(DeviceSettings.class, cfg -> {
-            cfg.withConfigurer(new JsonGsonConfigurer())
-                    .withBindFile(deviceFile)
-                    .withRemoveOrphans(true)
-                    .saveDefaults()
-                    .load(true);
-        });
 
         settings = ConfigManager.create(Settings.class, cfg -> {
             cfg.withConfigurer(new JsonGsonConfigurer())
@@ -162,7 +149,6 @@ public final class Servicio {
 
             // 2. Ayarları Diske Yaz
             settings.save();
-            deviceSettings.save();
 
             // 3. Arka plan işlemlerini durdur
             if (inactivityMonitor != null) inactivityMonitor.stop();

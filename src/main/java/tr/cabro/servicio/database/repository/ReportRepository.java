@@ -19,57 +19,60 @@ public interface ReportRepository {
             "  COUNT(DISTINCT CASE WHEN s.service_status NOT IN ('DELIVERED', 'RETURN') THEN s.id END) AS active_records, " +
             "  COALESCE(SUM(si.unit_price * si.quantity), 0.0) AS total_revenue, " +
             "  COALESCE(SUM(CASE WHEN si.item_type = 'PART' THEN si.purchase_price * si.quantity ELSE 0 END), 0.0) AS total_expense, " +
-            "  COALESCE(SUM(si.unit_price * si.quantity) - SUM(CASE WHEN si.item_type = 'PART' THEN si.purchase_price * si.quantity ELSE 0 END), 0.0) AS total_profit " +
-            "FROM services s " +
-            "LEFT JOIN service_items si ON s.id = si.service_id " +
+            "  COALESCE(SUM(si.unit_price * si.quantity) - " +
+            "           SUM(CASE WHEN si.item_type = 'PART' THEN si.purchase_price * si.quantity ELSE 0 END), 0.0) AS total_profit " +
+            "FROM work_orders s " +
+            "LEFT JOIN work_order_items si ON s.id = si.service_id " +
             "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate)")
     SummaryCardDto getSummaryCards(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
 
 
     // =========================================================================
-    // 2. PASTA GRAFİKLERİ (Tarih Filtreli Cihaz Türü ve Marka Dağılımı)
+    // 2. PASTA GRAFİKLERİ (Cihazlar devices tablosundan JOIN ile geliyor)
     // =========================================================================
     @RegisterBeanMapper(ChartDataDto.class)
-    @SqlQuery("SELECT d.device_type AS label, COUNT(s.id) AS value " +
-            "FROM services s " +
+    @SqlQuery("SELECT dt.name AS label, COUNT(s.id) AS value " + // d.device_type_id -> dt.name
+            "FROM work_orders s " +
             "JOIN devices d ON s.device_id = d.id " +
+            "JOIN device_types dt ON d.device_type_id = dt.id " +
             "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
-            "GROUP BY d.device_type ORDER BY value DESC")
+            "GROUP BY dt.name ORDER BY value DESC") // GROUP BY dt.name
     List<ChartDataDto> getDeviceTypeDistribution(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
 
     @RegisterBeanMapper(ChartDataDto.class)
-    @SqlQuery("SELECT d.brand AS label, COUNT(s.id) AS value " +
-            "FROM services s " +
+    @SqlQuery("SELECT db.name AS label, COUNT(s.id) AS value " + // d.brand_id -> db.name
+            "FROM work_orders s " +
             "JOIN devices d ON s.device_id = d.id " +
+            "JOIN device_brands db ON d.brand_id = db.id " +
             "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
-            "GROUP BY d.brand ORDER BY value DESC")
+            "GROUP BY db.name ORDER BY value DESC") // GROUP BY db.name
     List<ChartDataDto> getBrandDistribution(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
 
 
     // =========================================================================
-    // 3. BORSA (ZAMAN SERİSİ) GRAFİKLERİ İÇİN (Tarih Filtreli Aylık/Günlük Kazanç)
+    // 3. ZAMAN SERİSİ (TREND) GRAFİKLERİ
     // =========================================================================
 
-    // Gelen Tarih aralığındaki AYLIK Ciro (Gelir) Trendini verir.
-    // X ekseni = label (Örn: 2026-01), Y ekseni = value (Örn: 15000 TL)
+    // Aylık Ciro (Gelir) Trendi
     @RegisterBeanMapper(ChartDataDto.class)
     @SqlQuery("SELECT strftime('%Y-%m', s.created_at) AS label, " +
             "  COALESCE(SUM(si.unit_price * si.quantity), 0.0) AS value " +
-            "FROM services s " +
-            "LEFT JOIN service_items si ON s.id = si.service_id " +
+            "FROM work_orders s " +
+            "LEFT JOIN work_order_items si ON s.id = si.service_id " +
             "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
-            "GROUP BY strftime('%Y-%m', s.created_at) " +
+            "GROUP BY label " +
             "ORDER BY label ASC")
     List<ChartDataDto> getMonthlyRevenueTrend(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
 
-    // Aynı mantıkla AYLIK Kâr (Profit) Trendi
+    // Aylık Kâr Trendi
     @RegisterBeanMapper(ChartDataDto.class)
     @SqlQuery("SELECT strftime('%Y-%m', s.created_at) AS label, " +
-            "  COALESCE(SUM(si.unit_price * si.quantity) - SUM(CASE WHEN si.item_type = 'PART' THEN si.purchase_price * si.quantity ELSE 0 END), 0.0) AS value " +
-            "FROM services s " +
-            "LEFT JOIN service_items si ON s.id = si.service_id " +
+            "  COALESCE(SUM(si.unit_price * si.quantity) - " +
+            "           SUM(CASE WHEN si.item_type = 'PART' THEN si.purchase_price * si.quantity ELSE 0 END), 0.0) AS value " +
+            "FROM work_orders s " +
+            "LEFT JOIN work_order_items si ON s.id = si.service_id " +
             "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
-            "GROUP BY strftime('%Y-%m', s.created_at) " +
+            "GROUP BY label " +
             "ORDER BY label ASC")
     List<ChartDataDto> getMonthlyProfitTrend(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
 }

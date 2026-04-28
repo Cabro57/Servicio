@@ -27,7 +27,7 @@ public class DeviceTableCellRenderer extends DefaultTableCellRenderer {
         if (value instanceof Device) {
             Device device = (Device) value;
 
-            JLabel typeLabel = new JLabel(device.getDeviceType());
+            JLabel typeLabel = new JLabel(device.getDeviceType().getName());
             //typeLabel.setFont(typeLabel.getFont().deriveFont(Font.BOLD));
 
             JLabel brandModelLabel = new JLabel(device.getBrand() + " " + device.getModel());

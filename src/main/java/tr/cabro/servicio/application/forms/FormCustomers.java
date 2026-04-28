@@ -117,6 +117,14 @@ public class FormCustomers extends AbstractTableForm {
         configureTableColumns();
     }
 
+    /**
+     *
+     */
+    @Override
+    protected void refreshTable() {
+
+    }
+
     private void configureTableColumns() {
         Integer[] columnAlignments = {
                 SwingConstants.LEADING,  // ID
@@ -239,64 +247,64 @@ public class FormCustomers extends AbstractTableForm {
     }
 
     // DÜZELTME: Verileri ve istatistikleri aynı anda çeken asenkron yapı
-    @Override
-    protected void refreshTable() {
-        CompletableFuture<List<Customer>> customersFuture = customerService.getAll();
-        CompletableFuture<List<WorkOrder>> servicesFuture = workOrderService.getAll();
-
-        CompletableFuture.allOf(customersFuture, servicesFuture).thenAccept(v -> {
-            List<Customer> allCustomers = customersFuture.join();
-            List<WorkOrder> allWorkOrders = servicesFuture.join();
-
-            customerSpentMap.clear();
-            BigDecimal totalGlobalRevenue = BigDecimal.ZERO;
-
-            // Müşterilerin servis ödemelerini hesapla (Ciro)
-            for (WorkOrder s : allWorkOrders) {
-                if (s.getCustomerId() == null || s.getCustomerId() <= 0) continue;
-
-                BigDecimal servicePaid = BigDecimal.ZERO;
-                if (s.getPayments() != null) {
-                    for (WorkOrderPayment payment : s.getPayments()) {
-                        servicePaid = servicePaid.add(payment.getAmount());
-                    }
-                }
-
-                customerSpentMap.merge(s.getCustomerId(), servicePaid, BigDecimal::add);
-                totalGlobalRevenue = totalGlobalRevenue.add(servicePaid);
-            }
-
-            // Kart İstatistiklerini Hesapla
-            long totalCount = allCustomers.size();
-            long normalCount = allCustomers.stream()
-                    .filter(c -> c.getType() != null && c.getType() == CustomerType.NORMAL)
-                    .count();
-
-            long businessCount = allCustomers.stream()
-                    .filter(c -> c.getType() != null &&
-                            (c.getType() == CustomerType.SMALL_BUSINESS || c.getType() == CustomerType.DEALER))
-                    .count();
-
-            BigDecimal finalTotalRevenue = totalGlobalRevenue;
-
-            // Arayüzü (UI) Güvenli Şekilde Güncelle
-            SwingUtilities.invokeLater(() -> {
-                tableModel.setData(allCustomers);
-
-                cardBox.setValueAt(0, String.valueOf(totalCount), "Sistemdeki tüm kayıtlar", "", true);
-                cardBox.setValueAt(1, String.valueOf(normalCount), "Bireysel kullanıcılar", "", true);
-                cardBox.setValueAt(2, String.valueOf(businessCount), "İşletme ve ticari hesaplar", "", true);
-                cardBox.setValueAt(3, Format.formatPrice(finalTotalRevenue), "Tüm zamanların cirosu", "", true);
-            });
-
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + ex.getMessage());
-                Servicio.getLogger().error("Tablo yenileme hatası", ex);
-            });
-            return null;
-        });
-    }
+//    @Override
+//    protected void refreshTable() {
+//        CompletableFuture<List<CustomersTableDto>> customersFuture = customerService.getAll();
+//        CompletableFuture<List<WorkOrder>> servicesFuture = workOrderService.getAll();
+//
+//        CompletableFuture.allOf(customersFuture, servicesFuture).thenAccept(v -> {
+//            List<CustomersTableDto> allCustomers = customersFuture.join();
+//            List<WorkOrder> allWorkOrders = servicesFuture.join();
+//
+//            customerSpentMap.clear();
+//            BigDecimal totalGlobalRevenue = BigDecimal.ZERO;
+//
+//            // Müşterilerin servis ödemelerini hesapla (Ciro)
+//            for (WorkOrder s : allWorkOrders) {
+//                if (s.getCustomerId() == null || s.getCustomerId() <= 0) continue;
+//
+//                BigDecimal servicePaid = BigDecimal.ZERO;
+//                if (s.getPayments() != null) {
+//                    for (WorkOrderPayment payment : s.getPayments()) {
+//                        servicePaid = servicePaid.add(payment.getAmount());
+//                    }
+//                }
+//
+//                customerSpentMap.merge(s.getCustomerId(), servicePaid, BigDecimal::add);
+//                totalGlobalRevenue = totalGlobalRevenue.add(servicePaid);
+//            }
+//
+//            // Kart İstatistiklerini Hesapla
+//            long totalCount = allCustomers.size();
+//            long normalCount = allCustomers.stream()
+//                    .filter(c -> c.getType() != null && c.getType() == CustomerType.NORMAL)
+//                    .count();
+//
+//            long businessCount = allCustomers.stream()
+//                    .filter(c -> c.getType() != null &&
+//                            (c.getType() == CustomerType.SMALL_BUSINESS || c.getType() == CustomerType.DEALER))
+//                    .count();
+//
+//            BigDecimal finalTotalRevenue = totalGlobalRevenue;
+//
+//            // Arayüzü (UI) Güvenli Şekilde Güncelle
+//            SwingUtilities.invokeLater(() -> {
+//                tableModel.setData(allCustomers);
+//
+//                cardBox.setValueAt(0, String.valueOf(totalCount), "Sistemdeki tüm kayıtlar", "", true);
+//                cardBox.setValueAt(1, String.valueOf(normalCount), "Bireysel kullanıcılar", "", true);
+//                cardBox.setValueAt(2, String.valueOf(businessCount), "İşletme ve ticari hesaplar", "", true);
+//                cardBox.setValueAt(3, Format.formatPrice(finalTotalRevenue), "Tüm zamanların cirosu", "", true);
+//            });
+//
+//        }).exceptionally(ex -> {
+//            SwingUtilities.invokeLater(() -> {
+//                Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + ex.getMessage());
+//                Servicio.getLogger().error("Tablo yenileme hatası", ex);
+//            });
+//            return null;
+//        });
+//    }
 
     // --- 4. MODAL / PENCERE İŞLEMLERİ ---
 

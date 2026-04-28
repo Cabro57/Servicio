@@ -2,23 +2,24 @@ package tr.cabro.servicio.application.panels.setting;
 
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.handlers.BrandExportHandler;
 import tr.cabro.servicio.application.handlers.TypeImportHandler;
-import tr.cabro.servicio.settings.DeviceSettings;
+import tr.cabro.servicio.model.dictionary.DeviceBrand;
+import tr.cabro.servicio.model.dictionary.DeviceType;
+import tr.cabro.servicio.service.DeviceDictionaryManager;
+import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
-import java.util.List;
 
 public class SettingsDevicePanel extends JPanel {
 
-    private final DefaultListModel<String> typeModel;
-    private final DefaultListModel<String> brandModel;
+    private final DefaultListModel<DeviceType> typeModel;
+    private final DefaultListModel<DeviceBrand> brandModel;
 
-    private final DeviceSettings settings;
+    private final DeviceDictionaryManager deviceDictService;
 
     public SettingsDevicePanel() {
-        settings = Servicio.getDeviceSettings();
+        this.deviceDictService = ServiceManager.getDeviceDictionaryManager();
 
         typeModel = new DefaultListModel<>();
         brandModel = new DefaultListModel<>();
@@ -28,8 +29,8 @@ public class SettingsDevicePanel extends JPanel {
 
     private void init() {
         initComponent();
-
-        settings.getTypes().forEach(typeModel::addElement);
+        deviceDictService.getAllTypes()
+                .thenAccept(deviceTypes -> deviceTypes.forEach(typeModel::addElement));
 
         type_field.addActionListener(e -> onTypeAdd());
 
@@ -39,7 +40,7 @@ public class SettingsDevicePanel extends JPanel {
         // Tür seçildiğinde markaları yükle
         type_list.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                String selectedType = type_list.getSelectedValue();
+                DeviceType selectedType = type_list.getSelectedValue();
                 loadBrands(selectedType);
             }
         });
@@ -60,55 +61,98 @@ public class SettingsDevicePanel extends JPanel {
 
     private void onTypeAdd() {
         String typeName = type_field.getText().trim();
-        if (settings.addDeviceType(typeName)) {
-            typeModel.addElement(typeName);
-            Toast.show(this, Toast.Type.SUCCESS, "Cihaz türü eklendi: " + typeName);
-        } else {
-            Toast.show(this, Toast.Type.WARNING, "Cihaz türü zaten mevcut veya geçersiz.");
-        }
+
+        deviceDictService.addType(typeName).thenAccept(id -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.SUCCESS, "Cihaz türü eklendi: " + typeName);
+            });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+            });
+
+            return null;
+        });
+
         type_field.setText("");
     }
 
     private void onTypeDel() {
-        String selectedType = type_list.getSelectedValue();
-        if (selectedType != null && settings.removeDeviceType(selectedType)) {
-            typeModel.removeElement(selectedType);
-            brandModel.clear();
-            Toast.show(this, Toast.Type.SUCCESS, "Cihaz türü silindi: " + selectedType);
-        } else {
+        DeviceType selectedType = type_list.getSelectedValue();
+
+        if (selectedType == null) {
             Toast.show(this, Toast.Type.WARNING, "Silinecek tür seçilmedi.");
+            return;
         }
+
+        deviceDictService.deleteType(selectedType.getId()).thenAccept(v -> {
+            SwingUtilities.invokeLater(() -> {
+                typeModel.removeElement(selectedType);
+                brandModel.clear();
+                Toast.show(this, Toast.Type.SUCCESS, "Cihaz türü silindi: " + selectedType);
+            });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+            });
+
+            return null;
+        });
+
     }
 
     private void onBrandAdd() {
-        String selectedType = type_list.getSelectedValue();
+        DeviceType selectedType = type_list.getSelectedValue();
         String brandName = brand_field.getText().trim();
-        if (selectedType != null && settings.addBrand(selectedType, brandName)) {
-            loadBrands(selectedType);
-            Toast.show(this, Toast.Type.SUCCESS, "Marka eklendi: " + brandName);
-        } else {
-            Toast.show(this, Toast.Type.WARNING, "Marka zaten mevcut veya geçersiz.");
+        if (selectedType != null) {
+            deviceDictService.addBrand(brandName).thenAccept(id -> {
+                SwingUtilities.invokeLater(() -> {
+                    Toast.show(this, Toast.Type.SUCCESS, "Marka oluşturuldu: " + brandName);
+                    loadBrands(selectedType);
+                });
+            }).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() -> {
+                    Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+                });
+
+                return null;
+            });
         }
+
         brand_field.setText("");
     }
 
     private void onBrandDel() {
-        String selectedType = type_list.getSelectedValue();
-        String selectedBrand = brand_list.getSelectedValue();
-        if (selectedType != null && selectedBrand != null && settings.removeBrand(selectedType, selectedBrand)) {
-            brandModel.removeElement(selectedBrand);
-            Toast.show(this, Toast.Type.SUCCESS, "Marka silindi: " + selectedBrand);
-        } else {
-            Toast.show(this, Toast.Type.WARNING, "Silinecek marka seçilmedi.");
+        DeviceType selectedType = type_list.getSelectedValue();
+        DeviceBrand selectedBrand = brand_list.getSelectedValue();
+        if (selectedType != null && selectedBrand != null) {
+            deviceDictService.unlinkBrandFromType(selectedType.getId(), selectedBrand.getId()).thenAccept(v -> {
+                SwingUtilities.invokeLater(() -> {
+                    Toast.show(this, Toast.Type.INFO, String.format("%s türüne ait %s markası silindi.", selectedType.getName(), selectedBrand.getName()));
+                });
+            });
         }
     }
 
-    public void loadBrands(String typeName) {
-        brandModel.clear();
-        if (typeName != null) {
-            List<String> brands = settings.getBrands(typeName);
-            brands.stream().sorted(String::compareToIgnoreCase).forEach(brandModel::addElement);
+    public void loadBrands(DeviceType deviceType) {
+        if (deviceType == null) {
+            return;
         }
+
+        deviceDictService.getBrandsByTypeId(deviceType.getId()).thenAccept(deviceBrands -> {
+            deviceBrands.stream()
+                    .sorted((o1, o2) -> o1.getName().compareToIgnoreCase(o2.getName()));
+
+            SwingUtilities.invokeLater(() -> {
+                brandModel.clear();
+                deviceBrands.forEach(brandModel::addElement);
+            });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+            });
+            return null;
+        });
     }
 
     private void initComponent() {
@@ -153,11 +197,11 @@ public class SettingsDevicePanel extends JPanel {
 
     JTextField type_field;
     JButton type_add_button;
-    public JList<String> type_list;
+    public JList<DeviceType> type_list;
     JButton type_del_button;
     JTextField brand_field;
     JButton brand_add_button;
-    JList<String> brand_list;
+    JList<DeviceBrand> brand_list;
     JButton brand_del_button;
 
 }

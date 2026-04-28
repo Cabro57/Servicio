@@ -25,7 +25,7 @@ public final class ServiceManager {
         // --- Temel Repository'ler ---
         CustomerRepository customerRepo = jdbi.onDemand(CustomerRepository.class);
         PartRepository partRepo = jdbi.onDemand(PartRepository.class);
-        ServiceRepository serviceRepo = jdbi.onDemand(ServiceRepository.class);
+        WorkOrderRepository serviceRepo = jdbi.onDemand(WorkOrderRepository.class);
         SupplierRepository supplierRepo = jdbi.onDemand(SupplierRepository.class);
         UserRepository userRepo = jdbi.onDemand(UserRepository.class);
         ServiceItemRepository itemRepo = jdbi.onDemand(ServiceItemRepository.class);

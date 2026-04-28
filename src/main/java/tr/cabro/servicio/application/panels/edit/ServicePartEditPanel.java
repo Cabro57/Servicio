@@ -7,6 +7,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.model.AddedPart;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Format;
@@ -133,10 +134,10 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
             return null;
         });
 
-        content.add(new JLabel("Cihaz Türü"));
-        deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
-        deviceTypeComboBoxModel.removeAllElements();
-        DeviceSettings settings = Servicio.getDeviceSettings();
+//        content.add(new JLabel("Cihaz Türü"));
+//        deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
+//        deviceTypeComboBoxModel.removeAllElements();
+//        DeviceSettings settings = Servicio.getDeviceSettings();
 //        List<String> types = settings.getTypes();
 //        for (String type : types) {
 //            deviceTypeComboBoxModel.addElement(type);
@@ -187,7 +188,7 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
     private JTextField seri_no_field;
     private JTextField name_field;
     private JTextField brand_field;
-    private JComboBox<String> device_type_combo;
+    private JComboBox<DeviceType> device_type_combo;
     private JTextField models_field;
     private JFormattedTextField purchase_price_field;
     private JFormattedTextField sale_price_field;
@@ -196,6 +197,6 @@ public class ServicePartEditPanel extends AbstractEditPanel<AddedPart> {
     private JTextArea description_area;
     private JComboBox<Supplier> supplier_combo;
     private DatePicker purchase_picker;
-    private DefaultComboBoxModel<String> deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
+    private DefaultComboBoxModel<DeviceType> deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
     private DefaultComboBoxModel<Supplier> supplierTypeComboBoxModel = new DefaultComboBoxModel<>();
 }

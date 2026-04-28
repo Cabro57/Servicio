@@ -1,4 +1,4 @@
--- dashboardStats() — ServiceRepository
+-- dashboardStats() — WorkOrderRepository
 -- Dashboard için özet istatistikler
 SELECT
     COUNT(s.id)                                                             AS totalRecords,
