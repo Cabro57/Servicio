@@ -18,10 +18,10 @@ public class Device {
 
     private Long id;
 
-    @Nested
+    @Nested("deviceType")
     private DeviceType deviceType;
 
-    @Nested
+    @Nested("brand")
     private DeviceBrand brand;
     private String model;
 

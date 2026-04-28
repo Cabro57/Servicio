@@ -47,16 +47,17 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
     private Long currentDeviceId = 0L;
 
 
-    private final DeviceDictionaryManager deviceDictService;
+    private DeviceDictionaryManager deviceDictService;
     public QuickIntakePanel(WorkOrder data) {
         super(data);
-        deviceDictService = ServiceManager.getDeviceDictionaryManager();
         initData();
         initEvents();
     }
 
     @Override
     protected void initComponent() {
+        deviceDictService = ServiceManager.getDeviceDictionaryManager();
+
         deviceTypeComboBoxModel = new DefaultComboBoxModel<>();
         brandComboBoxModel = new DefaultComboBoxModel<>();
         listModel = new DefaultComboBoxModel<>();

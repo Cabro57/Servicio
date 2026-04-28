@@ -173,7 +173,7 @@ public class FormDashboard extends Form {
                     SwingUtilities.invokeLater(() -> {
                         Toast.show(this, Toast.Type.WARNING, ex.getMessage());
                     });
-                    Servicio.getLogger().error(ex.getMessage());
+                    Servicio.getLogger().error("HATA:", ex);
                     return null;
                 });
         workOrderService.getServicesWithDebt().thenAccept(services -> SwingUtilities.invokeLater(() -> pendingPaymentsTable.setData(services)));
