@@ -125,7 +125,6 @@ CREATE TABLE work_orders (
                              technician_id     INTEGER,
                              reported_fault    TEXT,
                              detected_fault    TEXT,
-                             action_taken      TEXT,
                              urgency_status    VARCHAR(20) DEFAULT 'NORMAL',
                              service_status    VARCHAR(20) DEFAULT 'PENDING',
                              warranty_end_date TIMESTAMP,
@@ -150,6 +149,7 @@ CREATE TABLE work_order_items (
                                   purchase_price DECIMAL(12,2) DEFAULT 0.0,
                                   unit_price     DECIMAL(12,2) NOT NULL,
                                   tax_rate       DECIMAL(5,2)  DEFAULT 0.0,
+                                  created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                   FOREIGN KEY (service_id) REFERENCES work_orders(id) ON DELETE CASCADE,
                                   FOREIGN KEY (part_id)    REFERENCES parts(id)       ON DELETE SET NULL,
                                   FOREIGN KEY (labor_id)   REFERENCES labors(id)      ON DELETE SET NULL
@@ -413,7 +413,7 @@ GROUP BY cs.safe_serial; -- [RİSK] Bkz. yukarıdaki uyarı
 -- [DÜZELTİLDİ] device_id NOT NULL: eşleşmeyen satırlar WHERE ile atlanıyor
 INSERT INTO work_orders (
     id, customer_id, device_id,
-    reported_fault, detected_fault, action_taken,
+    reported_fault, detected_fault,
     urgency_status, service_status,
     warranty_end_date, delivery_date, created_at
 )
@@ -423,7 +423,6 @@ SELECT
     d.id,
     cs.reported_fault,
     cs.detected_fault,
-    cs.action_taken,
     cs.urgency_status,
     cs.service_status,
     cs.warranty_date,

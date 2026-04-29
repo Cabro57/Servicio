@@ -11,7 +11,7 @@ import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
-import tr.cabro.servicio.application.panels.service.QuickIntakePanel;
+import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.renderer.*;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
@@ -312,7 +312,27 @@ public class FormWorkOrders extends AbstractTableForm {
                 if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
                 WorkOrder selectedWorkOrder = tableModal.getItemAt(modelRow);
-                if (selectedWorkOrder != null) FormManager.showForm(new FormWorkOrder(selectedWorkOrder));
+
+                if (selectedWorkOrder==null) {
+                    Toast.show(FormWorkOrders.this, Toast.Type.WARNING, "İstenen servis bulunamadı");
+                    return;
+                }
+
+                service.get(selectedWorkOrder.getId()).thenAccept(workOrder -> {
+                    SwingUtilities.invokeLater(() -> {
+                        if (workOrder.isPresent()) {
+                            FormManager.showForm(new FormWorkOrder(workOrder.get()));
+                        } else {
+                            Toast.show(FormWorkOrders.this, Toast.Type.WARNING, "Böyle bir servis bulunamadı.");
+                        }
+                    });
+                }).exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        Toast.show(FormWorkOrders.this, Toast.Type.ERROR, ex.getMessage());
+                    });
+                    Servicio.getLogger().error("HATA: ", ex);
+                    return null;
+                });
             }
         }));
 

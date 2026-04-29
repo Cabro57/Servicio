@@ -30,9 +30,6 @@ public class WorkOrder {
     @ColumnName("detected_fault")
     private String detectedFault;
 
-    @ColumnName("action_taken")
-    private String actionTaken;
-
     @ColumnName("urgency_status")
     private String urgencyStatus;
 

@@ -6,6 +6,7 @@ import javax.swing.*;
 import java.awt.Color;
 
 // TODO: bu sınıfı CustomerDetail sınıfına ekleyelim müşteri bilgi kısmı için baştan yazalım
+@Deprecated
 public class InfoItem extends JPanel {
 
     private final JLabel valueLabel;

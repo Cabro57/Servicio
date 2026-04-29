@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.panels.service;
+package tr.cabro.servicio.application.panels;
 
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.CurrencyField;

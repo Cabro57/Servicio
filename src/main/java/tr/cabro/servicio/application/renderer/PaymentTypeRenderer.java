@@ -5,6 +5,7 @@ import tr.cabro.servicio.model.enums.PaymentType;
 import javax.swing.*;
 import java.awt.*;
 
+@Deprecated
 public class PaymentTypeRenderer extends JLabel implements ListCellRenderer<PaymentType> {
 
     public PaymentTypeRenderer() {

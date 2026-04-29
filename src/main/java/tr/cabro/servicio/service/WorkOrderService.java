@@ -174,6 +174,7 @@ public class WorkOrderService {
 
             s.setItems(itemRepository.findByServiceId(s.getId()));
             s.setPayments(paymentRepository.findPaymentsByServiceId(s.getId()));
+            s.setTechnicianNotes(noteRepository.findByServiceId(s.getId()));
         }
 
         return workOrders;

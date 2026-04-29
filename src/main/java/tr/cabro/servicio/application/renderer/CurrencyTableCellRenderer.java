@@ -6,6 +6,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.text.DecimalFormat;
 
+@Deprecated
 public class CurrencyTableCellRenderer extends DefaultTableCellRenderer {
 
 

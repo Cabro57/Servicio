@@ -16,10 +16,6 @@ import javax.swing.UIManager;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.TableCellRenderer;
 
-/**
- *
- * @author RAVEN
- */
 public class CheckBoxTableHeaderRenderer extends JCheckBox implements TableCellRenderer {
 
     private final JTable table;

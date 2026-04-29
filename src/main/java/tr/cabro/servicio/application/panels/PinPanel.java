@@ -2,9 +2,11 @@ package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
+import raven.extras.AvatarIcon;
 import raven.modal.Toast;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
@@ -17,6 +19,9 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 import java.awt.*;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class PinPanel extends Form {
 
@@ -47,7 +52,8 @@ public class PinPanel extends Form {
         loginContent.putClientProperty(FlatClientProperties.STYLE, "background:null;");
 
         // Bileşenleri başlat
-        JLabel lblIcon = new JLabel(new Ikon("icons/shield-user.svg", 4f));
+        URL path = Servicio.class.getClassLoader().getResource("background_login.png");
+        JLabel lblIcon = new JLabel(new AvatarIcon(path, 750, 410, 35));
 
         JLabel lblTitle = new JLabel("Hoş Geldiniz");
         lblTitle.putClientProperty(FlatClientProperties.STYLE, "font:bold +3");

@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.panels.service;
+package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -92,8 +92,10 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         seri_no_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
 
         // Sorgulama Butonu
-        btnCheckSerial = new JButton("Sorgula", new Ikon("icons/search.svg"));
+        btnCheckSerial = new JButton(new Ikon("icons/search.svg", 0.7f));
         btnCheckSerial.addActionListener(e -> checkDeviceBySerial());
+
+        seri_no_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, btnCheckSerial);
 
         password_field = new JTextField();
         password_field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
@@ -103,8 +105,8 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
         // Dizilim
         device_content.add(new JLabel("IMEI/Seri No:"), "span 2");
-        device_content.add(seri_no_field, "split 2, growx, pushx"); // Split ile butonu yanına alıyoruz
-        device_content.add(btnCheckSerial, "shrink");
+        device_content.add(seri_no_field, "growx, pushx");
+        // device_content.add(btnCheckSerial, "shrink, wrap");
 
         device_content.add(new JLabel("Cihaz Türü:"), "span 2");
         device_content.add(device_type_combo, "span 2");

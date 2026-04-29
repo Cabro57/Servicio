@@ -8,6 +8,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
 
+@Deprecated
 public class InfoBox extends JPanel {
 
     private final JLabel titleLabel;

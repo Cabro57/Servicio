@@ -8,6 +8,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 
+@Deprecated
 public class ProcessTableRenderer extends DefaultTableCellRenderer {
 
     @Override

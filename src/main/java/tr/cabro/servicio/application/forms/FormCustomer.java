@@ -11,7 +11,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
-import tr.cabro.servicio.application.panels.service.QuickIntakePanel;
+import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;

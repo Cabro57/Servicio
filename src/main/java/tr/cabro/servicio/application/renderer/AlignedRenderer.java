@@ -4,6 +4,7 @@ import javax.swing.*;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 
+@Deprecated
 public class AlignedRenderer implements TableCellRenderer {
     private final TableCellRenderer delegate;
     private final int alignment;

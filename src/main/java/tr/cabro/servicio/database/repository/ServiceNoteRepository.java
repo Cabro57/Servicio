@@ -19,7 +19,7 @@ public interface ServiceNoteRepository {
     Long insert(@BindBean WorkOrderNote note);
 
     // Bir servise ait tüm notları kronolojik olarak (en yeni en üstte) getirir
-    @SqlQuery("SELECT * FROM service_notes WHERE work_order_id = :serviceId ORDER BY created_at DESC")
+    @SqlQuery("SELECT * FROM work_order_notes WHERE service_id = :serviceId ORDER BY created_at DESC")
     List<WorkOrderNote> findByServiceId(@Bind("serviceId") Long serviceId);
 
     // Yanlış yazılan bir notu silmek için

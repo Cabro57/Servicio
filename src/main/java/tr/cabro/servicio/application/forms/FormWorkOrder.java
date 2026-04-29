@@ -9,10 +9,11 @@ import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.AllForms;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.Badge;
 import tr.cabro.servicio.application.component.CurrencyField;
-import tr.cabro.servicio.application.panels.service.ServiceItemAddPanel;
-import tr.cabro.servicio.application.panels.service.ServiceItemEditPanel;
+import tr.cabro.servicio.application.panels.ServiceItemEditPanel;
+import tr.cabro.servicio.application.panels.WorkOrderItemAddPanel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ItemType;
@@ -23,96 +24,95 @@ import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
+import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 public class FormWorkOrder extends Form {
 
     private WorkOrder workOrder;
-    private List<WorkOrderNote> workOrderNotes;
-
     private final WorkOrderService workOrderService;
 
-    // --- UI Bileşenleri ---
+    // --- Header ---
     private JLabel lblHeaderTitle;
     private JLabel lblHeaderSubtitle;
     private Badge lblHeaderBadge;
     private JComboBox<ServiceStatus> statusComboBox;
 
+    // --- Layout ---
     private JPanel leftColumn;
     private JPanel rightColumn;
 
+    // --- Left Column Labels ---
     private JLabel lblCustomerName, lblCustomerPhone, lblCustomerEmail;
     private JLabel lblDeviceType, lblDeviceBrand, lblDeviceModel, lblDeviceSerial;
     private JTextArea txtReportedFault;
     private JLabel lblDateArrival, lblDateEstimated;
 
+    // --- Items Table ---
+    private DefaultTableModel itemsTableModel;
+    private JPanel itemsTableContainer;
+    private JPanel itemsEmptyLabel;
+
+    // --- Payments Table ---
+    private DefaultTableModel paymentsTableModel;
+    private JPanel paymentsTableContainer; // JScrollPane yerine JPanel kullanıyoruz
+    private JPanel paymentsEmptyLabel;
+
+    // --- Payment Summary Labels (inline güncelleme için referans) ---
+    private JLabel lblTotalService;
+    private JLabel lblTotalPaid;
+    private JLabel lblRemainVal;
+    private JLabel lblPaymentBadge;
+
+    // --- Notes Panel ---
+    private JPanel notesListPanel;
+
+    // =========================================================================
+    // CONSTRUCTOR
+    // =========================================================================
+
     public FormWorkOrder(WorkOrder workOrder) {
         this.workOrderService = ServiceManager.getWorkOrderService();
-
         initComponent();
         setService(workOrder);
     }
 
     public void setService(@NonNull WorkOrder workOrder) {
         this.workOrder = workOrder;
-        reloadServiceData();
+        hydrateLeftUI();
+        buildRightColumn();
     }
 
-    private void reloadServiceData() {
-        if (workOrder == null || workOrder.getId() <= 0) return;
-
-        workOrderService.get(workOrder.getId()).thenAccept(opt -> {
-            opt.ifPresent(s -> {
-                this.workOrder = s;
-                workOrderService.getNotes(s.getId()).thenAccept(notes -> {
-                    this.workOrderNotes = notes;
-                    SwingUtilities.invokeLater(() -> {
-                        hydrateLeftUI();
-                        buildRightColumn();
-                    });
-                });
+    @Override
+    public void formRefresh() {
+        workOrderService.get(workOrder.getId()).thenAccept(woOpt -> {
+            if (!woOpt.isPresent()) {
+                SwingUtilities.invokeLater(() ->
+                        Toast.show(this, Toast.Type.WARNING, "Servis bulunamadığı için yenilenemedi."));
+                return;
+            }
+            workOrder = woOpt.get();
+            SwingUtilities.invokeLater(() -> {
+                hydrateLeftUI();
+                buildRightColumn();
             });
+        }).exceptionally(throwable -> {
+            SwingUtilities.invokeLater(() ->
+                    Toast.show(this, Toast.Type.ERROR, throwable.getMessage()));
+            Servicio.getLogger().error("HATA:", throwable);
+            return null;
         });
     }
 
-    private void hydrateLeftUI() {
-        lblHeaderTitle.setText("SRV-" + workOrder.getId());
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new java.util.Locale("tr", "TR"));
-        String dateStr = workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().format(formatter) : "-";
-        lblHeaderSubtitle.setText("Kayıt Tarihi: " + dateStr);
-
-        ServiceStatus currentStatus = workOrder.getServiceStatus() != null ? workOrder.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
-        lblHeaderBadge.setVisualizable(currentStatus);
-
-        ActionListener[] listeners = statusComboBox.getActionListeners();
-        for (ActionListener l : listeners) statusComboBox.removeActionListener(l);
-        statusComboBox.setSelectedItem(currentStatus);
-        for (ActionListener l : listeners) statusComboBox.addActionListener(l);
-
-        if (workOrder.getCustomer() != null) {
-            lblCustomerName.setText(workOrder.getCustomer().getFullName());
-            lblCustomerPhone.setText(workOrder.getCustomer().getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(workOrder.getCustomer().getPhoneNumber1()) : "-");
-            lblCustomerEmail.setText(workOrder.getCustomer().getEmail() != null ? workOrder.getCustomer().getEmail() : "-");
-        }
-
-        Device device = workOrder.getDevice();
-        if (device != null) {
-            lblDeviceType.setText(device.getDeviceType() != null ? device.getDeviceType().getName() : "-");
-            lblDeviceBrand.setText(device.getBrand() != null ? device.getBrand().getName() : "-");
-            lblDeviceModel.setText(device.getModel() != null ? device.getModel() : "-");
-            lblDeviceSerial.setText(device.getSerialNo() != null ? device.getSerialNo() : "-");
-        }
-
-        txtReportedFault.setText(workOrder.getReportedFault() != null ? workOrder.getReportedFault() : "Belirtilmemiş.");
-        lblDateArrival.setText(dateStr);
-        lblDateEstimated.setText(workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().plusDays(3).format(formatter) : "-");
-    }
+    // =========================================================================
+    // INIT COMPONENT
+    // =========================================================================
 
     private void initComponent() {
         setLayout(new MigLayout("fill, insets 20", "[grow]", "[pref!]20[grow, fill]"));
@@ -140,270 +140,9 @@ public class FormWorkOrder extends Form {
         add(scrollPane, "grow");
     }
 
-    private void buildRightColumn() {
-        rightColumn.removeAll();
-        rightColumn.add(buildPartsCard(), "wrap, growx");
-        rightColumn.add(buildPaymentsCard(), "wrap, growx");
-        rightColumn.add(buildNotesCard(), "wrap, growx");
-        rightColumn.revalidate();
-        rightColumn.repaint();
-    }
-
-    private JPanel buildPartsCard() {
-        JPanel card = createCardPanel();
-        card.setLayout(new MigLayout("insets 20, fillx", "[grow][]", "[]15[]10[]"));
-
-        JLabel title = new JLabel("Kullanılan Parçalar ve Ücretlendirme");
-        title.setIcon(new Ikon("icons/wrench.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        card.add(title, "span 2, wrap");
-
-        JLabel subtitle = new JLabel("İşlemler ve Parçalar");
-        subtitle.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-
-        JButton btnAddPart = new JButton("+ Parça / İşlem Ekle");
-        btnAddPart.putClientProperty(FlatClientProperties.STYLE, "background: $Component.accentColor; foreground: #ffffff; arc: 10; font: bold");
-        btnAddPart.addActionListener(e -> onActionTaken());
-
-        card.add(subtitle, "aligny center");
-        card.add(btnAddPart, "align right, wrap");
-
-        JPanel listHeader = new JPanel(new MigLayout("insets 5 10 5 10, fillx", "[80!][grow][150!][100!][40!]", ""));
-        listHeader.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
-        listHeader.setOpaque(false);
-        listHeader.add(createMutedLabel("Tür"));
-        listHeader.add(createMutedLabel("İşlem / Parça Adı"));
-        listHeader.add(createMutedLabel("Seri No"));
-        listHeader.add(createMutedLabel("Fiyat"), "align right");
-        listHeader.add(new JLabel(""), "wrap");
-        card.add(listHeader, "span 2, growx, wrap");
-
-        if (workOrder.getItems() == null || workOrder.getItems().isEmpty()) {
-            JLabel empty = createMutedLabel("Henüz işlem veya parça eklenmedi.");
-            card.add(empty, "span 2, gapy 10");
-        } else {
-            for (WorkOrderItem item : workOrder.getItems()) {
-                JPanel row = new JPanel(new MigLayout("insets 10, fillx", "[80!][grow][150!][100!][70!]", ""));
-                row.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
-                row.setOpaque(false);
-
-                JLabel lblType = new JLabel(item.getItemType() == ItemType.LABOR ? "İşçilik" : "Parça");
-                String badgeStyle = item.getItemType() == ItemType.LABOR ?
-                        "border: 1,8,1,8,#9b59b6; foreground: #9b59b6; arc: 15; font: -1" :
-                        "border: 1,8,1,8,#3498db; foreground: #3498db; arc: 15; font: -1";
-                lblType.putClientProperty(FlatClientProperties.STYLE, badgeStyle);
-
-                JLabel lblName = new JLabel(item.getItemName());
-                JLabel lblSerial = createMutedLabel(item.getUsedSerialNo() != null ? item.getUsedSerialNo() : "-");
-
-                JLabel lblPrice = new JLabel(Format.formatPrice(item.getUnitPrice()));
-                lblPrice.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-
-                // --- YENİ DÜZENLE BUTONU ---
-                JButton btnEdit = new JButton(new Ikon("icons/pencil.svg", 0.7f));
-                btnEdit.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: $Component.accentColor");
-                btnEdit.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                btnEdit.addActionListener(e -> openItemEditModal(item));
-
-                // --- ÇÖP KUTUSU ---
-                JButton btnDelete = new JButton(new Ikon("icons/trash-2.svg", 0.8f));
-                btnDelete.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
-                btnDelete.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                btnDelete.addActionListener(e -> {
-                    workOrderService.deleteItem(item.getId()).thenAccept(v -> reloadServiceData());
-                });
-
-                JPanel actions = new JPanel(new MigLayout("insets 0, gap 5", "[][]", ""));
-                actions.setOpaque(false);
-                actions.add(btnEdit);
-                actions.add(btnDelete);
-
-                row.add(lblType);
-                row.add(lblName);
-                row.add(lblSerial);
-                row.add(lblPrice, "align right");
-                row.add(actions, "align center");
-                card.add(row, "span 2, growx, wrap");
-            }
-        }
-        return card;
-    }
-
-    private JPanel buildPaymentsCard() {
-        JPanel card = createCardPanel();
-        card.setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[][]20[]"));
-
-        JLabel title = new JLabel("Ödemeler (Ön Muhasebe)");
-        title.setIcon(new Ikon("icons/credit-card.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        card.add(title, "wrap");
-
-        if (workOrder.getPayments() == null || workOrder.getPayments().isEmpty()) {
-            card.add(createMutedLabel("Henüz ödeme alınmadı."), "wrap");
-        } else {
-            for (WorkOrderPayment p : workOrder.getPayments()) {
-                JPanel row = new JPanel(new MigLayout("insets 5, fillx", "[grow][100!][40!]", ""));
-                row.setOpaque(false);
-                row.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
-
-                PaymentType method = p.getPaymentType();
-
-                row.add(new JLabel("Tahsilat (" + method.getDisplayName() + ")"), "growx");
-                JLabel lblAmt = new JLabel(Format.formatPrice(p.getAmount()));
-                lblAmt.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71; font: bold");
-                row.add(lblAmt, "align right");
-
-                JButton btnDel = new JButton(new Ikon("icons/x.svg", 0.7f));
-                btnDel.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
-                btnDel.addActionListener(e -> {
-                    workOrderService.deletePayment(p.getId()).thenAccept(v -> reloadServiceData());
-                });
-                row.add(btnDel, "align center");
-                card.add(row, "wrap, growx");
-            }
-        }
-
-        JPanel inputRow = new JPanel(new MigLayout("insets 10, fillx", "[150!][grow][]", "[]5[]"));
-        inputRow.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); arc: 10; border: 1,1,1,1,$Component.borderColor");
-
-        inputRow.add(createMutedLabel("Ödeme Yöntemi"));
-        inputRow.add(createMutedLabel("Tutar (TL)"), "wrap");
-
-        JComboBox<PaymentType> cmbMethod = new JComboBox<>(PaymentType.values());
-        cmbMethod.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof PaymentType) setText(((PaymentType) value).getDisplayName());
-                return this;
-            }
-        });
-        JFormattedTextField txtAmount = new CurrencyField();
-        txtAmount.setValue(workOrder.getRemainingAmount());
-
-        JButton btnAddPayment = new JButton("+ Tahsilat Ekle");
-        btnAddPayment.putClientProperty(FlatClientProperties.STYLE, "background: #0b4a3a; foreground: #2ecc71; arc: 8; font: bold; borderWidth: 0");
-
-        btnAddPayment.addActionListener(e -> {
-            BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
-            if (amt.compareTo(BigDecimal.ZERO) <= 0) return;
-
-            WorkOrderPayment sp = new WorkOrderPayment();
-            sp.setServiceId(workOrder.getId());
-            sp.setAmount(amt);
-            sp.setPaymentType((PaymentType) cmbMethod.getSelectedItem());
-            sp.setPaymentDate(LocalDateTime.now());
-
-            workOrderService.addPayment(sp).thenAccept(v -> reloadServiceData());
-        });
-
-        inputRow.add(cmbMethod, "growx");
-        inputRow.add(txtAmount, "growx");
-        inputRow.add(btnAddPayment);
-        card.add(inputRow, "wrap, growx");
-
-        // ÖZET KUTUSU VE ROZET MANTIĞI
-        JPanel summaryBox = new JPanel(new MigLayout("insets 15, fillx", "[grow][pref!]", "[]10[]15[]"));
-        summaryBox.putClientProperty(FlatClientProperties.STYLE, "background: darken($Panel.background, 2%); arc: 15");
-
-        summaryBox.add(createMutedLabel("Hizmet & Parça Toplamı:"));
-        summaryBox.add(new JLabel(Format.formatPrice(workOrder.getTotalServiceAmount())), "align right, wrap");
-
-        summaryBox.add(createMutedLabel("Alınan Ödeme:"));
-        JLabel lblPaid = new JLabel("- " + Format.formatPrice(workOrder.getTotalPaid()));
-        lblPaid.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71");
-        summaryBox.add(lblPaid, "align right, wrap");
-
-        summaryBox.add(new JSeparator(), "span 2, growx, wrap");
-
-        JLabel lblRemainText = new JLabel("Kalan Bakiye:");
-        lblRemainText.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");
-        summaryBox.add(lblRemainText);
-
-        BigDecimal remain = workOrder.getRemainingAmount();
-        BigDecimal totalPaid = workOrder.getTotalPaid();
-        BigDecimal totalCost = workOrder.getTotalServiceAmount();
-
-        JLabel lblRemainVal = new JLabel(Format.formatPrice(remain));
-        String remainColor = remain.compareTo(BigDecimal.ZERO) > 0 ? "#e74c3c" : "#2ecc71";
-        lblRemainVal.putClientProperty(FlatClientProperties.STYLE, "font: bold +4; foreground: " + remainColor);
-        summaryBox.add(lblRemainVal, "align right, wrap");
-
-        // UX DÜZELTMESİ: Kısmi Ödeme / Ödendi / Ödenmedi / Ücretsiz
-        JLabel lblBadge = new JLabel();
-        lblBadge.setOpaque(true);
-
-        if (totalCost.compareTo(BigDecimal.ZERO) == 0) {
-            lblBadge.setText("Ücretsiz İşlem");
-            lblBadge.putClientProperty(FlatClientProperties.STYLE, "background: #1e3a8a; foreground: #3498db; arc: 15; border: 4,10,4,10; font: bold -1");
-        } else if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
-            lblBadge.setText("Ödenmedi");
-            lblBadge.putClientProperty(FlatClientProperties.STYLE, "background: #4a1919; foreground: #e74c3c; arc: 15; border: 4,10,4,10; font: bold -1");
-        } else if (remain.compareTo(BigDecimal.ZERO) > 0) {
-            lblBadge.setText("Kısmi Ödeme");
-            lblBadge.putClientProperty(FlatClientProperties.STYLE, "background: #7a5c13; foreground: #f1c40f; arc: 15; border: 4,10,4,10; font: bold -1");
-        } else {
-            lblBadge.setText("Ödendi");
-            lblBadge.putClientProperty(FlatClientProperties.STYLE, "background: #0b4a3a; foreground: #2ecc71; arc: 15; border: 4,10,4,10; font: bold -1");
-        }
-
-        summaryBox.add(lblBadge, "span 2, align right");
-        card.add(summaryBox, "align right, w 350!");
-        return card;
-    }
-
-    private JPanel buildNotesCard() {
-        JPanel card = createCardPanel();
-        card.setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[]15[]"));
-
-        JLabel title = new JLabel("Teknisyen Notları");
-        title.setIcon(new Ikon("icons/file-text.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        card.add(title, "wrap");
-
-        if (workOrderNotes != null && !workOrderNotes.isEmpty()) {
-            DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new java.util.Locale("tr", "TR"));
-            for (WorkOrderNote n : workOrderNotes) {
-                JPanel noteRow = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "[]5[]"));
-                noteRow.setOpaque(false);
-
-                JLabel lblNote = new JLabel("<html>" + n.getNote().replace("\n", "<br>") + "</html>");
-                lblNote.putClientProperty(FlatClientProperties.STYLE, "font: +1");
-
-                JLabel lblAuthor = createMutedLabel(n.getTechnicianId() == null ? "Sistem" : "Teknisyen");
-                JLabel lblDate = createMutedLabel(n.getCreatedAt() != null ? n.getCreatedAt().format(df) : "-");
-
-                noteRow.add(lblNote, "span 2, wrap");
-                noteRow.add(lblAuthor);
-                noteRow.add(lblDate, "align right");
-
-                card.add(noteRow, "wrap, growx");
-                card.add(new JSeparator(), "wrap, growx");
-            }
-        }
-
-        JTextArea txtNewNote = new JTextArea(3, 20);
-        txtNewNote.setLineWrap(true);
-        txtNewNote.setWrapStyleWord(true);
-        txtNewNote.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Servis süreciyle ilgili notlarınızı buraya yazın...");
-        txtNewNote.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); border: 10,10,10,10;");
-
-        JScrollPane scrollNote = new JScrollPane(txtNewNote);
-        card.add(scrollNote, "wrap, growx, h 80!");
-
-        JButton btnAddNote = new JButton("+ Not Ekle");
-        btnAddNote.putClientProperty(FlatClientProperties.STYLE, "background: #1e3a8a; foreground: #3498db; arc: 10; font: bold; borderWidth: 0");
-        btnAddNote.addActionListener(e -> {
-            if (txtNewNote.getText().trim().isEmpty()) return;
-            WorkOrderNote n = new WorkOrderNote();
-            n.setServiceId(workOrder.getId());
-            n.setNote(txtNewNote.getText().trim());
-            workOrderService.addNote(n).thenAccept(v -> reloadServiceData());
-        });
-
-        card.add(btnAddNote, "align right");
-        return card;
-    }
+    // =========================================================================
+    // HEADER
+    // =========================================================================
 
     private void createHeaderPanel() {
         JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx", "[][][][grow][][]", "[]"));
@@ -415,7 +154,7 @@ public class FormWorkOrder extends Form {
 
         JPanel titlePanel = new JPanel(new MigLayout("insets 0, gapy 2", "[fill]", "[][]"));
         titlePanel.setOpaque(false);
-        lblHeaderTitle = new JLabel("SRV-YENI");
+        lblHeaderTitle = new JLabel("SRV-YENİ");
         lblHeaderTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold +8");
         lblHeaderSubtitle = new JLabel("Kayıt Tarihi: -");
         lblHeaderSubtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
@@ -439,13 +178,27 @@ public class FormWorkOrder extends Form {
                 return this;
             }
         });
-
         statusComboBox.addActionListener(e -> {
             ServiceStatus newStatus = (ServiceStatus) statusComboBox.getSelectedItem();
-            if (newStatus != null && workOrder != null && workOrder.getServiceStatus() != newStatus) {
-                workOrder.setServiceStatus(newStatus);
-                workOrderService.save(workOrder, true).thenAccept(s -> reloadServiceData());
-            }
+            if (newStatus == null || workOrder == null || workOrder.getServiceStatus() == newStatus) return;
+
+            ServiceStatus oldStatus = workOrder.getServiceStatus();
+            workOrder.setServiceStatus(newStatus);
+            lblHeaderBadge.setVisualizable(newStatus);
+
+            workOrderService.save(workOrder, true)
+                    .exceptionally(ex -> {
+                        workOrder.setServiceStatus(oldStatus);
+                        SwingUtilities.invokeLater(() -> {
+                            ActionListener[] ls = statusComboBox.getActionListeners();
+                            for (ActionListener l : ls) statusComboBox.removeActionListener(l);
+                            statusComboBox.setSelectedItem(oldStatus);
+                            for (ActionListener l : ls) statusComboBox.addActionListener(l);
+                            lblHeaderBadge.setVisualizable(oldStatus);
+                            Toast.show(this, Toast.Type.ERROR, "Durum güncellenemedi.");
+                        });
+                        return null;
+                    });
         });
 
         statusPanel.add(new JLabel("Durum Güncelle:"));
@@ -460,73 +213,707 @@ public class FormWorkOrder extends Form {
         add(headerPanel, "wrap, growx");
     }
 
-    private void onActionTaken() {
-        ServiceItemAddPanel addPanel = new ServiceItemAddPanel(workOrder, this::reloadServiceData);
+    // =========================================================================
+    // LEFT COLUMN HYDRATION
+    // =========================================================================
 
-        SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option("Pencereyi Kapat", SimpleModalBorder.CANCEL_OPTION)
+    private void hydrateLeftUI() {
+        lblHeaderTitle.setText("SRV-" + workOrder.getId());
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        String dateStr = workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().format(formatter) : "-";
+        lblHeaderSubtitle.setText("Kayıt Tarihi: " + dateStr);
+
+        ServiceStatus currentStatus = workOrder.getServiceStatus() != null
+                ? workOrder.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
+        lblHeaderBadge.setVisualizable(currentStatus);
+
+        ActionListener[] listeners = statusComboBox.getActionListeners();
+        for (ActionListener l : listeners) statusComboBox.removeActionListener(l);
+        statusComboBox.setSelectedItem(currentStatus);
+        for (ActionListener l : listeners) statusComboBox.addActionListener(l);
+
+        if (workOrder.getCustomer() != null) {
+            lblCustomerName.setText(workOrder.getCustomer().getFullName());
+            lblCustomerPhone.setText(workOrder.getCustomer().getPhoneNumber1() != null
+                    ? PhoneHelper.formatForDisplay(workOrder.getCustomer().getPhoneNumber1()) : "-");
+            lblCustomerEmail.setText(workOrder.getCustomer().getEmail() != null
+                    ? workOrder.getCustomer().getEmail() : "-");
+        }
+
+        Device device = workOrder.getDevice();
+        if (device != null) {
+            lblDeviceType.setText(device.getDeviceType() != null ? device.getDeviceType().getName() : "-");
+            lblDeviceBrand.setText(device.getBrand() != null ? device.getBrand().getName() : "-");
+            lblDeviceModel.setText(device.getModel() != null ? device.getModel() : "-");
+            lblDeviceSerial.setText(device.getSerialNo() != null ? device.getSerialNo() : "-");
+        }
+
+        txtReportedFault.setText(workOrder.getReportedFault() != null ? workOrder.getReportedFault() : "Belirtilmemiş.");
+        lblDateArrival.setText(dateStr);
+        lblDateEstimated.setText(workOrder.getCreatedAt() != null
+                ? workOrder.getCreatedAt().plusDays(3).format(formatter) : "-");
+    }
+
+    // =========================================================================
+    // RIGHT COLUMN
+    // =========================================================================
+
+    private void buildRightColumn() {
+        rightColumn.removeAll();
+        rightColumn.add(buildPartsCard(), "wrap, growx");
+        rightColumn.add(buildPaymentsCard(), "wrap, growx");
+        rightColumn.add(buildNotesCard(), "wrap, growx");
+        rightColumn.revalidate();
+        rightColumn.repaint();
+    }
+
+    // =========================================================================
+    // PARTS / ITEMS CARD
+    // =========================================================================
+
+    private JPanel buildPartsCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx", "[grow][]", "[]15[]10[]"));
+
+        JLabel title = new JLabel("Kullanılan Parçalar ve Ücretlendirme");
+        title.setIcon(new Ikon("icons/wrench.svg", 1f));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        card.add(title, "span 2, wrap");
+
+        JLabel subtitle = new JLabel("İşlemler ve Parçalar");
+        subtitle.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+
+        JButton btnAddPart = new JButton("+ Parça / İşlem Ekle");
+        btnAddPart.putClientProperty(FlatClientProperties.STYLE,
+                "background: $Component.accentColor; foreground: #ffffff; arc: 10; font: bold");
+        btnAddPart.addActionListener(e -> openItemAddModal());
+        card.add(subtitle, "aligny center");
+        card.add(btnAddPart, "align right, wrap");
+
+        // --- Tablo ---
+        String[] columns = {"Tür", "İşlem / Parça Adı", "Seri No", "Fiyat", ""};
+        itemsTableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 4;
+            }
         };
 
+        JTable itemsTable = new JTable(itemsTableModel);
+        styleTable(itemsTable);
+        itemsTable.getColumnModel().getColumn(0).setMaxWidth(85);
+        itemsTable.getColumnModel().getColumn(0).setMinWidth(85);
+        itemsTable.getColumnModel().getColumn(2).setPreferredWidth(150);
+        itemsTable.getColumnModel().getColumn(3).setPreferredWidth(100);
+        itemsTable.getColumnModel().getColumn(4).setMaxWidth(80);
+        itemsTable.getColumnModel().getColumn(4).setMinWidth(80);
+
+        DefaultTableCellRenderer rightAlign = new DefaultTableCellRenderer();
+        rightAlign.setHorizontalAlignment(SwingConstants.TRAILING);
+        itemsTable.getColumnModel().getColumn(3).setCellRenderer(rightAlign);
+        itemsTable.getColumnModel().getColumn(0).setCellRenderer(new ItemTypeBadgeRenderer());
+
+        ItemActionRenderer actionRenderer = new ItemActionRenderer();
+        ItemActionEditor actionEditor = new ItemActionEditor(itemsTable,
+                row -> openItemEditModal(getItemAtRow(row)),
+                row -> confirmDeleteItem(getItemAtRow(row), row));
+        itemsTable.getColumnModel().getColumn(4).setCellRenderer(actionRenderer);
+        itemsTable.getColumnModel().getColumn(4).setCellEditor(actionEditor);
+
+        // JScrollPane KALDILIRDI. Yerine normal JPanel kullanıyoruz.
+        itemsTableContainer = new JPanel(new MigLayout("insets 0, gap 0", "[grow, fill]", "[]0[]"));
+        itemsTableContainer.setOpaque(false);
+        // JTable JPanel'de kullanıldığında Header'ı manuel eklememiz gerekir.
+        itemsTableContainer.add(itemsTable.getTableHeader(), "wrap");
+        itemsTableContainer.add(itemsTable);
+
+        itemsEmptyLabel = createEmptyStatePanel("Henüz işlem veya parça eklenmedi.");
+
+        populateItemsTable();
+
+        card.add(itemsEmptyLabel, "span 2, growx, wrap");
+        card.add(itemsTableContainer, "span 2, growx, wrap");
+        return card;
+    }
+
+    private void populateItemsTable() {
+        itemsTableModel.setRowCount(0);
+        List<WorkOrderItem> items = workOrder.getItems();
+        if (items == null || items.isEmpty()) {
+            itemsEmptyLabel.setVisible(true);
+            itemsTableContainer.setVisible(false);
+            return;
+        }
+        itemsEmptyLabel.setVisible(false);
+        itemsTableContainer.setVisible(true);
+        for (WorkOrderItem item : items) {
+            itemsTableModel.addRow(new Object[]{
+                    item.getItemType(),
+                    item.getItemName(),
+                    item.getUsedSerialNo() != null ? item.getUsedSerialNo() : "-",
+                    Format.formatPrice(item.getUnitPrice()),
+                    "actions"
+            });
+        }
+        itemsTableContainer.revalidate();
+        itemsTableContainer.repaint();
+    }
+
+    private WorkOrderItem getItemAtRow(int row) {
+        List<WorkOrderItem> items = workOrder.getItems();
+        if (items == null || row < 0 || row >= items.size()) return null;
+        return items.get(row);
+    }
+
+    // ---- Item CRUD ----
+
+    private void openItemAddModal() {
+        WorkOrderItemAddPanel addPanel = new WorkOrderItemAddPanel(workOrder, null);
+        SimpleModalBorder.Option[] options = {
+                new SimpleModalBorder.Option("Ekle", SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
+        };
         ModalDialog.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", options, (controller, action) -> {
-            // Ekleme işlemleri panel içinde hallediliyor, kapatınca sayfayı tazele
-            if (action == SimpleModalBorder.CLOSE_OPTION) {
-                reloadServiceData();
+            if (action != SimpleModalBorder.YES_OPTION) return;
+
+            WorkOrderItem newItem = addPanel.getItem();
+            if (newItem == null) {
+                Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bilgiler girin.");
+                controller.consume();
+                return;
             }
+
+            workOrderService.addItem(newItem).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+                workOrder.getItems().add(saved);
+                itemsTableModel.addRow(new Object[]{
+                        saved.getItemType(),
+                        saved.getItemName(),
+                        saved.getUsedSerialNo() != null ? saved.getUsedSerialNo() : "-",
+                        Format.formatPrice(saved.getUnitPrice()),
+                        "actions"
+                });
+                itemsEmptyLabel.setVisible(false);
+                itemsTableContainer.setVisible(true);
+
+                // UI'yi dinamik genişlet
+                itemsTableContainer.revalidate();
+                itemsTableContainer.repaint();
+
+                updatePaymentSummary();
+                Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+            })).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() ->
+                        Toast.show(this, Toast.Type.ERROR, "Eklenemedi: " + ex.getMessage()));
+                return null;
+            });
         }), "itemAddModal");
     }
 
     private void openItemEditModal(WorkOrderItem item) {
+        if (item == null) return;
         ServiceItemEditPanel editPanel = new ServiceItemEditPanel(item);
-
         SimpleModalBorder.Option[] options = {
                 new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
                 new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
         };
-
         ModalDialog.showModal(this, new SimpleModalBorder(editPanel, "Kalemi Düzenle", options, (controller, action) -> {
-            if (action == SimpleModalBorder.YES_OPTION) {
-                WorkOrderItem updated = editPanel.getUpdatedItem();
-                if (updated == null) {
-                    Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bir isim girin.");
-                    controller.consume();
-                    return;
-                }
+            if (action != SimpleModalBorder.YES_OPTION) return;
 
-                workOrderService.updateItem(updated).thenAccept(v -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, "Kalem başarıyla güncellendi.");
-                        reloadServiceData();
-                    });
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.ERROR, "Güncelleme başarısız: " + ex.getMessage());
-                    });
-                    return null;
-                });
+            WorkOrderItem updated = editPanel.getUpdatedItem();
+            if (updated == null) {
+                Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bir isim girin.");
+                controller.consume();
+                return;
             }
+
+            workOrderService.updateItem(updated).thenRun(() -> SwingUtilities.invokeLater(() -> {
+                List<WorkOrderItem> items = workOrder.getItems();
+                for (int i = 0; i < items.size(); i++) {
+                    if (items.get(i).getId().equals(updated.getId())) {
+                        items.set(i, updated);
+                        itemsTableModel.setValueAt(updated.getItemType(), i, 0);
+                        itemsTableModel.setValueAt(updated.getItemName(), i, 1);
+                        itemsTableModel.setValueAt(updated.getUsedSerialNo() != null ? updated.getUsedSerialNo() : "-", i, 2);
+                        itemsTableModel.setValueAt(Format.formatPrice(updated.getUnitPrice()), i, 3);
+                        break;
+                    }
+                }
+                updatePaymentSummary();
+                Toast.show(this, Toast.Type.SUCCESS, "Kalem güncellendi.");
+            })).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() ->
+                        Toast.show(this, Toast.Type.ERROR, "Güncelleme başarısız: " + ex.getMessage()));
+                return null;
+            });
         }), "itemEditModal");
     }
+
+    private void confirmDeleteItem(WorkOrderItem item, int row) {
+        if (item == null) return;
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "\"" + item.getItemName() + "\" kalemi silinecek. Emin misiniz?",
+                "Silme Onayı",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        workOrderService.deleteItem(item.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
+            workOrder.getItems().remove(item);
+            itemsTableModel.removeRow(row);
+            if (workOrder.getItems().isEmpty()) {
+                itemsEmptyLabel.setVisible(true);
+                itemsTableContainer.setVisible(false);
+            }
+
+            // Tabloyu küçült
+            itemsTableContainer.revalidate();
+            itemsTableContainer.repaint();
+
+            updatePaymentSummary();
+            Toast.show(this, Toast.Type.SUCCESS, "Kalem silindi.");
+        })).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() ->
+                    Toast.show(this, Toast.Type.ERROR, "Silinemedi: " + ex.getMessage()));
+            return null;
+        });
+    }
+
+    // =========================================================================
+    // PAYMENTS CARD
+    // =========================================================================
+
+    private JPanel buildPaymentsCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[][]20[]"));
+
+        JLabel title = new JLabel("Ödemeler (Ön Muhasebe)");
+        title.setIcon(new Ikon("icons/credit-card.svg", 1f));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        card.add(title, "wrap");
+
+        // --- Tablo ---
+        String[] columns = {"Yöntem", "Tarih", "Tutar", ""};
+        paymentsTableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 3;
+            }
+        };
+
+        JTable paymentsTable = new JTable(paymentsTableModel);
+        styleTable(paymentsTable);
+        paymentsTable.getColumnModel().getColumn(0).setPreferredWidth(120);
+        paymentsTable.getColumnModel().getColumn(1).setPreferredWidth(160);
+        paymentsTable.getColumnModel().getColumn(2).setPreferredWidth(100);
+        paymentsTable.getColumnModel().getColumn(3).setMaxWidth(50);
+        paymentsTable.getColumnModel().getColumn(3).setMinWidth(50);
+        paymentsTable.getColumnModel().getColumn(2).setCellRenderer(new GreenAmountRenderer());
+        paymentsTable.getColumnModel().getColumn(3).setCellRenderer(new DeleteButtonRenderer());
+        paymentsTable.getColumnModel().getColumn(3).setCellEditor(
+                new DeleteButtonEditor(paymentsTable, row -> confirmDeletePayment(getPaymentAtRow(row), row)));
+
+        // JScrollPane KALDILIRDI.
+        paymentsTableContainer = new JPanel(new MigLayout("insets 0, gap 0", "[grow, fill]", "[]0[]"));
+        paymentsTableContainer.setOpaque(false);
+        paymentsTableContainer.add(paymentsTable.getTableHeader(), "wrap");
+        paymentsTableContainer.add(paymentsTable);
+
+        paymentsEmptyLabel = createEmptyStatePanel("Henüz ödeme alınmadı.");
+
+        populatePaymentsTable();
+
+        card.add(paymentsEmptyLabel, "growx, wrap");
+        card.add(paymentsTableContainer, "growx, wrap");
+        card.add(buildPaymentInputRow(), "growx, wrap");
+        card.add(buildPaymentSummaryBox(), "align right, w 350!");
+        return card;
+    }
+
+    private void populatePaymentsTable() {
+        paymentsTableModel.setRowCount(0);
+        List<WorkOrderPayment> payments = workOrder.getPayments();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        if (payments == null || payments.isEmpty()) {
+            paymentsEmptyLabel.setVisible(true);
+            paymentsTableContainer.setVisible(false);
+            return;
+        }
+        paymentsEmptyLabel.setVisible(false);
+        paymentsTableContainer.setVisible(true);
+        for (WorkOrderPayment p : payments) {
+            paymentsTableModel.addRow(new Object[]{
+                    p.getPaymentType().getDisplayName(),
+                    p.getPaymentDate() != null ? p.getPaymentDate().format(formatter) : "-",
+                    Format.formatPrice(p.getAmount()),
+                    "delete"
+            });
+        }
+        paymentsTableContainer.revalidate();
+        paymentsTableContainer.repaint();
+    }
+
+    private WorkOrderPayment getPaymentAtRow(int row) {
+        List<WorkOrderPayment> payments = workOrder.getPayments();
+        if (payments == null || row < 0 || row >= payments.size()) return null;
+        return payments.get(row);
+    }
+
+    private JPanel buildPaymentInputRow() {
+        JPanel inputRow = new JPanel(new MigLayout("insets 10, fillx", "[150!][grow][]", "[]5[]"));
+        inputRow.putClientProperty(FlatClientProperties.STYLE,
+                "background: lighten($Panel.background, 2%); arc: 10; border: 1,1,1,1,$Component.borderColor");
+
+        inputRow.add(createMutedLabel("Ödeme Yöntemi"));
+        inputRow.add(createMutedLabel("Tutar (TL)"), "wrap");
+
+        JComboBox<PaymentType> cmbMethod = new JComboBox<>(PaymentType.values());
+        cmbMethod.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof PaymentType) setText(((PaymentType) value).getDisplayName());
+                return this;
+            }
+        });
+
+        JFormattedTextField txtAmount = new CurrencyField();
+        txtAmount.setValue(workOrder.getRemainingAmount());
+
+        JButton btnAddPayment = new JButton("+ Tahsilat Ekle");
+        btnAddPayment.putClientProperty(FlatClientProperties.STYLE,
+                "background: #0b4a3a; foreground: #2ecc71; arc: 8; font: bold; borderWidth: 0");
+
+        btnAddPayment.addActionListener(e -> {
+            BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
+            if (amt.compareTo(BigDecimal.ZERO) <= 0) {
+                Toast.show(this, Toast.Type.WARNING, "Geçerli bir tutar girin.");
+                return;
+            }
+
+            WorkOrderPayment sp = new WorkOrderPayment();
+            sp.setServiceId(workOrder.getId());
+            sp.setAmount(amt);
+            sp.setPaymentType((PaymentType) cmbMethod.getSelectedItem());
+            sp.setPaymentDate(LocalDateTime.now());
+
+            workOrderService.addPayment(sp).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+                workOrder.getPayments().add(saved);
+
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+                paymentsTableModel.addRow(new Object[]{
+                        saved.getPaymentType().getDisplayName(),
+                        saved.getPaymentDate() != null ? saved.getPaymentDate().format(formatter) : "-",
+                        Format.formatPrice(saved.getAmount()),
+                        "delete"
+                });
+                paymentsEmptyLabel.setVisible(false);
+                paymentsTableContainer.setVisible(true);
+
+                // UI'yi dinamik genişlet
+                paymentsTableContainer.revalidate();
+                paymentsTableContainer.repaint();
+
+                txtAmount.setValue(workOrder.getRemainingAmount());
+
+                updatePaymentSummary();
+                Toast.show(this, Toast.Type.SUCCESS, "Tahsilat eklendi.");
+            })).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() ->
+                        Toast.show(this, Toast.Type.ERROR, "Tahsilat eklenemedi: " + ex.getMessage()));
+                return null;
+            });
+        });
+
+        inputRow.add(cmbMethod, "growx");
+        inputRow.add(txtAmount, "growx");
+        inputRow.add(btnAddPayment);
+        return inputRow;
+    }
+
+    private void confirmDeletePayment(WorkOrderPayment payment, int row) {
+        if (payment == null) return;
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                Format.formatPrice(payment.getAmount()) + " tutarlı ödeme silinecek. Emin misiniz?",
+                "Silme Onayı",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        workOrderService.deletePayment(payment.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
+            workOrder.getPayments().remove(payment);
+            paymentsTableModel.removeRow(row);
+            if (workOrder.getPayments().isEmpty()) {
+                paymentsEmptyLabel.setVisible(true);
+                paymentsTableContainer.setVisible(false);
+            }
+
+            // Tabloyu küçült
+            paymentsTableContainer.revalidate();
+            paymentsTableContainer.repaint();
+
+            updatePaymentSummary();
+            Toast.show(this, Toast.Type.SUCCESS, "Ödeme silindi.");
+        })).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() ->
+                    Toast.show(this, Toast.Type.ERROR, "Silinemedi: " + ex.getMessage()));
+            return null;
+        });
+    }
+
+    // =========================================================================
+    // PAYMENT SUMMARY
+    // =========================================================================
+
+    private JPanel buildPaymentSummaryBox() {
+        JPanel summaryBox = new JPanel(new MigLayout("insets 15, fillx", "[grow][pref!]", "[]10[]15[]10[]"));
+        summaryBox.putClientProperty(FlatClientProperties.STYLE, "background: darken($Panel.background, 2%); arc: 15");
+
+        summaryBox.add(createMutedLabel("Hizmet & Parça Toplamı:"));
+        lblTotalService = new JLabel(Format.formatPrice(workOrder.getTotalServiceAmount()));
+        summaryBox.add(lblTotalService, "align right, wrap");
+
+        summaryBox.add(createMutedLabel("Alınan Ödeme:"));
+        lblTotalPaid = new JLabel("- " + Format.formatPrice(workOrder.getTotalPaid()));
+        lblTotalPaid.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71");
+        summaryBox.add(lblTotalPaid, "align right, wrap");
+
+        summaryBox.add(new JSeparator(), "span 2, growx, wrap");
+
+        JLabel lblRemainText = new JLabel("Kalan Bakiye:");
+        lblRemainText.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");
+        summaryBox.add(lblRemainText);
+
+        BigDecimal remain = workOrder.getRemainingAmount();
+        lblRemainVal = new JLabel(Format.formatPrice(remain));
+        String remainColor = remain.compareTo(BigDecimal.ZERO) > 0 ? "#e74c3c" : "#2ecc71";
+        lblRemainVal.putClientProperty(FlatClientProperties.STYLE, "font: bold +4; foreground: " + remainColor);
+        summaryBox.add(lblRemainVal, "align right, wrap");
+
+        lblPaymentBadge = new JLabel();
+        refreshPaymentBadge(lblPaymentBadge);
+        summaryBox.add(lblPaymentBadge, "span 2, align right");
+
+        return summaryBox;
+    }
+
+    private void updatePaymentSummary() {
+        lblTotalService.setText(Format.formatPrice(workOrder.getTotalServiceAmount()));
+        lblTotalPaid.setText("- " + Format.formatPrice(workOrder.getTotalPaid()));
+
+        BigDecimal remain = workOrder.getRemainingAmount();
+        lblRemainVal.setText(Format.formatPrice(remain));
+        String remainColor = remain.compareTo(BigDecimal.ZERO) > 0 ? "#e74c3c" : "#2ecc71";
+        lblRemainVal.putClientProperty(FlatClientProperties.STYLE, "font: bold +4; foreground: " + remainColor);
+
+        refreshPaymentBadge(lblPaymentBadge);
+
+        lblRemainVal.repaint();
+        lblPaymentBadge.repaint();
+    }
+
+    private void refreshPaymentBadge(JLabel badge) {
+        BigDecimal totalCost = workOrder.getTotalServiceAmount();
+        BigDecimal totalPaid = workOrder.getTotalPaid();
+        BigDecimal remain = workOrder.getRemainingAmount();
+
+        if (totalCost.compareTo(BigDecimal.ZERO) == 0) {
+            badge.setText("Ücretsiz İşlem");
+            badge.putClientProperty(FlatClientProperties.STYLE,
+                    "background: #1e3a8a; foreground: #3498db; arc: 15; border: 4,10,4,10; font: bold -1");
+        } else if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
+            badge.setText("Ödenmedi");
+            badge.putClientProperty(FlatClientProperties.STYLE,
+                    "background: #4a1919; foreground: #e74c3c; arc: 15; border: 4,10,4,10; font: bold -1");
+        } else if (remain.compareTo(BigDecimal.ZERO) > 0) {
+            badge.setText("Kısmi Ödeme");
+            badge.putClientProperty(FlatClientProperties.STYLE,
+                    "background: #7a5c13; foreground: #f1c40f; arc: 15; border: 4,10,4,10; font: bold -1");
+        } else {
+            badge.setText("Ödendi");
+            badge.putClientProperty(FlatClientProperties.STYLE,
+                    "background: #0b4a3a; foreground: #2ecc71; arc: 15; border: 4,10,4,10; font: bold -1");
+        }
+        badge.setOpaque(true);
+    }
+
+    // =========================================================================
+    // NOTES CARD
+    // =========================================================================
+
+    private JPanel buildNotesCard() {
+        JPanel card = createCardPanel();
+        card.setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[]15[]"));
+
+        JLabel title = new JLabel("Teknisyen Notları");
+        title.setIcon(new Ikon("icons/file-text.svg", 1f));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        card.add(title, "wrap");
+
+        notesListPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow]", "[]"));
+        notesListPanel.setOpaque(false);
+        populateNotesList();
+        card.add(notesListPanel, "growx, wrap");
+
+        JTextArea txtNewNote = new JTextArea(3, 20);
+        txtNewNote.setLineWrap(true);
+        txtNewNote.setWrapStyleWord(true);
+        txtNewNote.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Servis süreciyle ilgili notlarınızı buraya yazın...");
+        txtNewNote.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); border: 10,10,10,10;");
+
+        JScrollPane scrollNote = new JScrollPane(txtNewNote);
+        card.add(scrollNote, "wrap, growx, h 80!");
+
+        JButton btnAddNote = new JButton("+ Not Ekle");
+        btnAddNote.putClientProperty(FlatClientProperties.STYLE,
+                "background: #1e3a8a; foreground: #3498db; arc: 10; font: bold; borderWidth: 0");
+        btnAddNote.addActionListener(e -> {
+            String text = txtNewNote.getText().trim();
+            if (text.isEmpty()) {
+                Toast.show(this, Toast.Type.WARNING, "Not boş olamaz.");
+                return;
+            }
+            WorkOrderNote n = new WorkOrderNote();
+            n.setServiceId(workOrder.getId());
+            n.setNote(text);
+            n.setCreatedAt(LocalDateTime.now());
+
+            workOrderService.addNote(n).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+                workOrder.getTechnicianNotes().add(saved);
+                txtNewNote.setText("");
+                appendNoteRow(saved);
+                Toast.show(this, Toast.Type.SUCCESS, "Not eklendi.");
+            })).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() ->
+                        Toast.show(this, Toast.Type.ERROR, "Not eklenemedi: " + ex.getMessage()));
+                return null;
+            });
+        });
+
+        card.add(btnAddNote, "align right");
+        return card;
+    }
+
+    private void populateNotesList() {
+        notesListPanel.removeAll();
+        List<WorkOrderNote> notes = workOrder.getTechnicianNotes();
+        if (notes == null || notes.isEmpty()) {
+            notesListPanel.add(createMutedLabel("Henüz teknisyen notu eklenmedi."), "wrap");
+        } else {
+            for (WorkOrderNote n : notes) {
+                addNoteRowToPanel(n);
+            }
+        }
+        notesListPanel.revalidate();
+        notesListPanel.repaint();
+    }
+
+    private void appendNoteRow(WorkOrderNote note) {
+        if (notesListPanel.getComponentCount() == 1
+                && notesListPanel.getComponent(0) instanceof JLabel) {
+            notesListPanel.removeAll();
+        }
+        addNoteRowToPanel(note);
+        notesListPanel.revalidate();
+        notesListPanel.repaint();
+    }
+
+    private void addNoteRowToPanel(WorkOrderNote note) {
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+
+        JPanel noteRow = new JPanel(new MigLayout("insets 5 0 5 0, fillx", "[grow][]", "[]5[]"));
+        noteRow.setOpaque(false);
+        noteRow.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
+
+        JLabel lblNote = new JLabel("<html>" + note.getNote().replace("\n", "<br>") + "</html>");
+        lblNote.putClientProperty(FlatClientProperties.STYLE, "font: +1");
+
+        JButton btnDeleteNote = new JButton(new Ikon("icons/trash-2.svg", 0.75f));
+        btnDeleteNote.putClientProperty(FlatClientProperties.STYLE,
+                "background: null; borderWidth: 0; foreground: #e74c3c");
+        btnDeleteNote.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnDeleteNote.setToolTipText("Notu Sil");
+        btnDeleteNote.addActionListener(e -> confirmDeleteNote(note, noteRow));
+
+        JLabel lblAuthor = createMutedLabel(note.getTechnicianId() == null ? "Sistem" : "Teknisyen");
+        JLabel lblDate = createMutedLabel(note.getCreatedAt() != null ? note.getCreatedAt().format(df) : "-");
+
+        noteRow.add(lblNote, "growx");
+        noteRow.add(btnDeleteNote, "aligny top, wrap");
+        noteRow.add(lblAuthor);
+        noteRow.add(lblDate, "align right");
+
+        notesListPanel.add(noteRow, "wrap, growx");
+    }
+
+    private void confirmDeleteNote(WorkOrderNote note, JPanel noteRow) {
+        int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Bu not silinecek. Emin misiniz?",
+                "Silme Onayı",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        workOrderService.deleteNote(note.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
+            workOrder.getTechnicianNotes().remove(note);
+            notesListPanel.remove(noteRow);
+            if (workOrder.getTechnicianNotes().isEmpty()) {
+                notesListPanel.removeAll();
+                notesListPanel.add(createMutedLabel("Henüz teknisyen notu eklenmedi."), "wrap");
+            }
+            notesListPanel.revalidate();
+            notesListPanel.repaint();
+            Toast.show(this, Toast.Type.SUCCESS, "Not silindi.");
+        })).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() ->
+                    Toast.show(this, Toast.Type.ERROR, "Not silinemedi: " + ex.getMessage()));
+            return null;
+        });
+    }
+
+    // =========================================================================
+    // LEFT COLUMN CARDS
+    // =========================================================================
 
     private JPanel createCustomerCard() {
         JPanel card = createCardPanel();
         card.setLayout(new MigLayout("insets 20, fillx, wrap 2", "[grow][]", "[]15[][][]"));
-        JLabel title = new JLabel("Müşteri Bilgileri"); title.setIcon(new Ikon("icons/user.svg"));
+        JLabel title = new JLabel("Müşteri Bilgileri");
+        title.setIcon(new Ikon("icons/user.svg"));
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        lblCustomerName = new JLabel("-"); lblCustomerName.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");
-        lblCustomerPhone = new JLabel("-"); lblCustomerPhone.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
-        lblCustomerEmail = new JLabel("-"); lblCustomerEmail.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
-        card.add(title, "span 2"); card.add(lblCustomerName, "span 2"); card.add(lblCustomerPhone, "span 2"); card.add(lblCustomerEmail, "span 2");
+        lblCustomerName = new JLabel("-");
+        lblCustomerName.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");
+        lblCustomerPhone = new JLabel("-");
+        lblCustomerPhone.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        lblCustomerEmail = new JLabel("-");
+        lblCustomerEmail.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        card.add(title, "span 2");
+        card.add(lblCustomerName, "span 2");
+        card.add(lblCustomerPhone, "span 2");
+        card.add(lblCustomerEmail, "span 2");
         return card;
     }
 
     private JPanel createDeviceCard() {
         JPanel card = createCardPanel();
         card.setLayout(new MigLayout("insets 20, fillx", "[100!][grow]", "[]15[][][][]15[]5[]"));
-        JLabel title = new JLabel("Cihaz Bilgileri"); title.setIcon(new Ikon("icons/tablet-smartphone.svg")); title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        lblDeviceType = new JLabel("-"); lblDeviceType.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        lblDeviceBrand = new JLabel("-"); lblDeviceBrand.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        lblDeviceModel = new JLabel("-"); lblDeviceModel.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        lblDeviceSerial = new JLabel("-"); lblDeviceSerial.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        JLabel title = new JLabel("Cihaz Bilgileri");
+        title.setIcon(new Ikon("icons/tablet-smartphone.svg"));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        lblDeviceType = new JLabel("-");
+        lblDeviceType.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        lblDeviceBrand = new JLabel("-");
+        lblDeviceBrand.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        lblDeviceModel = new JLabel("-");
+        lblDeviceModel.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        lblDeviceSerial = new JLabel("-");
+        lblDeviceSerial.putClientProperty(FlatClientProperties.STYLE, "font: bold");
         card.add(title, "span 2, wrap");
         card.add(createMutedLabel("Tür:")); card.add(lblDeviceType, "wrap");
         card.add(createMutedLabel("Marka:")); card.add(lblDeviceBrand, "wrap");
@@ -537,7 +924,8 @@ public class FormWorkOrder extends Form {
         txtReportedFault.setEditable(false);
         txtReportedFault.setLineWrap(true);
         txtReportedFault.setWrapStyleWord(true);
-        txtReportedFault.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 3%); border: 10,10,10,10;");
+        txtReportedFault.putClientProperty(FlatClientProperties.STYLE,
+                "background: lighten($Panel.background, 3%); border: 10,10,10,10;");
         card.add(txtReportedFault, "span 2, growx, h 60!");
         return card;
     }
@@ -545,13 +933,133 @@ public class FormWorkOrder extends Form {
     private JPanel createTimelineCard() {
         JPanel card = createCardPanel();
         card.setLayout(new MigLayout("insets 20, fillx", "[100!][grow, right]", "[]15[][]"));
-        JLabel title = new JLabel("Zaman Çizelgesi"); title.setIcon(new Ikon("icons/clock.svg")); title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        lblDateArrival = new JLabel("-"); lblDateArrival.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        lblDateEstimated = new JLabel("-"); lblDateEstimated.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        JLabel title = new JLabel("Zaman Çizelgesi");
+        title.setIcon(new Ikon("icons/clock.svg"));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        lblDateArrival = new JLabel("-");
+        lblDateArrival.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        lblDateEstimated = new JLabel("-");
+        lblDateEstimated.putClientProperty(FlatClientProperties.STYLE, "font: bold");
         card.add(title, "span 2, wrap");
         card.add(createMutedLabel("Geliş:")); card.add(lblDateArrival, "wrap");
         card.add(createMutedLabel("Tahmini Bitiş:")); card.add(lblDateEstimated, "wrap");
         return card;
+    }
+
+    // =========================================================================
+    // INNER RENDERERS & EDITORS
+    // =========================================================================
+
+    @FunctionalInterface
+    interface RowAction { void execute(int row); }
+
+    private static class ItemTypeBadgeRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (value instanceof ItemType) {
+                if ((ItemType) value == ItemType.LABOR) {
+                    label.setText("İşçilik");
+                    label.putClientProperty(FlatClientProperties.STYLE,
+                            "border: 1,8,1,8,#9b59b6; foreground: #9b59b6; arc: 15; font: -1");
+                } else {
+                    label.setText("Parça");
+                    label.putClientProperty(FlatClientProperties.STYLE,
+                            "border: 1,8,1,8,#3498db; foreground: #3498db; arc: 15; font: -1");
+                }
+            }
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            return label;
+        }
+    }
+
+    private static class GreenAmountRenderer extends DefaultTableCellRenderer {
+        GreenAmountRenderer() { setHorizontalAlignment(SwingConstants.TRAILING); }
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            label.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71; font: bold");
+            return label;
+        }
+    }
+
+    private static class ItemActionRenderer extends JPanel implements TableCellRenderer {
+        private final JButton btnEdit   = new JButton(new Ikon("icons/pencil.svg", 0.7f));
+        private final JButton btnDelete = new JButton(new Ikon("icons/trash-2.svg", 0.75f));
+        ItemActionRenderer() {
+            setLayout(new MigLayout("insets 2, gap 3", "[][]", "[]"));
+            setOpaque(false);
+            btnEdit.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: $Component.accentColor");
+            btnDelete.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
+            add(btnEdit); add(btnDelete);
+        }
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+            setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            return this;
+        }
+    }
+
+    private static class ItemActionEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JPanel panel   = new JPanel(new MigLayout("insets 2, gap 3", "[][]", "[]"));
+        private final JButton btnEdit   = new JButton(new Ikon("icons/pencil.svg", 0.7f));
+        private final JButton btnDelete = new JButton(new Ikon("icons/trash-2.svg", 0.75f));
+        ItemActionEditor(JTable table, RowAction onEdit, RowAction onDelete) {
+            panel.setOpaque(false);
+            btnEdit.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: $Component.accentColor");
+            btnDelete.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
+            btnEdit.addActionListener(e -> { fireEditingStopped(); int r = table.getSelectedRow(); if (r >= 0) onEdit.execute(r); });
+            btnDelete.addActionListener(e -> { fireEditingStopped(); int r = table.getSelectedRow(); if (r >= 0) onDelete.execute(r); });
+            panel.add(btnEdit); panel.add(btnDelete);
+        }
+        @Override public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) { return panel; }
+        @Override public Object getCellEditorValue() { return "actions"; }
+    }
+
+    private static class DeleteButtonRenderer extends DefaultTableCellRenderer {
+        private final JButton btn = new JButton(new Ikon("icons/x.svg", 0.7f));
+        DeleteButtonRenderer() {
+            btn.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
+        }
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+            btn.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+            return btn;
+        }
+    }
+
+    private static class DeleteButtonEditor extends AbstractCellEditor implements TableCellEditor {
+        private final JButton btn = new JButton(new Ikon("icons/x.svg", 0.7f));
+        DeleteButtonEditor(JTable table, RowAction onDelete) {
+            btn.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
+            btn.addActionListener(e -> { fireEditingStopped(); int r = table.getSelectedRow(); if (r >= 0) onDelete.execute(r); });
+        }
+        @Override public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) { return btn; }
+        @Override public Object getCellEditorValue() { return "delete"; }
+    }
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+
+    private void styleTable(JTable table) {
+        table.setRowHeight(38);
+        table.setShowVerticalLines(false);
+        table.setIntercellSpacing(new Dimension(0, 1));
+        table.getTableHeader().setReorderingAllowed(false);
+        table.putClientProperty(FlatClientProperties.STYLE,
+                "background: lighten($Panel.background, 2%); selectionBackground: lighten($Panel.background, 5%)");
+    }
+
+    private JPanel createEmptyStatePanel(String message) {
+        JPanel p = new JPanel(new MigLayout("insets 10, fillx", "[grow]", "[]"));
+        p.setOpaque(false);
+        p.add(createMutedLabel(message), "align center");
+        return p;
     }
 
     private JLabel createMutedLabel(String text) {

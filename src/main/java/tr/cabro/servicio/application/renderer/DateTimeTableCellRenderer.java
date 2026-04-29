@@ -7,6 +7,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Deprecated
 public class DateTimeTableCellRenderer extends DefaultTableCellRenderer {
 
     @Override

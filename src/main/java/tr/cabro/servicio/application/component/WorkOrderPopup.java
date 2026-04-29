@@ -10,6 +10,7 @@ import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 
+@Deprecated
 public class WorkOrderPopup extends JPopupMenu {
 
     private final WorkOrder workOrder;

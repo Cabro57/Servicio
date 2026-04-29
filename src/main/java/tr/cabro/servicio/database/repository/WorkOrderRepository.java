@@ -17,14 +17,14 @@ import java.util.Optional;
 public interface WorkOrderRepository {
 
     @SqlUpdate("INSERT INTO work_orders (customer_id, device_id, technician_id, reported_fault, detected_fault, " +
-            "action_taken, urgency_status, service_status, warranty_end_date, delivery_date, created_at, updated_at) " +
+            "urgency_status, service_status, warranty_end_date, delivery_date, created_at, updated_at) " +
             "VALUES (:customerId, :deviceId, :technicianId, :reportedFault, :detectedFault, " +
-            ":actionTaken, :urgencyStatus, :serviceStatus, :warrantyEndDate, :deliveryDate, :createdAt, :updatedAt)")
+            ":urgencyStatus, :serviceStatus, :warrantyEndDate, :deliveryDate, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean WorkOrder workOrder);
 
     @SqlUpdate("UPDATE work_orders SET customer_id=:customerId, device_id=:deviceId, technician_id=:technicianId, " +
-            "reported_fault=:reportedFault, detected_fault=:detectedFault, action_taken=:actionTaken, " +
+            "reported_fault=:reportedFault, detected_fault=:detectedFault, " +
             "urgency_status=:urgencyStatus, service_status=:serviceStatus, " +
             "warranty_end_date=:warrantyEndDate, delivery_date=:deliveryDate, updated_at=:updatedAt " +
             "WHERE id=:id")
