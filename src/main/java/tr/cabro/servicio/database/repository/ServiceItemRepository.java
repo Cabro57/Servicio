@@ -9,6 +9,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import tr.cabro.servicio.model.WorkOrderItem;
 
 import java.util.List;
+import java.util.Optional;
 
 @RegisterBeanMapper(WorkOrderItem.class)
 public interface ServiceItemRepository {
@@ -33,4 +34,9 @@ public interface ServiceItemRepository {
             "used_serial_no, quantity, purchase_price, unit_price, tax_rate " +
             "FROM work_order_items WHERE service_id = :serviceId")
     List<WorkOrderItem> findByServiceId(@Bind("serviceId") Long serviceId);
+
+    @SqlQuery("SELECT id, service_id, item_type, source_type, part_id, labor_id, item_name, " +
+            "used_serial_no, quantity, purchase_price, unit_price, tax_rate " +
+            "FROM work_order_items WHERE id = :id")
+    Optional<WorkOrderItem> findById(@Bind("id") Long id);
 }

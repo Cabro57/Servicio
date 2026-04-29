@@ -19,6 +19,8 @@ public class StockService {
 
         movement.setType(StockType.IN);
         movement.setQuantity(Math.abs(movement.getQuantity()));
+        movement.setWarehouseId(1L);
+
         return CompletableFuture.runAsync(() -> stockRepo.insert(movement));
     }
 
@@ -27,12 +29,14 @@ public class StockService {
 
         movement.setType(StockType.OUT);
         movement.setQuantity(-Math.abs(movement.getQuantity()));
-        return getStock(movement.getPartId()).thenAccept(currentStock -> {
+        movement.setWarehouseId(1L);
+
+        return getStock(movement.getPartId()).thenCompose(currentStock -> {
             if (currentStock + movement.getQuantity() < 0) {
                 throw new ValidationException("Yetersiz stok! Mevcut stok: " + currentStock +
                         ", Çıkılmak istenen: " + Math.abs(movement.getQuantity()));
             }
-            stockRepo.insert(movement);
+            return CompletableFuture.runAsync(() -> stockRepo.insert(movement));
         });
     }
 

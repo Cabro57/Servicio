@@ -18,6 +18,7 @@ public final class ServiceManager {
     @Getter private static DeviceDictionaryManager deviceDictionaryManager;
     @Getter private static LaborService laborService;
     @Getter private static ReportManager reportManager;
+    @Getter private static StockService stockService;
 
     public static void initialize() {
         Jdbi jdbi = DatabaseManager.getJdbi();
@@ -37,11 +38,12 @@ public final class ServiceManager {
         LaborRepository laborRepo = jdbi.onDemand(LaborRepository.class);
         ReportRepository reportRepo = jdbi.onDemand(ReportRepository.class);
         ServiceNoteRepository noteRepo = jdbi.onDemand(ServiceNoteRepository.class);
+        StockMovementRepository stockMovementRepo = jdbi.onDemand(StockMovementRepository.class);
 
         // --- Servislerin Başlatılması ---
         partService = new PartService(partRepo, supplierRepo);
+        stockService = new StockService(stockMovementRepo);
         deviceService = new DeviceService(deviceRepo);
-        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo);
         customerService = new CustomerService(customerRepo);
         supplierService = new SupplierService(supplierRepo);
         userService = new UserService(userRepo);
@@ -50,5 +52,7 @@ public final class ServiceManager {
         deviceDictionaryManager = new DeviceDictionaryManager(dictRepo);
         laborService = new LaborService(laborRepo);
         reportManager = new ReportManager(reportRepo);
+
+        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo, partService, stockService);
     }
 }

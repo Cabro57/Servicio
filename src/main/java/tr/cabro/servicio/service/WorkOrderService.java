@@ -2,6 +2,8 @@ package tr.cabro.servicio.service;
 
 import tr.cabro.servicio.database.repository.*;
 import tr.cabro.servicio.model.*;
+import tr.cabro.servicio.model.enums.ItemType;
+import tr.cabro.servicio.model.enums.ReferenceType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.exception.ValidationException;
 
@@ -19,14 +21,21 @@ public class WorkOrderService {
     private final ServicePaymentRepository paymentRepository;
     private final ServiceNoteRepository noteRepository;
 
+    private final PartService partService;
+    private final StockService stockService;
+
     public WorkOrderService(WorkOrderRepository workOrderRepository,
                             ServiceItemRepository itemRepository,
                             ServicePaymentRepository paymentRepo,
-                            ServiceNoteRepository noteRepository) {
+                            ServiceNoteRepository noteRepository,
+                            PartService partService, StockService stockService) {
         this.workOrderRepository = workOrderRepository;
         this.itemRepository = itemRepository;
         this.paymentRepository = paymentRepo;
         this.noteRepository = noteRepository;
+
+        this.partService = partService;
+        this.stockService = stockService;
     }
 
     // =========================================================================
@@ -186,19 +195,58 @@ public class WorkOrderService {
             Long id = itemRepository.insert(item);
             item.setId(id);
             return item;
+        }).thenCompose(savedItem -> {
+            if (savedItem.getItemType() == ItemType.PART && savedItem.getPartId() != null) {
+                return reduceStockForItem(savedItem)
+                        .thenApply(v -> savedItem);
+            }
+
+            return CompletableFuture.completedFuture(savedItem);
         });
     }
 
-    public CompletableFuture<Void> updateItem(WorkOrderItem item) {
+    public CompletableFuture<Void> updateItem(WorkOrderItem updatedItem) {
         return CompletableFuture.runAsync(() -> {
-            itemRepository.update(item);
+            Optional<WorkOrderItem> oldItemOpt = itemRepository.findById(updatedItem.getId());
+
+            if (!oldItemOpt.isPresent()) {
+                throw new ValidationException("Güncellenecek item bulunamadı.");
+            }
+
+            WorkOrderItem oldItem = oldItemOpt.get();
+
+            itemRepository.update(updatedItem);
+
+            if (updatedItem.getItemType() == ItemType.PART) {
+                boolean partChanged = !Objects.equals(oldItem.getPartId(), updatedItem.getPartId());
+                boolean quantityChanged = !oldItem.getQuantity().equals(updatedItem.getQuantity());
+
+                if (partChanged || quantityChanged) {
+                    if (oldItem.getPartId() != null) {
+                        restoreStockForItem(oldItem).join();
+                    }
+                    if (updatedItem.getPartId() != null) {
+                        reduceStockForItem(updatedItem).join();
+                    }
+                }
+            }
         });
     }
 
-    // TODO silme işleminde stok a geri ekleme işlemi olup olmayacağı işlemleri servis katmanı üzerinden çek
-    public CompletableFuture<Void> deleteItem(Long id) {
+    public CompletableFuture<Void> deleteItem(Long itemId, boolean stockUpdate) {
         return CompletableFuture.runAsync(() -> {
+            Optional<WorkOrderItem> itemOpt = itemRepository.findById(itemId);
+            if (!itemOpt.isPresent()) {
+                throw new ValidationException("Silinecek item bulunamadı.");
+            }
 
+            WorkOrderItem item = itemOpt.get();
+
+            if (item.getItemType() == ItemType.PART && item.getPartId() != null && stockUpdate) {
+                restoreStockForItem(item).join();
+            }
+
+            itemRepository.delete(itemId);
         });
     }
 
@@ -240,5 +288,50 @@ public class WorkOrderService {
 
     public CompletableFuture<List<WorkOrderPayment>> getPayments(Long serviceId) {
         return CompletableFuture.supplyAsync(() -> paymentRepository.findPaymentsByServiceId(serviceId));
+    }
+
+
+    // UTIL
+
+    private CompletableFuture<Void> reduceStockForItem(WorkOrderItem item) {
+        return partService.getById(item.getPartId())
+                .thenCompose(partOpt -> {
+                    if (!partOpt.isPresent()) {
+                        throw new ValidationException("Parça bulunamadı: " + item.getPartId());
+                    }
+
+                    Part part = partOpt.get();
+
+                    // Stok kontrolü
+                    if (part.getStockQuantity() < item.getQuantity()) {
+                        throw new ValidationException(
+                                "Yetersiz stok! " + part.getName() +
+                                        " için mevcut: " + part.getStockQuantity() +
+                                        ", gerekli: " + item.getQuantity()
+                        );
+                    }
+
+                    // StockMovement oluştur
+                    StockMovement movement = new StockMovement();
+                    movement.setPartId(item.getPartId());
+                    movement.setQuantity(item.getQuantity());
+                    movement.setReferenceType(ReferenceType.WORK_ORDER);
+                    movement.setReferenceId(item.getServiceId());
+
+                    return stockService.removeStock(movement);
+                });
+    }
+
+    /**
+     * Parça stoğunu geri ekler (silme/güncelleme durumunda)
+     */
+    private CompletableFuture<Void> restoreStockForItem(WorkOrderItem item) {
+        StockMovement movement = new StockMovement();
+        movement.setPartId(item.getPartId());
+        movement.setQuantity(item.getQuantity());
+        movement.setReferenceType(ReferenceType.WORK_ORDER_CANCEL);
+        movement.setReferenceId(item.getServiceId());
+
+        return stockService.addStock(movement);
     }
 }

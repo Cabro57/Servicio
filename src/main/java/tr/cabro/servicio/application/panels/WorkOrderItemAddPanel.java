@@ -4,7 +4,10 @@ import com.formdev.flatlaf.FlatClientProperties;
 import lombok.Getter;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
+import raven.modal.component.ModalBorderAction;
 import tr.cabro.servicio.application.component.CurrencyField;
+import tr.cabro.servicio.application.editors.AddButtonEditor;
+import tr.cabro.servicio.application.renderer.AddButtonRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
@@ -17,18 +20,16 @@ import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
 
 public class WorkOrderItemAddPanel extends JPanel {
 
+    public static final int SELECTED_ITEM = 100;
+
     private final WorkOrder workOrder;
-    private final Runnable onDataChanged;
 
     private GenericTableModel<Part> partTableModel;
     private GenericTableModel<Labor> laborTableModel;
@@ -36,9 +37,8 @@ public class WorkOrderItemAddPanel extends JPanel {
     @Getter
     private WorkOrderItem item;
 
-    public WorkOrderItemAddPanel(WorkOrder workOrder, Runnable onDataChanged) {
+    public WorkOrderItemAddPanel(WorkOrder workOrder) {
         this.workOrder = workOrder;
-        this.onDataChanged = onDataChanged;
         init();
     }
 
@@ -78,7 +78,7 @@ public class WorkOrderItemAddPanel extends JPanel {
         List<ColumnDef<Part>> cols = Arrays.asList(
                 new ColumnDef<>("Parça Bilgisi", Part.class, p -> p),
                 new ColumnDef<>("Fiyat", String.class, p -> Format.formatPrice(p.getSalePrice())),
-                new ColumnDef<>("Ekle", String.class, p -> "Ekle")
+                new ColumnDef<>("İşlem", String.class, p -> "Ekle")
         );
         partTableModel = new GenericTableModel<>(cols);
         JTable table = new JTable(partTableModel);
@@ -94,11 +94,13 @@ public class WorkOrderItemAddPanel extends JPanel {
         priceRenderer.setFont(priceRenderer.getFont().deriveFont(Font.BOLD));
         table.getColumnModel().getColumn(1).setCellRenderer(priceRenderer);
 
-        // Özel Tekil Buton Entegrasyonu
         table.getColumnModel().getColumn(2).setCellRenderer(new AddButtonRenderer());
-        table.getColumnModel().getColumn(2).setCellEditor(new AddButtonEditor(table, row -> {
-            Part part = partTableModel.getItemAt(table.convertRowIndexToModel(row));
-            if (part.getStockQuantity() <= 0) {
+        table.getColumnModel().getColumn(2).setCellEditor(new AddButtonEditor(row -> {
+            if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+            int modelRow = table.convertRowIndexToModel(row);
+            Part selectedPart = partTableModel.getItemAt(modelRow);
+
+            if (selectedPart.getStockQuantity() <= 0) {
                 Toast.show(WorkOrderItemAddPanel.this, Toast.Type.WARNING, "Bu ürünün stoğu kalmamıştır!");
                 return;
             }
@@ -110,23 +112,21 @@ public class WorkOrderItemAddPanel extends JPanel {
             item.setServiceId(workOrder.getId());
             item.setItemType(ItemType.PART);
             item.setSourceType(SourceType.PRESET);
-            item.setPartId(part.getId());
-            item.setItemName(part.getName());
-            item.setPurchasePrice(part.getPurchasePrice());
-            item.setUnitPrice(part.getSalePrice());
+            item.setPartId(selectedPart.getId());
+            item.setItemName(selectedPart.getName());
+            item.setPurchasePrice(selectedPart.getPurchasePrice());
+            item.setUnitPrice(selectedPart.getSalePrice());
             item.setUsedSerialNo(serialNo != null && !serialNo.trim().isEmpty() ? serialNo.trim() : null);
 
-            ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(WorkOrderItemAddPanel.this, Toast.Type.SUCCESS, "Parça eklendi ve stoktan düşüldü.");
-                    onDataChanged.run();
-                    loadData(); // Stoğu ekranda güncelle
-                });
-            });
+            ModalBorderAction borderAction = ModalBorderAction.getModalBorderAction(this);
+            if (borderAction != null) {
+                borderAction.doAction(SELECTED_ITEM);
+            }
+
         }));
 
         table.getColumnModel().getColumn(1).setMaxWidth(120);
-        table.getColumnModel().getColumn(2).setMaxWidth(80); // Butonun sığması için biraz genişletildi
+        table.getColumnModel().getColumn(2).setMaxWidth(80);
 
         JScrollPane scroll = new JScrollPane(table);
         panel.add(scroll, "grow");
@@ -162,7 +162,7 @@ public class WorkOrderItemAddPanel extends JPanel {
 
         // Özel Tekil Buton Entegrasyonu
         table.getColumnModel().getColumn(2).setCellRenderer(new AddButtonRenderer());
-        table.getColumnModel().getColumn(2).setCellEditor(new AddButtonEditor(table, row -> {
+        table.getColumnModel().getColumn(2).setCellEditor(new AddButtonEditor(row -> {
             Labor labor = laborTableModel.getItemAt(table.convertRowIndexToModel(row));
             WorkOrderItem item = new WorkOrderItem();
             item.setServiceId(workOrder.getId());
@@ -176,7 +176,6 @@ public class WorkOrderItemAddPanel extends JPanel {
             ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
                 SwingUtilities.invokeLater(() -> {
                     Toast.show(WorkOrderItemAddPanel.this, Toast.Type.SUCCESS, "İşçilik başarıyla eklendi.");
-                    onDataChanged.run();
                 });
             });
         }));
@@ -240,66 +239,11 @@ public class WorkOrderItemAddPanel extends JPanel {
                     txtSerialNo.setText("");
                     txtPurchasePrice.setValue(BigDecimal.ZERO);
                     txtSalePrice.setValue(BigDecimal.ZERO);
-                    onDataChanged.run();
                 });
             });
         });
 
         panel.add(btnSave, "span 2, align right, gaptop 15");
         return panel;
-    }
-
-    // =========================================================================
-    // İÇ SINIFLAR: SADECE EKLEME BUTONU İÇİN RENDERER VE EDİTÖR
-    // =========================================================================
-
-    private static class AddButtonRenderer extends JPanel implements TableCellRenderer {
-        private final JButton btnAdd = new JButton(new Ikon("icons/plus.svg", 0.7f));
-
-        public AddButtonRenderer() {
-            setLayout(new MigLayout("insets 2, center", "[]", "[]"));
-            setOpaque(false);
-            btnAdd.setText("Ekle");
-            btnAdd.putClientProperty(FlatClientProperties.STYLE,
-                    "background: $Component.accentColor; foreground: #ffffff; arc: 8; padding: 2,6,2,6; font: bold -1");
-            add(btnAdd);
-        }
-
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-            setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
-            return this;
-        }
-    }
-
-    private static class AddButtonEditor extends AbstractCellEditor implements TableCellEditor {
-        private final JPanel panel = new JPanel(new MigLayout("insets 2, center", "[]", "[]"));
-        private final JButton btnAdd = new JButton(new Ikon("icons/plus.svg", 0.7f));
-
-        public AddButtonEditor(JTable table, Consumer<Integer> onAdd) {
-            panel.setOpaque(false);
-            btnAdd.setText("Ekle");
-            btnAdd.putClientProperty(FlatClientProperties.STYLE,
-                    "background: $Component.accentColor; foreground: #ffffff; arc: 8; padding: 2,6,2,6; font: bold -1");
-
-            btnAdd.addActionListener(e -> {
-                fireEditingStopped(); // Düzenleme modundan çık
-                int row = table.getSelectedRow();
-                if (row >= 0) {
-                    onAdd.accept(row); // Tıklanan satırın indeksini geri döndür
-                }
-            });
-            panel.add(btnAdd);
-        }
-
-        @Override
-        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-            return panel;
-        }
-
-        @Override
-        public Object getCellEditorValue() {
-            return "Ekle";
-        }
     }
 }

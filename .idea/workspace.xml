@@ -4,49 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="Service Entity sınıfı WorkOrder oldu ve buna göre tüm projede isimlendirmeler değişiti.&#10;Primitive değer tipleri yerin wrapper tipler eklendi.&#10;Servis katmanındaki bazı sınıflar WorkOrderService sınıfında birleştirildi.">
-      <change afterPath="$PROJECT_DIR$/src/main/resources/background_login.png" afterDir="false" />
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="Yanlışıkla silinmiş geri eklendi">
+      <change afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/editors/AddButtonEditor.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/events/TableAddEvent.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/AddButtonRenderer.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/InfoBox.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/InfoBox.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/InfoItem.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/InfoItem.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/SearchField.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/SearchField.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/WorkOrderPopup.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/WorkOrderPopup.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormCustomer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormCustomer.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormWorkOrder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormWorkOrder.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormWorkOrders.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormWorkOrders.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/ActionTakenListener.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/InactivityMonitor.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/PartsChangeListener.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/PriceChangeListener.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/SearchKeyListener.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/listeners/ServiceEditListener.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/PinPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/PinPanel.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ProcessSelectedPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/SearchCustomerPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ServicePanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/edit/ServicePartEditPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/CustomerInfoPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/DeviceInfoPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/FaultProcessInfoPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/PartsNotesInfoPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/PriceInfoPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/QuickIntakePanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/QuickIntakePanel.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/ServiceItemAddPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/WorkOrderItemAddPanel.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/ServiceItemEditPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/ServiceItemEditPanel.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/StatusInfoPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/service/WarrantyInfoPanel.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/AlignedRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/AlignedRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CheckBoxTableHeaderRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CheckBoxTableHeaderRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CurrencyTableCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CurrencyTableCellRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CustomerTypeTableRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/CustomerTypeTableRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/DateTimeTableCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/DateTimeTableCellRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/DeviceTableCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/DeviceTableCellRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/PaymentTypeRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/PaymentTypeRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/ProcessTableRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/ProcessTableRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/ServiceStatusTableCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/ServiceStatusTableCellRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceNoteRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceNoteRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/WorkOrderRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/WorkOrderRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/WorkOrder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/WorkOrder.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/WorkOrderItemAddPanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/WorkOrderItemAddPanel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceItemRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/ServiceItemRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/StockMovementRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/database/repository/StockMovementRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/WorkOrderItem.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/WorkOrderItem.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/enums/ReferenceType.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/model/enums/ReferenceType.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/ServiceManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/ServiceManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/StockService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/StockService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/db/migration/V7__extract_devices.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/db/migration/V7__extract_devices.sql" afterDir="false" />
     </list>
@@ -56,15 +27,14 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="595" />
+    <option name="cachedIndexableFilesCount" value="664" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
+        <option value="Enum" />
         <option value="Interface" />
         <option value="Class" />
-        <option value="Enum" />
-        <option value="Exception" />
       </list>
     </option>
   </component>
@@ -80,7 +50,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Cabro57/Servicio.git&quot;,
-    &quot;accountId&quot;: &quot;66088443-5ae7-4d66-8f5c-0180f0a95921&quot;
+    &quot;accountId&quot;: &quot;4dbf82b9-08aa-487c-a4ef-9b6165819a0e&quot;
   }
 }</component>
   <component name="KubernetesApiPersistence">{}</component>
@@ -105,11 +75,11 @@
     "Application.App.executor": "Run",
     "Application.Servicio.executor": "Run",
     "Application.SplashScreenTest.executor": "Run",
+    "Application.TestDrawer.executor": "Run",
     "Application.testMain.executor": "Run",
     "Maven.Servicio [clean,package,-U].executor": "Run",
     "Maven.Servicio [clean,package].executor": "Run",
     "Maven.Servicio.executor": "Run",
-    "OverrideImplement.generate.javadoc": "true",
     "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
@@ -118,21 +88,22 @@
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "database.data.extractors.current.export.id": "Comma-separated (CSV)_id",
     "git-widget-placeholder": "master",
     "ignore.virus.scanning.warn.message": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/projects/Servicio/src/main/resources",
+    "last_opened_file_path": "C:/Projelerim/Servicio",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "onboarding.tips.debug.path": "C:/Projelerim/Servicio/src/main/java/org/example/Main.java",
-    "project.structure.last.edited": "Libraries",
+    "project.structure.last.edited": "SDKs",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.30229884",
-    "settings.editor.selected.configurable": "reference.projectsettings.compiler.annotationProcessors",
+    "settings.editor.selected.configurable": "jvm.logging",
     "to.speed.mode.migration.done": "true",
     "vue.rearranger.settings.migration": "true"
   },
@@ -144,12 +115,13 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\projects\Servicio\src\main\resources" />
+      <recent name="C:\Projelerim\Servicio" />
+      <recent name="C:\Projelerim\Servicio\.servicio" />
       <recent name="C:\Projelerim\Servicio\src\main\resources" />
       <recent name="C:\Projelerim\Servicio\src\main\resources\icons" />
-      <recent name="C:\Projelerim\Servicio" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Projelerim\Servicio\src\main\resources" />
       <recent name="C:\Projelerim\Servicio\src\main\resources\tr\cabro\servicio\database\repository\ServiceRepository" />
       <recent name="C:\Projelerim\Servicio\src\main\resources\tr\cabro\servicio\database\repository" />
       <recent name="C:\Projelerim\Servicio\src\main\resources\icons" />
@@ -225,7 +197,18 @@
       <updated>1774442434296</updated>
       <workItem from="1776005134812" duration="179000" />
       <workItem from="1776005347898" duration="349000" />
-      <workItem from="1776005795327" duration="11162000" />
+      <workItem from="1776005795327" duration="12077000" />
+      <workItem from="1776018864854" duration="6749000" />
+      <workItem from="1776108768511" duration="7393000" />
+      <workItem from="1776192552065" duration="8000" />
+      <workItem from="1776442721488" duration="18901000" />
+      <workItem from="1776586767605" duration="46390000" />
+      <workItem from="1776703652661" duration="1299000" />
+      <workItem from="1776706037280" duration="2286000" />
+      <workItem from="1776795810548" duration="4321000" />
+      <workItem from="1777326639258" duration="590000" />
+      <workItem from="1777327408016" duration="736000" />
+      <workItem from="1777328294698" duration="1812000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü.">
       <option name="closed" value="true" />
@@ -243,36 +226,34 @@
       <option name="project" value="LOCAL" />
       <updated>1775862114954</updated>
     </task>
-    <task id="LOCAL-00003" summary="Service Entity sınıfı WorkOrder oldu ve buna göre tüm projede isimlendirmeler değişiti.&#10;Primitive değer tipleri yerin wrapper tipler eklendi.&#10;Servis katmanındaki bazı sınıflar WorkOrderService sınıfında birleştirildi.">
+    <task id="LOCAL-00003" summary="feat: implement core service management logic and repair workflow with asynchronous repository operations">
       <option name="closed" value="true" />
-      <created>1777129866612</created>
+      <created>1776018162830</created>
       <option name="number" value="00003" />
       <option name="presentableId" value="LOCAL-00003" />
       <option name="project" value="LOCAL" />
-      <updated>1777129866612</updated>
+      <updated>1776018162830</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Yanlışıkla silinmiş geri eklendi">
+      <option name="closed" value="true" />
+      <created>1777496756826</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1777496756826</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
-  <component name="Vcs.Log.Tabs.Properties">
-    <option name="TAB_STATES">
-      <map>
-        <entry key="MAIN">
-          <value>
-            <State />
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü." />
     <MESSAGE value="feat: implement core application architecture, service management modules, and UI components" />
-    <MESSAGE value="Service Entity sınıfı WorkOrder oldu ve buna göre tüm projede isimlendirmeler değişiti.&#10;Primitive değer tipleri yerin wrapper tipler eklendi.&#10;Servis katmanındaki bazı sınıflar WorkOrderService sınıfında birleştirildi." />
-    <option name="LAST_COMMIT_MESSAGE" value="Service Entity sınıfı WorkOrder oldu ve buna göre tüm projede isimlendirmeler değişiti.&#10;Primitive değer tipleri yerin wrapper tipler eklendi.&#10;Servis katmanındaki bazı sınıflar WorkOrderService sınıfında birleştirildi." />
+    <MESSAGE value="feat: implement core service management logic and repair workflow with asynchronous repository operations" />
+    <MESSAGE value="Yanlışıkla silinmiş geri eklendi" />
+    <option name="LAST_COMMIT_MESSAGE" value="Yanlışıkla silinmiş geri eklendi" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -281,6 +262,71 @@
           <url>file://$PROJECT_DIR$/src/main/java/org/example/Main.java</url>
           <line>13</line>
           <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>193</line>
+          <option name="timeStamp" value="13" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>194</line>
+          <option name="timeStamp" value="14" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>195</line>
+          <option name="timeStamp" value="15" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>196</line>
+          <option name="timeStamp" value="16" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>197</line>
+          <option name="timeStamp" value="17" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>199</line>
+          <option name="timeStamp" value="18" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>198</line>
+          <option name="timeStamp" value="19" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>200</line>
+          <properties>
+            <option name="lambda-ordinal" value="0" />
+          </properties>
+          <option name="timeStamp" value="20" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>200</line>
+          <properties>
+            <option name="lambda-ordinal" value="1" />
+          </properties>
+          <option name="timeStamp" value="21" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>203</line>
+          <option name="timeStamp" value="22" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-method">
+          <url>file://$PROJECT_DIR$/src/main/java/tr/cabro/servicio/service/WorkOrderService.java</url>
+          <line>192</line>
+          <properties class="tr.cabro.servicio.service.WorkOrderService" method="addItem">
+            <option name="EMULATED" value="true" />
+            <option name="WATCH_EXIT" value="false" />
+          </properties>
+          <option name="timeStamp" value="12" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -37,7 +37,6 @@ public class WorkOrderItem {
     @ColumnName("used_serial_no")
     private String usedSerialNo; // Sadece PART ise zorunlu olabilir (Garanti takibi)
 
-    // TODO: bu primitive değeri araştır.
     private Integer quantity = 1;
 
     // Finansal Snapshot

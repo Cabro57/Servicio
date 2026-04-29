@@ -1,6 +1,7 @@
 package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.ui.FlatListCellBorder;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
@@ -12,8 +13,16 @@ import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.Badge;
 import tr.cabro.servicio.application.component.CurrencyField;
+import tr.cabro.servicio.application.editors.ActionButtonEditor;
+import tr.cabro.servicio.application.editors.AddButtonEditor;
+import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.panels.ServiceItemEditPanel;
 import tr.cabro.servicio.application.panels.WorkOrderItemAddPanel;
+import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
+import tr.cabro.servicio.application.renderer.AddButtonRenderer;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ItemType;
@@ -30,6 +39,8 @@ import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -55,12 +66,12 @@ public class FormWorkOrder extends Form {
     private JLabel lblDateArrival, lblDateEstimated;
 
     // --- Items Table ---
-    private DefaultTableModel itemsTableModel;
+    private GenericTableModel<WorkOrderItem> itemsTableModel;
     private JPanel itemsTableContainer;
     private JPanel itemsEmptyLabel;
 
     // --- Payments Table ---
-    private DefaultTableModel paymentsTableModel;
+    private GenericTableModel<WorkOrderPayment> paymentsTableModel;
     private JPanel paymentsTableContainer; // JScrollPane yerine JPanel kullanıyoruz
     private JPanel paymentsEmptyLabel;
 
@@ -292,13 +303,16 @@ public class FormWorkOrder extends Form {
         card.add(btnAddPart, "align right, wrap");
 
         // --- Tablo ---
-        String[] columns = {"Tür", "İşlem / Parça Adı", "Seri No", "Fiyat", ""};
-        itemsTableModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return column == 4;
-            }
-        };
+
+        List<ColumnDef<WorkOrderItem>> columnDefs = Arrays.asList(
+                new ColumnDef<>("Tür", ItemType.class, WorkOrderItem::getItemType),
+                new ColumnDef<>("İşçilik / Parça Adı", String.class, WorkOrderItem::getItemName),
+                new ColumnDef<>("Seri No", String.class, WorkOrderItem::getUsedSerialNo),
+                new ColumnDef<>("Fiyat", BigDecimal.class, WorkOrderItem::getTotalPrice),
+                new ColumnDef<>("İşlem", WorkOrderItem.class, workOrderItem -> "Detay")
+        );
+
+        itemsTableModel = new GenericTableModel<>(columnDefs);
 
         JTable itemsTable = new JTable(itemsTableModel);
         styleTable(itemsTable);
@@ -306,20 +320,37 @@ public class FormWorkOrder extends Form {
         itemsTable.getColumnModel().getColumn(0).setMinWidth(85);
         itemsTable.getColumnModel().getColumn(2).setPreferredWidth(150);
         itemsTable.getColumnModel().getColumn(3).setPreferredWidth(100);
-        itemsTable.getColumnModel().getColumn(4).setMaxWidth(80);
-        itemsTable.getColumnModel().getColumn(4).setMinWidth(80);
+        itemsTable.getColumnModel().getColumn(4).setMaxWidth(180);
+        itemsTable.getColumnModel().getColumn(4).setMinWidth(120);
 
         DefaultTableCellRenderer rightAlign = new DefaultTableCellRenderer();
         rightAlign.setHorizontalAlignment(SwingConstants.TRAILING);
         itemsTable.getColumnModel().getColumn(3).setCellRenderer(rightAlign);
         itemsTable.getColumnModel().getColumn(0).setCellRenderer(new ItemTypeBadgeRenderer());
 
-        ItemActionRenderer actionRenderer = new ItemActionRenderer();
-        ItemActionEditor actionEditor = new ItemActionEditor(itemsTable,
-                row -> openItemEditModal(getItemAtRow(row)),
-                row -> confirmDeleteItem(getItemAtRow(row), row));
-        itemsTable.getColumnModel().getColumn(4).setCellRenderer(actionRenderer);
-        itemsTable.getColumnModel().getColumn(4).setCellEditor(actionEditor);
+        itemsTable.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());
+        itemsTable.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+            @Override
+            public void onEdit(int row) {
+                if (itemsTable.isEditing()) itemsTable.getCellEditor().cancelCellEditing();
+                int modelRow = itemsTable.convertRowIndexToModel(row);
+                WorkOrderItem selectedWoItem = itemsTableModel.getItemAt(modelRow);
+                openItemEditModal(selectedWoItem);
+            }
+
+            @Override
+            public void onDelete(int row) {
+                if (itemsTable.isEditing()) itemsTable.getCellEditor().cancelCellEditing();
+                int modelRow = itemsTable.convertRowIndexToModel(row);
+                WorkOrderItem selectedWoItem = itemsTableModel.getItemAt(modelRow);
+                confirmDeleteItem(selectedWoItem);
+            }
+
+            @Override
+            public void onView(int row) {
+
+            }
+        }));
 
         // JScrollPane KALDILIRDI. Yerine normal JPanel kullanıyoruz.
         itemsTableContainer = new JPanel(new MigLayout("insets 0, gap 0", "[grow, fill]", "[]0[]"));
@@ -338,7 +369,6 @@ public class FormWorkOrder extends Form {
     }
 
     private void populateItemsTable() {
-        itemsTableModel.setRowCount(0);
         List<WorkOrderItem> items = workOrder.getItems();
         if (items == null || items.isEmpty()) {
             itemsEmptyLabel.setVisible(true);
@@ -347,66 +377,50 @@ public class FormWorkOrder extends Form {
         }
         itemsEmptyLabel.setVisible(false);
         itemsTableContainer.setVisible(true);
-        for (WorkOrderItem item : items) {
-            itemsTableModel.addRow(new Object[]{
-                    item.getItemType(),
-                    item.getItemName(),
-                    item.getUsedSerialNo() != null ? item.getUsedSerialNo() : "-",
-                    Format.formatPrice(item.getUnitPrice()),
-                    "actions"
-            });
-        }
+
+        itemsTableModel.setData(items);
+
         itemsTableContainer.revalidate();
         itemsTableContainer.repaint();
-    }
-
-    private WorkOrderItem getItemAtRow(int row) {
-        List<WorkOrderItem> items = workOrder.getItems();
-        if (items == null || row < 0 || row >= items.size()) return null;
-        return items.get(row);
     }
 
     // ---- Item CRUD ----
 
     private void openItemAddModal() {
-        WorkOrderItemAddPanel addPanel = new WorkOrderItemAddPanel(workOrder, null);
+        WorkOrderItemAddPanel addPanel = new WorkOrderItemAddPanel(workOrder);
         SimpleModalBorder.Option[] options = {
                 new SimpleModalBorder.Option("Ekle", SimpleModalBorder.YES_OPTION),
                 new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
         };
         ModalDialog.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", options, (controller, action) -> {
-            if (action != SimpleModalBorder.YES_OPTION) return;
 
-            WorkOrderItem newItem = addPanel.getItem();
-            if (newItem == null) {
-                Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bilgiler girin.");
-                controller.consume();
-                return;
-            }
+            if (action == WorkOrderItemAddPanel.SELECTED_ITEM) {
+                WorkOrderItem newItem = addPanel.getItem();
+                if (newItem == null) {
+                    Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bilgiler girin.");
+                    controller.consume();
+                    return;
+                }
 
-            workOrderService.addItem(newItem).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                workOrder.getItems().add(saved);
-                itemsTableModel.addRow(new Object[]{
-                        saved.getItemType(),
-                        saved.getItemName(),
-                        saved.getUsedSerialNo() != null ? saved.getUsedSerialNo() : "-",
-                        Format.formatPrice(saved.getUnitPrice()),
-                        "actions"
+                controller.close();
+
+                workOrderService.addItem(newItem).thenAccept(saved -> {
+                    workOrder.getItems().add(saved);
+
+                    SwingUtilities.invokeLater(() -> {
+                        populateItemsTable();
+
+                        updatePaymentSummary();
+                        Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+                    });
+                }).exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        Toast.show(this, Toast.Type.ERROR, ex.getMessage());
+                    });
+                    Servicio.getLogger().error("ERROR", ex);
+                    return null;
                 });
-                itemsEmptyLabel.setVisible(false);
-                itemsTableContainer.setVisible(true);
-
-                // UI'yi dinamik genişlet
-                itemsTableContainer.revalidate();
-                itemsTableContainer.repaint();
-
-                updatePaymentSummary();
-                Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
-            })).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() ->
-                        Toast.show(this, Toast.Type.ERROR, "Eklenemedi: " + ex.getMessage()));
-                return null;
-            });
+            }
         }), "itemAddModal");
     }
 
@@ -428,17 +442,17 @@ public class FormWorkOrder extends Form {
             }
 
             workOrderService.updateItem(updated).thenRun(() -> SwingUtilities.invokeLater(() -> {
-                List<WorkOrderItem> items = workOrder.getItems();
-                for (int i = 0; i < items.size(); i++) {
-                    if (items.get(i).getId().equals(updated.getId())) {
-                        items.set(i, updated);
-                        itemsTableModel.setValueAt(updated.getItemType(), i, 0);
-                        itemsTableModel.setValueAt(updated.getItemName(), i, 1);
-                        itemsTableModel.setValueAt(updated.getUsedSerialNo() != null ? updated.getUsedSerialNo() : "-", i, 2);
-                        itemsTableModel.setValueAt(Format.formatPrice(updated.getUnitPrice()), i, 3);
-                        break;
-                    }
+                List<WorkOrderItem> currentItems = workOrder.getItems();
+
+                int index = currentItems.indexOf(item);
+                if (index != -1) {
+                    currentItems.set(index, updated);
+
+                    workOrder.setItems(currentItems);
                 }
+
+                populateItemsTable();
+
                 updatePaymentSummary();
                 Toast.show(this, Toast.Type.SUCCESS, "Kalem güncellendi.");
             })).exceptionally(ex -> {
@@ -449,7 +463,7 @@ public class FormWorkOrder extends Form {
         }), "itemEditModal");
     }
 
-    private void confirmDeleteItem(WorkOrderItem item, int row) {
+    private void confirmDeleteItem(WorkOrderItem item) {
         if (item == null) return;
         int confirm = JOptionPane.showConfirmDialog(
                 this,
@@ -460,23 +474,27 @@ public class FormWorkOrder extends Form {
         );
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        workOrderService.deleteItem(item.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
-            workOrder.getItems().remove(item);
-            itemsTableModel.removeRow(row);
-            if (workOrder.getItems().isEmpty()) {
-                itemsEmptyLabel.setVisible(true);
-                itemsTableContainer.setVisible(false);
-            }
+        int confirm2 = JOptionPane.showConfirmDialog(
+                this,
+                "\"" + item.getItemName() + "\" parçası stoğa eklensin mi?",
+                "Silme Onayı",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
+        boolean updateStock = confirm2 == JOptionPane.YES_OPTION;
 
-            // Tabloyu küçült
-            itemsTableContainer.revalidate();
-            itemsTableContainer.repaint();
+        workOrderService.deleteItem(item.getId(), updateStock).thenRun(() -> SwingUtilities.invokeLater(() -> {
+            workOrder.getItems().remove(item);
+
+            populateItemsTable();
 
             updatePaymentSummary();
             Toast.show(this, Toast.Type.SUCCESS, "Kalem silindi.");
         })).exceptionally(ex -> {
             SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.ERROR, "Silinemedi: " + ex.getMessage()));
+                    Toast.show(this, Toast.Type.ERROR, ex.getMessage()));
+
+            Servicio.getLogger().error("HATA", ex);
             return null;
         });
     }
@@ -494,14 +512,14 @@ public class FormWorkOrder extends Form {
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
         card.add(title, "wrap");
 
-        // --- Tablo ---
-        String[] columns = {"Yöntem", "Tarih", "Tutar", ""};
-        paymentsTableModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return column == 3;
-            }
-        };
+        List<ColumnDef<WorkOrderPayment>> columnDefs = Arrays.asList(
+                new ColumnDef<>("Tarih", LocalDateTime.class, WorkOrderPayment::getPaymentDate),
+                new ColumnDef<>("Yöntem", PaymentType.class, WorkOrderPayment::getPaymentType),
+                new ColumnDef<>("Tutar", BigDecimal.class, WorkOrderPayment::getAmount),
+                new ColumnDef<>("İşlem", WorkOrderPayment.class, workOrderPayment -> "Detay")
+        );
+
+        paymentsTableModel = new GenericTableModel<>(columnDefs);
 
         JTable paymentsTable = new JTable(paymentsTableModel);
         styleTable(paymentsTable);
@@ -511,9 +529,13 @@ public class FormWorkOrder extends Form {
         paymentsTable.getColumnModel().getColumn(3).setMaxWidth(50);
         paymentsTable.getColumnModel().getColumn(3).setMinWidth(50);
         paymentsTable.getColumnModel().getColumn(2).setCellRenderer(new GreenAmountRenderer());
-        paymentsTable.getColumnModel().getColumn(3).setCellRenderer(new DeleteButtonRenderer());
-        paymentsTable.getColumnModel().getColumn(3).setCellEditor(
-                new DeleteButtonEditor(paymentsTable, row -> confirmDeletePayment(getPaymentAtRow(row), row)));
+        paymentsTable.getColumnModel().getColumn(3).setCellRenderer(new AddButtonRenderer());
+        paymentsTable.getColumnModel().getColumn(3).setCellEditor(new AddButtonEditor(row -> {
+            if (paymentsTable.isEditing()) paymentsTable.getCellEditor().cancelCellEditing();
+            int modelRow = paymentsTable.convertRowIndexToModel(row);
+            WorkOrderPayment selectedWoPayment = paymentsTableModel.getItemAt(modelRow);
+            confirmDeletePayment(selectedWoPayment, row);
+        }));
 
         // JScrollPane KALDILIRDI.
         paymentsTableContainer = new JPanel(new MigLayout("insets 0, gap 0", "[grow, fill]", "[]0[]"));
@@ -533,7 +555,6 @@ public class FormWorkOrder extends Form {
     }
 
     private void populatePaymentsTable() {
-        paymentsTableModel.setRowCount(0);
         List<WorkOrderPayment> payments = workOrder.getPayments();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
         if (payments == null || payments.isEmpty()) {
@@ -541,24 +562,14 @@ public class FormWorkOrder extends Form {
             paymentsTableContainer.setVisible(false);
             return;
         }
+
         paymentsEmptyLabel.setVisible(false);
         paymentsTableContainer.setVisible(true);
-        for (WorkOrderPayment p : payments) {
-            paymentsTableModel.addRow(new Object[]{
-                    p.getPaymentType().getDisplayName(),
-                    p.getPaymentDate() != null ? p.getPaymentDate().format(formatter) : "-",
-                    Format.formatPrice(p.getAmount()),
-                    "delete"
-            });
-        }
+
+        paymentsTableModel.setData(payments);
+
         paymentsTableContainer.revalidate();
         paymentsTableContainer.repaint();
-    }
-
-    private WorkOrderPayment getPaymentAtRow(int row) {
-        List<WorkOrderPayment> payments = workOrder.getPayments();
-        if (payments == null || row < 0 || row >= payments.size()) return null;
-        return payments.get(row);
     }
 
     private JPanel buildPaymentInputRow() {
@@ -602,19 +613,7 @@ public class FormWorkOrder extends Form {
             workOrderService.addPayment(sp).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
                 workOrder.getPayments().add(saved);
 
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
-                paymentsTableModel.addRow(new Object[]{
-                        saved.getPaymentType().getDisplayName(),
-                        saved.getPaymentDate() != null ? saved.getPaymentDate().format(formatter) : "-",
-                        Format.formatPrice(saved.getAmount()),
-                        "delete"
-                });
-                paymentsEmptyLabel.setVisible(false);
-                paymentsTableContainer.setVisible(true);
-
-                // UI'yi dinamik genişlet
-                paymentsTableContainer.revalidate();
-                paymentsTableContainer.repaint();
+                populatePaymentsTable();
 
                 txtAmount.setValue(workOrder.getRemainingAmount());
 
@@ -646,15 +645,8 @@ public class FormWorkOrder extends Form {
 
         workOrderService.deletePayment(payment.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
             workOrder.getPayments().remove(payment);
-            paymentsTableModel.removeRow(row);
-            if (workOrder.getPayments().isEmpty()) {
-                paymentsEmptyLabel.setVisible(true);
-                paymentsTableContainer.setVisible(false);
-            }
 
-            // Tabloyu küçült
-            paymentsTableContainer.revalidate();
-            paymentsTableContainer.repaint();
+            populatePaymentsTable();
 
             updatePaymentSummary();
             Toast.show(this, Toast.Type.SUCCESS, "Ödeme silindi.");
@@ -950,9 +942,6 @@ public class FormWorkOrder extends Form {
     // INNER RENDERERS & EDITORS
     // =========================================================================
 
-    @FunctionalInterface
-    interface RowAction { void execute(int row); }
-
     private static class ItemTypeBadgeRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
@@ -985,62 +974,7 @@ public class FormWorkOrder extends Form {
         }
     }
 
-    private static class ItemActionRenderer extends JPanel implements TableCellRenderer {
-        private final JButton btnEdit   = new JButton(new Ikon("icons/pencil.svg", 0.7f));
-        private final JButton btnDelete = new JButton(new Ikon("icons/trash-2.svg", 0.75f));
-        ItemActionRenderer() {
-            setLayout(new MigLayout("insets 2, gap 3", "[][]", "[]"));
-            setOpaque(false);
-            btnEdit.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: $Component.accentColor");
-            btnDelete.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
-            add(btnEdit); add(btnDelete);
-        }
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                       boolean isSelected, boolean hasFocus, int row, int column) {
-            setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
-            return this;
-        }
-    }
 
-    private static class ItemActionEditor extends AbstractCellEditor implements TableCellEditor {
-        private final JPanel panel   = new JPanel(new MigLayout("insets 2, gap 3", "[][]", "[]"));
-        private final JButton btnEdit   = new JButton(new Ikon("icons/pencil.svg", 0.7f));
-        private final JButton btnDelete = new JButton(new Ikon("icons/trash-2.svg", 0.75f));
-        ItemActionEditor(JTable table, RowAction onEdit, RowAction onDelete) {
-            panel.setOpaque(false);
-            btnEdit.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: $Component.accentColor");
-            btnDelete.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
-            btnEdit.addActionListener(e -> { fireEditingStopped(); int r = table.getSelectedRow(); if (r >= 0) onEdit.execute(r); });
-            btnDelete.addActionListener(e -> { fireEditingStopped(); int r = table.getSelectedRow(); if (r >= 0) onDelete.execute(r); });
-            panel.add(btnEdit); panel.add(btnDelete);
-        }
-        @Override public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) { return panel; }
-        @Override public Object getCellEditorValue() { return "actions"; }
-    }
-
-    private static class DeleteButtonRenderer extends DefaultTableCellRenderer {
-        private final JButton btn = new JButton(new Ikon("icons/x.svg", 0.7f));
-        DeleteButtonRenderer() {
-            btn.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
-        }
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value,
-                                                       boolean isSelected, boolean hasFocus, int row, int column) {
-            btn.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
-            return btn;
-        }
-    }
-
-    private static class DeleteButtonEditor extends AbstractCellEditor implements TableCellEditor {
-        private final JButton btn = new JButton(new Ikon("icons/x.svg", 0.7f));
-        DeleteButtonEditor(JTable table, RowAction onDelete) {
-            btn.putClientProperty(FlatClientProperties.STYLE, "background: null; borderWidth: 0; foreground: #e74c3c");
-            btn.addActionListener(e -> { fireEditingStopped(); int r = table.getSelectedRow(); if (r >= 0) onDelete.execute(r); });
-        }
-        @Override public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) { return btn; }
-        @Override public Object getCellEditorValue() { return "delete"; }
-    }
 
     // =========================================================================
     // HELPERS

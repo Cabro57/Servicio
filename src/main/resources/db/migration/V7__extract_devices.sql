@@ -124,7 +124,6 @@ CREATE TABLE work_orders (
                              device_id         INTEGER NOT NULL,
                              technician_id     INTEGER,
                              reported_fault    TEXT,
-                             detected_fault    TEXT,
                              urgency_status    VARCHAR(20) DEFAULT 'NORMAL',
                              service_status    VARCHAR(20) DEFAULT 'PENDING',
                              warranty_end_date TIMESTAMP,
@@ -413,7 +412,7 @@ GROUP BY cs.safe_serial; -- [RİSK] Bkz. yukarıdaki uyarı
 -- [DÜZELTİLDİ] device_id NOT NULL: eşleşmeyen satırlar WHERE ile atlanıyor
 INSERT INTO work_orders (
     id, customer_id, device_id,
-    reported_fault, detected_fault,
+    reported_fault,
     urgency_status, service_status,
     warranty_end_date, delivery_date, created_at
 )
@@ -422,7 +421,6 @@ SELECT
     CASE WHEN c.id IS NOT NULL THEN cs.customer_id ELSE NULL END, -- [DÜZELTİLDİ]
     d.id,
     cs.reported_fault,
-    cs.detected_fault,
     cs.urgency_status,
     cs.service_status,
     cs.warranty_date,
@@ -569,6 +567,6 @@ CREATE TRIGGER trg_stock_movement_out
     WHEN NEW.type = 'OUT'
 BEGIN
     UPDATE parts
-    SET stock_quantity = stock_quantity - NEW.quantity
+    SET stock_quantity = stock_quantity + NEW.quantity
     WHERE id = NEW.product_id;
 END;
