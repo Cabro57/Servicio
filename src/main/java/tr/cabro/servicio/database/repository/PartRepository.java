@@ -16,16 +16,16 @@ import java.util.Optional;
 public interface PartRepository {
 
     // --- INSERT ---
-    @SqlUpdate("INSERT INTO parts (barcode, name, category, model_compatibility, supplier_id, " +
+    @SqlUpdate("INSERT INTO parts (barcode, name, category, model_compatibility, supplier_id, warehouse_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, created_at, updated_at) " +
-            "VALUES (:barcode, :name, :category, :modelCompatibility, :supplierId, " +
+            "VALUES (:barcode, :name, :category, :modelCompatibility, :supplierId, :warehouseId, " +
             ":purchasePrice, :salePrice, :stockQuantity, :minStockLevel, :description, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean Part part);
 
     // --- UPDATE ---
     @SqlUpdate("UPDATE parts SET barcode=:barcode, name=:name, category=:category, model_compatibility=:modelCompatibility, " +
-            "supplier_id=:supplierId, purchase_price=:purchasePrice, sale_price=:salePrice, " +
+            "supplier_id=:supplierId, warehouse_id=:warehouseId, purchase_price=:purchasePrice, sale_price=:salePrice, " +
             "stock_quantity=:stockQuantity, min_stock_level=:minStockLevel, " +
             "description=:description, updated_at=:updatedAt WHERE id=:id")
     void update(@BindBean Part part);
@@ -71,7 +71,7 @@ public interface PartRepository {
 
     @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
-            "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 ORDER BY name")
+            "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<Part> findAll();
 
     @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +

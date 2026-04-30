@@ -20,14 +20,9 @@ import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.Customer;
-import tr.cabro.servicio.model.WorkOrder;
-import tr.cabro.servicio.model.WorkOrderPayment;
-import tr.cabro.servicio.model.dto.CustomersTableDto;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
-import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
@@ -39,22 +34,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 @SystemForm(name = "Müşteriler", description = "Müşteri veritabanını ve iletişim bilgilerini yönetin.")
 public class FormCustomers extends AbstractTableForm {
 
     private final CustomerService customerService;
-    private final WorkOrderService workOrderService;
-    private GenericTableModel<CustomersTableDto> tableModel;
+    private GenericTableModel<Customer> tableModel;
 
     // Müşterilerin toplam harcamalarını RAM'de (önbellekte) tutmak için
     private final Map<Long, BigDecimal> customerSpentMap = new ConcurrentHashMap<>();
 
     public FormCustomers() {
         this.customerService = ServiceManager.getCustomerService();
-        this.workOrderService = ServiceManager.getWorkOrderService();
     }
 
     // --- 1. ÜST KISIM VE ARAMA AYARLARI ---
@@ -92,7 +84,39 @@ public class FormCustomers extends AbstractTableForm {
     // Artık bu metodu tek başına çağırmıyoruz, refreshTable içinde her şeyi senkron yapıyoruz
     @Override
     protected void refreshStats() {
-        // Boş bırakıldı. İşlemler refreshTable() içine taşındı.
+        customerService.getAllTable().thenAccept(customers -> {
+
+            long totalCustomer = customers.size();
+
+            long totalNormal = customers.stream()
+                    .filter(c -> c.getType() == CustomerType.NORMAL)
+                    .count();
+
+            long totalBusiness = customers.stream()
+                    .filter(c -> c.getType() == CustomerType.DEALER
+                    || c.getType() == CustomerType.SMALL_BUSINESS)
+                    .count();
+
+            long totalCiro = customers.stream()
+                    .map(Customer::getSpent)
+                    .mapToLong(BigDecimal::longValue)
+                    .sum();
+
+            SwingUtilities.invokeLater(() -> {
+                cardBox.setValueAt(0, String.valueOf(totalCustomer), " ", "", true);
+                cardBox.setValueAt(1, String.valueOf(totalNormal), " ", "", true);
+                cardBox.setValueAt(2, String.valueOf(totalBusiness), " ", "", true);
+                cardBox.setValueAt(3, String.valueOf(totalCiro), " ", "", true);
+            });
+        }).exceptionally(throwable -> {
+
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.ERROR, throwable.getMessage());
+            });
+
+            Servicio.getLogger().error(throwable.getMessage(), throwable);
+            return null;
+        });
     }
 
     // --- 3. TABLO YAPILANDIRMASI ---
@@ -101,12 +125,12 @@ public class FormCustomers extends AbstractTableForm {
     protected void setupTable() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
 
-        List<ColumnDef<CustomersTableDto>> columns = Arrays.asList(
+        List<ColumnDef<Customer>> columns = Arrays.asList(
                 new ColumnDef<>("ID", String.class, c -> String.format("C-%03d", c.getId())),
                 new ColumnDef<>("Müşteri Adı", Customer.class, c -> c),
                 new ColumnDef<>("İletişim", Customer.class, c -> c),
-                new ColumnDef<>("Cihaz Sayısı", Integer.class, CustomersTableDto::getDeviceCount),
-                new ColumnDef<>("Toplam Harcama", String.class, c -> Format.formatPrice(customerSpentMap.getOrDefault(c.getId(), BigDecimal.ZERO))),
+                new ColumnDef<>("Cihaz Sayısı", Integer.class, Customer::getDeviceCount),
+                new ColumnDef<>("Toplam Harcama", BigDecimal.class, Customer::getSpent),
                 new ColumnDef<>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(formatter) : "-"),
                 new ColumnDef<>("İşlem", String.class, c -> "Detay")
         );
@@ -117,12 +141,27 @@ public class FormCustomers extends AbstractTableForm {
         configureTableColumns();
     }
 
-    /**
-     *
-     */
     @Override
     protected void refreshTable() {
+        customerService.getAllTable().thenAccept(customers -> {
+            if (customers.isEmpty()) {
+                SwingUtilities.invokeLater(() -> {
+                    Toast.show(this, Toast.Type.INFO, "Müşteri Listesi Boş!");
+                });
+            }
 
+            SwingUtilities.invokeLater(() -> {
+                tableModel.setData(customers);
+                refreshStats();
+            });
+        }).exceptionally(throwable -> {
+            SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.ERROR, throwable.getMessage());
+            });
+            Servicio.getLogger().error(throwable.getMessage(), throwable);
+
+            return null;
+        });
     }
 
     private void configureTableColumns() {

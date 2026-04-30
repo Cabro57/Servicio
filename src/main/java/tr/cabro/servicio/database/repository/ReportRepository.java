@@ -53,26 +53,26 @@ public interface ReportRepository {
     // 3. ZAMAN SERİSİ (TREND) GRAFİKLERİ
     // =========================================================================
 
-    // Aylık Ciro (Gelir) Trendi
     @RegisterBeanMapper(ChartDataDto.class)
-    @SqlQuery("SELECT strftime('%Y-%m', s.created_at) AS label, " +
+    @SqlQuery("SELECT strftime(:sqlFormat, s.created_at) AS label, " +
             "  COALESCE(SUM(si.unit_price * si.quantity), 0.0) AS value " +
             "FROM work_orders s " +
             "LEFT JOIN work_order_items si ON s.id = si.service_id " +
             "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
-            "GROUP BY label " +
-            "ORDER BY label ASC")
-    List<ChartDataDto> getMonthlyRevenueTrend(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
+            "GROUP BY label ORDER BY label ASC")
+    List<ChartDataDto> getRevenueTrend(@Bind("sqlFormat") String sqlFormat,
+                                       @Bind("startDate") String startDate,
+                                       @Bind("endDate") String endDate);
 
-    // Aylık Kâr Trendi
     @RegisterBeanMapper(ChartDataDto.class)
-    @SqlQuery("SELECT strftime('%Y-%m', s.created_at) AS label, " +
+    @SqlQuery("SELECT strftime(:sqlFormat, s.created_at) AS label, " +
             "  COALESCE(SUM(si.unit_price * si.quantity) - " +
             "           SUM(CASE WHEN si.item_type = 'PART' THEN si.purchase_price * si.quantity ELSE 0 END), 0.0) AS value " +
             "FROM work_orders s " +
             "LEFT JOIN work_order_items si ON s.id = si.service_id " +
             "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
-            "GROUP BY label " +
-            "ORDER BY label ASC")
-    List<ChartDataDto> getMonthlyProfitTrend(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
+            "GROUP BY label ORDER BY label ASC")
+    List<ChartDataDto> getProfitTrend(@Bind("sqlFormat") String sqlFormat,
+                                      @Bind("startDate") String startDate,
+                                      @Bind("endDate") String endDate);
 }

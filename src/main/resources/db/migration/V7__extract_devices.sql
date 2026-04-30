@@ -232,6 +232,24 @@ SELECT id, name, business_name, tax_no, tax_office,
 FROM suppliers;
 
 -- C) PARÇALAR (Marka ismi parça adına entegre ediliyor)
+
+WITH RECURSIVE last_word_finder(barcode, current_word, remainder) AS (
+    -- Başlangıç: İlk boşluktan sonrasını ve öncesini belirle
+    SELECT
+        barcode,
+        name as current_word,
+        name || ' ' as remainder
+    FROM part
+    UNION ALL
+    -- Döngü: Her boşlukta bir sonraki kelimeye geç
+    SELECT
+        barcode,
+        SUBSTR(remainder, 1, INSTR(remainder, ' ') - 1),
+        SUBSTR(remainder, INSTR(remainder, ' ') + 1)
+    FROM last_word_finder
+    WHERE remainder != ''
+)
+
 INSERT INTO parts (
     barcode, name, category, model_compatibility, supplier_id, warehouse_id,
     purchase_price, sale_price, stock_quantity, min_stock_level,
@@ -244,12 +262,16 @@ SELECT
             THEN TRIM(brand) || ' ' || TRIM(name)
         ELSE TRIM(name)
         END,
-    'Genel', model, supplier_id, 1,
+    (SELECT current_word
+     FROM last_word_finder lwf
+     WHERE lwf.barcode = p.barcode AND lwf.current_word != ''
+     ORDER BY LENGTH(remainder) ASC LIMIT 1) as category,
+    model, supplier_id, 1,
     purchase_price, sale_price,
-    0,       -- Stok stock_movements'tan hesaplanacak
+    0,
     min_stock,
     description, created_at
-FROM part;
+FROM part p;
 
 -- D) SEED DATA: Cihaz Türleri ve Markalar
 INSERT INTO device_types (id, name) VALUES

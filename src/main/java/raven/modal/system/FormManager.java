@@ -86,6 +86,7 @@ public class FormManager {
         }
 
         Drawer.setSelectedItemClass(FormDashboard.class);
+
         FORMS.clear();
         frame.repaint();
         frame.revalidate();

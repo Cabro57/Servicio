@@ -8,6 +8,7 @@ import org.jdbi.v3.core.mapper.reflect.ColumnName;
 import tr.cabro.servicio.model.enums.CustomerType;
 
 import java.beans.Transient;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter @Setter
@@ -59,6 +60,12 @@ public class Customer {
 
     @ColumnName("updated_at")
     private LocalDateTime updatedAt;
+
+    @ColumnName("device_count")
+    private Integer deviceCount;
+
+    @ColumnName("spent")
+    private BigDecimal spent;
 
     // Geriye dönük uyumluluk için basit Constructor
     public Customer(Long id, String firstName, String lastName) {

@@ -5,8 +5,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
 import org.jfree.data.general.DefaultPieDataset;
-import org.jfree.data.time.Month;
-import org.jfree.data.time.TimeTableXYDataset;
+import org.jfree.data.time.*;
 import raven.modal.Toast;
 import raven.modal.component.ToolBarSelection;
 import raven.modal.component.chart.PieChart;
@@ -121,8 +120,13 @@ public class FormDashboard extends Form {
         });
 
         // ÇİZGİ GRAFİK (BORSA)
-        CompletableFuture<List<ChartDataDto>> revFuture = reportManager.getMonthlyRevenueTrend(startCurrent, endCurrent);
-        CompletableFuture<List<ChartDataDto>> profFuture = reportManager.getMonthlyProfitTrend(startCurrent, endCurrent);
+        String sqlFormat = selectedTimeFilter.getSqlFormat();
+        String granularity = selectedTimeFilter.getGranularity();
+
+        CompletableFuture<List<ChartDataDto>> revFuture =
+                reportManager.getRevenueTrend(sqlFormat, startCurrent, endCurrent);
+        CompletableFuture<List<ChartDataDto>> profFuture =
+                reportManager.getProfitTrend(sqlFormat, startCurrent, endCurrent);
 
         CompletableFuture.allOf(revFuture, profFuture).thenAccept(v -> {
             List<ChartDataDto> revData = revFuture.join();
@@ -130,16 +134,16 @@ public class FormDashboard extends Form {
 
             SwingUtilities.invokeLater(() -> {
                 TimeTableXYDataset dataset = new TimeTableXYDataset();
+
                 for (ChartDataDto dto : revData) {
                     if (dto.getLabel() == null) continue;
-                    String[] parts = dto.getLabel().split("-");
-                    dataset.add(new Month(Integer.parseInt(parts[1]), Integer.parseInt(parts[0])), dto.getValue().doubleValue(), "Brüt Gelir");
+                    dataset.add(parsePeriod(dto.getLabel(), granularity), dto.getValue().doubleValue(), "Brüt Gelir");
                 }
                 for (ChartDataDto dto : profData) {
                     if (dto.getLabel() == null) continue;
-                    String[] parts = dto.getLabel().split("-");
-                    dataset.add(new Month(Integer.parseInt(parts[1]), Integer.parseInt(parts[0])), dto.getValue().doubleValue(), "Net Kâr");
+                    dataset.add(parsePeriod(dto.getLabel(), granularity), dto.getValue().doubleValue(), "Net Kâr");
                 }
+
                 timeSeriesChart.setDataset(dataset);
             });
         });
@@ -214,6 +218,26 @@ public class FormDashboard extends Form {
     private double calcChange(double current, double previous) {
         if (previous == 0) return current > 0 ? 100.0 : 0.0;
         return ((current - previous) / previous) * 100.0;
+    }
+
+    private RegularTimePeriod parsePeriod(String label, String granularity) {
+        System.out.println("granularity: " + granularity + " | label: " + label);
+        if ("hour".equals(granularity)) {
+            // label: "2024-03-15 14:00"
+            String[] parts = label.split("T");
+            LocalDate date = LocalDate.parse(parts[0]);
+            int hour = Integer.parseInt(parts[1]);
+            return new Hour(hour, new Day(date.getDayOfMonth(), date.getMonthValue(), date.getYear()));
+        } else if ("day".equals(granularity)) {
+            LocalDate d = LocalDate.parse(label);
+            return new Day(d.getDayOfMonth(), d.getMonthValue(), d.getYear());
+        } else if ("week".equals(granularity)) {
+            String[] p = label.split("-");
+            return new Week(Integer.parseInt(p[1]), Integer.parseInt(p[0]));
+        } else {
+            String[] p = label.split("-");
+            return new Month(Integer.parseInt(p[1]), Integer.parseInt(p[0]));
+        }
     }
 
     private void createTitle() {

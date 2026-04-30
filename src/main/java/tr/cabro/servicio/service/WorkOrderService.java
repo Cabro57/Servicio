@@ -23,12 +23,14 @@ public class WorkOrderService {
 
     private final PartService partService;
     private final StockService stockService;
+    private final DeviceService deviceService;
 
     public WorkOrderService(WorkOrderRepository workOrderRepository,
                             ServiceItemRepository itemRepository,
                             ServicePaymentRepository paymentRepo,
                             ServiceNoteRepository noteRepository,
-                            PartService partService, StockService stockService) {
+                            PartService partService, StockService stockService,
+                            DeviceService deviceService) {
         this.workOrderRepository = workOrderRepository;
         this.itemRepository = itemRepository;
         this.paymentRepository = paymentRepo;
@@ -36,6 +38,7 @@ public class WorkOrderService {
 
         this.partService = partService;
         this.stockService = stockService;
+        this.deviceService = deviceService;
     }
 
     // =========================================================================
@@ -43,8 +46,13 @@ public class WorkOrderService {
     // =========================================================================
 
     public CompletableFuture<WorkOrder> save(WorkOrder workOrder, boolean update) {
-        if (workOrder.getDeviceId() <= 0) {
+        if (workOrder.getDeviceId() != null && workOrder.getDeviceId() <= 0) {
             throw new ValidationException("Servis için bir cihaz seçilmiş olmalıdır.");
+        }
+
+        if (workOrder.getDeviceId() == null) {
+            deviceService.save(workOrder.getDevice(), false)
+                    .thenAccept(d -> workOrder.setDeviceId(d.getId()));
         }
 
         return CompletableFuture.supplyAsync(() -> {

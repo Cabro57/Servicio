@@ -23,6 +23,9 @@ public class Part {
 
     private Supplier supplier;
 
+    @ColumnName("warehouse_id")
+    private Long warehouseId;
+
     @ColumnName("purchase_price")
     private BigDecimal purchasePrice = BigDecimal.ZERO;
 

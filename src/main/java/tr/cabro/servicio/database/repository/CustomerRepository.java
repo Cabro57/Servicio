@@ -7,7 +7,9 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.statement.UseRowMapper;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.mapper.CustomerTableMapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +44,25 @@ public interface CustomerRepository {
 
     @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<Customer> findAll();
+
+    @SqlQuery("SELECT " +
+            " c.id, c.customer_type AS type, " +
+            "c.business_name, c.first_name, c.last_name, " +
+            "c.identity_no, c.tax_number, c.tax_office, " +
+            "c.phone_number_1, c.phone_number_2, c.email, " +
+            "c.address, c.note, c.created_at, c.updated_at, " +
+            "COUNT(DISTINCT wo.device_id) AS device_count, " +
+            "COALESCE(SUM(woi.unit_price * woi.quantity), 0) AS spent " +
+            "FROM customers c " +
+            "LEFT JOIN work_orders wo ON wo.customer_id = c.id " +
+            "LEFT JOIN work_order_items woi ON woi.service_id = wo.id " +
+            "WHERE c.is_deleted = 0 GROUP BY " +
+            "c.id, c.customer_type, c.business_name, c.first_name, c.last_name, " +
+            "c.identity_no, c.tax_number, c.tax_office, c.phone_number_1, c.phone_number_2, " +
+            "c.email, c.address, c.note, c.created_at, c.updated_at " +
+            "ORDER BY c.created_at DESC")
+    @UseRowMapper(CustomerTableMapper.class)
+    List<Customer> findAllTable();
 
     @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE is_deleted = 0 AND " +
             "(first_name LIKE :search OR last_name LIKE :search OR business_name LIKE :search OR " +

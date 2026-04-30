@@ -16,15 +16,15 @@ import java.util.Optional;
 @RegisterBeanMapper(WorkOrder.class)
 public interface WorkOrderRepository {
 
-    @SqlUpdate("INSERT INTO work_orders (customer_id, device_id, technician_id, reported_fault, detected_fault, " +
+    @SqlUpdate("INSERT INTO work_orders (customer_id, device_id, technician_id, reported_fault, " +
             "urgency_status, service_status, warranty_end_date, delivery_date, created_at, updated_at) " +
-            "VALUES (:customerId, :deviceId, :technicianId, :reportedFault, :detectedFault, " +
+            "VALUES (:customerId, :deviceId, :technicianId, :reportedFault, " +
             ":urgencyStatus, :serviceStatus, :warrantyEndDate, :deliveryDate, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean WorkOrder workOrder);
 
     @SqlUpdate("UPDATE work_orders SET customer_id=:customerId, device_id=:deviceId, technician_id=:technicianId, " +
-            "reported_fault=:reportedFault, detected_fault=:detectedFault, " +
+            "reported_fault=:reportedFault, " +
             "urgency_status=:urgencyStatus, service_status=:serviceStatus, " +
             "warranty_end_date=:warrantyEndDate, delivery_date=:deliveryDate, updated_at=:updatedAt " +
             "WHERE id=:id")

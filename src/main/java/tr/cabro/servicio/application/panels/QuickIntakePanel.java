@@ -6,6 +6,7 @@ import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 import raven.modal.Toast;
 import raven.modal.component.ModalBorderAction;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CustomerSelectBox;
 import tr.cabro.servicio.application.panels.edit.AbstractEditPanel;
 import tr.cabro.servicio.application.util.Ikon;
@@ -44,10 +45,10 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
     private DefaultComboBoxModel<Customer> listModel;
 
     // YENİ: Eğer cihaz sistemde varsa, aynı ID'yi korumak için tutuyoruz
-    private Long currentDeviceId = 0L;
-
+    private Long currentDeviceId;
 
     private DeviceDictionaryManager deviceDictService;
+
     public QuickIntakePanel(WorkOrder data) {
         super(data);
         initData();
@@ -157,7 +158,6 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
             return;
         }
 
-        // TODO: Kendi mimarinize göre çağrıyı düzenleyin. Örn: ServiceManager.getDeviceService().findBySerialNo()
         ServiceManager.getDeviceService().getBySerialNo(serial).thenAccept(deviceOpt -> {
             if (deviceOpt.isPresent()) {
                 Device device = deviceOpt.get();
@@ -173,14 +173,14 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
                 });
             } else {
                 SwingUtilities.invokeLater(() -> {
-                    currentDeviceId = 0L; // Yeni cihaz olarak işaretle
                     Toast.show(this, Toast.Type.INFO, "Bu seri numarasına sahip cihaz bulunamadı. Yeni cihaz olarak kaydedilecek.");
                 });
             }
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.WARNING, "Bu seri numarasıile arama yaparken bir hata oluştu.");
+                Toast.show(this, Toast.Type.WARNING, "Bu seri numarası ile arama yaparken bir hata oluştu.");
             });
+            Servicio.getLogger().error("ERROR", ex);
             return null;
         });
     }
@@ -207,7 +207,7 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
         // YENİ: Bağımsız Cihaz Nesnesi Oluşturma
         Device device = new Device();
-        device.setId(currentDeviceId); // Eğer sorgulanıp bulunduysa mevcut ID, yoksa 0 (yeni kayıt)
+        device.setId(currentDeviceId);
         device.setDeviceType(dType);
         device.setBrand(dBrand);
         device.setModel(model_field.getText().trim());
@@ -217,6 +217,9 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
         // Cihazı Servise Bağla
         data.setDevice(device);
+        if (currentDeviceId != null) {
+            data.setDeviceId(device.getId());
+        }
 
         data.setReportedFault(reportedFaultArea.getText().trim());
         data.setCreatedAt(LocalDateTime.now());

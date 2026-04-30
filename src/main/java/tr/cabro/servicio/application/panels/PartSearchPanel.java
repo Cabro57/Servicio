@@ -2,25 +2,21 @@ package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.renderer.ProfileTableRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
-import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.service.DeviceDictionaryManager;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.settings.DeviceSettings;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import javax.swing.table.TableRowSorter;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 

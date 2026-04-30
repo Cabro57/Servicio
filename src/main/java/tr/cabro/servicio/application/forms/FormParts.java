@@ -92,10 +92,10 @@ public class FormParts extends AbstractTableForm {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             SwingUtilities.invokeLater(() -> {
-                cardBox.setValueAt(0, String.valueOf(partVarietyCount), "Sistemdeki tüm kayıtlar", "", true);
-                cardBox.setValueAt(1, String.valueOf(totalStock), "Bireysel kullanıcılar", "", true);
-                cardBox.setValueAt(2, String.valueOf(criticalStockCount), "İşletme ve ticari hesaplar", "", true);
-                cardBox.setValueAt(3, Format.formatPrice(totalInventoryValue), "Bakım aşamasında", "", true);
+                cardBox.setValueAt(0, String.valueOf(partVarietyCount), "Parça Çeşidi", "", true);
+                cardBox.setValueAt(1, String.valueOf(totalStock), "Toplam Stok", "", true);
+                cardBox.setValueAt(2, String.valueOf(criticalStockCount), "Kritik Stok", "", true);
+                cardBox.setValueAt(3, Format.formatPrice(totalInventoryValue), "Envanter Değeri", "", true);
             });
         }).exceptionally(ex -> {
             Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
@@ -109,15 +109,13 @@ public class FormParts extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<Part>> columns = Arrays.asList(
-                new ColumnDef<>("Barkod", String.class, Part::getBarcode),
+                new ColumnDef<>("SKU", String.class, Part::getBarcode),
                 new ColumnDef<>("Parça Adı", String.class, Part::getName),
+                new ColumnDef<>("Kategori",  String.class, Part::getCategory),
                 new ColumnDef<>("Uyumlu Model", String.class, Part::getModelCompatibility),
                 new ColumnDef<>("Tedarikçi",  Supplier.class, Part::getSupplier),
-                new ColumnDef<>("Kategori",  String.class, Part::getCategory),
                 new ColumnDef<>("Stok", Integer.class, Part::getStockQuantity),
-                new ColumnDef<>("Alış Fiyatı", String.class, p -> Format.formatPrice(p.getPurchasePrice())),
-                new ColumnDef<>("Satış Fiyatı", String.class, p -> Format.formatPrice(p.getSalePrice())),
-                new ColumnDef<>("Alış Tarihi", String.class, p -> Format.formatDate(p.getCreatedAt())),
+                new ColumnDef<>("Birim Fiyat", String.class, p -> Format.formatPrice(p.getSalePrice())),
                 new ColumnDef<>("İşlem", String.class, p -> "Detay")
         );
         tableModel = new GenericTableModel<>(columns);
@@ -134,10 +132,7 @@ public class FormParts extends AbstractTableForm {
                 SwingConstants.LEADING,
                 SwingConstants.LEADING,
                 SwingConstants.CENTER,
-//                SwingConstants.LEADING,
                 SwingConstants.TRAILING,
-                SwingConstants.TRAILING,
-                SwingConstants.LEADING,
                 SwingConstants.CENTER
         };
 
@@ -165,13 +160,14 @@ public class FormParts extends AbstractTableForm {
                 return label;
             }
         });
-        table.getColumnModel().getColumn(9).setCellRenderer(new ActionButtonRenderer());
-        table.getColumnModel().getColumn(9).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+        table.getColumnModel().getColumn(7).setCellRenderer(new ActionButtonRenderer());
+        table.getColumnModel().getColumn(7).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onEdit(int row) {
                 if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
-                openEditModal(tableModel.getItemAt(modelRow));
+                Part part = tableModel.getItemAt(modelRow);
+                openEditModal(part);
             }
 
             @Override
@@ -210,8 +206,8 @@ public class FormParts extends AbstractTableForm {
         table.getColumnModel().getColumn(0).setMinWidth(150); // Barkod
         table.getColumnModel().getColumn(1).setPreferredWidth(120);
         table.getColumnModel().getColumn(5).setMaxWidth(70);
-        table.getColumnModel().getColumn(9).setMaxWidth(180);
-        table.getColumnModel().getColumn(9).setMinWidth(120);
+        table.getColumnModel().getColumn(7).setMaxWidth(180);
+        table.getColumnModel().getColumn(7).setMinWidth(120);
     }
 
     @Override
@@ -243,33 +239,32 @@ public class FormParts extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Yeni Parça Ekle", options,
-                        (controller, action) -> {
-                            if (action == SimpleModalBorder.OK_OPTION) {
-                                Part updated = panel.getData();
-                                if (updated == null) {
-                                    controller.consume();
-                                    return;
-                                }
+        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Yeni Parça Ekle", options,
+            (controller, action) -> {
+                if (action == SimpleModalBorder.OK_OPTION) {
+                    Part updated = panel.getData();
+                    if (updated == null) {
+                        controller.consume();
+                        return;
+                    }
 
-                                updated.setCreatedAt(LocalDateTime.now());
-                                partService.save(updated, false).thenAccept(part -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
-                                        refreshTable();
-                                    });
-                                }).exceptionally(ex -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        controller.consume();
-                                        Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
-                                    });
-                                    Servicio.getLogger().error("Parça ekleme hatası", ex);
-                                    return  null;
-                                });
-                            }
-                        })
-                , id);
+                    updated.setCreatedAt(LocalDateTime.now());
+                    partService.save(updated, false).thenAccept(part -> {
+                        SwingUtilities.invokeLater(() -> {
+                            Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
+                            refreshTable();
+                        });
+                    }).exceptionally(ex -> {
+                        SwingUtilities.invokeLater(() -> {
+                            controller.consume();
+                            Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
+                        });
+                        Servicio.getLogger().error("Parça ekleme hatası", ex);
+                        return  null;
+                    });
+                }
+            })
+        , id);
     }
 
     private void openEditModal(Part part) {
@@ -281,32 +276,31 @@ public class FormParts extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(
-                        panel, "Parça Düzenle", options,
-                        (controller, action) -> {
-                             if (action == SimpleModalBorder.OK_OPTION) {
-                                Part updated = panel.getData();
-                                if (updated == null) {
-                                    controller.consume();
-                                    return;
-                                }
+        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Parça Düzenle", options,
+            (controller, action) -> {
+                 if (action == SimpleModalBorder.OK_OPTION) {
+                    Part updated = panel.getData();
+                    if (updated == null) {
+                        controller.consume();
+                        return;
+                    }
 
-                                partService.save(updated, true).thenAccept(updare -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
-                                        refreshTable();
-                                    });
-                                }).exceptionally(ex -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        controller.consume();
-                                        Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
+                    partService.save(updated, true).thenAccept(upgrade -> {
+                        SwingUtilities.invokeLater(() -> {
+                            Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
+                            refreshTable();
+                        });
+                    }).exceptionally(ex -> {
+                        SwingUtilities.invokeLater(() -> {
+                            controller.consume();
+                            Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
 
-                                    });
-                                    Servicio.getLogger().error("Parça güncelleme hatası", ex);
-                                    return  null;
-                                });
-                            }
-                        })
-                , id);
+                        });
+                        Servicio.getLogger().error("Parça güncelleme hatası", ex);
+                        return  null;
+                    });
+                }
+            })
+        , id);
     }
 }

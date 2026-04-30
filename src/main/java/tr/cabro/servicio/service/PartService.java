@@ -3,7 +3,9 @@ package tr.cabro.servicio.service;
 import tr.cabro.servicio.database.repository.PartRepository;
 import tr.cabro.servicio.database.repository.SupplierRepository;
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.model.StockMovement;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.model.enums.ReferenceType;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.Validator;
 
@@ -19,10 +21,12 @@ public class PartService {
 
     private final PartRepository partRepository;
     private final SupplierRepository supplierRepository;
+    private final StockService stockService;
 
-    public PartService(PartRepository partRepository, SupplierRepository supplierRepository) {
+    public PartService(PartRepository partRepository, SupplierRepository supplierRepository, StockService stockService) {
         this.partRepository = partRepository;
         this.supplierRepository = supplierRepository;
+        this.stockService = stockService;
     }
 
     public CompletableFuture<Part> save(Part part, boolean update) {
@@ -38,18 +42,32 @@ public class PartService {
         // FIX: getStock() → getStockQuantity()
         if (part.getStockQuantity() < 0) throw new ValidationException("Stok miktarı negatif olamaz.");
 
+        Integer stock = part.getStockQuantity();
+
         return CompletableFuture.supplyAsync(() -> {
             if (!update) {
                 // FIX: existsByBarcode metodu PartRepository'ye eklendi
                 if (partRepository.existsByBarcode(part.getBarcode())) {
                     throw new ValidationException("Bu barkod (" + part.getBarcode() + ") zaten sistemde kayıtlı!");
                 }
+                part.setStockQuantity(0);
                 Long id = partRepository.insert(part);
                 part.setId(id);
             } else {
                 partRepository.update(part);
             }
             return part;
+        }).thenCompose(savedPart -> {
+
+            StockMovement stockMovement = new StockMovement();
+            stockMovement.setPartId(savedPart.getId());
+            stockMovement.setQuantity(stock);
+            stockMovement.setWarehouseId(savedPart.getWarehouseId());
+            stockMovement.setReferenceType(ReferenceType.PURCHASE);
+
+            stockService.addStock(stockMovement);
+
+            return CompletableFuture.completedFuture(savedPart);
         });
     }
 

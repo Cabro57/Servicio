@@ -411,6 +411,7 @@ public class FormWorkOrders extends AbstractTableForm {
                         controller.consume();
                         Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
                     });
+                    Servicio.getLogger().error("ERROR", ex);
                     return null;
                 });
             } else if (action == SimpleModalBorder.OK_OPTION) {
@@ -427,6 +428,7 @@ public class FormWorkOrders extends AbstractTableForm {
                         controller.consume();
                         Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
                     });
+                    Servicio.getLogger().error("ERROR", ex);
                     return null;
                 });
             }

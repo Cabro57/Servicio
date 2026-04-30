@@ -41,18 +41,18 @@ public final class ServiceManager {
         StockMovementRepository stockMovementRepo = jdbi.onDemand(StockMovementRepository.class);
 
         // --- Servislerin Başlatılması ---
-        partService = new PartService(partRepo, supplierRepo);
-        stockService = new StockService(stockMovementRepo);
-        deviceService = new DeviceService(deviceRepo);
         customerService = new CustomerService(customerRepo);
+        deviceService = new DeviceService(deviceRepo);
         supplierService = new SupplierService(supplierRepo);
+        stockService = new StockService(stockMovementRepo);
         userService = new UserService(userRepo);
 
         // --- Yeni Servislerin Başlatılması ---
         deviceDictionaryManager = new DeviceDictionaryManager(dictRepo);
         laborService = new LaborService(laborRepo);
         reportManager = new ReportManager(reportRepo);
+        partService = new PartService(partRepo, supplierRepo, stockService);
 
-        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo, partService, stockService);
+        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo, partService, stockService, deviceService);
     }
 }
