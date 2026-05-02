@@ -2,7 +2,8 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.renderer.*;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
@@ -12,10 +13,6 @@ import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
-import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
-import tr.cabro.servicio.application.renderer.CustomerTableCellRenderer;
-import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
-import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
@@ -204,16 +201,7 @@ public class FormCustomers extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                label.setHorizontalAlignment(SwingConstants.TRAILING);
-                label.setFont(label.getFont().deriveFont(Font.BOLD));
-                label.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
-                return label;
-            }
-        });
+        table.getColumnModel().getColumn(4).setCellRenderer(new CurrencyTableCellRenderer());
 
         table.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
             @Override

@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.simple.SimpleMessageModal;
 import raven.modal.utils.SystemForm;
@@ -70,7 +70,7 @@ public class FormSuppliers extends AbstractTableForm {
         }).exceptionally(ex -> {
             Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
             SwingUtilities.invokeLater(() -> {
-                raven.modal.Toast.show(FormSuppliers.this, raven.modal.Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
+                tr.cabro.servicio.application.util.Toast.show(FormSuppliers.this, tr.cabro.servicio.application.util.Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
             });
             return null;
         });

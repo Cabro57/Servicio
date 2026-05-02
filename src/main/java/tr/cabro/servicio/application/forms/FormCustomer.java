@@ -3,7 +3,8 @@ package tr.cabro.servicio.application.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.renderer.*;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
@@ -12,10 +13,6 @@ import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.panels.QuickIntakePanel;
-import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
-import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
-import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
-import tr.cabro.servicio.application.renderer.UniversalVisualizableRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.util.Ikon;
@@ -48,7 +45,6 @@ public class FormCustomer extends Form {
     private GenericTableModel<WorkOrder> tableModel;
     private JTable table;
 
-    // Dinamik güncellenecek UI etiketleri
     private JLabel lblNameBadge;
     private JLabel valTotalDevices, valActiveServices, valCompletedServices, valTotalSpent;
 
@@ -56,7 +52,6 @@ public class FormCustomer extends Form {
         this.customer = customer;
         this.workOrderService = ServiceManager.getWorkOrderService();
         this.customerService = ServiceManager.getCustomerService();
-
         init();
     }
 
@@ -70,83 +65,118 @@ public class FormCustomer extends Form {
 
     @Override
     public void formRefresh() {
-        customerService.get(customer.getId()).thenAccept(updated -> {
-            updated.ifPresent(c -> {
-                this.customer = c;
-                SwingUtilities.invokeLater(this::refreshData);
-            });
-        });
+        customerService.get(customer.getId()).thenAccept(updated ->
+                updated.ifPresent(c -> {
+                    this.customer = c;
+                    SwingUtilities.invokeLater(this::refreshData);
+                })
+        );
     }
 
+    // -------------------------------------------------------------------------
+    // Servis modalları
+    // -------------------------------------------------------------------------
+
+    /**
+     * Müşterisi önceden dolu olan yeni servis kaydı modalını açar.
+     */
     private void openQuickIntakeModal() {
-        final String INTAKE_MODAL_ID = "quick_intake_modal_detail";
+        WorkOrder preFilledOrder = new WorkOrder();
+        preFilledOrder.setCustomer(this.customer);
+        preFilledOrder.setCustomerId(this.customer.getId());
 
-        WorkOrder preFilledWorkOrder = new WorkOrder();
-        preFilledWorkOrder.setCustomer(this.customer);
-        preFilledWorkOrder.setCustomerId(this.customer.getId());
+        showIntakeModal(preFilledOrder, "Yeni Servis Kaydı", false);
+    }
 
-        QuickIntakePanel intakePanel = new QuickIntakePanel(preFilledWorkOrder);
+    /**
+     * Mevcut bir servis kaydını düzenlemek için modal açar.
+     */
+    private void openEditModal(WorkOrder workOrder) {
+        if (workOrder == null || workOrder.getId() <= 0) return;
+        showIntakeModal(workOrder, "Kayıt Düzenle (SRV-" + workOrder.getId() + ")", true);
+    }
 
-        SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option("Servisi Kaydet", SimpleModalBorder.OK_OPTION),
-                new SimpleModalBorder.Option("Servisi Başlat", SimpleModalBorder.NO_OPTION),
-                new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
+    /**
+     * Yeni ve düzenleme modallarını tek yerden yönetir.
+     * <p>
+     * {@link QuickIntakePanel} artık sabit eylem kodu yerine {@code Runnable} callback alıyor;
+     * yeni müşteri ekleme akışı bu metod içindeki closure'da kalıyor, panel bilmiyor.
+     *
+     * @param data   servis kaydı (yeni veya mevcut)
+     * @param title  modal başlığı
+     * @param isEdit true ise güncelleme, false ise yeni kayıt modu
+     */
+    private void showIntakeModal(WorkOrder data, String title, boolean isEdit) {
+        final String MODAL_ID = isEdit ? "customer_service_edit_modal" : "customer_intake_modal";
+
+        // Panel referansını lambda içinden güncelleyebilmek için tek elemanlı dizi kullanıyoruz.
+        QuickIntakePanel[] panelRef = new QuickIntakePanel[1];
+        panelRef[0] = new QuickIntakePanel(data, () -> {
+            CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
+            ModalDialog.pushModal(
+                    new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
+                        if (a1 != SimpleModalBorder.YES_OPTION) return;
+                        Customer newCustomer = newCustomerPanel.getData();
+                        if (newCustomer == null) { c1.consume(); return; }
+                        c1.consume();
+                        newCustomer.setCreatedAt(LocalDateTime.now());
+                        customerService.save(newCustomer, false).thenAccept(saved ->
+                                SwingUtilities.invokeLater(() -> {
+                                    panelRef[0].appendNewCustomer(saved);
+                                    ModalDialog.popModal(MODAL_ID);
+                                })
+                        );
+                    }),
+                    MODAL_ID
+            );
+        });
+        QuickIntakePanel panel = panelRef[0];
+
+        SimpleModalBorder.Option[] options = isEdit
+                ? new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option("İptal",                  SimpleModalBorder.CANCEL_OPTION)
+        }
+                : new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Servisi Kaydet",  SimpleModalBorder.OK_OPTION),
+                new SimpleModalBorder.Option("Servisi Başlat",  SimpleModalBorder.NO_OPTION),
+                new SimpleModalBorder.Option("İptal",           SimpleModalBorder.CANCEL_OPTION)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(intakePanel, "Yeni Servis Kaydı", options, (controller, action) -> {
-
+        ModalDialog.showModal(this, new SimpleModalBorder(panel, title, options, (controller, action) -> {
             if (action == SimpleModalBorder.OPENED) {
-                intakePanel.formOpen();
+                panel.requestInitialFocus();
+                return;
             }
-            else if (action == QuickIntakePanel.NEW_CUSTOMER_ACTION) {
-                controller.consume();
-                CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
-                ModalDialog.pushModal(new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
-                    if (a1 == SimpleModalBorder.YES_OPTION) {
-                        Customer newCustomer = newCustomerPanel.getData();
-                        if (newCustomer != null) {
-                            c1.consume();
-                            newCustomer.setCreatedAt(LocalDateTime.now());
-                            customerService.save(newCustomer, false).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                                intakePanel.appendNewCustomer(saved);
-                                ModalDialog.popModal(INTAKE_MODAL_ID);
-                            }));
-                        }
-                    }
-                }), INTAKE_MODAL_ID);
-            }
-            else if (action == SimpleModalBorder.NO_OPTION || action == SimpleModalBorder.OK_OPTION) {
-                WorkOrder updated = intakePanel.getData();
-                if (updated == null) {
-                    controller.consume();
-                    return;
-                }
+            if (action == SimpleModalBorder.CANCEL_OPTION) return;
 
-                workOrderService.save(updated, false).thenAccept(saved -> {
+            boolean openDetail = (action == SimpleModalBorder.NO_OPTION);
+            WorkOrder formData = panel.getData();
+            if (formData == null) { controller.consume(); return; }
+
+            workOrderService.save(formData, isEdit).thenAccept(saved ->
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, "Servis başarıyla kayıt edildi.");
+                        String msg = isEdit ? "Servis bilgileri güncellendi." : "Servis başarıyla kaydedildi.";
+                        Toast.show(this, Toast.Type.SUCCESS, msg);
                         refreshData();
-
-                        if (action == SimpleModalBorder.NO_OPTION) {
-                            FormWorkOrder form = new FormWorkOrder(saved);
-                            FormManager.showForm(form);
-                        }
-                    });
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        controller.consume();
-                        Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getCause().getMessage());
-                    });
-                    Servicio.getLogger().error("Servis ekleme hatası", ex);
-                    return null;
+                        if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
+                    })
+            ).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() -> {
+                    controller.consume();
+                    String cause = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
+                    Toast.show(this, Toast.Type.ERROR, "Hata: " + cause);
                 });
-            }
-
-        }), INTAKE_MODAL_ID);
+                Servicio.getLogger().error("Servis kayıt hatası", ex);
+                return null;
+            });
+        }), MODAL_ID);
     }
 
+    // -------------------------------------------------------------------------
+    // UI oluşturma
+    // -------------------------------------------------------------------------
 
-    // --- 1. HEADER (Geri Butonu ve Başlık) ---
     private void createHeader() {
         JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx, gap 15", "[][grow]", "[]"));
         headerPanel.setOpaque(false);
@@ -168,27 +198,26 @@ public class FormCustomer extends Form {
 
         titleBox.add(lblNameBadge, "wrap");
         titleBox.add(lblSubtitle);
-
         headerPanel.add(titleBox, "cell 1 0");
         add(headerPanel, "span 2, growx, wrap");
     }
 
     private void updateNameAndBadge() {
         if (customer == null) return;
-        String isim = customer.getType() == CustomerType.SMALL_BUSINESS || customer.getType() == CustomerType.DEALER ? customer.getBusinessName() : customer.getFullName();
-        String badgeStr = customer.getType() == CustomerType.NORMAL ? "Bireysel" : "Kurumsal";
-
-        lblNameBadge.setText("<html><span>" + isim + "</span>&nbsp;&nbsp;<span style='background-color:#2a2d36; color:#a0a0a0; font-size:11px; padding:3px 8px; border-radius:6px; font-weight:normal;'> " + badgeStr + " </span></html>");
+        String isim = (customer.getType() == CustomerType.SMALL_BUSINESS || customer.getType() == CustomerType.DEALER)
+                ? customer.getBusinessName()
+                : customer.getFullName();
+        String badge = customer.getType() == CustomerType.NORMAL ? "Bireysel" : "Kurumsal";
+        lblNameBadge.setText("<html><span>" + isim + "</span>&nbsp;&nbsp;"
+                + "<span style='background-color:#2a2d36; color:#a0a0a0; font-size:11px; "
+                + "padding:3px 8px; border-radius:6px; font-weight:normal;'> " + badge + " </span></html>");
     }
 
-    // --- 2. SOL SÜTUN (Bilgiler ve Özet) ---
     private void createLeftColumn() {
         JPanel leftPanel = new JPanel(new MigLayout("insets 0, gapy 20, fillx", "[grow]", "[pref][pref]"));
         leftPanel.setOpaque(false);
-
         leftPanel.add(createContactCard(), "growx, wrap");
         leftPanel.add(createSummaryCard(), "growx");
-
         add(leftPanel, "cell 0 1, aligny top");
     }
 
@@ -202,12 +231,10 @@ public class FormCustomer extends Form {
         card.add(title, "span 2, wrap");
 
         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
-
-        addContactRow(card, "icons/phone.svg", "Telefon", customer.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1()) : "-");
-        addContactRow(card, "icons/mail.svg", "E-posta", customer.getEmail() != null ? customer.getEmail() : "-");
-        addContactRow(card, "icons/map-pin.svg", "Adres", customer.getAddress() != null ? customer.getAddress() : "-");
-        addContactRow(card, "icons/calendar.svg", "Kayıt Tarihi", customer.getCreatedAt() != null ? customer.getCreatedAt().format(df) : "-");
-
+        addContactRow(card, "icons/phone.svg",    "Telefon",      customer.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1()) : "-");
+        addContactRow(card, "icons/mail.svg",     "E-posta",      customer.getEmail()        != null ? customer.getEmail()        : "-");
+        addContactRow(card, "icons/map-pin.svg",  "Adres",        customer.getAddress()      != null ? customer.getAddress()      : "-");
+        addContactRow(card, "icons/calendar.svg", "Kayıt Tarihi", customer.getCreatedAt()    != null ? customer.getCreatedAt().format(df) : "-");
         return card;
     }
 
@@ -221,7 +248,7 @@ public class FormCustomer extends Form {
         JLabel lblValue = new JLabel(value);
         lblValue.putClientProperty(FlatClientProperties.STYLE, "font: bold");
 
-        parent.add(icon, "aligny top, span 1 2");
+        parent.add(icon,     "aligny top, span 1 2");
         parent.add(lblLabel, "wrap");
         parent.add(lblValue, "gapbottom 10, wrap");
     }
@@ -245,10 +272,10 @@ public class FormCustomer extends Form {
         valCompletedServices.putClientProperty(FlatClientProperties.STYLE, "font: bold +10; foreground: #2ecc71");
         valTotalSpent = createStatValueLabel();
 
-        grid.add(createMiniStatBox(valTotalDevices, "Toplam Cihaz"), "grow");
-        grid.add(createMiniStatBox(valActiveServices, "Aktif İşlem"), "grow, wrap");
-        grid.add(createMiniStatBox(valCompletedServices, "Tamamlanan"), "grow");
-        grid.add(createMiniStatBox(valTotalSpent, "Harcama"), "grow");
+        grid.add(createMiniStatBox(valTotalDevices,      "Toplam Cihaz"), "grow");
+        grid.add(createMiniStatBox(valActiveServices,    "Aktif İşlem"),  "grow, wrap");
+        grid.add(createMiniStatBox(valCompletedServices, "Tamamlanan"),   "grow");
+        grid.add(createMiniStatBox(valTotalSpent,        "Harcama"),      "grow");
 
         card.add(grid, "grow");
         return card;
@@ -270,11 +297,10 @@ public class FormCustomer extends Form {
         lblTitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
 
         box.add(valueLabel, "grow, center, wrap");
-        box.add(lblTitle, "grow, center");
+        box.add(lblTitle,   "grow, center");
         return box;
     }
 
-    // --- 3. SAĞ SÜTUN (Servis Tablosu) ---
     private void createRightColumn() {
         JPanel rightPanel = createRoundedCard();
         rightPanel.setLayout(new MigLayout("insets 20, fill", "[grow]", "[pref]15[grow]"));
@@ -302,42 +328,49 @@ public class FormCustomer extends Form {
         add(rightPanel, "cell 1 1, grow");
     }
 
+    // -------------------------------------------------------------------------
+    // Tablo
+    // -------------------------------------------------------------------------
+
     private void setupTable() {
         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
 
         List<ColumnDef<WorkOrder>> columns = Arrays.asList(
-                new ColumnDef<>("Kayıt No", String.class, s -> "SRV-" + s.getId()),
-                new ColumnDef<>("Cihaz", Device.class, WorkOrder::getDevice),
-                new ColumnDef<>("Tarih", String.class, s -> s.getCreatedAt() != null ? s.getCreatedAt().format(df) : "-"),
-                new ColumnDef<>("Durum", ServiceStatus.class, WorkOrder::getServiceStatus),
-                new ColumnDef<>("Ücret", String.class, s -> Format.formatPrice(s.getTotalServiceAmount())),
-                new ColumnDef<>("İşlem", String.class, s -> "Detay")
+                new ColumnDef<>("Kayıt No", String.class,        s -> "SRV-" + s.getId()),
+                new ColumnDef<>("Cihaz",    Device.class,        WorkOrder::getDevice),
+                new ColumnDef<>("Tarih",    String.class,        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(df) : "-"),
+                new ColumnDef<>("Durum",    ServiceStatus.class, WorkOrder::getServiceStatus),
+                new ColumnDef<>("Ücret",    BigDecimal.class, WorkOrder::getTotalServiceAmount),
+                new ColumnDef<>("İşlem",    String.class,        s -> "Detay")
         );
 
         tableModel = new GenericTableModel<>(columns);
         table = new JTable(tableModel);
-
         configureTable();
     }
 
     private void configureTable() {
-        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE, "height:40; separatorColor:$TableHeader.background; font:bold +1;");
-        table.putClientProperty(FlatClientProperties.STYLE, "rowHeight:50; showHorizontalLines:true; intercellSpacing:0,1; selectionBackground:$TableHeader.hoverBackground;");
+        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
+                "height:40; separatorColor:$TableHeader.background; font:bold +1;");
+        table.putClientProperty(FlatClientProperties.STYLE,
+                "rowHeight:50; showHorizontalLines:true; intercellSpacing:0,1; selectionBackground:$TableHeader.hoverBackground;");
 
-        Integer[] alignments = {SwingConstants.CENTER, SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.CENTER, SwingConstants.TRAILING, SwingConstants.CENTER};
+        Integer[] alignments = {
+                SwingConstants.CENTER, SwingConstants.LEADING, SwingConstants.LEADING,
+                SwingConstants.CENTER, SwingConstants.TRAILING, SwingConstants.CENTER
+        };
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, alignments));
 
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
                 ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
                 ((JLabel) c).putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: $Label.disabledForeground");
                 return c;
             }
         });
 
-        // DÜZELTME: getBrand() + getModel() ve Güvenli Null Kontrolü
         table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Device>(
                 d -> d != null ? d.getBrand() + " " + d.getModel() : "Belirtilmedi",
                 d -> d != null && d.getSerialNo() != null ? "SN: " + d.getSerialNo() : "Bilinmiyor",
@@ -347,58 +380,50 @@ public class FormCustomer extends Form {
 
         table.getColumnModel().getColumn(3).setCellRenderer(new UniversalVisualizableRenderer());
 
+        table.getColumnModel().getColumn(4).setCellRenderer(new CurrencyTableCellRenderer());
+
         table.getColumnModel().getColumn(5).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(5).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onView(int row) {
                 int modelRow = table.convertRowIndexToModel(row);
                 WorkOrder s = tableModel.getItemAt(modelRow);
-                FormManager.showForm(new FormWorkOrder(s));
+                if (s != null) FormManager.showForm(new FormWorkOrder(s));
             }
+
             @Override
             public void onEdit(int row) {
-                if (table.isEditing()) {
-                    table.getCellEditor().cancelCellEditing();
-                }
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
-                WorkOrder selectedWorkOrder = tableModel.getItemAt(modelRow);
-                if (selectedWorkOrder != null) {
-                    openEditModal(selectedWorkOrder);
-                }
+                WorkOrder s = tableModel.getItemAt(modelRow);
+                if (s != null) openEditModal(s);
             }
 
             @Override
             public void onDelete(int row) {
-                if (table.isEditing()) {
-                    table.getCellEditor().cancelCellEditing();
-                }
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
                 int modelRow = table.convertRowIndexToModel(row);
-                WorkOrder selectedWorkOrder = tableModel.getItemAt(modelRow);
+                WorkOrder s = tableModel.getItemAt(modelRow);
+                if (s == null) return;
 
-                if (selectedWorkOrder != null) {
-                    int confirm = JOptionPane.showConfirmDialog(
-                            FormCustomer.this,
-                            "SRV-" + selectedWorkOrder.getId() + " numaralı servis kaydını silmek istediğinize emin misiniz?\nBu işlem geri alınamaz.",
-                            "Silme Onayı",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.WARNING_MESSAGE
-                    );
+                int confirm = JOptionPane.showConfirmDialog(
+                        FormCustomer.this,
+                        "SRV-" + s.getId() + " numaralı servis kaydını silmek istediğinize emin misiniz?\nBu işlem geri alınamaz.",
+                        "Silme Onayı",
+                        JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE
+                );
+                if (confirm != JOptionPane.YES_OPTION) return;
 
-                    if (confirm == JOptionPane.YES_OPTION) {
-                        // DÜZELTME: customerService değil workOrderService üzerinden servis siliniyor!
-                        workOrderService.delete(selectedWorkOrder.getId()).thenAccept(v -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormCustomer.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
-                                refreshData();
-                            });
-                        }).exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormCustomer.this, Toast.Type.ERROR, "Silme işlemi başarısız: " + ex.getCause().getMessage());
-                            });
+                workOrderService.delete(s.getId())
+                        .thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                            Toast.show(FormCustomer.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
+                            refreshData();
+                        }))
+                        .exceptionally(ex -> {
+                            SwingUtilities.invokeLater(() ->
+                                    Toast.show(FormCustomer.this, Toast.Type.ERROR, "Silme başarısız: " + ex.getCause().getMessage()));
                             return null;
                         });
-                    }
-                }
             }
         }));
 
@@ -410,31 +435,30 @@ public class FormCustomer extends Form {
         table.getColumnModel().getColumn(5).setMinWidth(120);
     }
 
-    // --- 4. VERİ YÜKLEME VE HESAPLAMA ---
+    // -------------------------------------------------------------------------
+    // Veri yükleme
+    // -------------------------------------------------------------------------
+
     private void refreshData() {
         updateNameAndBadge();
-
-        workOrderService.getAll(customer.getId()).thenAccept(services -> {
-            SwingUtilities.invokeLater(() -> {
-                tableModel.setData(services);
-                calculateStats(services);
-            });
-        });
+        workOrderService.getAll(customer.getId()).thenAccept(services ->
+                SwingUtilities.invokeLater(() -> {
+                    tableModel.setData(services);
+                    calculateStats(services);
+                })
+        );
     }
 
     private void calculateStats(List<WorkOrder> workOrders) {
-        int active = 0;
-        int completed = 0;
+        int active = 0, completed = 0;
         BigDecimal totalSpent = BigDecimal.ZERO;
 
         for (WorkOrder s : workOrders) {
-            // DÜZELTME: Harcamalar payments tablosundan toplanarak güvenli şekilde BigDecimal'e eklenir
             if (s.getPayments() != null) {
                 for (WorkOrderPayment payment : s.getPayments()) {
                     totalSpent = totalSpent.add(payment.getAmount());
                 }
             }
-
             if (s.getServiceStatus() == ServiceStatus.DELIVERED || s.getServiceStatus() == ServiceStatus.RETURN) {
                 completed++;
             } else {
@@ -442,75 +466,16 @@ public class FormCustomer extends Form {
             }
         }
 
-        valTotalDevices.setText(String.valueOf(workOrders.size())); // Cihaz sayısı = Servis kaydı sayısı olarak baz alınıyor
+        valTotalDevices.setText(String.valueOf(workOrders.size()));
         valActiveServices.setText(String.valueOf(active));
         valCompletedServices.setText(String.valueOf(completed));
         valTotalSpent.setText(Format.formatPrice(totalSpent));
     }
 
-    private void openEditModal(WorkOrder workOrder) {
-        if (workOrder == null || workOrder.getId() <= 0) return;
+    // -------------------------------------------------------------------------
+    // Yardımcı
+    // -------------------------------------------------------------------------
 
-        final String EDIT_MODAL_ID = "service_edit_modal";
-
-        CompletableFuture.supplyAsync(() -> {
-            QuickIntakePanel editPanel = new QuickIntakePanel(workOrder);
-
-            SimpleModalBorder.Option[] options = {
-                    new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
-                    new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
-            };
-
-            return new SimpleModalBorder(editPanel, "Kayıt Düzenle (SRV-" + workOrder.getId() + ")", options, (controller, action) -> {
-                if (action == SimpleModalBorder.OPENED) {
-                    editPanel.formOpen();
-                }
-                else if (action == QuickIntakePanel.NEW_CUSTOMER_ACTION) {
-                    controller.consume();
-                    CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
-                    ModalDialog.pushModal(new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri Ekle", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
-                        if (a1 == SimpleModalBorder.YES_OPTION) {
-                            Customer newCustomer = newCustomerPanel.getData();
-                            if (newCustomer != null) {
-                                c1.consume();
-                                newCustomer.setCreatedAt(LocalDateTime.now());
-                                customerService.save(newCustomer, false).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                                    editPanel.appendNewCustomer(saved);
-                                    ModalDialog.popModal(EDIT_MODAL_ID);
-                                }));
-                            }
-                        }
-                    }), EDIT_MODAL_ID);
-                }
-                else if (action == SimpleModalBorder.YES_OPTION) {
-                    WorkOrder updatedData = editPanel.getData();
-                    if (updatedData == null) {
-                        controller.consume();
-                        return;
-                    }
-                    workOrderService.save(updatedData, true).thenAccept(saved -> {
-                        SwingUtilities.invokeLater(() -> {
-                            Toast.show(this, Toast.Type.SUCCESS, "Servis bilgileri güncellendi.");
-                            refreshData(); // Güncelleme sonrası tablo tazelensin
-                        });
-                    }).exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> {
-                            controller.consume();
-                            Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getCause().getMessage());
-                        });
-                        return null;
-                    });
-                }
-            });
-
-        }).thenAccept(modalBorder -> {
-            SwingUtilities.invokeLater(() -> {
-                ModalDialog.showModal(this, modalBorder, EDIT_MODAL_ID);
-            });
-        });
-    }
-
-    // --- YARDIMCI METOTLAR ---
     private JPanel createRoundedCard() {
         JPanel p = new JPanel();
         p.putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");

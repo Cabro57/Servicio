@@ -6,7 +6,7 @@ import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
 import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.time.*;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.component.ToolBarSelection;
 import raven.modal.component.chart.PieChart;
 import raven.modal.component.chart.TimeSeriesChart;
@@ -123,10 +123,12 @@ public class FormDashboard extends Form {
         String sqlFormat = selectedTimeFilter.getSqlFormat();
         String granularity = selectedTimeFilter.getGranularity();
 
+        boolean useEffective = selectedTimeFilter == TimeFilter.ALL_TIME;
+
         CompletableFuture<List<ChartDataDto>> revFuture =
-                reportManager.getRevenueTrend(sqlFormat, startCurrent, endCurrent);
+                reportManager.getRevenueTrend(sqlFormat, startCurrent, endCurrent, useEffective);
         CompletableFuture<List<ChartDataDto>> profFuture =
-                reportManager.getProfitTrend(sqlFormat, startCurrent, endCurrent);
+                reportManager.getProfitTrend(sqlFormat, startCurrent, endCurrent, useEffective);
 
         CompletableFuture.allOf(revFuture, profFuture).thenAccept(v -> {
             List<ChartDataDto> revData = revFuture.join();
@@ -221,7 +223,6 @@ public class FormDashboard extends Form {
     }
 
     private RegularTimePeriod parsePeriod(String label, String granularity) {
-        System.out.println("granularity: " + granularity + " | label: " + label);
         if ("hour".equals(granularity)) {
             // label: "2024-03-15 14:00"
             String[] parts = label.split("T");

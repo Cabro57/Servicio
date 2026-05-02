@@ -3,7 +3,7 @@ package tr.cabro.servicio.application.panels;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.extras.AvatarIcon;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;

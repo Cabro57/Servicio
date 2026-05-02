@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.panels.setting;
 
 import net.miginfocom.swing.MigLayout;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.util.Toast;
 import tr.cabro.servicio.application.handlers.BrandExportHandler;
 import tr.cabro.servicio.application.handlers.TypeImportHandler;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;

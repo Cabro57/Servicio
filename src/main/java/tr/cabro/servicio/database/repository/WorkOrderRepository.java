@@ -10,6 +10,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,12 +24,17 @@ public interface WorkOrderRepository {
     @GetGeneratedKeys
     Long insert(@BindBean WorkOrder workOrder);
 
-    @SqlUpdate("UPDATE work_orders SET customer_id=:customerId, device_id=:deviceId, technician_id=:technicianId, " +
-            "reported_fault=:reportedFault, " +
-            "urgency_status=:urgencyStatus, service_status=:serviceStatus, " +
-            "warranty_end_date=:warrantyEndDate, delivery_date=:deliveryDate, updated_at=:updatedAt " +
+    @SqlUpdate("UPDATE work_orders SET " +
+            "customer_id=:customerId, device_id=:deviceId, technician_id=:technicianId, " +
+            "reported_fault=:reportedFault, updated_at=:updatedAt " +
             "WHERE id=:id")
     void update(@BindBean WorkOrder workOrder);
+
+    @SqlUpdate("UPDATE work_orders SET service_status=:status, delivery_date=:deliveryDate, updated_at=:updatedAt WHERE id=:id")
+    void updateStatus(@Bind("id") Long id,
+                      @Bind("status") ServiceStatus status,
+                      @Bind("deliveryDate") LocalDateTime deliveryDate,
+                      @Bind("updatedAt") LocalDateTime updatedAt);
 
     @SqlQuery("SELECT * FROM work_orders WHERE id = :id")
     Optional<WorkOrder> findById(@Bind("id") Long id);
@@ -52,10 +58,8 @@ public interface WorkOrderRepository {
     List<WorkOrder> findByStatusesExcluded(@BindList("statuses") List<ServiceStatus> statuses);
 
     @SqlQuery("SELECT s.* FROM work_orders s " +
-            "LEFT JOIN devices d ON d.id = s.device_id " +
-            "WHERE d.brand LIKE :search OR d.model LIKE :search OR d.serial_no LIKE :search " +
-            "   OR s.reported_fault LIKE :search " +
-            "   OR EXISTS (SELECT 1 FROM service_notes sn WHERE sn.service_id = s.id AND sn.note LIKE :search) " +
+            "WHERE s.reported_fault LIKE :search " +
+            "OR EXISTS (SELECT 1 FROM work_order_notes sn WHERE sn.service_id = s.id AND sn.note LIKE :search) " +
             "ORDER BY s.created_at DESC")
     List<WorkOrder> search(@Bind("search") String searchTerm);
 }

@@ -1,11 +1,11 @@
 package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.ui.FlatListCellBorder;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.AllForms;
 import raven.modal.system.Form;
@@ -16,7 +16,6 @@ import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.editors.AddButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
-import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.panels.ServiceItemEditPanel;
 import tr.cabro.servicio.application.panels.WorkOrderItemAddPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
@@ -39,7 +38,6 @@ import java.awt.event.ActionListener;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -194,18 +192,17 @@ public class FormWorkOrder extends Form {
             if (newStatus == null || workOrder == null || workOrder.getServiceStatus() == newStatus) return;
 
             ServiceStatus oldStatus = workOrder.getServiceStatus();
-            workOrder.setServiceStatus(newStatus);
-            lblHeaderBadge.setVisualizable(newStatus);
 
-            workOrderService.save(workOrder, true)
-                    .exceptionally(ex -> {
-                        workOrder.setServiceStatus(oldStatus);
+            workOrderService.updateStatus(workOrder.getId(), newStatus)
+                    .thenAccept(unused -> {
+                        SwingUtilities.invokeLater(() -> lblHeaderBadge.setVisualizable(newStatus));
+                        workOrder.setServiceStatus(newStatus);
+                    }).exceptionally(ex -> {
                         SwingUtilities.invokeLater(() -> {
                             ActionListener[] ls = statusComboBox.getActionListeners();
                             for (ActionListener l : ls) statusComboBox.removeActionListener(l);
                             statusComboBox.setSelectedItem(oldStatus);
                             for (ActionListener l : ls) statusComboBox.addActionListener(l);
-                            lblHeaderBadge.setVisualizable(oldStatus);
                             Toast.show(this, Toast.Type.ERROR, "Durum güncellenemedi.");
                         });
                         return null;
@@ -325,7 +322,7 @@ public class FormWorkOrder extends Form {
 
         DefaultTableCellRenderer rightAlign = new DefaultTableCellRenderer();
         rightAlign.setHorizontalAlignment(SwingConstants.TRAILING);
-        itemsTable.getColumnModel().getColumn(3).setCellRenderer(rightAlign);
+        itemsTable.getColumnModel().getColumn(3).setCellRenderer(new CurrencyTableCellRenderer());
         itemsTable.getColumnModel().getColumn(0).setCellRenderer(new ItemTypeBadgeRenderer());
 
         itemsTable.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());

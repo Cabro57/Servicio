@@ -3,7 +3,7 @@ package tr.cabro.servicio.application.panels;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.Getter;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.component.ModalBorderAction;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.editors.AddButtonEditor;

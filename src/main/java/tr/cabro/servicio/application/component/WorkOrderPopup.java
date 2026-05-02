@@ -1,6 +1,6 @@
 package tr.cabro.servicio.application.component;
 
-import raven.modal.Toast;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.forms.FormWorkOrder;

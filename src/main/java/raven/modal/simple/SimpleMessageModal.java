@@ -3,10 +3,10 @@ package raven.modal.simple;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
+import raven.modal.toast.ToastPanel;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.listener.ModalCallback;
-import raven.modal.toast.ToastPanel;
 
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;

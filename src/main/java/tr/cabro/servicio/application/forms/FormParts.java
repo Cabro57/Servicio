@@ -2,7 +2,8 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
+import tr.cabro.servicio.application.util.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.simple.SimpleMessageModal;
 import raven.modal.utils.SystemForm;
@@ -100,7 +101,7 @@ public class FormParts extends AbstractTableForm {
         }).exceptionally(ex -> {
             Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
             SwingUtilities.invokeLater(() -> {
-                raven.modal.Toast.show(this, raven.modal.Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
+                tr.cabro.servicio.application.util.Toast.show(this, tr.cabro.servicio.application.util.Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
             });
             return null;
         });
@@ -115,7 +116,7 @@ public class FormParts extends AbstractTableForm {
                 new ColumnDef<>("Uyumlu Model", String.class, Part::getModelCompatibility),
                 new ColumnDef<>("Tedarikçi",  Supplier.class, Part::getSupplier),
                 new ColumnDef<>("Stok", Integer.class, Part::getStockQuantity),
-                new ColumnDef<>("Birim Fiyat", String.class, p -> Format.formatPrice(p.getSalePrice())),
+                new ColumnDef<>("Birim Fiyat", BigDecimal.class, Part::getSalePrice),
                 new ColumnDef<>("İşlem", String.class, p -> "Detay")
         );
         tableModel = new GenericTableModel<>(columns);
@@ -160,6 +161,9 @@ public class FormParts extends AbstractTableForm {
                 return label;
             }
         });
+
+        table.getColumnModel().getColumn(6).setCellRenderer(new CurrencyTableCellRenderer());
+
         table.getColumnModel().getColumn(7).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(7).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override

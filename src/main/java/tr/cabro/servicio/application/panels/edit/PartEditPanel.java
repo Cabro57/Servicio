@@ -4,7 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.DatePicker;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.util.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.util.Ikon;

@@ -39,33 +39,43 @@ public class ReportManager {
         return CompletableFuture.supplyAsync(() -> repository.getBrandDistribution(startDate, endDate));
     }
 
-    public CompletableFuture<List<ChartDataDto>> getRevenueTrend(String sqlFormat, String startDate, String endDate) {
+    public CompletableFuture<List<ChartDataDto>> getRevenueTrend(String sqlFormat, String startDate, String endDate, boolean useEffectiveRange) {
         return CompletableFuture.supplyAsync(() -> {
             List<ChartDataDto> data = repository.getRevenueTrend(sqlFormat, startDate, endDate);
-            return fillMissingPeriods(data, sqlFormat, startDate, endDate);
+            if (data == null || data.isEmpty()) return data;
+
+            String effectiveStart = useEffectiveRange ? data.get(0).getLabel().split("T")[0] : startDate;
+            String effectiveEnd   = useEffectiveRange ? data.get(data.size() - 1).getLabel().split("T")[0] : endDate;
+
+            return fillMissingPeriods(data, sqlFormat, effectiveStart, effectiveEnd);
         });
     }
 
-    public CompletableFuture<List<ChartDataDto>> getProfitTrend(String sqlFormat, String startDate, String endDate) {
+    public CompletableFuture<List<ChartDataDto>> getProfitTrend(String sqlFormat, String startDate, String endDate, boolean useEffectiveRange) {
         return CompletableFuture.supplyAsync(() -> {
             List<ChartDataDto> data = repository.getProfitTrend(sqlFormat, startDate, endDate);
-            return fillMissingPeriods(data, sqlFormat, startDate, endDate);
+
+            if (data == null || data.isEmpty()) return data;
+
+            String effectiveStart = useEffectiveRange ? data.get(0).getLabel().split("T")[0] : startDate;
+            String effectiveEnd   = useEffectiveRange ? data.get(data.size() - 1).getLabel().split("T")[0] : endDate;
+
+            return fillMissingPeriods(data, sqlFormat, effectiveStart, effectiveEnd);
         });
     }
 
     private List<ChartDataDto> fillMissingPeriods(List<ChartDataDto> data, String sqlFormat, String startDate, String endDate) {
-        if (data == null || data.isEmpty()) return data;
+        if (data == null || data.isEmpty()) {
+            // Veri hiç yoksa bile boş periyotları doldur
+            data = new ArrayList<>();
+        }
 
         Map<String, ChartDataDto> dataMap = new LinkedHashMap<>();
         for (ChartDataDto dto : data) {
             dataMap.put(dto.getLabel(), dto);
         }
 
-        // ALL_TIME gibi geniş aralıklarda startDate yerine ilk verinin tarihini kullan
-        String effectiveStart = data.get(0).getLabel();
-        String effectiveEnd = data.get(data.size() - 1).getLabel();
-
-        List<String> allPeriods = generateAllPeriods(sqlFormat, effectiveStart, effectiveEnd);
+        List<String> allPeriods = generateAllPeriods(sqlFormat, startDate, endDate);
 
         List<ChartDataDto> result = new ArrayList<>();
         for (String period : allPeriods) {
@@ -81,22 +91,21 @@ public class ReportManager {
         return result;
     }
 
-    private List<String> generateAllPeriods(String sqlFormat, String effectiveStart, String effectiveEnd) {
+    private List<String> generateAllPeriods(String sqlFormat, String startDate, String endDate) {
         List<String> periods = new ArrayList<>();
 
         if ("%Y-%m-%dT%H".equals(sqlFormat)) {
-            // label: "2026-04-29T14"
-            String[] startParts = effectiveStart.split("T");
-            String[] endParts = effectiveEnd.split("T");
-            LocalDate startDay = LocalDate.parse(startParts[0]);
-            LocalDate endDay = LocalDate.parse(endParts[0]);
-            int startHour = Integer.parseInt(startParts[1]);
-            int endHour = Integer.parseInt(endParts[1]);
+            // startDate: "2026-04-29", endDate: "2026-05-02"
+            // Başlangıç saati = şu anki saat (borsa gibi simetrik aralık)
+            int currentHour = java.time.LocalTime.now().getHour();
+
+            LocalDate startDay = LocalDate.parse(startDate);
+            LocalDate endDay = LocalDate.parse(endDate);
 
             LocalDate day = startDay;
             while (!day.isAfter(endDay)) {
-                int fromHour = day.equals(startDay) ? startHour : 0;
-                int toHour   = day.equals(endDay)   ? endHour   : 23;
+                int fromHour = day.equals(startDay) ? currentHour : 0;
+                int toHour   = day.equals(endDay)   ? currentHour : 23;
                 for (int hour = fromHour; hour <= toHour; hour++) {
                     periods.add(String.format("%sT%02d", day.toString(), hour));
                 }
@@ -104,20 +113,18 @@ public class ReportManager {
             }
 
         } else if ("%Y-%m-%d".equals(sqlFormat)) {
-            // label: "2026-04-29"
-            LocalDate day = LocalDate.parse(effectiveStart);
-            LocalDate end = LocalDate.parse(effectiveEnd);
+            LocalDate day = LocalDate.parse(startDate);
+            LocalDate end = LocalDate.parse(endDate);
             while (!day.isAfter(end)) {
                 periods.add(day.toString());
                 day = day.plusDays(1);
             }
 
         } else if ("%Y-%W".equals(sqlFormat)) {
-            // label: "2026-17"
-            String[] startParts = effectiveStart.split("-");
-            String[] endParts = effectiveEnd.split("-");
+            String[] startParts = startDate.split("-");
+            String[] endParts = endDate.split("-");
             LocalDate day = LocalDate.of(Integer.parseInt(startParts[0]), 1, 1)
-                    .with(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear(), Integer.parseInt(startParts[1]))
+                    .with(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear(), Integer.parseInt(startParts[1].length() == 2 ? startParts[1] : "0" + startParts[1]))
                     .with(java.time.temporal.WeekFields.ISO.dayOfWeek(), 1);
             LocalDate endDay = LocalDate.of(Integer.parseInt(endParts[0]), 1, 1)
                     .with(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear(), Integer.parseInt(endParts[1]))
@@ -129,9 +136,9 @@ public class ReportManager {
             }
 
         } else {
-            // label: "2024-12"
-            String[] startParts = effectiveStart.split("-");
-            String[] endParts = effectiveEnd.split("-");
+            // Aylık — ALL_TIME dahil, startDate ilk verinin ayı olarak geliyor
+            String[] startParts = startDate.split("-");
+            String[] endParts = endDate.split("-");
             LocalDate month = LocalDate.of(Integer.parseInt(startParts[0]), Integer.parseInt(startParts[1]), 1);
             LocalDate endMonth = LocalDate.of(Integer.parseInt(endParts[0]), Integer.parseInt(endParts[1]), 1);
             while (!month.isAfter(endMonth)) {

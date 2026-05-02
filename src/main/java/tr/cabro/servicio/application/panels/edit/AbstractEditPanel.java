@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.panels.edit;
 
 import lombok.NonNull;
-import raven.modal.Toast;
+import tr.cabro.servicio.application.util.Toast;
 
 import javax.swing.*;
 
@@ -54,7 +54,7 @@ public abstract class AbstractEditPanel<T> extends JPanel {
         showValidationError(Toast.Type.INFO, message);
     }
 
-    protected void showValidationError(Toast.Type type, String message) {
+    protected void showValidationError(raven.modal.Toast.Type type, String message) {
         Toast.show(this, type, message);
     }
 
