@@ -166,7 +166,11 @@ public class PinPanel extends Form {
                 SwingUtilities.invokeLater(() -> {
                     if (isValid) {
                         txtPin.setText("");
-                        FormManager.login(); // Sisteme gir!
+                        if (FormManager.getForms().getCurrent() != null) {
+                            FormManager.loginResume();
+                        } else {
+                            FormManager.loginFresh();
+                        }
                     } else {
                         txtPin.setText("");
                         JOptionPane.showMessageDialog(this, "Hatalı PIN!", "Hata", JOptionPane.ERROR_MESSAGE);

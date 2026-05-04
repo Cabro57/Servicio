@@ -62,16 +62,16 @@ public final class Servicio {
         ServiceManager.initialize();
 
         splash.updateProgress(80, "Arka plan işlemleri hazırlanıyor...");
-        Action sifreEkraniniGetir = new AbstractAction() {
+        Action getPinPanel = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                FormManager.logout();
-                ModalDialog.closeAllModal();
-                inactivityMonitor.start();
+                FormManager.lock();
+                ModalDialog.closeAllModalImmediately();
+//                inactivityMonitor.start();
             }
         };
 
-        inactivityMonitor = new InactivityMonitor(sifreEkraniniGetir);
+        inactivityMonitor = new InactivityMonitor(getPinPanel);
         int timeout = settings.getAutoLockTimeoutMinutes();
         inactivityMonitor.setTimeout(timeout);
 

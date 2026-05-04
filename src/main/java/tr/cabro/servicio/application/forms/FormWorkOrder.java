@@ -436,7 +436,7 @@ public class FormWorkOrder extends Form {
                 new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
                 new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
         };
-        ModalDialog.showModal(this, new SimpleModalBorder(editPanel, "Kalemi Düzenle", options, (controller, action) -> {
+        ModalDialog.showModal(FormManager.getFrame(), new SimpleModalBorder(editPanel, "Kalemi Düzenle", options, (controller, action) -> {
             if (action != SimpleModalBorder.YES_OPTION) return;
 
             WorkOrderItem updated = editPanel.getUpdatedItem();
@@ -828,16 +828,20 @@ public class FormWorkOrder extends Form {
     private void addNoteRowToPanel(WorkOrderNote note) {
         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
 
-        JPanel noteRow = new JPanel(new MigLayout("insets 5 0 5 0, fillx", "[grow][]", "[]5[]"));
-        noteRow.setOpaque(false);
-        noteRow.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
+        JPanel noteRow = new JPanel(new MigLayout("insets 10 12 10 12, fillx", "[grow][]", "[]6[]"));
+        noteRow.putClientProperty(FlatClientProperties.STYLE,
+                "background: lighten($Panel.background, 4%); arc: 12; border: 1,1,1,1,$Component.borderColor");
 
-        JTextArea lblNote = new JTextArea("<html>" + note.getNote().replace("\n", "<br>") + "</html>");
-        lblNote.putClientProperty(FlatClientProperties.STYLE, "font: +1");
+        JTextArea lblNote = new JTextArea(note.getNote());
+        lblNote.setEditable(false);
+        lblNote.setOpaque(false);
+        lblNote.setLineWrap(true);
+        lblNote.setWrapStyleWord(true);
+        lblNote.setFocusable(false);
+        lblNote.putClientProperty(FlatClientProperties.STYLE, "font: +1; border: 0,0,0,0");
 
-        JButton btnDeleteNote = new JButton(new Ikon("icons/trash-2.svg", 0.75f));
-        btnDeleteNote.putClientProperty(FlatClientProperties.STYLE,
-                "background: null; borderWidth: 0; foreground: #e74c3c");
+        JButton btnDeleteNote = new JButton(new Ikon("icons/x.svg", 0.75f));
+        btnDeleteNote.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
         btnDeleteNote.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnDeleteNote.setToolTipText("Notu Sil");
         btnDeleteNote.addActionListener(e -> confirmDeleteNote(note, noteRow));
@@ -845,12 +849,12 @@ public class FormWorkOrder extends Form {
         JLabel lblAuthor = createMutedLabel(note.getTechnicianId() == null ? "Sistem" : "Teknisyen");
         JLabel lblDate = createMutedLabel(note.getCreatedAt() != null ? note.getCreatedAt().format(df) : "-");
 
-        noteRow.add(lblNote, "growx");
-        noteRow.add(btnDeleteNote, "aligny top, wrap");
-        noteRow.add(lblAuthor);
-        noteRow.add(lblDate, "align right");
+        noteRow.add(lblNote, "growx, wmin 0, aligny top");
+        noteRow.add(btnDeleteNote, "top, right, w 28!, h 28!, wrap");
+        noteRow.add(lblAuthor, "aligny bottom");
+        noteRow.add(lblDate, "align right, aligny bottom");
 
-        notesListPanel.add(noteRow, "wrap, growx");
+        notesListPanel.add(noteRow, "wrap, growx, gapy 0 8");
     }
 
     private void confirmDeleteNote(WorkOrderNote note, JPanel noteRow) {

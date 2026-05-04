@@ -11,6 +11,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.argument.LocalDateTimeArgumentFactory;
 import tr.cabro.servicio.database.mapper.SQLiteDateMapper;
 import tr.cabro.servicio.database.mapper.SQLiteDateTimeMapper;
+import tr.cabro.servicio.service.ServiceManager;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -139,31 +140,30 @@ public class DatabaseManager {
         backup(null);
     }
 
+    // DatabaseManager.java
     public static void restore(File backupFile) {
         if (!backupFile.exists()) return;
 
         Servicio.getLogger().warn("Geri yükleme başlatılıyor. Veritabanı kapatılıyor...");
 
         try {
-            // 1. Havuzu kapat (Dosya kilidini kaldır)
             shutdown();
 
-            // 2. Dosyayı kopyala
             File dbFile = new File(Servicio.getInstance().getDataFolder() + "/database", DB_FILE_NAME);
             Files.copy(backupFile.toPath(), dbFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-            // 3. WAL artıklarını temizle
             new File(dbFile.getAbsolutePath() + "-wal").delete();
             new File(dbFile.getAbsolutePath() + "-shm").delete();
 
-            // 4. Sistemi tekrar ayağa kaldır
-            initialize();
+            initialize();           // 1. DB havuzunu yenile
+            ServiceManager.initialize(); // 2. Servisleri yeni JDBI ile yeniden bağla
+
             Servicio.getLogger().info("Geri yükleme başarılı: {}", backupFile.getName());
 
         } catch (Exception e) {
             Servicio.getLogger().error("Geri yükleme kritik hata: {}", e.getMessage());
-            // Hata olsa bile sistemi tekrar açmayı dene
             initialize();
+            ServiceManager.initialize();
         }
     }
 }

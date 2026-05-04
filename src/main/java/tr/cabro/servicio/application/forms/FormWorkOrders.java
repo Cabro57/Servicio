@@ -128,12 +128,12 @@ public class FormWorkOrders extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<WorkOrder>> columns = Arrays.asList(
-                new ColumnDef<>("Kayıt No",        String.class,        s -> "SRV-" + s.getId()),
+                new ColumnDef<>("Kayıt No",        Long.class,          WorkOrder::getId),
                 new ColumnDef<>("Müşteri Bilgisi", Customer.class,      WorkOrder::getCustomer),
                 new ColumnDef<>("Cihaz Bilgisi",   Device.class,        WorkOrder::getDevice),
                 new ColumnDef<>("Şikayet",         String.class,        WorkOrder::getReportedFault),
                 new ColumnDef<>("Tarih",           WorkOrder.class,     s -> s),
-                new ColumnDef<>("Kalan Ücret",     BigDecimal.class, WorkOrder::getRemainingAmount),
+                new ColumnDef<>("Kalan Ücret",     BigDecimal.class,    WorkOrder::getRemainingAmount),
                 new ColumnDef<>("Durum",           ServiceStatus.class, WorkOrder::getServiceStatus),
                 new ColumnDef<>("İşlem",           String.class,        s -> "Detay")
         );
@@ -301,6 +301,10 @@ public class FormWorkOrders extends AbstractTableForm {
                 JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
                 label.putClientProperty(FlatClientProperties.STYLE, "font: $h3.font");
                 label.setHorizontalAlignment(SwingConstants.CENTER);
+                if (value instanceof Long) {
+                    Long id = (Long) value;
+                    label.setText("SRV-" + id);
+                }
                 return label;
             }
         });

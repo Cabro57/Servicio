@@ -228,7 +228,10 @@ public class DeviceFormPanel extends JPanel {
         device.setDeviceType(type);
         device.setBrand(brand);
         device.setModel(modelField.getText().trim());
-        device.setSerialNo(serialNoField.getText().trim());
+        String serialNo = serialNoField.getText().trim();
+        if (!serialNo.isEmpty()) {
+            device.setSerialNo(serialNoField.getText().trim());
+        }
         device.setPassword(passwordField.getText().trim());
         device.setAccessory(accessoryField.getText().trim());
         return device;

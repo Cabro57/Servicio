@@ -75,24 +75,49 @@ public class FormManager {
     }
 
     public static void login() {
-        Servicio.getInactivityMonitor().start();
+        loginFresh();
+    }
 
+    /** İlk oturum açma — stack temizlenir, dashboard'a gider */
+    public static void loginFresh() {
+        Servicio.getInactivityMonitor().start();
         Drawer.setVisible(true);
         frame.getContentPane().removeAll();
-        if (FORMS.isRedoAble()) {
-            redo();
+        frame.getContentPane().add(getMainForm());
+        Drawer.setSelectedItemClass(FormDashboard.class);
+        FORMS.clear();
+        showForm(AllForms.getForm(FormDashboard.class));
+        frame.repaint();
+        frame.revalidate();
+    }
+
+    /** Kilit ekranından dönüş — stack korunur, kaldığı yere döner */
+    public static void loginResume() {
+        Servicio.getInactivityMonitor().start();
+        Drawer.setVisible(true);
+        frame.getContentPane().removeAll();
+        frame.getContentPane().add(getMainForm());
+
+        Form current = FORMS.getCurrent();
+        if (current != null) {
+            // Drawer seçimini güncelle
+            if (AllForms.isSingletonForm(current)) {
+                Drawer.setSelectedItemClass(current.getClass());
+            }
+            mainForm.setForm(current);
         } else {
-            frame.getContentPane().add(getMainForm());
+            // Stack boşsa dashboard'a düş
+            Drawer.setSelectedItemClass(FormDashboard.class);
+            showForm(AllForms.getForm(FormDashboard.class));
         }
 
-        Drawer.setSelectedItemClass(FormDashboard.class);
-
-        FORMS.clear();
+        mainForm.refresh();
         frame.repaint();
         frame.revalidate();
     }
 
     public static void logout() {
+        FORMS.clear();
         Drawer.setVisible(false);
         frame.getContentPane().removeAll();
 
@@ -119,6 +144,17 @@ public class FormManager {
         });
     }
 
+    public static void lock() {
+        Servicio.getInactivityMonitor().stop();
+        Drawer.setVisible(false);
+        frame.getContentPane().removeAll();
+        PinPanel pinScreen = getLogin();
+        pinScreen.formCheck();
+        frame.getContentPane().add(pinScreen);
+        frame.repaint();
+        frame.revalidate();
+    }
+
     private static MainForm getMainForm() {
         if (mainForm == null) {
             mainForm = new MainForm();
@@ -131,6 +167,11 @@ public class FormManager {
             pinPanel = new PinPanel();
         }
         return pinPanel;
+    }
+
+    // FormManager.java
+    public static UndoRedo<Form> getForms() {
+        return FORMS;
     }
 
     public static void showAbout() {

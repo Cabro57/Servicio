@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import net.miginfocom.swing.MigLayout;
+import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.database.BackupScheduler;
@@ -117,12 +118,18 @@ public class SettingsDatabasePanel extends JPanel {
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Seçilen yedeği geri yüklemek istediğinize emin misiniz?\nBu işlem geri alınamaz.",
                 "Onay", JOptionPane.YES_NO_OPTION);
-
         if (confirm != JOptionPane.YES_OPTION) return;
 
         File backupFile = new File(settings.getBackup().getPath(), selected);
         DatabaseManager.restore(backupFile);
-        JOptionPane.showMessageDialog(this, "Yedek geri yüklendi.", "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+
+        // Tüm formları sıfırla — eski cached data'yı temizle
+        SwingUtilities.invokeLater(() -> {
+            FormManager.lock(); // Kilit ekranına at, stack temizlensin
+            JOptionPane.showMessageDialog(this,
+                    "Yedek geri yüklendi. Lütfen tekrar giriş yapın.",
+                    "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+        });
     }
 
     private void onFolderChooser() {
