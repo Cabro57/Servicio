@@ -832,7 +832,7 @@ public class FormWorkOrder extends Form {
         noteRow.setOpaque(false);
         noteRow.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,1,0,$Component.borderColor");
 
-        JLabel lblNote = new JLabel("<html>" + note.getNote().replace("\n", "<br>") + "</html>");
+        JTextArea lblNote = new JTextArea("<html>" + note.getNote().replace("\n", "<br>") + "</html>");
         lblNote.putClientProperty(FlatClientProperties.STYLE, "font: +1");
 
         JButton btnDeleteNote = new JButton(new Ikon("icons/trash-2.svg", 0.75f));
