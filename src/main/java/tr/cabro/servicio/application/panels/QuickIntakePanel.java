@@ -6,7 +6,7 @@ import raven.modal.component.ModalBorderAction;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.component.CustomerSelectBox;
 import tr.cabro.servicio.application.panels.edit.AbstractEditPanel;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.WorkOrder;
@@ -118,18 +118,27 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
     }
 
     @Override
-    protected WorkOrder collectFormData(WorkOrder data) {
-        Customer customer = customerCombo.getSelectedItem();
-        if (customer == null) {
+    protected boolean validateForm() {
+        // Müşteri seçimi zorunlu
+        if (customerCombo.getSelectedItem() == null) {
             showValidationError(Toast.Type.WARNING, "Lütfen bir müşteri seçin.");
-            return null;
+            customerCombo.requestFocus();
+            return false;
         }
 
-        Device device = deviceFormPanel.getDevice();
-        if (device == null) {
+        // Cihaz türü ve markası zorunlu
+        if (deviceFormPanel.getDevice() == null) {
             showValidationError(Toast.Type.WARNING, "Cihaz türü ve markası seçmek zorunludur.");
-            return null;
+            return false;
         }
+
+        return true;
+    }
+
+    @Override
+    protected WorkOrder collectFormData(WorkOrder data) {
+        Customer customer = customerCombo.getSelectedItem();
+        Device device = deviceFormPanel.getDevice();
 
         data.setCustomer(customer);
         data.setCustomerId(customer.getId());
@@ -138,6 +147,8 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         // Mevcut cihaz sistemde bulunduysa ID'yi bağla; yoksa null bırak (yeni kayıt)
         if (device.getId() != null) {
             data.setDeviceId(device.getId());
+        } else {
+            data.setDeviceId(null);
         }
 
         data.setReportedFault(reportedFaultArea.getText().trim());

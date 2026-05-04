@@ -3,7 +3,7 @@ package tr.cabro.servicio.application.panels;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.Getter;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import raven.modal.component.ModalBorderAction;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.editors.AddButtonEditor;
@@ -19,11 +19,16 @@ import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public class WorkOrderItemAddPanel extends JPanel {
 
@@ -33,6 +38,10 @@ public class WorkOrderItemAddPanel extends JPanel {
 
     private GenericTableModel<Part> partTableModel;
     private GenericTableModel<Labor> laborTableModel;
+
+    // Tabloları filtrelemek için Sorter tanımlamaları ekledik
+    private TableRowSorter<GenericTableModel<Part>> partSorter;
+    private TableRowSorter<GenericTableModel<Labor>> laborSorter;
 
     @Getter
     private WorkOrderItem item;
@@ -48,9 +57,9 @@ public class WorkOrderItemAddPanel extends JPanel {
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.putClientProperty(FlatClientProperties.STYLE, "tabType: card; tabInsets: 5,20,5,20; focusColor: null;");
 
-        tabbedPane.addTab("Stoktakiler", new Ikon("icons/box.svg", 0.8f), createStockPanel());
-        tabbedPane.addTab("Hazır Paketler", new Ikon("icons/sparkles.svg", 0.8f), createLaborPanel());
-        tabbedPane.addTab("Manuel Ekle", new Ikon("icons/pencil.svg", 0.8f), createManualPanel());
+        tabbedPane.addTab("Stoktakiler", new Ikon("icons/blocks.svg", 0.8f), createStockPanel());
+        tabbedPane.addTab("Hazır Paketler", new Ikon("icons/pickaxe.svg", 0.8f), createLaborPanel());
+        tabbedPane.addTab("Manuel Ekle", new Ikon("icons/pen-line.svg", 0.8f), createManualPanel());
 
         add(tabbedPane, "grow");
         loadData();
@@ -84,6 +93,17 @@ public class WorkOrderItemAddPanel extends JPanel {
         JTable table = new JTable(partTableModel);
         table.setRowHeight(50);
 
+        // Sorter'ı oluşturup tabloya atıyoruz
+        partSorter = new TableRowSorter<>(partTableModel);
+        table.setRowSorter(partSorter);
+
+        // Arama kutusuna DocumentListener ekliyoruz
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), partSorter); }
+            public void removeUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), partSorter); }
+            public void changedUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), partSorter); }
+        });
+
         table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Part>(
                 Part::getName,
                 p -> p.getBarcode() + " • Stok: " + p.getStockQuantity()
@@ -105,9 +125,6 @@ public class WorkOrderItemAddPanel extends JPanel {
                 return;
             }
 
-            String serialNo = JOptionPane.showInputDialog(WorkOrderItemAddPanel.this,
-                    "Kullanılan parçanın Seri Numarasını girin (Opsiyonel):", "Seri No", JOptionPane.QUESTION_MESSAGE);
-
             item = new WorkOrderItem();
             item.setServiceId(workOrder.getId());
             item.setItemType(ItemType.PART);
@@ -116,7 +133,6 @@ public class WorkOrderItemAddPanel extends JPanel {
             item.setItemName(selectedPart.getName());
             item.setPurchasePrice(selectedPart.getPurchasePrice());
             item.setUnitPrice(selectedPart.getSalePrice());
-            item.setUsedSerialNo(serialNo != null && !serialNo.trim().isEmpty() ? serialNo.trim() : null);
 
             ModalBorderAction borderAction = ModalBorderAction.getModalBorderAction(this);
             if (borderAction != null) {
@@ -151,6 +167,17 @@ public class WorkOrderItemAddPanel extends JPanel {
         JTable table = new JTable(laborTableModel);
         table.setRowHeight(50);
 
+        // Sorter'ı oluşturup tabloya atıyoruz
+        laborSorter = new TableRowSorter<>(laborTableModel);
+        table.setRowSorter(laborSorter);
+
+        // İşçilik arama kutusuna DocumentListener ekliyoruz
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), laborSorter); }
+            public void removeUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), laborSorter); }
+            public void changedUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), laborSorter); }
+        });
+
         table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Labor>(
                 Labor::getName, Labor::getCategory
         ));
@@ -160,7 +187,6 @@ public class WorkOrderItemAddPanel extends JPanel {
         priceRenderer.setFont(priceRenderer.getFont().deriveFont(Font.BOLD));
         table.getColumnModel().getColumn(1).setCellRenderer(priceRenderer);
 
-        // Özel Tekil Buton Entegrasyonu
         table.getColumnModel().getColumn(2).setCellRenderer(new AddButtonRenderer());
         table.getColumnModel().getColumn(2).setCellEditor(new AddButtonEditor(row -> {
             Labor labor = laborTableModel.getItemAt(table.convertRowIndexToModel(row));
@@ -170,7 +196,7 @@ public class WorkOrderItemAddPanel extends JPanel {
             item.setSourceType(SourceType.PRESET);
             item.setLaborId(labor.getId());
             item.setItemName(labor.getName());
-            item.setPurchasePrice(BigDecimal.ZERO); // İşçiliğin alışı yoktur
+            item.setPurchasePrice(BigDecimal.ZERO);
             item.setUnitPrice(labor.getDefaultPrice());
 
             ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
@@ -181,7 +207,7 @@ public class WorkOrderItemAddPanel extends JPanel {
         }));
 
         table.getColumnModel().getColumn(1).setMaxWidth(120);
-        table.getColumnModel().getColumn(2).setMaxWidth(80); // Butonun sığması için biraz genişletildi
+        table.getColumnModel().getColumn(2).setMaxWidth(80);
 
         panel.add(new JScrollPane(table), "grow");
         return panel;
@@ -201,7 +227,6 @@ public class WorkOrderItemAddPanel extends JPanel {
 
         cmbType.addActionListener(e -> {
             boolean isPart = cmbType.getSelectedIndex() == 0;
-            txtPurchasePrice.setEnabled(isPart);
             txtSerialNo.setEnabled(isPart);
             if(!isPart) {
                 txtPurchasePrice.setValue(BigDecimal.ZERO);
@@ -218,8 +243,34 @@ public class WorkOrderItemAddPanel extends JPanel {
         JButton btnSave = new JButton("Kaydet ve Ekle");
         btnSave.putClientProperty(FlatClientProperties.STYLE, "background: $Component.accentColor; foreground: #fff; arc: 10; font: bold");
         btnSave.addActionListener(e -> {
-            if (txtName.getText().trim().isEmpty()) {
-                Toast.show(this, Toast.Type.WARNING, "Lütfen bir ad girin.");
+            // Ad zorunlu ve max 255 karakter
+            String itemName = txtName.getText().trim();
+            if (itemName.isEmpty()) {
+                Toast.show(this, Toast.Type.WARNING, "Lütfen kalem için bir ad girin.");
+                txtName.requestFocus();
+                return;
+            }
+            if (itemName.length() > 255) {
+                Toast.show(this, Toast.Type.WARNING, "Kalem adı en fazla 255 karakter olabilir.");
+                txtName.requestFocus();
+                return;
+            }
+
+            // Alış fiyatı negatif olamaz
+            double purchaseVal = txtPurchasePrice.getValue() instanceof Number
+                    ? ((Number) txtPurchasePrice.getValue()).doubleValue() : 0.0;
+            if (purchaseVal < 0) {
+                Toast.show(this, Toast.Type.WARNING, "Alış fiyatı negatif olamaz.");
+                txtPurchasePrice.requestFocus();
+                return;
+            }
+
+            // Satış fiyatı negatif olamaz
+            double saleVal = txtSalePrice.getValue() instanceof Number
+                    ? ((Number) txtSalePrice.getValue()).doubleValue() : 0.0;
+            if (saleVal < 0) {
+                Toast.show(this, Toast.Type.WARNING, "Satış fiyatı negatif olamaz.");
+                txtSalePrice.requestFocus();
                 return;
             }
 
@@ -227,9 +278,9 @@ public class WorkOrderItemAddPanel extends JPanel {
             item.setServiceId(workOrder.getId());
             item.setItemType(cmbType.getSelectedIndex() == 0 ? ItemType.PART : ItemType.LABOR);
             item.setSourceType(SourceType.MANUAL);
-            item.setItemName(txtName.getText().trim());
-            item.setPurchasePrice(new BigDecimal(txtPurchasePrice.getValue().toString()));
-            item.setUnitPrice(new BigDecimal(txtSalePrice.getValue().toString()));
+            item.setItemName(itemName);
+            item.setPurchasePrice(BigDecimal.valueOf(purchaseVal));
+            item.setUnitPrice(BigDecimal.valueOf(saleVal));
             item.setUsedSerialNo(txtSerialNo.getText().trim());
 
             ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
@@ -245,5 +296,27 @@ public class WorkOrderItemAddPanel extends JPanel {
 
         panel.add(btnSave, "span 2, align right, gaptop 15");
         return panel;
+    }
+
+    /**
+     * Hem parça hem de işçilik tablosu için kullanılabilen jenerik filtreleme metodu.
+     * @param text Arama kutusuna girilen metin
+     * @param sorter Filtrelenecek tablonun Sorter nesnesi
+     */
+    private void applyFilter(String text, TableRowSorter<?> sorter) {
+        if (sorter == null) return;
+
+        if (text == null || text.trim().isEmpty()) {
+            sorter.setRowFilter(null); // Metin boşsa filtreyi kaldır
+        } else {
+            try {
+                // (?iu) parametresi: Büyük/küçük harf duyarlılığını (case-insensitive)
+                // ve Türkçe karakter desteğini (unicode) aktif eder.
+                sorter.setRowFilter(RowFilter.regexFilter("(?iu)" + Pattern.quote(text.trim())));
+            } catch (PatternSyntaxException e) {
+                // Regex hatası olursa filtreyi sıfırla
+                sorter.setRowFilter(null);
+            }
+        }
     }
 }

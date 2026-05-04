@@ -4,6 +4,7 @@ import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.PhoneField;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 
@@ -12,44 +13,60 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
     public SupplierEditPanel(Supplier data) {
         super(data);
     }
-//    @Override
-//    protected boolean validateForm() {
-//        // Ad alanı zorunlu
-//        if (Validator.isEmpty(name_field.getText())) {
-//            showValidationError("Ad alanı boş olamaz!");
-//            name_field.requestFocus();
-//            return false;
-//        }
-//        // Firma adı zorunlu
-//        if (Validator.isEmpty(business_name_field.getText())) {
-//            showValidationError("Firma adı boş olamaz!");
-//            business_name_field.requestFocus();
-//            return false;
-//        }
-//        // Telefon doluysa geçerli uzunluk ve format
-//        String phone = phone_field.getText().trim();
-//        if (!Validator.isEmpty(phone) && (!Validator.isNumeric(phone) || !Validator.hasMinLength(phone, 10))) {
-//            showValidationError("Telefon numarası sadece rakamlardan oluşmalı ve en az 10 haneli olmalı!");
-//            phone_field.requestFocus();
-//            return false;
-//        }
-//        // Kimlik numarası doluysa geçerli uzunluk
-//        String idNo = id_no_field.getText().trim();
-//        if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
-//            showValidationError("Kimlik numarası 11 haneli ve sadece rakamlardan oluşmalı!");
-//            id_no_field.requestFocus();
-//            return false;
-//        }
-//        // E-posta doluysa format kontrolü
-//        String email = email_field.getText().trim();
-//        if (!Validator.isEmpty(email) && !Validator.isValidEmail(email)) {
-//            showValidationError("Geçerli bir e-posta adresi girin!");
-//            email_field.requestFocus();
-//            return false;
-//        }
-//
-//        return true;
-//    }
+
+    @Override
+    protected boolean validateForm() {
+        // Ad - Soyad zorunlu
+        if (Validator.isEmpty(name_field.getText())) {
+            showValidationError("Ad - Soyad alanı boş olamaz.");
+            name_field.requestFocus();
+            return false;
+        }
+        if (Validator.exceedsMaxLength(name_field.getText(), 100)) {
+            showValidationError("Ad - Soyad en fazla 100 karakter olabilir.");
+            name_field.requestFocus();
+            return false;
+        }
+
+        // Firma adı zorunlu
+        if (Validator.isEmpty(business_name_field.getText())) {
+            showValidationError("Firma adı boş olamaz.");
+            business_name_field.requestFocus();
+            return false;
+        }
+        if (Validator.exceedsMaxLength(business_name_field.getText(), 100)) {
+            showValidationError("Firma adı en fazla 100 karakter olabilir.");
+            business_name_field.requestFocus();
+            return false;
+        }
+
+        // Telefon — isteğe bağlı; doluysa PhoneField normalize eder, boş string gelirse sorun yok
+        String phone = phone_field.getNormalizedNumber();
+        if (!Validator.isEmpty(phone) && !Validator.hasMinLength(phone, 7)) {
+            showValidationError("Telefon numarası çok kısa görünüyor. Lütfen kontrol ediniz.");
+            phone_field.requestFocus();
+            return false;
+        }
+
+        // E-posta — isteğe bağlı; doluysa geçerli format
+        String email = email_field.getText().trim();
+        if (!Validator.isEmpty(email) && !Validator.isValidEmail(email)) {
+            showValidationError("Geçerli bir e-posta adresi giriniz.");
+            email_field.requestFocus();
+            return false;
+        }
+
+        // Vergi No — isteğe bağlı; doluysa max 50 karakter
+        String taxNo = tax_no_field.getText().trim();
+        if (Validator.exceedsMaxLength(taxNo, 50)) {
+            showValidationError("Vergi numarası en fazla 50 karakter olabilir.");
+            tax_no_field.requestFocus();
+            return false;
+        }
+
+        return true;
+    }
+
 
     @Override
     protected Supplier collectFormData(@NonNull Supplier data) {

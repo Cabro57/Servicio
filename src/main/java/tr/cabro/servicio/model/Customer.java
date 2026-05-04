@@ -19,7 +19,7 @@ public class Customer {
     private Long id;
 
     @ColumnName("customer_type")
-    private CustomerType type;
+    private CustomerType type = CustomerType.NORMAL;
 
     @ColumnName("business_name")
     private String businessName;
@@ -53,13 +53,13 @@ public class Customer {
     // Denetim (Audit) & Soft Delete Alanları
     // DİKKAT: "deleted" olarak tutulmalı — Lombok, boolean isDeleted için isIsDeleted() üretir (JDBI hatası).
     @ColumnName("is_deleted")
-    private boolean deleted;
+    private boolean deleted = false;
 
     @ColumnName("created_at")
-    private LocalDateTime createdAt;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @ColumnName("updated_at")
-    private LocalDateTime updatedAt;
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
     @ColumnName("device_count")
     private Integer deviceCount;

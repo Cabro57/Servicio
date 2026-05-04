@@ -6,7 +6,7 @@ import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
 import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.time.*;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import raven.modal.component.ToolBarSelection;
 import raven.modal.component.chart.PieChart;
 import raven.modal.component.chart.TimeSeriesChart;

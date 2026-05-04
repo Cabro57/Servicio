@@ -4,7 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.*;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;

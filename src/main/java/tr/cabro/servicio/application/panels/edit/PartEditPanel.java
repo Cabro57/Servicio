@@ -4,7 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.DatePicker;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.util.Ikon;
@@ -15,6 +15,7 @@ import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.SupplierService;
 import tr.cabro.servicio.util.Barcode;
+import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 import java.awt.*;
@@ -94,6 +95,58 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
             Servicio.getLogger().error("Tedarikçi listesi combobox'a yüklenemedi", ex);
             return null;
         });
+    }
+
+    @Override
+    protected boolean validateForm() {
+        // Barkod zorunlu
+        if (Validator.isEmpty(barcode_field.getText())) {
+            showValidationError("Barkod alanı boş olamaz.");
+            barcode_field.requestFocus();
+            return false;
+        }
+        if (Validator.exceedsMaxLength(barcode_field.getText(), 50)) {
+            showValidationError("Barkod en fazla 50 karakter olabilir.");
+            barcode_field.requestFocus();
+            return false;
+        }
+
+        // Parça adı zorunlu
+        if (Validator.isEmpty(name_field.getText())) {
+            showValidationError("Parça adı boş olamaz.");
+            name_field.requestFocus();
+            return false;
+        }
+        if (Validator.exceedsMaxLength(name_field.getText(), 255)) {
+            showValidationError("Parça adı en fazla 255 karakter olabilir.");
+            name_field.requestFocus();
+            return false;
+        }
+
+        // Kategori — isteğe bağlı; doluysa max 100 karakter
+        if (Validator.exceedsMaxLength(categroy_field.getText(), 100)) {
+            showValidationError("Kategori en fazla 100 karakter olabilir.");
+            categroy_field.requestFocus();
+            return false;
+        }
+
+        // Alış fiyatı negatif olamaz
+        Object ppVal = purchase_price_field.getValue();
+        if (ppVal instanceof Number && ((Number) ppVal).doubleValue() < 0) {
+            showValidationError("Alış fiyatı negatif olamaz.");
+            purchase_price_field.requestFocus();
+            return false;
+        }
+
+        // Satış fiyatı negatif olamaz
+        Object spVal = sale_price_field.getValue();
+        if (spVal instanceof Number && ((Number) spVal).doubleValue() < 0) {
+            showValidationError("Satış fiyatı negatif olamaz.");
+            sale_price_field.requestFocus();
+            return false;
+        }
+
+        return true;
     }
 
     @Override

@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.panels.setting;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.Settings;
 

@@ -1,6 +1,6 @@
 package tr.cabro.servicio.application.handlers;
 
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.panels.setting.SettingsDevicePanel;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;

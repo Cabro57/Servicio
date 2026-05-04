@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.panels.edit;
 
 import lombok.NonNull;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 
 import javax.swing.*;
 
@@ -51,7 +51,7 @@ public abstract class AbstractEditPanel<T> extends JPanel {
      * Ortak doğrulama hatası gösterimi.
      */
     protected void showValidationError(String message) {
-        showValidationError(Toast.Type.INFO, message);
+        showValidationError(Toast.Type.WARNING, message);
     }
 
     protected void showValidationError(raven.modal.Toast.Type type, String message) {
@@ -59,9 +59,22 @@ public abstract class AbstractEditPanel<T> extends JPanel {
     }
 
     /**
+     * Form alanlarını doğrular.
+     * Alt sınıflar override ederek zorunlu alan ve format kontrollerini uygular.
+     * Hata durumunda {@link #showValidationError} ile mesaj gösterilmeli ve false dönülmelidir.
+     *
+     * @return true: form geçerli; false: hata var, kayıt durduruldu
+     */
+    protected boolean validateForm() {
+        return true;
+    }
+
+    /**
      * Form geçerliyse nesneyi döndürür, değilse null.
+     * Önce {@link #validateForm()} çağrılır; validasyon başarısızsa null döner.
      */
     public T getData() {
+        if (!validateForm()) return null;
         T objectToProcess = (this.data != null) ? this.data : createEmptyObject();
         this.data = collectFormData(objectToProcess);
 

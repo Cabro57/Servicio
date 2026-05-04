@@ -3,7 +3,7 @@ package tr.cabro.servicio.application.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.simple.SimpleMessageModal;
 import raven.modal.utils.SystemForm;
@@ -101,7 +101,7 @@ public class FormParts extends AbstractTableForm {
         }).exceptionally(ex -> {
             Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
             SwingUtilities.invokeLater(() -> {
-                tr.cabro.servicio.application.util.Toast.show(this, tr.cabro.servicio.application.util.Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
+                Toast.show(this, Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
             });
             return null;
         });

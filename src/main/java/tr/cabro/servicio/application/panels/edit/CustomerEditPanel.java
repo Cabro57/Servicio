@@ -6,6 +6,7 @@ import tr.cabro.servicio.application.renderer.CustomerTypeRenderer;
 import tr.cabro.servicio.application.component.PhoneField;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.enums.CustomerType;
+import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
 
@@ -16,55 +17,59 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
     }
 
 
-//    @Override
-//    protected boolean validateForm() {
-//        if (Validator.isEmpty(nameField.getText())) {
-//            showValidationError("Lütfen müşteri adını giriniz.");
-//            nameField.requestFocus();
-//            return false;
-//        }
-//
-//        if (Validator.isEmpty(surnameField.getText())) {
-//            showValidationError("Lütfen müşteri soyadını giriniz.");
-//            surnameField.requestFocus();
-//            return false;
-//        }
-//
-//        String phone1 = phone1Field.getNormalizedNumber().trim();
-//        if (Validator.isEmpty(phone1)) {
-//            showValidationError("Lütfen birinci telefon numarasını giriniz.");
-//            phone1Field.requestFocus();
-//            return false;
-//        }
-//        if (!Validator.isNumeric(phone1) || !Validator.hasLength(phone1, 10)) {
-//            showValidationError("Telefon numarası 10 rakamdan oluşmalı. (örn: 5321234567)");
-//            phone1Field.requestFocus();
-//            return false;
-//        }
-//
-//        String email = emailField.getText().trim();
-//        if (!Validator.isEmpty(email) && !Validator.isValidEmail(email)) {
-//            showValidationError("Geçerli bir e-posta adresi giriniz.");
-//            emailField.requestFocus();
-//            return false;
-//        }
-//
-//        String idNo = idNoField.getText().trim();
-//        if (!Validator.isEmpty(idNo) &&
-//                (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
-//            showValidationError("T.C. Kimlik numarası 11 rakamdan oluşmalı.");
-//            idNoField.requestFocus();
-//            return false;
-//        }
-//
-//        if (customerTypeBox.getSelectedItem() == null) {
-//            showValidationError("Lütfen müşteri tipini seçiniz.");
-//            customerTypeBox.requestFocus();
-//            return false;
-//        }
-//
-//        return true;
-//    }
+    @Override
+    protected boolean validateForm() {
+        // Ad zorunlu
+        if (Validator.isEmpty(nameField.getText())) {
+            showValidationError("Lütfen müşteri adını giriniz.");
+            nameField.requestFocus();
+            return false;
+        }
+        if (Validator.exceedsMaxLength(nameField.getText(), 50)) {
+            showValidationError("Müşteri adı en fazla 50 karakter olabilir.");
+            nameField.requestFocus();
+            return false;
+        }
+
+        // Soyad zorunlu
+        if (Validator.isEmpty(surnameField.getText())) {
+            showValidationError("Lütfen müşteri soyadını giriniz.");
+            surnameField.requestFocus();
+            return false;
+        }
+        if (Validator.exceedsMaxLength(surnameField.getText(), 50)) {
+            showValidationError("Müşteri soyadı en fazla 50 karakter olabilir.");
+            surnameField.requestFocus();
+            return false;
+        }
+
+        // Telefon 1 zorunlu
+        String phone1 = phone1Field.getNormalizedNumber();
+        if (Validator.isEmpty(phone1)) {
+            showValidationError("Lütfen birinci telefon numarasını giriniz.");
+            phone1Field.requestFocus();
+            return false;
+        }
+
+        // TC Kimlik — isteğe bağlı, doluysa 11 hane ve sadece rakam
+        String idNo = idNoField.getText().trim();
+        if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
+            showValidationError("T.C. Kimlik numarası 11 rakamdan oluşmalı.");
+            idNoField.requestFocus();
+            return false;
+        }
+
+        // E-posta — isteğe bağlı, doluysa geçerli format
+        String email = emailField.getText().trim();
+        if (!Validator.isEmpty(email) && !Validator.isValidEmail(email)) {
+            showValidationError("Geçerli bir e-posta adresi giriniz.");
+            emailField.requestFocus();
+            return false;
+        }
+
+        return true;
+    }
+
 
     @Override
     protected Customer collectFormData(@NonNull Customer data) {
@@ -73,7 +78,10 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         data.setLastName(surnameField.getText().trim());
         data.setPhoneNumber1(phone1Field.getNormalizedNumber());
         data.setPhoneNumber2(phone2Field.getNormalizedNumber());
-        data.setIdentityNo(idNoField.getText().trim());
+        String identity = idNoField.getText().trim();
+        if (!identity.isEmpty()) {
+            data.setIdentityNo(idNoField.getText().trim());
+        }
         data.setAddress(addressField.getText().trim());
         data.setEmail(emailField.getText().trim());
         data.setNote(notesField.getText().trim());

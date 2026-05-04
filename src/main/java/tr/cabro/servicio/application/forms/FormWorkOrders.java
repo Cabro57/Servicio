@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.FormManager;
 import raven.modal.utils.SystemForm;

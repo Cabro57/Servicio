@@ -5,7 +5,7 @@ import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.AllForms;
 import raven.modal.system.Form;
@@ -389,7 +389,7 @@ public class FormWorkOrder extends Form {
                 new SimpleModalBorder.Option("Ekle", SimpleModalBorder.YES_OPTION),
                 new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
         };
-        ModalDialog.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", options, (controller, action) -> {
+        ModalDialog.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", null, (controller, action) -> {
 
             if (action == WorkOrderItemAddPanel.SELECTED_ITEM) {
                 WorkOrderItem newItem = addPanel.getItem();
@@ -399,24 +399,32 @@ public class FormWorkOrder extends Form {
                     return;
                 }
 
-                controller.close();
+                controller.consume();
 
-                workOrderService.addItem(newItem).thenAccept(saved -> {
-                    workOrder.getItems().add(saved);
+                ServiceItemEditPanel editPanel = new ServiceItemEditPanel(newItem);
+                ModalDialog.pushModal(new SimpleModalBorder(editPanel, "Kalem Ekle", options, (controller1, action1) -> {
+                    if (action1 != SimpleModalBorder.YES_OPTION) return;
 
-                    SwingUtilities.invokeLater(() -> {
-                        populateItemsTable();
+                    WorkOrderItem updated = editPanel.getUpdatedItem();
 
-                        updatePaymentSummary();
-                        Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+                    workOrderService.addItem(updated).thenAccept(saved -> {
+                        workOrder.getItems().add(saved);
+
+                        SwingUtilities.invokeLater(() -> {
+                            populateItemsTable();
+
+                            updatePaymentSummary();
+                            Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+                        });
+                    }).exceptionally(ex -> {
+                        SwingUtilities.invokeLater(() -> {
+                            Toast.show(this, Toast.Type.ERROR, ex.getMessage());
+                        });
+                        Servicio.getLogger().error("ERROR", ex);
+                        return null;
                     });
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.ERROR, ex.getMessage());
-                    });
-                    Servicio.getLogger().error("ERROR", ex);
-                    return null;
-                });
+
+                }), "itemAddModal");
             }
         }), "itemAddModal");
     }
@@ -462,30 +470,36 @@ public class FormWorkOrder extends Form {
 
     private void confirmDeleteItem(WorkOrderItem item) {
         if (item == null) return;
+
+        JPanel panel = new JPanel(new BorderLayout(0, 10));
+
+        JLabel messageLabel = new JLabel("\"" + item.getItemName() + "\" kalemi silinecek. Emin misiniz?");
+        JCheckBox stockCheckBox = new JCheckBox("Silinen parça stoğa eklensin mi?");
+
+        stockCheckBox.setSelected(true);
+
+        // Bileşenleri panele ekliyoruz
+        panel.add(messageLabel, BorderLayout.CENTER);
+        panel.add(stockCheckBox, BorderLayout.SOUTH);
+
         int confirm = JOptionPane.showConfirmDialog(
                 this,
-                "\"" + item.getItemName() + "\" kalemi silinecek. Emin misiniz?",
+                panel,
                 "Silme Onayı",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.WARNING_MESSAGE
         );
+
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        int confirm2 = JOptionPane.showConfirmDialog(
-                this,
-                "\"" + item.getItemName() + "\" parçası stoğa eklensin mi?",
-                "Silme Onayı",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE
-        );
-        boolean updateStock = confirm2 == JOptionPane.YES_OPTION;
+        boolean updateStock = stockCheckBox.isSelected();
 
         workOrderService.deleteItem(item.getId(), updateStock).thenRun(() -> SwingUtilities.invokeLater(() -> {
             workOrder.getItems().remove(item);
 
             populateItemsTable();
-
             updatePaymentSummary();
+
             Toast.show(this, Toast.Type.SUCCESS, "Kalem silindi.");
         })).exceptionally(ex -> {
             SwingUtilities.invokeLater(() ->

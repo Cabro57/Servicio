@@ -3,7 +3,7 @@ package tr.cabro.servicio.application.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.*;
-import tr.cabro.servicio.application.util.Toast;
+import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import raven.modal.system.Form;
 import raven.modal.system.FormManager;
@@ -30,17 +30,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @SystemForm(name = "Müşteriler", description = "Müşteri veritabanını ve iletişim bilgilerini yönetin.")
 public class FormCustomers extends AbstractTableForm {
 
     private final CustomerService customerService;
     private GenericTableModel<Customer> tableModel;
-
-    // Müşterilerin toplam harcamalarını RAM'de (önbellekte) tutmak için
-    private final Map<Long, BigDecimal> customerSpentMap = new ConcurrentHashMap<>();
 
     public FormCustomers() {
         this.customerService = ServiceManager.getCustomerService();
@@ -360,9 +355,10 @@ public class FormCustomers extends AbstractTableForm {
                     });
                 }).exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> {
-                        controller.consume();
                         Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
+                        controller.consume();
                     });
+                    Servicio.getLogger().error(ex.getMessage(), ex);
                     return null;
                 });
             }
