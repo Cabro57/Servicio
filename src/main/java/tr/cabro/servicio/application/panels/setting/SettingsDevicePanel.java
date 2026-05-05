@@ -1,9 +1,12 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
+import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.application.handlers.BrandExportHandler;
 import tr.cabro.servicio.application.handlers.TypeImportHandler;
+import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.service.DeviceDictionaryManager;
@@ -158,21 +161,29 @@ public class SettingsDevicePanel extends JPanel {
     private void initComponent() {
         setLayout(new MigLayout("insets 5, gap 10", "[grow][grow]", "[fill, grow]"));
 
+
         // --- Cihaz Türleri Paneli ---
-        JPanel device_type_panel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[][][grow][]"));
-        device_type_panel.setBorder(BorderFactory.createTitledBorder("Cihaz Türleri"));
+        JPanel deviceTypePanel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[][][][grow][]"));
+        JLabel title = new JLabel("Cihaz Türleri");
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold $h1.font");
+
+        JLabel subtitle = new JLabel("Arıza kaydında seçilecek ana kategoriler.");
+        subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
 
         type_field = new JTextField();
-        type_add_button = new JButton("Ekle");
+        type_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni Tür...");
+        type_add_button = new JButton(new Ikon("icons/plus.svg", type_field.getFont().getSize()));
         type_list = new JList<>();
         type_list.setModel(typeModel);
         type_del_button = new JButton("Seçili Cihaz Türünü Sil");
 
-        device_type_panel.add(new JLabel("Yeni Tür:"), "span 2");
-        device_type_panel.add(type_field, "growx");
-        device_type_panel.add(type_add_button, "wrap");
-        device_type_panel.add(new JScrollPane(type_list), "span 2, grow");
-        device_type_panel.add(type_del_button, "span 2, growx");
+        deviceTypePanel.add(title, "cell 0 0");
+        deviceTypePanel.add(subtitle, "cell 0 1, wrap");
+
+        deviceTypePanel.add(type_field, "growx");
+        deviceTypePanel.add(type_add_button, "wrap");
+        deviceTypePanel.add(new JScrollPane(type_list), "span 2, grow");
+        deviceTypePanel.add(type_del_button, "span 2, growx");
 
         // --- Markalar Paneli ---
         JPanel brand_panel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[][][grow][]"));
@@ -191,7 +202,7 @@ public class SettingsDevicePanel extends JPanel {
         brand_panel.add(brand_del_button, "span 2, growx");
 
         // Ana panele ekle
-        add(device_type_panel, "grow, sg panels");
+        add(deviceTypePanel, "grow, sg panels");
         add(brand_panel, "grow, sg panels");
     }
 

@@ -218,8 +218,9 @@ public class DeviceFormPanel extends JPanel {
     public Device getDevice() {
         DeviceType type = (DeviceType) deviceTypeCombo.getSelectedItem();
         DeviceBrand brand = (DeviceBrand) brandCombo.getSelectedItem();
+        String model = modelField.getText().trim();
 
-        if (type == null || brand == null) {
+        if (type == null || brand == null || model.isEmpty()) {
             return null;
         }
 
@@ -227,7 +228,7 @@ public class DeviceFormPanel extends JPanel {
         device.setId(currentDeviceId);
         device.setDeviceType(type);
         device.setBrand(brand);
-        device.setModel(modelField.getText().trim());
+        device.setModel(model);
         String serialNo = serialNoField.getText().trim();
         if (!serialNo.isEmpty()) {
             device.setSerialNo(serialNoField.getText().trim());

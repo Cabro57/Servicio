@@ -128,7 +128,7 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
         // Cihaz türü ve markası zorunlu
         if (deviceFormPanel.getDevice() == null) {
-            showValidationError(Toast.Type.WARNING, "Cihaz türü ve markası seçmek zorunludur.");
+            showValidationError(Toast.Type.WARNING, "Marka ve model bilgileri girmek zorunludur.");
             return false;
         }
 

@@ -307,13 +307,14 @@ public class FormDashboard extends Form {
         panelLayout.add(panel);
     }
 
-    // TODO: tek bir panel yap 2 tabblonun arasına ayırıcı koy
     private void createOtherTable() {
         JPanel panel = new JPanel(new MigLayout("fillx,gap 14", "[fill, 50%][fill, 50%]", "[300]"));
+        panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+
         activeServiceTable = new ActiveServiceTable();
         pendingPaymentsTable = new PendingPaymentsTable();
-        panel.add(activeServiceTable, "sgx 1, aligny top");
-        panel.add(pendingPaymentsTable, "sgx 1, aligny top");
+        panel.add(activeServiceTable, "sgx 1");
+        panel.add(pendingPaymentsTable, "sgx 1");
         panelLayout.add(panel);
     }
 

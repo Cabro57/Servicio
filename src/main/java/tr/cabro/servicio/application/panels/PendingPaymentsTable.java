@@ -73,7 +73,7 @@ public class PendingPaymentsTable extends JPanel {
     private void initComponent() {
         // MigLayout'un altına pagination için ekstra satır eklendi
         setLayout(new MigLayout("wrap, fillx, insets 15, gapy 0", "[fill]", "[pref!]15[pref!][pref!]15[pref!]"));
-        putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+//        putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
 
         // --- 1. BAŞLIK BÖLÜMÜ ---
         JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "center"));
