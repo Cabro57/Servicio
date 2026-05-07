@@ -76,6 +76,7 @@ public class ActiveServiceTable extends JPanel {
         // MigLayout satırlarına pagination için "15[pref!]" alanı eklendi
         setLayout(new MigLayout("wrap, fillx, insets 15, gapy 0", "[fill]", "[pref!]15[pref!][pref!]15[pref!]"));
 //        putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+        putClientProperty(FlatClientProperties.STYLE, "background: null");
 
         // --- 1. BAŞLIK BÖLÜMÜ ---
         JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "center"));

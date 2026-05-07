@@ -1,75 +1,80 @@
 package tr.cabro.servicio.application.component;
 
-import net.miginfocom.swing.MigLayout;
-
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
 import java.net.URL;
 
 public class AppSplashScreen extends JWindow {
 
-    private final JProgressBar progressBar;
     private final JLabel lblMessage;
 
     public AppSplashScreen() {
-        // 1. Hareketli Arka Planı (GIF) Yükleme
-        URL gifUrl = getClass().getResource("/background.gif");
-        boolean isGifLoaded = (gifUrl != null); // GIF'in yüklenip yüklenmediğini tutan bayrak
+        int windowWidth = 640;
+        int windowHeight = 360;
+        int arcSize = 20;
 
-        JLabel backgroundLabel;
+        URL imgUrl = getClass().getResource("/background.png");
+        Image bgImage = (imgUrl != null) ? new ImageIcon(imgUrl).getImage() : null;
 
-        if (isGifLoaded) {
-            backgroundLabel = new JLabel(new ImageIcon(gifUrl));
-        } else {
-            backgroundLabel = new JLabel();
-            backgroundLabel.setBackground(Color.WHITE);
-            backgroundLabel.setOpaque(true);
-        }
+        JPanel backgroundPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                        RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                g2d.setRenderingHint(RenderingHints.KEY_RENDERING,
+                        RenderingHints.VALUE_RENDER_QUALITY);
 
-        backgroundLabel.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
+                // Yuvarlak köşeli clip uygula
+                g2d.setClip(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), arcSize, arcSize));
 
-        // 2. MİGLAYOUT AYARLARI
-        backgroundLabel.setLayout(new MigLayout(
-                "fill, insets 20 40 20 40",
-                "[grow, fill]",
-                "[grow, center]10[]5[]"
-        ));
+                if (bgImage != null) {
+                    g2d.drawImage(bgImage, 0, 0, getWidth(), getHeight(), this);
+                } else {
+                    g2d.setColor(Color.WHITE);
+                    g2d.fillRoundRect(0, 0, getWidth(), getHeight(), arcSize, arcSize);
+                }
 
-        // Başlık / Logo
-        JLabel lblTitle = new JLabel("SERVICIO", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("SansSerif", Font.BOLD, 36));
-        lblTitle.setForeground(new Color(255, 255, 255));
+                g2d.dispose();
+            }
+        };
 
-        // KONTROL: GIF yüklendiyse yazıyı gizle, yüklenemediyse (beyaz ekransa) göster.
-        lblTitle.setVisible(!isGifLoaded);
+        backgroundPanel.setOpaque(false);
+        backgroundPanel.setBorder(null);
+        backgroundPanel.setLayout(new BorderLayout());
 
-        // Mesaj
+        // Sol alt köşe için panel
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
+        bottomPanel.setOpaque(false);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 24, 10, 0));
+
         lblMessage = new JLabel("Başlatılıyor...");
-        lblMessage.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        lblMessage.setFont(new Font("SansSerif", Font.BOLD, 13));
         lblMessage.setForeground(Color.WHITE);
+        lblMessage.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // İlerleme Çubuğu
-        progressBar = new JProgressBar(0, 100);
-        progressBar.setBorderPainted(false);
-        progressBar.setBackground(new Color(230, 230, 230));
-        progressBar.setForeground(new Color(0, 120, 215));
+        bottomPanel.add(lblMessage);
+        backgroundPanel.add(bottomPanel, BorderLayout.SOUTH);
 
-        // 3. BİLEŞENLERİ EKLİYORUZ
-        backgroundLabel.add(lblTitle, "align center, wrap");
-        backgroundLabel.add(lblMessage, "wrap");
-        backgroundLabel.add(progressBar, "h 6!");
+        // JWindow arka planını şeffaf yap
+        setBackground(new Color(0, 0, 0, 0));
+        getContentPane().setBackground(new Color(0, 0, 0, 0));
+        ((JPanel) getContentPane()).setOpaque(false);
 
-        getContentPane().add(backgroundLabel);
+        getContentPane().add(backgroundPanel);
 
-        pack();
-        setSize(640, 360);
+        setSize(windowWidth, windowHeight);
         setLocationRelativeTo(null);
+
+        // Pencere şeklini yuvarlak köşeli yap
+        setShape(new RoundRectangle2D.Double(0, 0, windowWidth, windowHeight, arcSize, arcSize));
     }
 
     public void updateProgress(int percent, String message) {
-        SwingUtilities.invokeLater(() -> {
-            progressBar.setValue(percent);
-            lblMessage.setText(message);
-        });
+        SwingUtilities.invokeLater(() -> lblMessage.setText(message));
     }
 }

@@ -37,9 +37,9 @@ public class TypeImportHandler extends TransferHandler {
 
             JList.DropLocation dl = (JList.DropLocation) support.getDropLocation();
             int index = dl.getIndex();
-            DeviceType targetType = panel.type_list.getModel().getElementAt(index);
+            DeviceType targetType = panel.typeList.getModel().getElementAt(index);
 
-            DeviceType sourceType = panel.type_list.getSelectedValue();
+            DeviceType sourceType = panel.typeList.getSelectedValue();
 
             if (sourceType != null && targetType != null && !sourceType.equals(targetType)) {
                 deviceDictService.unlinkBrandFromType(sourceType.getId(), brand.getId()).thenAccept(Void -> {

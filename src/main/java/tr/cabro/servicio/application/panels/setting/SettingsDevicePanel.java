@@ -3,9 +3,11 @@ package tr.cabro.servicio.application.panels.setting;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import raven.modal.utils.SystemForm;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.handlers.BrandExportHandler;
 import tr.cabro.servicio.application.handlers.TypeImportHandler;
+import tr.cabro.servicio.application.renderer.list.BrandListCellRenderer;
+import tr.cabro.servicio.application.renderer.list.TypeListCellRenderer;
 import tr.cabro.servicio.application.util.Ikon;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;
 import tr.cabro.servicio.model.dictionary.DeviceType;
@@ -35,35 +37,32 @@ public class SettingsDevicePanel extends JPanel {
         deviceDictService.getAllTypes()
                 .thenAccept(deviceTypes -> deviceTypes.forEach(typeModel::addElement));
 
-        type_field.addActionListener(e -> onTypeAdd());
+        typeField.addActionListener(e -> onTypeAdd());
 
-        type_add_button.addActionListener(e -> onTypeAdd());
-        type_del_button.addActionListener(e -> onTypeDel());
+        typeAddButton.addActionListener(e -> onTypeAdd());
 
         // Tür seçildiğinde markaları yükle
-        type_list.addListSelectionListener(e -> {
+        typeList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
-                DeviceType selectedType = type_list.getSelectedValue();
+                DeviceType selectedType = typeList.getSelectedValue();
                 loadBrands(selectedType);
             }
         });
 
-        brand_field.addActionListener(e -> onBrandAdd());
-
-        brand_add_button.addActionListener(e -> onBrandAdd());
-        brand_del_button.addActionListener(e -> onBrandDel());
+        brandField.addActionListener(e -> onBrandAdd());
+        brandAddButton.addActionListener(e -> onBrandAdd());
 
         // --- Drag & Drop ayarları ---
-        brand_list.setDragEnabled(true);
-        brand_list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        brand_list.setTransferHandler(new BrandExportHandler());
+        brandList.setDragEnabled(true);
+        brandList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        brandList.setTransferHandler(new BrandExportHandler());
 
-        type_list.setDropMode(DropMode.ON);
-        type_list.setTransferHandler(new TypeImportHandler(this));
+        typeList.setDropMode(DropMode.ON);
+        typeList.setTransferHandler(new TypeImportHandler(this));
     }
 
     private void onTypeAdd() {
-        String typeName = type_field.getText().trim();
+        String typeName = typeField.getText().trim();
 
         deviceDictService.addType(typeName).thenAccept(id -> {
             SwingUtilities.invokeLater(() -> {
@@ -77,11 +76,10 @@ public class SettingsDevicePanel extends JPanel {
             return null;
         });
 
-        type_field.setText("");
+        typeField.setText("");
     }
 
-    private void onTypeDel() {
-        DeviceType selectedType = type_list.getSelectedValue();
+    private void onTypeDel(DeviceType selectedType) {
 
         if (selectedType == null) {
             Toast.show(this, Toast.Type.WARNING, "Silinecek tür seçilmedi.");
@@ -98,15 +96,15 @@ public class SettingsDevicePanel extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 Toast.show(this, Toast.Type.WARNING, ex.getMessage());
             });
-
+            Servicio.getLogger().error(ex.getMessage(), ex);
             return null;
         });
 
     }
 
     private void onBrandAdd() {
-        DeviceType selectedType = type_list.getSelectedValue();
-        String brandName = brand_field.getText().trim();
+        DeviceType selectedType = typeList.getSelectedValue();
+        String brandName = brandField.getText().trim();
         if (selectedType != null) {
             deviceDictService.addBrand(brandName).thenAccept(id -> {
                 SwingUtilities.invokeLater(() -> {
@@ -122,12 +120,11 @@ public class SettingsDevicePanel extends JPanel {
             });
         }
 
-        brand_field.setText("");
+        brandField.setText("");
     }
 
-    private void onBrandDel() {
-        DeviceType selectedType = type_list.getSelectedValue();
-        DeviceBrand selectedBrand = brand_list.getSelectedValue();
+    private void onBrandDel(DeviceBrand selectedBrand) {
+        DeviceType selectedType = typeList.getSelectedValue();
         if (selectedType != null && selectedBrand != null) {
             deviceDictService.unlinkBrandFromType(selectedType.getId(), selectedBrand.getId()).thenAccept(v -> {
                 SwingUtilities.invokeLater(() -> {
@@ -163,56 +160,53 @@ public class SettingsDevicePanel extends JPanel {
 
 
         // --- Cihaz Türleri Paneli ---
-        JPanel deviceTypePanel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[][][][grow][]"));
+        JPanel deviceTypePanel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[]1[]15[][grow][]"));
         JLabel title = new JLabel("Cihaz Türleri");
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold $h1.font");
 
         JLabel subtitle = new JLabel("Arıza kaydında seçilecek ana kategoriler.");
         subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
 
-        type_field = new JTextField();
-        type_field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni Tür...");
-        type_add_button = new JButton(new Ikon("icons/plus.svg", type_field.getFont().getSize()));
-        type_list = new JList<>();
-        type_list.setModel(typeModel);
-        type_del_button = new JButton("Seçili Cihaz Türünü Sil");
+        typeField = new JTextField();
+        typeField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni Tür...");
+        typeAddButton = new JButton(new Ikon("icons/plus.svg", typeField.getFont().getSize()));
+        typeList = new JList<>();
+        typeList.setCellRenderer(new TypeListCellRenderer(typeList, this::onTypeDel));
+        typeList.setModel(typeModel);
 
         deviceTypePanel.add(title, "cell 0 0");
         deviceTypePanel.add(subtitle, "cell 0 1, wrap");
 
-        deviceTypePanel.add(type_field, "growx");
-        deviceTypePanel.add(type_add_button, "wrap");
-        deviceTypePanel.add(new JScrollPane(type_list), "span 2, grow");
-        deviceTypePanel.add(type_del_button, "span 2, growx");
+        deviceTypePanel.add(typeField, "growx");
+        deviceTypePanel.add(typeAddButton, "wrap");
+        deviceTypePanel.add(new JScrollPane(typeList), "span 2, grow");
 
         // --- Markalar Paneli ---
         JPanel brand_panel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[][][grow][]"));
         brand_panel.setBorder(BorderFactory.createTitledBorder("Markalar"));
 
-        brand_field = new JTextField();
-        brand_add_button = new JButton("Ekle");
-        brand_list = new JList<>();
-        brand_list.setModel(brandModel);
-        brand_del_button = new JButton("Seçili Markayı Sil");
+        brandField = new JTextField();
+        brandAddButton = new JButton("Ekle");
+        brandList = new JList<>();
+        brandList.setCellRenderer(new BrandListCellRenderer(brandList, this::onBrandDel));
+        brandList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
+        brandList.setModel(brandModel);
 
         brand_panel.add(new JLabel("Yeni Marka:"), "span 2");
-        brand_panel.add(brand_field, "growx");
-        brand_panel.add(brand_add_button, "wrap");
-        brand_panel.add(new JScrollPane(brand_list), "span 2, grow");
-        brand_panel.add(brand_del_button, "span 2, growx");
+        brand_panel.add(brandField, "growx");
+        brand_panel.add(brandAddButton, "wrap");
+        brand_panel.add(new JScrollPane(brandList), "span 2, grow");
 
         // Ana panele ekle
         add(deviceTypePanel, "grow, sg panels");
         add(brand_panel, "grow, sg panels");
     }
 
-    JTextField type_field;
-    JButton type_add_button;
-    public JList<DeviceType> type_list;
-    JButton type_del_button;
-    JTextField brand_field;
-    JButton brand_add_button;
-    JList<DeviceBrand> brand_list;
-    JButton brand_del_button;
+    JTextField typeField;
+    JButton typeAddButton;
+    public JList<DeviceType> typeList;
+    JTextField brandField;
+    JButton brandAddButton;
+    JList<DeviceBrand> brandList;
 
 }

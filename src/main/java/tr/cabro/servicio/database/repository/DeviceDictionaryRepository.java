@@ -16,7 +16,13 @@ import java.util.Optional;
 public interface DeviceDictionaryRepository {
 
     // --- TÜRLER (Types) ---
-    @SqlQuery("SELECT * FROM device_types ORDER BY name ASC")
+
+    // brandCount'u da tek sorguda çeker — ayrı sorgu gerekmez
+    @SqlQuery("SELECT dt.*, COUNT(dtb.brand_id) AS brand_count " +
+            "FROM device_types dt " +
+            "LEFT JOIN device_type_brand dtb ON dt.id = dtb.type_id " +
+            "GROUP BY dt.id " +
+            "ORDER BY dt.name ASC")
     List<DeviceType> findAllTypes();
 
     @SqlUpdate("INSERT INTO device_types (name) VALUES (:name)")
@@ -30,7 +36,7 @@ public interface DeviceDictionaryRepository {
     Optional<DeviceType> findTypeByName(@Bind("name") String name);
 
     // --- MARKALAR (Brands) ---
-    // Sadece belirli bir Türe (Örn: Telefon) ait markaları getirir (Çoka-Çok JOIN ile)
+
     @SqlQuery("SELECT db.* FROM device_brands db " +
             "JOIN device_type_brand dtb ON db.id = dtb.brand_id " +
             "WHERE dtb.type_id = :typeId ORDER BY db.name ASC")
@@ -47,6 +53,7 @@ public interface DeviceDictionaryRepository {
     Optional<DeviceBrand> findBrandByName(@Bind("name") String name);
 
     // --- ÇOKA-ÇOK İLİŞKİ YÖNETİMİ ---
+
     @SqlUpdate("INSERT OR IGNORE INTO device_type_brand (type_id, brand_id) VALUES (:typeId, :brandId)")
     void linkTypeAndBrand(@Bind("typeId") Long typeId, @Bind("brandId") Long brandId);
 

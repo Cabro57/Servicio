@@ -308,13 +308,14 @@ public class FormDashboard extends Form {
     }
 
     private void createOtherTable() {
-        JPanel panel = new JPanel(new MigLayout("fillx,gap 14", "[fill, 50%][fill, 50%]", "[300]"));
+        JPanel panel = new JPanel(new MigLayout("", "[fill]", "[fill]"));
         panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
 
         activeServiceTable = new ActiveServiceTable();
         pendingPaymentsTable = new PendingPaymentsTable();
-        panel.add(activeServiceTable, "sgx 1");
-        panel.add(pendingPaymentsTable, "sgx 1");
+        panel.add(activeServiceTable, "sgx 1, width 100%");
+        panel.add(new JSeparator(JSeparator.VERTICAL), "width 3!");
+        panel.add(pendingPaymentsTable, "sgx 1, width 100%");
         panelLayout.add(panel);
     }
 

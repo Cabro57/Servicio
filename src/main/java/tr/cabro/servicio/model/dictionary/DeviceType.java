@@ -11,6 +11,7 @@ import lombok.Setter;
 public class DeviceType {
     private Long id;
     private String name;
+    private Integer brandCount;
 
     @Override
     public String toString() { return name; }

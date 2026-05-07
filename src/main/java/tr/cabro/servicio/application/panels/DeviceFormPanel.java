@@ -46,6 +46,8 @@ public class DeviceFormPanel extends JPanel {
      */
     private Long currentDeviceId;
 
+    private Device pendingDevice;
+
     /**
      * Populasyon sırasında (setDevice çağrıldığında) device_type_combo'nun
      * ActionListener'ının markaları boşaltmasını engelleyen koruyucu bayrak.
@@ -122,6 +124,12 @@ public class DeviceFormPanel extends JPanel {
         dictionaryManager.getAllTypes().thenAccept(types -> SwingUtilities.invokeLater(() -> {
             deviceTypeModel.removeAllElements();
             types.forEach(deviceTypeModel::addElement);
+
+            // Türler yüklendi — bekleyen device varsa şimdi uygula
+            if (pendingDevice != null) {
+                applyDevice(pendingDevice);
+                pendingDevice = null;
+            }
         })).exceptionally(ex -> {
             Servicio.getLogger().error("Cihaz türleri yüklenemedi", ex);
             return null;
@@ -142,7 +150,10 @@ public class DeviceFormPanel extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 brands.forEach(brandModel::addElement);
                 if (brandToSelect != null) {
-                    brandCombo.setSelectedItem(brandToSelect);
+                    brands.stream()
+                            .filter(b -> b.getId().equals(brandToSelect.getId()))
+                            .findFirst()
+                            .ifPresent(brandCombo::setSelectedItem);
                 }
             });
         }).exceptionally(ex -> {
@@ -188,11 +199,18 @@ public class DeviceFormPanel extends JPanel {
      * Null geçilirse form sıfırlanır (yeni kayıt modu).
      */
     public void setDevice(Device device) {
-        if (device == null) {
-            clear();
+        if (device == null) { clear(); return; }
+
+        // Türler henüz yüklenmediyse beklet
+        if (deviceTypeModel.getSize() == 0) {
+            pendingDevice = device;
             return;
         }
+        applyDevice(device);
+    }
 
+
+    private void applyDevice(Device device) {
         isPopulating = true;
         try {
             currentDeviceId = device.getId();
@@ -201,11 +219,20 @@ public class DeviceFormPanel extends JPanel {
             passwordField.setText(nullToEmpty(device.getPassword()));
             accessoryField.setText(nullToEmpty(device.getAccessory()));
 
-            DeviceType type = device.getDeviceType();
-            deviceTypeCombo.setSelectedItem(type);
+            // ID bazlı tür eşleştir
+            DeviceType matchedType = null;
+            if (device.getDeviceType() != null) {
+                for (int i = 0; i < deviceTypeModel.getSize(); i++) {
+                    DeviceType t = deviceTypeModel.getElementAt(i);
+                    if (t.getId().equals(device.getDeviceType().getId())) {
+                        matchedType = t;
+                        break;
+                    }
+                }
+            }
+            deviceTypeCombo.setSelectedItem(matchedType);
+            loadBrands(matchedType, device.getBrand());
 
-            // Markaları yükle; yükleme tamamlanınca ilgili markayı seç.
-            loadBrands(type, device.getBrand());
         } finally {
             isPopulating = false;
         }
