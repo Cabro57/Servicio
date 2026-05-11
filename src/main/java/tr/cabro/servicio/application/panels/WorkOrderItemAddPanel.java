@@ -33,6 +33,7 @@ import java.util.regex.PatternSyntaxException;
 public class WorkOrderItemAddPanel extends JPanel {
 
     public static final int SELECTED_ITEM = 100;
+    public static final int CREAT_ITEM = 101;
 
     private final WorkOrder workOrder;
 
@@ -274,7 +275,7 @@ public class WorkOrderItemAddPanel extends JPanel {
                 return;
             }
 
-            WorkOrderItem item = new WorkOrderItem();
+            item = new WorkOrderItem();
             item.setServiceId(workOrder.getId());
             item.setItemType(cmbType.getSelectedIndex() == 0 ? ItemType.PART : ItemType.LABOR);
             item.setSourceType(SourceType.MANUAL);
@@ -283,15 +284,10 @@ public class WorkOrderItemAddPanel extends JPanel {
             item.setUnitPrice(BigDecimal.valueOf(saleVal));
             item.setUsedSerialNo(txtSerialNo.getText().trim());
 
-            ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.SUCCESS, "Manuel kalem başarıyla eklendi.");
-                    txtName.setText("");
-                    txtSerialNo.setText("");
-                    txtPurchasePrice.setValue(BigDecimal.ZERO);
-                    txtSalePrice.setValue(BigDecimal.ZERO);
-                });
-            });
+            ModalBorderAction borderAction = ModalBorderAction.getModalBorderAction(this);
+            if (borderAction != null) {
+                borderAction.doAction(CREAT_ITEM);
+            }
         });
 
         panel.add(btnSave, "span 2, align right, gaptop 15");

@@ -16,7 +16,7 @@ import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.editors.AddButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
-import tr.cabro.servicio.application.panels.ServiceItemEditPanel;
+import tr.cabro.servicio.application.panels.WorkOrderItemEditPanel;
 import tr.cabro.servicio.application.panels.WorkOrderItemAddPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.AddButtonRenderer;
@@ -27,6 +27,7 @@ import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ItemType;
 import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
+import tr.cabro.servicio.model.enums.SourceType;
 import tr.cabro.servicio.service.*;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
@@ -391,7 +392,33 @@ public class FormWorkOrder extends Form {
         };
         ModalDialog.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", null, (controller, action) -> {
 
-            if (action == WorkOrderItemAddPanel.SELECTED_ITEM) {
+            if (action == WorkOrderItemAddPanel.CREAT_ITEM) {
+                WorkOrderItem newItem = addPanel.getItem();
+                if (newItem == null) {
+                    Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bilgiler girin.");
+                    controller.consume();
+                    return;
+                }
+
+                workOrderService.addItem(newItem).thenAccept(saved -> {
+                    workOrder.getItems().add(saved);
+
+                    SwingUtilities.invokeLater(() -> {
+                        populateItemsTable();
+
+                        updatePaymentSummary();
+                        Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+                    });
+                }).exceptionally(ex -> {
+                    SwingUtilities.invokeLater(() -> {
+                        Toast.show(this, Toast.Type.ERROR, ex.getMessage());
+                    });
+                    Servicio.getLogger().error("ERROR", ex);
+                    return null;
+                });
+
+            }
+            else if (action == WorkOrderItemAddPanel.SELECTED_ITEM) {
                 WorkOrderItem newItem = addPanel.getItem();
                 if (newItem == null) {
                     Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bilgiler girin.");
@@ -401,7 +428,7 @@ public class FormWorkOrder extends Form {
 
                 controller.consume();
 
-                ServiceItemEditPanel editPanel = new ServiceItemEditPanel(newItem);
+                WorkOrderItemEditPanel editPanel = new WorkOrderItemEditPanel(newItem);
                 ModalDialog.pushModal(new SimpleModalBorder(editPanel, "Kalem Ekle", options, (controller1, action1) -> {
                     if (action1 != SimpleModalBorder.YES_OPTION) return;
 
@@ -431,7 +458,7 @@ public class FormWorkOrder extends Form {
 
     private void openItemEditModal(WorkOrderItem item) {
         if (item == null) return;
-        ServiceItemEditPanel editPanel = new ServiceItemEditPanel(item);
+        WorkOrderItemEditPanel editPanel = new WorkOrderItemEditPanel(item);
         SimpleModalBorder.Option[] options = {
                 new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
                 new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
@@ -476,11 +503,14 @@ public class FormWorkOrder extends Form {
         JLabel messageLabel = new JLabel("\"" + item.getItemName() + "\" kalemi silinecek. Emin misiniz?");
         JCheckBox stockCheckBox = new JCheckBox("Silinen parça stoğa eklensin mi?");
 
-        stockCheckBox.setSelected(true);
+        stockCheckBox.setSelected(false);
 
         // Bileşenleri panele ekliyoruz
         panel.add(messageLabel, BorderLayout.CENTER);
-        panel.add(stockCheckBox, BorderLayout.SOUTH);
+        if (item.getSourceType() == SourceType.PRESET) {
+            stockCheckBox.setSelected(true);
+            panel.add(stockCheckBox, BorderLayout.SOUTH);
+        }
 
         int confirm = JOptionPane.showConfirmDialog(
                 this,

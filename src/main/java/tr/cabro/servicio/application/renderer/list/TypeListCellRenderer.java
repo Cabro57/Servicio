@@ -109,7 +109,7 @@ public class TypeListCellRenderer extends JPanel implements ListCellRenderer<Dev
         boolean hovered = mouse != null
                 && list.getCellBounds(index, index) != null
                 && list.getCellBounds(index, index).contains(mouse);
-        deleteBtn.setVisible(selected || hovered);
+        //deleteBtn.setVisible(selected || hovered);
 
         if (selected) {
             setBackground(list.getSelectionBackground());

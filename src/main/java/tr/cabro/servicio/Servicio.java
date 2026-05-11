@@ -40,10 +40,6 @@ public final class Servicio {
 
     // CONSTRUCTOR (Yapıcı Metot): Artık Splash Screen nesnesini parametre olarak alıyor
     public Servicio(File baseFolder, AppSplashScreen splash) {
-        if (!LauncherAccessContext.isAllowed()) {
-            throw new SecurityException("Erişim reddedildi: Sadece Launcher yetkilidir.");
-        }
-
         instance = this;
 
         splash.updateProgress(10, "Klasör yapıları kontrol ediliyor...");
@@ -190,7 +186,6 @@ public final class Servicio {
                     "Sistem Uyarısı", JOptionPane.WARNING_MESSAGE);
             System.exit(0);
         }
-        LauncherAccessContext.allow();
 
         // 2. Açılış Ekranını (Splash Screen) hemen göster
         AppSplashScreen splash = new AppSplashScreen();

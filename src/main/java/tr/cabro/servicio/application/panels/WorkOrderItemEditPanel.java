@@ -8,7 +8,7 @@ import tr.cabro.servicio.model.enums.ItemType;
 import javax.swing.*;
 import java.math.BigDecimal;
 
-public class ServiceItemEditPanel extends JPanel {
+public class WorkOrderItemEditPanel extends JPanel {
 
     private final WorkOrderItem item;
 
@@ -17,7 +17,7 @@ public class ServiceItemEditPanel extends JPanel {
     private JFormattedTextField txtSalePrice;
     private JTextField txtSerialNo;
 
-    public ServiceItemEditPanel(WorkOrderItem item) {
+    public WorkOrderItemEditPanel(WorkOrderItem item) {
         this.item = item;
         init();
     }
