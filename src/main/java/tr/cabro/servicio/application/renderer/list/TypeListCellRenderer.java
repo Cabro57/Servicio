@@ -31,7 +31,7 @@ public class TypeListCellRenderer extends JPanel implements ListCellRenderer<Dev
         iconLabel.setPreferredSize(new Dimension(20, 20));
         iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        nameLabel.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        nameLabel.putClientProperty(FlatClientProperties.STYLE, "font: $semibold.font");
 
         badgeLabel.setFont(badgeLabel.getFont().deriveFont(Font.BOLD, 11f));
         badgeLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -109,7 +109,12 @@ public class TypeListCellRenderer extends JPanel implements ListCellRenderer<Dev
         boolean hovered = mouse != null
                 && list.getCellBounds(index, index) != null
                 && list.getCellBounds(index, index).contains(mouse);
-        //deleteBtn.setVisible(selected || hovered);
+
+        if (hovered) {
+            putClientProperty(FlatClientProperties.STYLE_CLASS, "hovered");
+            repaint();
+        }
+
 
         if (selected) {
             setBackground(list.getSelectionBackground());

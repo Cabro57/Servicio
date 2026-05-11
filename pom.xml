@@ -14,7 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Manifest URL'si — değiştirin -->
-        <update.manifest.url>https://raw.githubusercontent.com/Cabro57/Servicio/main/update-manifest.json</update.manifest.url>
+        <update.manifest.url>https://raw.githubusercontent.com/Cabro57/Servicio/refs/heads/master/update-manifest.json</update.manifest.url>
 
         <!-- GitHub Release base URL — değiştirin -->
         <update.download.base>https://github.com/Cabro57/Servicio/releases/download/v${project.version}</update.download.base>

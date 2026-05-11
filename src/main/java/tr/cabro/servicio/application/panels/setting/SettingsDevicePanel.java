@@ -15,6 +15,7 @@ import tr.cabro.servicio.service.DeviceDictionaryManager;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
+import java.awt.*;
 
 public class SettingsDevicePanel extends JPanel {
 
@@ -146,6 +147,7 @@ public class SettingsDevicePanel extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 brandModel.clear();
                 deviceBrands.forEach(brandModel::addElement);
+                brandTitle.setText(deviceType.getName() + "Markaları");
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
@@ -156,21 +158,30 @@ public class SettingsDevicePanel extends JPanel {
     }
 
     private void initComponent() {
-        setLayout(new MigLayout("insets 5, gap 10", "[grow][grow]", "[fill, grow]"));
+        setLayout(new MigLayout("insets 5, gap 10", "[][grow]", "[fill, grow]"));
 
 
-        // --- Cihaz Türleri Paneli ---
+        // Ana panele ekle
+        add(getDeviceTypePanel(), "");
+        add(getBrandPanel(), "grow");
+    }
+
+    private JPanel getDeviceTypePanel() {
         JPanel deviceTypePanel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[]1[]15[][grow][]"));
+        deviceTypePanel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
         JLabel title = new JLabel("Cihaz Türleri");
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold $h1.font");
+        title.putClientProperty(FlatClientProperties.STYLE, "font: $h2.font");
 
         JLabel subtitle = new JLabel("Arıza kaydında seçilecek ana kategoriler.");
         subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
 
         typeField = new JTextField();
         typeField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni Tür...");
+
         typeAddButton = new JButton(new Ikon("icons/plus.svg", typeField.getFont().getSize()));
+
         typeList = new JList<>();
+        typeList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
         typeList.setCellRenderer(new TypeListCellRenderer(typeList, this::onTypeDel));
         typeList.setModel(typeModel);
 
@@ -179,29 +190,44 @@ public class SettingsDevicePanel extends JPanel {
 
         deviceTypePanel.add(typeField, "growx");
         deviceTypePanel.add(typeAddButton, "wrap");
-        deviceTypePanel.add(new JScrollPane(typeList), "span 2, grow");
+        deviceTypePanel.add(typeList, "span 2, grow");
 
-        // --- Markalar Paneli ---
-        JPanel brand_panel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[][][grow][]"));
-        brand_panel.setBorder(BorderFactory.createTitledBorder("Markalar"));
+        return deviceTypePanel;
+    }
+
+    private JPanel getBrandPanel() {
+        JPanel brandPanel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[]1[]1[]15[][grow][]"));
+        brandPanel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+        brandTitle = new JLabel("");
+        brandTitle.putClientProperty(FlatClientProperties.STYLE, "font: $h2.font");
+
+        JLabel subtitle = new JLabel("Arıza kaydında seçilecek ana kategoriler.");
+        subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
 
         brandField = new JTextField();
-        brandAddButton = new JButton("Ekle");
+        brandField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni Marka ekle...");
+
+        brandAddButton = new JButton(new Ikon("icons/plus.svg", typeField.getFont().getSize()));
+
         brandList = new JList<>();
+        brandList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
         brandList.setCellRenderer(new BrandListCellRenderer(brandList, this::onBrandDel));
         brandList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
         brandList.setModel(brandModel);
 
-        brand_panel.add(new JLabel("Yeni Marka:"), "span 2");
-        brand_panel.add(brandField, "growx");
-        brand_panel.add(brandAddButton, "wrap");
-        brand_panel.add(new JScrollPane(brandList), "span 2, grow");
+        brandPanel.add(brandTitle, "cell 0 0");
+        brandPanel.add(subtitle, "cell 0 1, wrap");
 
-        // Ana panele ekle
-        add(deviceTypePanel, "grow, sg panels");
-        add(brand_panel, "grow, sg panels");
+        brandPanel.add(new JSeparator(JSeparator.VERTICAL), "growx, wrap");
+
+        brandPanel.add(brandField, "growx");
+        brandPanel.add(brandAddButton, "wrap");
+        brandPanel.add(brandList, "span 2, grow");
+
+        return brandPanel;
     }
 
+    private JLabel brandTitle;
     JTextField typeField;
     JButton typeAddButton;
     public JList<DeviceType> typeList;

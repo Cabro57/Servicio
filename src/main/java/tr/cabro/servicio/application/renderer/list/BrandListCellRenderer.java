@@ -25,14 +25,15 @@ public class BrandListCellRenderer extends JPanel implements ListCellRenderer<De
 
         setLayout(new BorderLayout(8, 0));
         setBorder(new EmptyBorder(4, 10, 4, 10));
+        putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
         setOpaque(true);
 
-        dragHandle.setFont(dragHandle.getFont().deriveFont(16f));
+        dragHandle.putClientProperty(FlatClientProperties.STYLE, "font: $semibold.font");
         dragHandle.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
         dragHandle.setPreferredSize(new Dimension(20, 20));
         dragHandle.setHorizontalAlignment(SwingConstants.CENTER);
 
-        nameLabel.setFont(nameLabel.getFont().deriveFont(13f));
+        nameLabel.putClientProperty(FlatClientProperties.STYLE, "font: $semibold.font");
 
         deleteBtn = new JButton();
         deleteBtn.setIcon(new Ikon("icons/trash-2.svg", deleteBtn.getFont().getSize()));

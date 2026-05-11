@@ -67,12 +67,7 @@ public class ManifestGenerator {
 
         // libs/ klasöründeki tüm JAR'lar
         if (libsDir.exists() && libsDir.isDirectory()) {
-            File[] libs = libsDir.listFiles(new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                    return name.endsWith(".jar");
-                }
-            });
+            File[] libs = libsDir.listFiles((dir, name) -> name.endsWith(".jar"));
             if (libs != null) {
                 Arrays.sort(libs);  // Kararlı sıralama
                 for (File lib : libs) {
