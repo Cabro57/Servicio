@@ -1,20 +1,18 @@
 package tr.cabro.servicio.updater;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 
 import java.util.List;
 
 /**
- * GitHub (veya kendi sunucunuz) üzerindeki update-manifest.json dosyasının Java modeli.
- *
- * Gson zaten pom.xml'de okaeri-configs-json-gson üzerinden geliyor,
- * ayrıca bağımlılık eklemenize gerek yok.
- *
- * Java 8 uyumlu.
+ * GitHub veya kendi sunucudan indirilen update-manifest.json modelidir.
+
+ * Gson zaten projenizde okaeri-configs-json-gson üzerinden mevcut,
+ * ek bağımlılık gerekmez.
  */
+
 @Getter
 public class UpdateManifest {
 
@@ -33,10 +31,11 @@ public class UpdateManifest {
     @SerializedName("files")
     private List<FileEntry> files;
 
-    // ─── İç Modeller ─────────────────────────────────────────────────────────
+    // ─── Inner: Patch Notu ────────────────────────────────────────────────────
 
     @Getter
     public static class PatchNote {
+
         @SerializedName("version")
         private String version;
 
@@ -48,14 +47,19 @@ public class UpdateManifest {
 
     }
 
+    // ─── Inner: Dosya Kaydı ───────────────────────────────────────────────────
+
     public static class FileEntry {
+
+        /** Görünen ad, örn: "servicio.jar" */
         @SerializedName("name")
         public String name;
 
-        /** Uygulamanın kök dizinine göre göreceli yol: "servicio.jar" veya "libs/gson.jar" */
+        /** Uygulama köküne göre göreceli yol, örn: "libs/flatlaf.jar" */
         @SerializedName("path")
         public String path;
 
+        /** İndirme URL'si (GitHub veya kendi sunucu) */
         @SerializedName("url")
         public String url;
 
@@ -63,33 +67,16 @@ public class UpdateManifest {
         @SerializedName("sha256")
         public String sha256;
 
-        /** Bayt cinsinden dosya boyutu */
+        /** Bayt cinsinden boyut (ilerleme çubuğu için) */
         @SerializedName("size")
         public long size;
-
-        @Override
-        public String toString() {
-            return "FileEntry{name='" + name + "', sha256='" + sha256 + "'}";
-        }
     }
 
-    // ─── Getter'lar ──────────────────────────────────────────────────────────
+    // ─── Getters ──────────────────────────────────────────────────────────────
 
-    // ─── Factory ─────────────────────────────────────────────────────────────
-
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    // ─── Factory ──────────────────────────────────────────────────────────────
 
     public static UpdateManifest fromJson(String json) {
-        return GSON.fromJson(json, UpdateManifest.class);
-    }
-
-    public String toJson() {
-        return GSON.toJson(this);
-    }
-
-    @Override
-    public String toString() {
-        return "UpdateManifest{version='" + version + "', files=" +
-                (files != null ? files.size() : 0) + "}";
+        return new Gson().fromJson(json, UpdateManifest.class);
     }
 }

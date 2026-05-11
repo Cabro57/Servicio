@@ -1,0 +1,226 @@
+{
+  "version": "2.0.0",
+  "releaseDate": "2026-05-11",
+  "minRequiredVersion": "2.0.0",
+  "patchNotes": [
+    {
+      "version": "2.0.0",
+      "date": "2026-05-11",
+      "changes": [
+        "Güncelleme notları buraya eklenecek"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "name": "servicio.jar",
+      "path": "servicio.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/servicio.jar",
+      "sha256": "541dd18a1c146265e8f70476c78665b5d6c5021ff8a9593131dc27eb7937a0d1",
+      "size": 11586017
+    },
+    {
+      "name": "filters-2.0.235.jar",
+      "path": "libs/filters-2.0.235.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/filters-2.0.235.jar",
+      "sha256": "be6a1d54ebb043495e31e25e72b440f69156a5624cdd7e1c55c47e30d4fae308",
+      "size": 340318
+    },
+    {
+      "name": "flatlaf-3.7.1.jar",
+      "path": "libs/flatlaf-3.7.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/flatlaf-3.7.1.jar",
+      "sha256": "11f498f3c89596a782fceaa727c853a665067aeabc09bd682dc53b3ef237d0c7",
+      "size": 1010321
+    },
+    {
+      "name": "flatlaf-extras-3.7.1.jar",
+      "path": "libs/flatlaf-extras-3.7.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/flatlaf-extras-3.7.1.jar",
+      "sha256": "3a1687e7ad23c78418cc0837ed9a0bbfc16b69bd7d3dfec12b4df6d4dac27b2a",
+      "size": 120146
+    },
+    {
+      "name": "flatlaf-fonts-roboto-2.137.jar",
+      "path": "libs/flatlaf-fonts-roboto-2.137.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/flatlaf-fonts-roboto-2.137.jar",
+      "sha256": "f46e549e8b553ca670c1ad2b26631ba76d20fd39efcd66dc79ed883fbcf5843e",
+      "size": 748503
+    },
+    {
+      "name": "flatlaf-intellij-themes-3.7.1.jar",
+      "path": "libs/flatlaf-intellij-themes-3.7.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/flatlaf-intellij-themes-3.7.1.jar",
+      "sha256": "36aa5e9abba46f05b3285ee75ae92016f7566e622c2953bf22645caef55bec7c",
+      "size": 314213
+    },
+    {
+      "name": "flyway-core-7.15.0.jar",
+      "path": "libs/flyway-core-7.15.0.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/flyway-core-7.15.0.jar",
+      "sha256": "5924f275af4e84e7ce16ba1544da7a4e485166fcc84a0406006f2ae3184b5356",
+      "size": 695083
+    },
+    {
+      "name": "geantyref-1.3.14.jar",
+      "path": "libs/geantyref-1.3.14.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/geantyref-1.3.14.jar",
+      "sha256": "62b722d132454503904a5f7b0a47a24f0fc581821ec8d3687df1e0f146c6d61e",
+      "size": 69679
+    },
+    {
+      "name": "gson-2.9.1.jar",
+      "path": "libs/gson-2.9.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/gson-2.9.1.jar",
+      "sha256": "378534e339e6e6d50b1736fb3abb76f1c15d1be3f4c13cec6d536412e23da603",
+      "size": 265030
+    },
+    {
+      "name": "HikariCP-4.0.3.jar",
+      "path": "libs/HikariCP-4.0.3.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/HikariCP-4.0.3.jar",
+      "sha256": "7c024aeff1c1063576d74453513f9de6447d8e624d17f8e27f30a2e97688c6c9",
+      "size": 159222
+    },
+    {
+      "name": "jdbi3-core-3.37.1.jar",
+      "path": "libs/jdbi3-core-3.37.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/jdbi3-core-3.37.1.jar",
+      "sha256": "4a7c70ee1e1cff1a7f0af641cce4205acd7f68beb166771bcc25dace0836c8eb",
+      "size": 938910
+    },
+    {
+      "name": "jdbi3-sqlite-3.37.1.jar",
+      "path": "libs/jdbi3-sqlite-3.37.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/jdbi3-sqlite-3.37.1.jar",
+      "sha256": "01db1e4ed6cd90963588792479ef6557eee0100b46394d092c01187ed57d19aa",
+      "size": 5226
+    },
+    {
+      "name": "jdbi3-sqlobject-3.37.1.jar",
+      "path": "libs/jdbi3-sqlobject-3.37.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/jdbi3-sqlobject-3.37.1.jar",
+      "sha256": "ade3a3d58750773be818e092db120e156020fdff62fe74042128edd4204b2278",
+      "size": 220889
+    },
+    {
+      "name": "jfreechart-1.5.6.jar",
+      "path": "libs/jfreechart-1.5.6.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/jfreechart-1.5.6.jar",
+      "sha256": "be7ae6310ca005ac98eceb74fa514af88cad098c808845786f762ca08a5b4bb3",
+      "size": 1652288
+    },
+    {
+      "name": "jsvg-2.0.0.jar",
+      "path": "libs/jsvg-2.0.0.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/jsvg-2.0.0.jar",
+      "sha256": "81fc9ada579fc3f4924ec35f904c043de13ee8fba280322e638c7092006f1b52",
+      "size": 723652
+    },
+    {
+      "name": "libphonenumber-8.13.27.jar",
+      "path": "libs/libphonenumber-8.13.27.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/libphonenumber-8.13.27.jar",
+      "sha256": "70de2b581e9e6b5da7977aa09b935ddff5a66ad337e77d84e205fd1b015cb52d",
+      "size": 358397
+    },
+    {
+      "name": "logback-classic-1.2.13.jar",
+      "path": "libs/logback-classic-1.2.13.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/logback-classic-1.2.13.jar",
+      "sha256": "937afb220b91d8a394d78befdbf587c71aeed289d582e2a91e72a7d92172371d",
+      "size": 232073
+    },
+    {
+      "name": "logback-core-1.2.13.jar",
+      "path": "libs/logback-core-1.2.13.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/logback-core-1.2.13.jar",
+      "sha256": "07b1586faf220c05821d0f3ed8e2e417e214c83f40641f76e8a90b134c31ff6b",
+      "size": 449638
+    },
+    {
+      "name": "lombok-1.18.38.jar",
+      "path": "libs/lombok-1.18.38.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/lombok-1.18.38.jar",
+      "sha256": "1e1e427c36ff63c44fd30ef292d9e773ea3154460ab6265d3fed7e6f5bc50fb9",
+      "size": 2056090
+    },
+    {
+      "name": "miglayout-core-5.3.jar",
+      "path": "libs/miglayout-core-5.3.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/miglayout-core-5.3.jar",
+      "sha256": "cf3cb12d94b76c2f80c113977d0372d037784002943e566fcdac6b92d076935e",
+      "size": 106949
+    },
+    {
+      "name": "miglayout-swing-5.3.jar",
+      "path": "libs/miglayout-swing-5.3.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/miglayout-swing-5.3.jar",
+      "sha256": "ae384b680242234170de6b939bebf56effa40dd483477e13cd898104ba1e1de1",
+      "size": 22576
+    },
+    {
+      "name": "modal-dialog-2.6.1.jar",
+      "path": "libs/modal-dialog-2.6.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/modal-dialog-2.6.1.jar",
+      "sha256": "7e9fd52b9aef9366be83c06897892efa6eee27975d65b85fdb34497f6978e905",
+      "size": 295645
+    },
+    {
+      "name": "okaeri-configs-core-5.0.9.jar",
+      "path": "libs/okaeri-configs-core-5.0.9.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/okaeri-configs-core-5.0.9.jar",
+      "sha256": "169078bfcda2c0023a045927b2009a65a8f0cc04b351153f8b717f7febad7478",
+      "size": 128462
+    },
+    {
+      "name": "okaeri-configs-json-gson-5.0.9.jar",
+      "path": "libs/okaeri-configs-json-gson-5.0.9.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/okaeri-configs-json-gson-5.0.9.jar",
+      "sha256": "8868a2082a503cea8af8862e83ceec5f420e03cba20aebed8e8ded8c3b0de858",
+      "size": 4428
+    },
+    {
+      "name": "slf4j-api-1.7.36.jar",
+      "path": "libs/slf4j-api-1.7.36.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/slf4j-api-1.7.36.jar",
+      "sha256": "d3ef575e3e4979678dc01bf1dcce51021493b4d11fb7f1be8ad982877c16a1c0",
+      "size": 41125
+    },
+    {
+      "name": "sqlite-jdbc-3.51.3.0.jar",
+      "path": "libs/sqlite-jdbc-3.51.3.0.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/sqlite-jdbc-3.51.3.0.jar",
+      "sha256": "3684ac5e9bd893cbe68eb0ac1708343f66be829b1d2b5ab317e783d05acd5aef",
+      "size": 14433926
+    },
+    {
+      "name": "swing-datetime-picker-2.1.3.jar",
+      "path": "libs/swing-datetime-picker-2.1.3.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/swing-datetime-picker-2.1.3.jar",
+      "sha256": "a1f59d5cb578327194486676152115741f1801958dd45fcd390666434d941cad",
+      "size": 100969
+    },
+    {
+      "name": "swing-pack-1.0.0.jar",
+      "path": "libs/swing-pack-1.0.0.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/swing-pack-1.0.0.jar",
+      "sha256": "db22b9dd6ee50468ef77a50b83f1d58cc85886c14dc9ca1df1709725980639cb",
+      "size": 59832
+    },
+    {
+      "name": "swing-worker-1.1.jar",
+      "path": "libs/swing-worker-1.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/swing-worker-1.1.jar",
+      "sha256": "8367bc401d38d96ec987ef72502a310599552210dd60cb9e494b58a7c23be1ca",
+      "size": 12591
+    },
+    {
+      "name": "swingx-1.6.1.jar",
+      "path": "libs/swingx-1.6.1.jar",
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/libs/swingx-1.6.1.jar",
+      "sha256": "ad9e3577517e8b4d08ca58f637338ebed79ef8bd955b734600d95c8ad182840f",
+      "size": 1389926
+    }
+  ]
+}

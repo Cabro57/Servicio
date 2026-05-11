@@ -17,6 +17,7 @@ import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.updater.UpdateChecker;
 import tr.cabro.servicio.util.AppLock;
 
 import javax.swing.*;
@@ -34,6 +35,7 @@ public final class Servicio {
     @Getter private MainUI frame;
     @Getter private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
     @Getter private static InactivityMonitor inactivityMonitor;
+    @Getter private UpdateChecker updateChecker;
 
     private boolean running = false;
     private String appVersion;
@@ -63,7 +65,6 @@ public final class Servicio {
             public void actionPerformed(ActionEvent e) {
                 FormManager.lock();
                 ModalDialog.closeAllModalImmediately();
-//                inactivityMonitor.start();
             }
         };
 
@@ -89,6 +90,8 @@ public final class Servicio {
         EventQueue.invokeLater(() -> {
             setupUI();
             splash.updateProgress(100, "Tamamlandı!");
+
+            updateChecker = UpdateChecker.createAndStart(frame);
 
             // Ana ekranı aç ve Splash'i yok et
             launchMainUI();
@@ -148,6 +151,9 @@ public final class Servicio {
 
             // 3. Arka plan işlemlerini durdur
             if (inactivityMonitor != null) inactivityMonitor.stop();
+
+            if (updateChecker != null) updateChecker.stop();
+
             BackupScheduler.stop();
 
             // 4. Kapanış yedeği al

@@ -12,6 +12,13 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Manifest URL'si — değiştirin -->
+        <update.manifest.url>https://raw.githubusercontent.com/Cabro57/Servicio/main/update-manifest.json</update.manifest.url>
+
+        <!-- GitHub Release base URL — değiştirin -->
+        <update.download.base>https://github.com/Cabro57/Servicio/releases/download/v${project.version}</update.download.base>
+
     </properties>
 
     <build>
@@ -23,22 +30,7 @@
             </resource>
         </resources>
         <plugins>
-<!--            <plugin>-->
-<!--                <groupId>org.apache.maven.plugins</groupId>-->
-<!--                <artifactId>maven-compiler-plugin</artifactId>-->
-<!--                <version>3.13.0</version>-->
-<!--                <configuration>-->
-<!--                    <source>8</source>-->
-<!--                    <target>8</target>-->
-<!--                    <annotationProcessorPaths>-->
-<!--                        <path>-->
-<!--                            <groupId>org.mapstruct</groupId>-->
-<!--                            <artifactId>mapstruct-processor</artifactId>-->
-<!--                            <version>1.6.3</version>-->
-<!--                        </path>-->
-<!--                    </annotationProcessorPaths>-->
-<!--                </configuration>-->
-<!--            </plugin>-->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -72,6 +64,51 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- SHA-256 hesapla ve update-manifest.json üret -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-update-manifest</id>
+                        <!-- package fazından sonra, jar ve libs/ hazır olduktan sonra çalışır -->
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!--
+                                  SHA-256 hesaplayıcı küçük Java betiği.
+                                  Harici bağımlılık yok; sadece JDK kullanır.
+                                  Çıktı: target/update-manifest.json
+                                -->
+                                <java classname="tr.cabro.servicio.build.ManifestGenerator"
+                                      fork="true"
+                                      failonerror="true">
+
+                                    <!-- ManifestGenerator.java'yı classpath'e ekle -->
+                                    <classpath>
+                                        <pathelement location="${project.build.outputDirectory}"/>
+                                    </classpath>
+
+                                    <!-- Argümanlar -->
+                                    <arg value="${project.version}"/>
+                                    <arg value="${update.download.base}"/>
+                                    <arg value="${project.build.directory}/${project.build.finalName}.jar"/>
+                                    <arg value="${project.build.directory}/libs"/>
+                                    <arg value="${project.build.directory}/../update-manifest.json"/>
+                                </java>
+
+                                <echo message="update-manifest.json hazır: ${project.build.directory}/update-manifest.json"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 
@@ -83,12 +120,6 @@
     </repositories>
 
     <dependencies>
-
-<!--        <dependency>-->
-<!--            <groupId>org.mapstruct</groupId>-->
-<!--            <artifactId>mapstruct</artifactId>-->
-<!--            <version>1.6.3</version>-->
-<!--        </dependency>-->
 
         <dependency>
             <groupId>org.jdbi</groupId>
