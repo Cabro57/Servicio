@@ -44,7 +44,12 @@ public final class Servicio {
     public Servicio(File baseFolder, AppSplashScreen splash) {
         instance = this;
 
-        splash.updateProgress(10, "Klasör yapıları kontrol ediliyor...");
+        splash.updateProgress(5, "Güncelleme kontrol ediliyor...");
+        updateChecker = new UpdateChecker();
+        updateChecker.checkOnSplash(splash);
+
+
+        splash.updateProgress(15, "Klasör yapıları kontrol ediliyor...");
         this.dataFolder = new File(baseFolder, ".servicio");
         if (!this.dataFolder.exists() && this.dataFolder.mkdirs()) {
             logger.info("Veri klasörü oluşturuldu: {}", this.dataFolder.getAbsolutePath());
@@ -91,7 +96,7 @@ public final class Servicio {
             setupUI();
             splash.updateProgress(100, "Tamamlandı!");
 
-            updateChecker = UpdateChecker.createAndStart(frame);
+            updateChecker.startPeriodicCheck(frame);
 
             // Ana ekranı aç ve Splash'i yok et
             launchMainUI();

@@ -16,13 +16,13 @@ import java.util.function.Consumer;
 
 /**
  * Güncelleme diyaloğu — FlatLaf temasına uyumlu, 4 ekranlı.
- *
+
  * Ekranlar:
  *   INFO     → Patch notları, dosya sayısı özeti, Güncelle / Atla / Sonra
  *   DOWNLOAD → Dosya bazlı ilerleme çubukları, canlı dosya listesi
  *   DONE     → Başarı, "Yeniden Başlat" → launcher script çalıştır + shutdown()
  *   ERROR    → Hata mesajı, Tekrar Dene / Kapat
- *
+
  * FlatLaf renkleri UIManager üzerinden okunur; ayrı renk sabiti tanımlanmamıştır.
  * Bu sayede kullanıcının seçtiği tema (koyu/açık) otomatik yansır.
  */
@@ -175,21 +175,12 @@ public class UpdateDialog extends JDialog {
         final JButton laterBtn  = ghostButton("Sonra Hatırlat");
         final JButton updateBtn = accentButton("Güncelle  ▶");
 
-        skipBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (onSkipVersion != null) onSkipVersion.accept(manifest.getVersion());
-                dispose();
-            }
+        skipBtn.addActionListener(e -> {
+            if (onSkipVersion != null) onSkipVersion.accept(manifest.getVersion());
+            dispose();
         });
-        laterBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) { dispose(); }
-        });
-        updateBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) { startDownload(); }
-        });
+        laterBtn.addActionListener(e -> dispose());
+        updateBtn.addActionListener(e -> startDownload());
 
         btnRow.add(skipBtn);
         btnRow.add(laterBtn);
@@ -255,12 +246,9 @@ public class UpdateDialog extends JDialog {
 
         // İptal butonu
         final JButton cancelBtn = ghostButton("İptal");
-        cancelBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                manager.cancel();
-                dispose();
-            }
+        cancelBtn.addActionListener(e -> {
+            manager.cancel();
+            dispose();
         });
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 6));
@@ -302,18 +290,12 @@ public class UpdateDialog extends JDialog {
         final JButton restartBtn = accentButton("Yeniden Başlat  ↺");
         JButton laterBtn         = ghostButton("Daha Sonra");
 
-        restartBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                restartBtn.setEnabled(false);
-                restartBtn.setText("Uygulanıyor…");
-                applyAndRestart();
-            }
+        restartBtn.addActionListener(e -> {
+            restartBtn.setEnabled(false);
+            restartBtn.setText("Uygulanıyor…");
+            applyAndRestart();
         });
-        laterBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) { dispose(); }
-        });
+        laterBtn.addActionListener(e -> dispose());
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 0));
         btnRow.setOpaque(false);
@@ -351,14 +333,8 @@ public class UpdateDialog extends JDialog {
         JButton retryBtn = accentButton("Tekrar Dene");
         JButton closeBtn = ghostButton("Kapat");
 
-        retryBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) { startDownload(); }
-        });
-        closeBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) { dispose(); }
-        });
+        retryBtn.addActionListener(e -> startDownload());
+        closeBtn.addActionListener(e -> dispose());
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 0));
         btnRow.setOpaque(false);
@@ -391,103 +367,63 @@ public class UpdateDialog extends JDialog {
                 manifest,
 
                 // onProgress
-                new java.util.function.BiConsumer<String, Double>() {
-                    @Override
-                    public void accept(final String fileName, final Double pct) {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                currentFileLabel.setText(fileName);
-                                currentFileBar.setValue((int)(pct * 100));
-                            }
-                        });
-                    }
-                },
+                (fileName, pct) -> SwingUtilities.invokeLater(() -> {
+                    currentFileLabel.setText(fileName);
+                    currentFileBar.setValue((int)(pct * 100));
+                }),
 
                 // onFileSkipped (hash aynı)
-                new Consumer<String>() {
-                    @Override
-                    public void accept(final String fileName) {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() { appendFileRow(fileName, RowState.SKIPPED); }
-                        });
-                    }
-                },
+                fileName -> SwingUtilities.invokeLater(() -> appendFileRow(fileName, RowState.SKIPPED)),
 
                 // onFileDone
-                new Consumer<String>() {
-                    @Override
-                    public void accept(final String fileName) {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() { appendFileRow(fileName, RowState.DONE); }
-                        });
-                    }
-                },
+                fileName -> SwingUtilities.invokeLater(() -> appendFileRow(fileName, RowState.DONE)),
 
                 // onDone
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() { showCard("DONE"); }
-                        });
-                    }
-                },
+                () -> SwingUtilities.invokeLater(() -> showCard("DONE")),
 
                 // onError
-                new Consumer<Exception>() {
+                ex -> SwingUtilities.invokeLater(new Runnable() {
                     @Override
-                    public void accept(final Exception ex) {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                log.error("İndirme hatası", ex);
-                                statusLabel.setText("Hata: " + ex.getMessage());
-                                showCard("ERROR");
-                            }
-                        });
+                    public void run() {
+                        log.error("İndirme hatası", ex);
+                        statusLabel.setText("Hata: " + ex.getMessage());
+                        showCard("ERROR");
                     }
-                }
+                })
         );
     }
 
     /** Güncellemeyi uygular ve launcher script aracılığıyla yeniden başlatır. */
     private void applyAndRestart() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    // 1. Dosyaları uygulama köküne taşı
-                    manager.applyUpdate();
+        new Thread(() -> {
+            try {
+                // 1. Dosyaları uygulama köküne taşı
+                manager.applyUpdate();
 
-                    // 2. Launcher script yaz (.bat / .sh)
-                    File script = manager.writeLauncherScript("servicio.jar", "");
+                // 2. Launcher script yaz (.bat / .sh)
+                File script = manager.writeLauncherScript("servicio.jar", "");
 
-                    // 3. Script'i başlat (mevcut PID'i parametre olarak geçer)
-                    manager.launchAndExit(script);
+                // 3. Script'i başlat (mevcut PID'i parametre olarak geçer)
+                manager.launchAndExit(script);
 
-                    // 4. Uygulamayı kapat (Servicio.shutdown() kayıt + DB + yedek yapar)
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            dispose();
-                            Servicio.getInstance().shutdown();
-                        }
-                    });
+                // 4. Uygulamayı kapat (Servicio.shutdown() kayıt + DB + yedek yapar)
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        dispose();
+                        Servicio.getInstance().shutdown();
+                    }
+                });
 
-                } catch (Exception e) {
-                    log.error("Uygulama sırasında hata", e);
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            statusLabel.setText("Uygulama hatası: " + e.getMessage());
-                            showCard("ERROR");
-                        }
-                    });
-                }
+            } catch (Exception e) {
+                log.error("Uygulama sırasında hata", e);
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        statusLabel.setText("Uygulama hatası: " + e.getMessage());
+                        showCard("ERROR");
+                    }
+                });
             }
         }, "servicio-apply-update").start();
     }

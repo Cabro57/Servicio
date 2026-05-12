@@ -6,7 +6,6 @@ import raven.modal.Drawer;
 import raven.modal.menu.MyDrawerBuilder;
 import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.manager.UpdateManager;
 import tr.cabro.servicio.model.User;
 
 import javax.swing.*;
@@ -31,7 +30,7 @@ public class MainUI extends JFrame {
         MyDrawerBuilder.getInstance().setUser(user);
         FormManager.install(this);
 
-        setIconImage(new ImageIcon(getClass().getResource("/logo.png")).getImage());
+        setIconImage(Toolkit.getDefaultToolkit().getImage("/icon.png"));
     }
 
     private void setupWindowSize() {

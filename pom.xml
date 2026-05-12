@@ -13,12 +13,11 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- Manifest URL'si — değiştirin -->
+        <!-- GitHub Release base URL — kendi reponuza göre değiştirin -->
+        <github.release.url>https://github.com/Cabro57/Servicio/releases/download/v${project.version}</github.release.url>
+
+        <!-- Manifest URL'si — version.properties'e de aynısını yazın -->
         <update.manifest.url>https://raw.githubusercontent.com/Cabro57/Servicio/refs/heads/master/update-manifest.json</update.manifest.url>
-
-        <!-- GitHub Release base URL — değiştirin -->
-        <update.download.base>https://github.com/Cabro57/Servicio/releases/download/v${project.version}</update.download.base>
-
     </properties>
 
     <build>
@@ -43,6 +42,10 @@
                             <mainClass>tr.cabro.servicio.Servicio</mainClass>
                         </manifest>
                     </archive>
+                    <excludes>
+                        <exclude>tr/cabro/servicio/build/**</exclude>
+                    </excludes>
+
                 </configuration>
             </plugin>
 
@@ -65,7 +68,6 @@
                 </executions>
             </plugin>
 
-            <!-- SHA-256 hesapla ve update-manifest.json üret -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
@@ -73,41 +75,52 @@
                 <executions>
                     <execution>
                         <id>generate-update-manifest</id>
-                        <!-- package fazından sonra, jar ve libs/ hazır olduktan sonra çalışır -->
                         <phase>package</phase>
-                        <goals>
-                            <goal>run</goal>
-                        </goals>
+                        <goals><goal>run</goal></goals>
                         <configuration>
                             <target>
                                 <!--
-                                  SHA-256 hesaplayıcı küçük Java betiği.
-                                  Harici bağımlılık yok; sadece JDK kullanır.
-                                  Çıktı: target/update-manifest.json
+                                  ManifestGenerator.class hedef klasörde olmalı.
+                                  maven-compiler-plugin zaten src/main/java altını derler,
+                                  build/ paketi de derlenir. Ayrı bir işlem gerekmez.
+
+                                  NOT: ManifestGenerator derleme zamanında çalışır,
+                                  son JAR'a dahil OLMAMASINI isterseniz
+                                  maven-jar-plugin'e <excludes> ekleyin:
+                                    <exclude>tr/cabro/servicio/build/**</exclude>
                                 -->
                                 <java classname="tr.cabro.servicio.build.ManifestGenerator"
                                       fork="true"
                                       failonerror="true">
-
-                                    <!-- ManifestGenerator.java'yı classpath'e ekle -->
                                     <classpath>
+                                        <!-- Derlenen sınıflar -->
                                         <pathelement location="${project.build.outputDirectory}"/>
+                                        <!-- Hiçbir harici bağımlılık gerekmez; sadece JDK yeterli -->
                                     </classpath>
 
-                                    <!-- Argümanlar -->
+                                    <!-- Argüman sırası ManifestGenerator.main() ile eşleşmeli -->
                                     <arg value="${project.version}"/>
-                                    <arg value="${update.download.base}"/>
+                                    <arg value="${github.release.url}"/>
                                     <arg value="${project.build.directory}/${project.build.finalName}.jar"/>
                                     <arg value="${project.build.directory}/libs"/>
                                     <arg value="${project.build.directory}/../update-manifest.json"/>
+                                    <arg value="${project.basedir}/pom.xml"/>
                                 </java>
 
-                                <echo message="update-manifest.json hazır: ${project.build.directory}/update-manifest.json"/>
+                                <echo message=""/>
+                                <echo message="update-manifest.json hazır:"/>
+                                <echo message="  ${project.build.directory}/update-manifest.json"/>
+                                <echo message=""/>
+                                <echo message="Sonraki adımlar:"/>
+                                <echo message="  1. target/update-manifest.json → repo köküne kopyala ve push et"/>
+                                <echo message="  2. GitHub Release oluştur, sadece target/servicio.jar yükle"/>
+                                <echo message="     (libs/ klasörüne gerek yok — kütüphaneler Maven'dan indirilir)"/>
                             </target>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
+
 
         </plugins>
     </build>

@@ -19,51 +19,47 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * Güncelleme motorunun çekirdeği.
- *
+ * Güncelleme indirme motoru.
+ * <p>
+ * İndirme kaynakları:
+ *   • source="maven"  → Maven Central veya özel repo'dan koordinatla
+ *   • source="github" → GitHub Releases doğrudan URL
+ *   • source="url"    → Özel HTTP/HTTPS kaynağı
+ * <p>
  * Akış:
- *  1. checkForUpdates()   → manifest indir, sürüm karşılaştır
- *  2. downloadUpdate()    → sadece SHA-256'sı değişen dosyaları indir
- *  3. applyUpdate()       → .update-tmp/ → uygulama köküne taşı
- *  4. writeLauncherScript() → OS'a göre .bat veya .sh yaz; uygulama bu script'i çalıştırıp kapanır
- *
- * Güncelleme uygulandıktan sonra Servicio.shutdown() çağrılır,
- * launcher script JVM kapandıktan sonra yeni sürümü başlatır.
+ *   1. checkForUpdates()    → manifest.json indir, sürüm karşılaştır
+ *   2. downloadUpdate()     → hash'i değişen dosyaları indir (.update-tmp/)
+ *   3. applyUpdate()        → .update-tmp/ → uygulama köküne taşı
+ *   4. writeLauncherScript() → OS'a göre .bat / .sh yaz
+ *   5. launchAndExit()      → script'i çalıştır, JVM'i kapat
  */
 public class UpdateManager {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateManager.class);
 
-    // ─── Yapılandırma ─────────────────────────────────────────────────────────
+    // Bağlantı zaman aşımları
+    private static final int CONNECT_TIMEOUT_MS  = 15_000;
+    private static final int READ_TIMEOUT_MS     = 30_000;
+    private static final int DOWNLOAD_TIMEOUT_MS = 120_000;
+    // Maven redirect zincirleri için maksimum yönlendirme
+    private static final int MAX_REDIRECTS       = 5;
 
-    /** Manifest URL'si; GitHub raw veya kendi sunucu. version.properties'ten okunur. */
+    // ─── Yapılandırma ────────────────────────────────────────────────────────
+
     private final String manifestUrl;
-
-    /** Mevcut uygulama sürümü. */
     private final String currentVersion;
+    private final File   appRoot;
+    private final File   tempDir;
 
-    /** Uygulamanın kök dizini (servicio.jar ve libs/ burada). */
-    private final File appRoot;
-
-    /** İndirilen dosyaların geçici olarak yazıldığı dizin. */
-    private final File tempDir;
-
-    // ─── Durum ────────────────────────────────────────────────────────────────
+    // ─── Durum ───────────────────────────────────────────────────────────────
 
     @Getter
-    private volatile boolean cancelRequested = false;
-
-    /** İndirme tamamlandığında çağrılacak; parametre: toplam indirilen bayt. */
+    private volatile boolean  cancelRequested    = false;
     @Setter
-    private Consumer<Long> completionCallback;
+    private Consumer<Long>    completionCallback = null;
 
-    // ─── Oluşturucu ───────────────────────────────────────────────────────────
+    // ─── Oluşturucu ──────────────────────────────────────────────────────────
 
-    /**
-     * @param manifestUrl    Manifest JSON URL'si.
-     * @param currentVersion Çalışan sürüm (version.properties'ten).
-     * @param appRoot        servicio.jar'ın bulunduğu dizin.
-     */
     public UpdateManager(String manifestUrl, String currentVersion, File appRoot) {
         this.manifestUrl    = manifestUrl;
         this.currentVersion = currentVersion;
@@ -71,15 +67,8 @@ public class UpdateManager {
         this.tempDir        = new File(appRoot, ".update-tmp");
     }
 
-    // ─── Genel API ────────────────────────────────────────────────────────────
+    // ─── Genel API ───────────────────────────────────────────────────────────
 
-    /**
-     * Arka planda manifest indirir ve sürüm karşılaştırır.
-     *
-     * @param onUpdateAvailable Yeni sürüm varsa manifest ile çağrılır (EDT değil!).
-     * @param onUpToDate        Güncel olduğunda çağrılır.
-     * @param onError           Ağ hatası vb. durumda çağrılır.
-     */
     public void checkForUpdates(final Consumer<UpdateManifest> onUpdateAvailable,
                                 final Runnable onUpToDate,
                                 final Consumer<Exception> onError) {
@@ -87,10 +76,10 @@ public class UpdateManager {
             @Override
             public void run() {
                 try {
-                    log.info("Güncelleme kontrolü yapılıyor: {}", manifestUrl);
+                    log.info("Manifest indiriliyor: {}", manifestUrl);
                     String json = downloadText(manifestUrl);
                     UpdateManifest manifest = UpdateManifest.fromJson(json);
-                    log.info("Uzak sürüm: {}  |  Yerel sürüm: {}", manifest.getVersion(), currentVersion);
+                    log.info("Uzak: v{}  |  Yerel: v{}", manifest.getVersion(), currentVersion);
 
                     if (isNewerVersion(manifest.getVersion(), currentVersion)) {
                         onUpdateAvailable.accept(manifest);
@@ -98,7 +87,7 @@ public class UpdateManager {
                         onUpToDate.run();
                     }
                 } catch (Exception e) {
-                    log.warn("Güncelleme kontrolü başarısız: {}", e.getMessage());
+                    log.warn("checkForUpdates hatası: {}", e.getMessage());
                     onError.accept(e);
                 }
             }
@@ -107,17 +96,6 @@ public class UpdateManager {
         t.start();
     }
 
-    /**
-     * Sadece SHA-256'sı farklı olan dosyaları indirir.
-     * Aynı sürüme yama yüklense bile değişmeyen dosyalar tekrar indirilmez.
-     *
-     * @param manifest       Sunucudan alınan manifest.
-     * @param onProgress     (dosyaAdı, 0.0–1.0) ilerleme bildirimi.
-     * @param onFileSkipped  Hash aynı → atlandı.
-     * @param onFileDone     Bir dosya başarıyla indirildi.
-     * @param onDone         Tüm indirmeler tamamlandı.
-     * @param onError        Hata oluştu.
-     */
     public void downloadUpdate(final UpdateManifest manifest,
                                final BiConsumer<String, Double> onProgress,
                                final Consumer<String> onFileSkipped,
@@ -126,86 +104,81 @@ public class UpdateManager {
                                final Consumer<Exception> onError) {
         cancelRequested = false;
 
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    tempDir.mkdirs();
+        Thread t = new Thread(() -> {
+            try {
+                tempDir.mkdirs();
 
-                    List<UpdateManifest.FileEntry> toDownload = resolveFilesToDownload(manifest);
+                List<UpdateManifest.FileEntry> toDownload = resolveFilesToDownload(manifest);
 
-                    // Değişmeyen dosyaları bildir
-                    List<UpdateManifest.FileEntry> allFiles = manifest.getFiles();
-                    if (allFiles != null) {
-                        for (UpdateManifest.FileEntry entry : allFiles) {
-                            if (!toDownload.contains(entry)) {
-                                log.info("Atlandı (hash aynı): {}", entry.name);
-                                onFileSkipped.accept(entry.name);
-                            }
+                // Atlanacakları bildir
+                List<UpdateManifest.FileEntry> allFiles = manifest.getFiles();
+                if (allFiles != null) {
+                    for (UpdateManifest.FileEntry entry : allFiles) {
+                        if (!toDownload.contains(entry)) {
+                            log.info("Hash aynı, atlandı: {}", entry.name);
+                            onFileSkipped.accept(entry.name);
                         }
                     }
-
-                    long totalDownloaded = 0;
-
-                    for (UpdateManifest.FileEntry entry : toDownload) {
-                        if (cancelRequested) {
-                            log.info("İndirme iptal edildi.");
-                            return;
-                        }
-
-                        File dest = new File(tempDir, entry.path);
-                        dest.getParentFile().mkdirs();
-
-                        log.info("İndiriliyor: {}  ({})", entry.name, formatSize(entry.size));
-
-                        final String entryName = entry.name;
-                        final long   entrySize = entry.size;
-
-                        downloadFile(entry.url, dest, new Consumer<Long>() {
-                            @Override
-                            public void accept(Long bytesRead) {
-                                double pct = entrySize > 0 ? (double) bytesRead / entrySize : 0.0;
-                                onProgress.accept(entryName, pct);
-                            }
-                        });
-
-                        // Hash doğrula
-                        String actualHash = sha256(dest);
-                        if (!actualHash.equalsIgnoreCase(entry.sha256)) {
-                            dest.delete();
-                            throw new IOException(
-                                    "Hash doğrulaması başarısız: " + entry.name
-                                            + "\n  Beklenen : " + entry.sha256
-                                            + "\n  Hesaplanan: " + actualHash);
-                        }
-
-                        totalDownloaded += dest.length();
-                        log.info("Doğrulandı: {}", entry.name);
-                        onFileDone.accept(entry.name);
-                    }
-
-                    if (!cancelRequested) {
-                        if (completionCallback != null) completionCallback.accept(totalDownloaded);
-                        onDone.run();
-                    }
-
-                } catch (Exception e) {
-                    log.error("İndirme hatası: {}", e.getMessage(), e);
-                    onError.accept(e);
                 }
+
+                long totalDownloaded = 0;
+
+                for (UpdateManifest.FileEntry entry : toDownload) {
+                    if (cancelRequested) {
+                        log.info("İndirme kullanıcı tarafından iptal edildi.");
+                        return;
+                    }
+
+                    // İndirme URL'sini çözümle (maven / github / url)
+                    String downloadUrl = entry.resolveDownloadUrl();
+                    String displayName = entry.name != null ? entry.name : entry.resolveFileName();
+
+                    log.info("İndiriliyor [{}]: {} → {}",
+                            entry.source, displayName, downloadUrl);
+
+                    File dest = new File(tempDir, entry.path);
+                    dest.getParentFile().mkdirs();
+
+                    final String finalDisplayName = displayName;
+                    final long   entrySize        = entry.size;
+
+                    downloadFile(downloadUrl, dest, (Consumer<Long>) bytesRead -> {
+                        double pct = entrySize > 0 ? (double) bytesRead / entrySize : 0.0;
+                        onProgress.accept(finalDisplayName, pct);
+                    });
+
+                    // Hash doğrula
+                    String actualHash = sha256(dest);
+                    if (!actualHash.equalsIgnoreCase(entry.sha256)) {
+                        dest.delete();
+                        throw new IOException(
+                                "Hash doğrulaması başarısız: " + displayName
+                                        + "\n  Beklenen:   " + entry.sha256
+                                        + "\n  Hesaplanan: " + actualHash
+                                        + "\n  Kaynak:     " + downloadUrl);
+                    }
+
+                    log.info("✔ Doğrulandı: {}", displayName);
+                    totalDownloaded += dest.length();
+                    onFileDone.accept(displayName);
+                }
+
+                if (!cancelRequested) {
+                    if (completionCallback != null) completionCallback.accept(totalDownloaded);
+                    onDone.run();
+                }
+
+            } catch (Exception e) {
+                log.error("downloadUpdate hatası", e);
+                onError.accept(e);
             }
         }, "servicio-update-downloader");
         t.setDaemon(true);
         t.start();
     }
 
-    /**
-     * .update-tmp/ dizinindeki dosyaları uygulama köküne taşır.
-     * Mevcut dosyalar .bak uzantısıyla yedeklenir.
-     * Launcher script'ten ÖNCE çağrılmalıdır.
-     */
     public void applyUpdate() throws IOException {
-        log.info("Güncelleme uygulanıyor...");
+        log.info("Güncelleme uygulanıyor: {} → {}", tempDir, appRoot);
 
         Files.walkFileTree(tempDir.toPath(), new SimpleFileVisitor<Path>() {
             @Override
@@ -214,11 +187,11 @@ public class UpdateManager {
                 File dest     = new File(appRoot, relative.toString());
                 dest.getParentFile().mkdirs();
 
-                // Yedek al
                 if (dest.exists()) {
                     File bak = new File(dest.getParent(), dest.getName() + ".bak");
                     if (bak.exists()) bak.delete();
                     dest.renameTo(bak);
+                    log.debug("Yedeklendi: {}.bak", dest.getName());
                 }
 
                 Files.move(src, dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -228,103 +201,20 @@ public class UpdateManager {
         });
 
         deleteDirectory(tempDir);
-        log.info("Güncelleme tamamlandı, geçici dizin temizlendi.");
+        log.info("Geçici dizin temizlendi.");
     }
 
-    /**
-     * OS'a göre launcher script üretir ve döner.
-     *
-     * Windows → update-restart.bat
-     * Linux/Mac → update-restart.sh
-     *
-     * Script, JVM tamamen kapandıktan sonra uygulamayı yeniden başlatır.
-     * Servicio, bu script'i ProcessBuilder ile başlatıp ardından shutdown() çağırır.
-     *
-     * @param jarName  Ana jar dosyasının adı, örn: "servicio.jar"
-     * @param jvmArgs  JVM argümanları, örn: "-Xmx512m" (boş bırakılabilir)
-     * @return         Oluşturulan script dosyası.
-     */
     public File writeLauncherScript(String jarName, String jvmArgs) throws IOException {
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-
-        if (isWindows) {
-            return writeBatScript(jarName, jvmArgs);
-        } else {
-            return writeShScript(jarName, jvmArgs);
-        }
+        return isWindows ? writeBatScript(jarName, jvmArgs) : writeShScript(jarName, jvmArgs);
     }
 
-    // ─── Launcher Script Yardımcıları ─────────────────────────────────────────
-
-    private File writeBatScript(String jarName, String jvmArgs) throws IOException {
-        File script = new File(appRoot, "update-restart.bat");
-        PrintWriter pw = null;
-        try {
-            pw = new PrintWriter(new OutputStreamWriter(Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8));
-            pw.println("@echo off");
-            pw.println(":: Servicio Guncelleme Launcher");
-            // Eski JVM kapanana kadar bekle
-            pw.println(":WAIT");
-            pw.println("tasklist /fi \"PID eq %1\" 2>nul | find /i \"java.exe\" >nul");
-            pw.println("if not errorlevel 1 (");
-            pw.println("    timeout /t 1 /nobreak >nul");
-            pw.println("    goto WAIT");
-            pw.println(")");
-            // Yeniden başlat
-            pw.println("cd /d \"%~dp0\"");
-            if (jvmArgs != null && !jvmArgs.isEmpty()) {
-                pw.println("start javaw " + jvmArgs + " -jar " + jarName);
-            } else {
-                pw.println("start javaw -jar " + jarName);
-            }
-            pw.println("del \"%~f0\"");  // Script kendini siler
-        } finally {
-            if (pw != null) pw.close();
-        }
-        return script;
-    }
-
-    private File writeShScript(String jarName, String jvmArgs) throws IOException {
-        File script = new File(appRoot, "update-restart.sh");
-        PrintWriter pw = null;
-        try {
-            pw = new PrintWriter(new OutputStreamWriter(Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8));
-            pw.println("#!/bin/sh");
-            pw.println("# Servicio Guncelleme Launcher");
-            pw.println("OLD_PID=$1");
-            // Eski JVM kapanana kadar bekle
-            pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do");
-            pw.println("    sleep 1");
-            pw.println("done");
-            // Uygulama dizinine git
-            pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"");
-            pw.println("cd \"$SCRIPT_DIR\"");
-            if (jvmArgs != null && !jvmArgs.isEmpty()) {
-                pw.println("java " + jvmArgs + " -jar " + jarName + " &");
-            } else {
-                pw.println("java -jar " + jarName + " &");
-            }
-            pw.println("rm -- \"$0\"");  // Script kendini siler
-        } finally {
-            if (pw != null) pw.close();
-        }
-        // chmod +x
-        script.setExecutable(true);
-        return script;
-    }
-
-    /**
-     * Launcher script'i arka planda başlatır.
-     * Ardından Servicio.getInstance().shutdown() çağrılmalıdır.
-     *
-     * @param script  writeLauncherScript() ile üretilen dosya.
-     */
     public void launchAndExit(File script) throws IOException {
         String pid = getCurrentPid();
-        log.info("Launcher script başlatılıyor: {}  (mevcut PID: {})", script.getName(), pid);
+        log.info("Launcher başlatılıyor: {}  PID={}", script.getName(), pid);
 
-        ProcessBuilder pb;
         boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
+        ProcessBuilder pb;
 
         if (isWindows) {
             pb = new ProcessBuilder("cmd", "/c", "start", "", script.getAbsolutePath(), pid);
@@ -332,14 +222,14 @@ public class UpdateManager {
             pb = new ProcessBuilder("sh", script.getAbsolutePath(), pid);
         }
         pb.directory(appRoot);
-        pb.start(); // Detached — JVM kapanınca script devam eder
+        pb.start();
     }
 
-    // ─── Yardımcı Metotlar ────────────────────────────────────────────────────
+    // ─── Hash Karşılaştırma ───────────────────────────────────────────────────
 
     /**
-     * Manifestteki dosyaları yerel hash'lerle karşılaştırır.
-     * Sonuç: sadece değişen / eksik dosyalar.
+     * Her dosyanın SHA-256'sını yerel dosyayla karşılaştırır.
+     * Hash aynıysa atlar (değişmeyen kütüphaneler tekrar indirilmez).
      */
     private List<UpdateManifest.FileEntry> resolveFilesToDownload(UpdateManifest manifest)
             throws IOException, NoSuchAlgorithmException {
@@ -352,47 +242,31 @@ public class UpdateManager {
             File local = new File(appRoot, entry.path);
 
             if (!local.exists()) {
-                log.debug("Eksik dosya, indirilecek: {}", entry.path);
+                log.debug("Yok → indirilecek: {}", entry.path);
                 needed.add(entry);
                 continue;
             }
 
             String localHash = sha256(local);
             if (!localHash.equalsIgnoreCase(entry.sha256)) {
-                log.debug("Hash farklı, indirilecek: {}  yerel={}", entry.name, localHash.substring(0, 8));
+                log.debug("Hash farklı → indirilecek: {}  (yerel={}…)",
+                        entry.name, localHash.substring(0, 8));
                 needed.add(entry);
             } else {
-                log.debug("Hash aynı, atlanıyor: {}", entry.name);
+                log.debug("Hash aynı → atlanıyor: {}", entry.name);
             }
         }
         return needed;
     }
 
-    /** "2.1.0" > "1.9.3" → true */
-    public static boolean isNewerVersion(String remote, String current) {
-        int[] r = parseSemver(remote);
-        int[] c = parseSemver(current);
-        for (int i = 0; i < 3; i++) {
-            if (r[i] != c[i]) return r[i] > c[i];
-        }
-        return false;
-    }
-
-    private static int[] parseSemver(String v) {
-        String[] parts = v == null ? new String[0] : v.split("\\.");
-        int[] nums = new int[3];
-        for (int i = 0; i < Math.min(parts.length, 3); i++) {
-            try { nums[i] = Integer.parseInt(parts[i].trim()); }
-            catch (NumberFormatException ignored) { }
-        }
-        return nums;
-    }
+    // ─── İndirme Yardımcıları ────────────────────────────────────────────────
 
     private String downloadText(String urlStr) throws IOException {
-        HttpURLConnection conn = openConnection(urlStr);
+        HttpURLConnection conn = openConnection(urlStr, READ_TIMEOUT_MS);
         BufferedReader reader = null;
         try {
-            reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+            reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) sb.append(line).append('\n');
@@ -403,18 +277,65 @@ public class UpdateManager {
         }
     }
 
-    private void downloadFile(String urlStr, File dest, Consumer<Long> onBytesRead) throws IOException {
-        HttpURLConnection conn = openConnection(urlStr);
-        conn.setReadTimeout(120_000);
+    /**
+     * Dosyayı HTTP(S) üzerinden indirir.
+     * Maven Central ve GitHub Releases her ikisi de 302 redirect kullanır;
+     * manuel redirect takibi yapılır (http → https geçişlerinde de çalışır).
+     */
+    private void downloadFile(String urlStr, File dest,
+                              Consumer<Long> onBytesRead) throws IOException {
 
+        // Redirect zincirini takip et
+        String currentUrl = urlStr;
+        HttpURLConnection conn = null;
+
+        for (int redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
+            conn = openConnection(currentUrl, DOWNLOAD_TIMEOUT_MS);
+            conn.setInstanceFollowRedirects(false); // Manuel takip ediyoruz
+
+            int code = conn.getResponseCode();
+
+            if (code == HttpURLConnection.HTTP_OK) {
+                break; // Bulduk
+            }
+
+            if (code == HttpURLConnection.HTTP_MOVED_PERM  // 301
+                    || code == HttpURLConnection.HTTP_MOVED_TEMP  // 302
+                    || code == 307 || code == 308) {
+
+                String location = conn.getHeaderField("Location");
+                conn.disconnect();
+
+                if (location == null || location.isEmpty()) {
+                    throw new IOException("Redirect konumu boş: " + currentUrl);
+                }
+
+                // Göreli URL'yi mutlak yap
+                if (!location.startsWith("http")) {
+                    URL base = new URL(currentUrl);
+                    location = base.getProtocol() + "://" + base.getHost() + location;
+                }
+
+                log.debug("Redirect ({}) → {}", code, location);
+                currentUrl = location;
+
+            } else {
+                conn.disconnect();
+                throw new IOException("HTTP " + code + " : " + currentUrl);
+            }
+        }
+
+        // conn burada HTTP 200 bağlantısı
         InputStream  in  = null;
         OutputStream out = null;
         try {
             in  = conn.getInputStream();
             out = Files.newOutputStream(dest.toPath());
-            byte[] buf = new byte[16384];
-            long total = 0;
-            int  n;
+
+            byte[] buf   = new byte[16384];
+            long   total = 0;
+            int    n;
+
             while ((n = in.read(buf)) != -1) {
                 if (cancelRequested) return;
                 out.write(buf, 0, n);
@@ -422,21 +343,95 @@ public class UpdateManager {
                 onBytesRead.accept(total);
             }
         } finally {
+            conn.disconnect();
             if (out != null) try { out.close(); } catch (IOException ignored) { }
             if (in  != null) try { in.close();  } catch (IOException ignored) { }
-            conn.disconnect();
         }
     }
 
-    private HttpURLConnection openConnection(String urlStr) throws IOException {
+    private HttpURLConnection openConnection(String urlStr, int readTimeout) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-        conn.setConnectTimeout(15_000);
-        conn.setReadTimeout(30_000);
+        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        conn.setReadTimeout(readTimeout);
         conn.setRequestProperty("Cache-Control", "no-cache");
         conn.setRequestProperty("User-Agent", "Servicio-Updater/" + currentVersion);
-        // GitHub redirects → follow
-        conn.setInstanceFollowRedirects(true);
         return conn;
+    }
+
+    // ─── Launcher Script ──────────────────────────────────────────────────────
+
+    private File writeBatScript(String jarName, String jvmArgs) throws IOException {
+        File script = new File(appRoot, "update-restart.bat");
+        PrintWriter pw = null;
+        try {
+            pw = new PrintWriter(new OutputStreamWriter(
+                    Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8));
+            pw.println("@echo off");
+            pw.println(":: Servicio Guncelleme Launcher");
+            pw.println(":WAIT");
+            pw.println("tasklist /fi \"PID eq %1\" 2>nul | find /i \"java.exe\" >nul");
+            pw.println("if not errorlevel 1 (");
+            pw.println("    timeout /t 1 /nobreak >nul");
+            pw.println("    goto WAIT");
+            pw.println(")");
+            pw.println("cd /d \"%~dp0\"");
+            if (jvmArgs != null && !jvmArgs.isEmpty()) {
+                pw.println("start javaw " + jvmArgs + " -jar " + jarName);
+            } else {
+                pw.println("start javaw -jar " + jarName);
+            }
+            pw.println("del \"%~f0\"");
+        } finally {
+            if (pw != null) pw.close();
+        }
+        return script;
+    }
+
+    private File writeShScript(String jarName, String jvmArgs) throws IOException {
+        File script = new File(appRoot, "update-restart.sh");
+        PrintWriter pw = null;
+        try {
+            pw = new PrintWriter(new OutputStreamWriter(
+                    Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8));
+            pw.println("#!/bin/sh");
+            pw.println("# Servicio Guncelleme Launcher");
+            pw.println("OLD_PID=$1");
+            pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
+            pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"");
+            pw.println("cd \"$SCRIPT_DIR\"");
+            if (jvmArgs != null && !jvmArgs.isEmpty()) {
+                pw.println("java " + jvmArgs + " -jar " + jarName + " &");
+            } else {
+                pw.println("java -jar " + jarName + " &");
+            }
+            pw.println("rm -- \"$0\"");
+        } finally {
+            if (pw != null) pw.close();
+        }
+        script.setExecutable(true);
+        return script;
+    }
+
+    // ─── Yardımcı Metodlar ───────────────────────────────────────────────────
+
+    public static boolean isNewerVersion(String remote, String current) {
+        int[] r = parseSemver(remote);
+        int[] c = parseSemver(current);
+        for (int i = 0; i < 3; i++) {
+            if (r[i] != c[i]) return r[i] > c[i];
+        }
+        return false;
+    }
+
+    private static int[] parseSemver(String v) {
+        if (v == null) return new int[3];
+        String[] parts = v.replaceAll("[^0-9.]", "").split("\\.");
+        int[] nums = new int[3];
+        for (int i = 0; i < Math.min(parts.length, 3); i++) {
+            try { nums[i] = Integer.parseInt(parts[i]); }
+            catch (NumberFormatException ignored) { }
+        }
+        return nums;
     }
 
     public static String sha256(File file) throws IOException, NoSuchAlgorithmException {
@@ -460,31 +455,24 @@ public class UpdateManager {
         Files.walkFileTree(dir.toPath(), new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path f, BasicFileAttributes a) throws IOException {
-                Files.delete(f);
-                return FileVisitResult.CONTINUE;
+                Files.delete(f); return FileVisitResult.CONTINUE;
             }
             @Override
             public FileVisitResult postVisitDirectory(Path d, IOException e) throws IOException {
-                Files.delete(d);
-                return FileVisitResult.CONTINUE;
+                Files.delete(d); return FileVisitResult.CONTINUE;
             }
         });
     }
 
     private static String getCurrentPid() {
-        // Java 8 uyumlu PID alma: ManagementFactory
-        String name = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-        // Format: "12345@hostname"
+        String name = java.lang.management.ManagementFactory
+                .getRuntimeMXBean().getName(); // "12345@hostname"
         int at = name.indexOf('@');
         return at > 0 ? name.substring(0, at) : name;
     }
 
-    private static String formatSize(long bytes) {
-        if (bytes < 1024)               return bytes + " B";
-        if (bytes < 1024 * 1024)        return String.format("%.1f KB", bytes / 1024.0);
-        return String.format("%.1f MB", bytes / (1024.0 * 1024));
-    }
+    // ─── Setter / Kontrol ─────────────────────────────────────────────────────
 
-    public void cancel()                                  { cancelRequested = true; }
+    public void cancel()                                 { cancelRequested = true;  }
 
 }

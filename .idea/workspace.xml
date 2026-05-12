@@ -4,19 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="güncelleme özelliği eklendi">
-      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/AppearancePanel.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="BugFix">
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/SplashUpdatePanel.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/logo.ico" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormSettings.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/forms/FormSettings.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsDevicePanel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/panels/setting/SettingsDevicePanel.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/list/BrandListCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/list/BrandListCellRenderer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/list/TypeListCellRenderer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/renderer/list/TypeListCellRenderer.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/MainUI.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/MainUI.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/build/ManifestGenerator.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/build/ManifestGenerator.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateChecker.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateChecker.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateDialog.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateDialog.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManifest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManifest.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/logo.png" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/logo.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/themes/FlatLaf.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/themes/FlatLaf.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/version.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/version.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/update-manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/update-manifest.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,7 +25,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="654" />
+    <option name="cachedIndexableFilesCount" value="664" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -47,7 +48,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Cabro57/Servicio.git&quot;,
-    &quot;accountId&quot;: &quot;4dbf82b9-08aa-487c-a4ef-9b6165819a0e&quot;
+    &quot;accountId&quot;: &quot;66088443-5ae7-4d66-8f5c-0180f0a95921&quot;
   }
 }</component>
   <component name="KubernetesApiPersistence">{}</component>
@@ -75,6 +76,7 @@
     "Application.TestDrawer.executor": "Run",
     "Application.testMain.executor": "Run",
     "Maven.Servicio [clean,package,-U].executor": "Run",
+    "Maven.Servicio [clean,package,].executor": "Run",
     "Maven.Servicio [clean,package].executor": "Run",
     "Maven.Servicio.executor": "Run",
     "RunOnceActivity.MCP Project settings loaded": "true",
@@ -90,7 +92,7 @@
     "ignore.virus.scanning.warn.message": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Projelerim/Servicio/src/main/resources",
+    "last_opened_file_path": "C:/projects/Servicio/src/main/resources",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -100,7 +102,7 @@
     "project.structure.last.edited": "SDKs",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.30229884",
-    "settings.editor.selected.configurable": "configurable.group.appearance",
+    "settings.editor.selected.configurable": "jvm.logging",
     "to.speed.mode.migration.done": "true",
     "vue.rearranger.settings.migration": "true"
   },
@@ -112,11 +114,11 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Projelerim\Servicio\src\main\resources" />
-      <recent name="C:\Projelerim\Servicio" />
+      <recent name="C:\projects\Servicio\src\main\resources" />
+      <recent name="C:\projects\Servicio\src\main\java\tr\cabro\servicio\updater" />
       <recent name="C:\projects\Servicio" />
+      <recent name="C:\Projelerim\Servicio" />
       <recent name="C:\Projelerim\Servicio\.servicio" />
-      <recent name="C:\Projelerim\Servicio\src\main\resources\icons" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Projelerim\Servicio\src\main\resources" />
@@ -134,6 +136,7 @@
   <component name="RunAnythingCache">
     <option name="myCommands">
       <command value="mvn clean package -U" />
+      <command value="mvn clean package," />
       <command value="mvn clean package" />
     </option>
   </component>
@@ -174,8 +177,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Application.Servicio" />
-        <item itemvalue="Application.testMain" />
         <item itemvalue="Application.SplashScreenTest" />
+        <item itemvalue="Application.testMain" />
       </list>
     </recent_temporary>
   </component>
@@ -207,7 +210,6 @@
       <workItem from="1777326639258" duration="590000" />
       <workItem from="1777327408016" duration="736000" />
       <workItem from="1777328294698" duration="1812000" />
-      <workItem from="1778520049872" duration="10350000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü.">
       <option name="closed" value="true" />
@@ -241,13 +243,13 @@
       <option name="project" value="LOCAL" />
       <updated>1777496756826</updated>
     </task>
-    <task id="LOCAL-00005" summary="güncelleme özelliği eklendi">
+    <task id="LOCAL-00005" summary="BugFix">
       <option name="closed" value="true" />
-      <created>1778528733816</created>
+      <created>1778167332543</created>
       <option name="number" value="00005" />
       <option name="presentableId" value="LOCAL-00005" />
       <option name="project" value="LOCAL" />
-      <updated>1778528733816</updated>
+      <updated>1778167332543</updated>
     </task>
     <option name="localTasksCounter" value="6" />
     <servers />
@@ -260,8 +262,8 @@
     <MESSAGE value="feat: implement core application architecture, service management modules, and UI components" />
     <MESSAGE value="feat: implement core service management logic and repair workflow with asynchronous repository operations" />
     <MESSAGE value="Yanlışıkla silinmiş geri eklendi" />
-    <MESSAGE value="güncelleme özelliği eklendi" />
-    <option name="LAST_COMMIT_MESSAGE" value="güncelleme özelliği eklendi" />
+    <MESSAGE value="BugFix" />
+    <option name="LAST_COMMIT_MESSAGE" value="BugFix" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
