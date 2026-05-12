@@ -1,8 +1,15 @@
 {
-  "version": "2.0.0",
+  "version": "2.0-dev",
   "releaseDate": "2026-05-12",
   "minRequiredVersion": "2.0.0",
   "patchNotes": [
+    {
+      "version": "2.0-dev",
+      "date": "2026-05-12",
+      "changes": [
+        "Degisiklikleri buraya yazin"
+      ]
+    },
     {
       "version": "2.0.0",
       "date": "2026-05-12",
@@ -16,9 +23,9 @@
       "source": "github",
       "name": "servicio.jar",
       "path": "servicio.jar",
-      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0.0/servicio.jar",
-      "sha256": "ba24e004dc4ced1e73c8a32506d70624813c3301caf1b5ff7cc613af1d7df29e",
-      "size": 11476134
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
+      "sha256": "2630d4b35efdb1fd932e396b97bdbb453e69208e6fc086778220a2adb5f11730",
+      "size": 11476145
     },
     {
       "source": "url",
