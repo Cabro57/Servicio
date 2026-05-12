@@ -7,7 +7,7 @@
       "version": "2.0-dev",
       "date": "2026-05-12",
       "changes": [
-        "Degisiklikleri buraya yazin"
+        "IconImage gözükmeme sorunu düzeltildi"
       ]
     },
     {
@@ -24,8 +24,8 @@
       "name": "servicio.jar",
       "path": "servicio.jar",
       "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
-      "sha256": "2630d4b35efdb1fd932e396b97bdbb453e69208e6fc086778220a2adb5f11730",
-      "size": 11476145
+      "sha256": "1d769965eeaf2b55ecb34ac8b48119b756a1279e15d8584f90e6347ea6f0c424",
+      "size": 11476258
     },
     {
       "source": "url",
