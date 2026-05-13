@@ -12,13 +12,13 @@ import tr.cabro.servicio.model.enums.BackupMode;
 @Setter
 public class Settings extends OkaeriConfig {
 
-    private String path = "";
     private boolean full_size = false;
-    private boolean deviceMigrated = false;
     private boolean skipExitConfirmation = false;
-    private boolean isFirstLaunch = false;
 
     private int autoLockTimeoutMinutes = 5;
+
+    @Variable("barcode_prefix")
+    private String barcodePrefix = "123456";
 
     private BackupSettings backup = new BackupSettings();
 
@@ -29,24 +29,6 @@ public class Settings extends OkaeriConfig {
         private BackupMode mode = BackupMode.ON_START;
         private int interval = 15;
 
-    }
 
-    private PinConfig pin = new PinConfig();
-
-    @Getter @Setter
-    public static class PinConfig extends OkaeriConfig {
-
-        private int pin = 1234;
-        private int timeout = 1;
-    }
-
-    @Variable("barcode_prefix")
-    private String barcodePrefix = "123456";
-
-    private Database database = new Database();
-
-    @Getter @Setter
-    public static class Database extends OkaeriConfig {
-        private int MaximumPoolSize = 200;
     }
 }
