@@ -75,11 +75,19 @@ public class SplashUpdatePanel extends JPanel {
     private final UpdateManifest manifest;
     private final UpdateManager  manager;
 
+    /**
+     * true  → sürüm aynı ama dosyalar değişmiş (hotfix/yama).
+     *         "Bu Sürümü Atla" butonu gizlenir çünkü anlamsızdır.
+     * false → gerçek sürüm yükseltmesi.
+     */
+    private final boolean isHotfix;
+
     // ─── Oluşturucu ───────────────────────────────────────────────────────────
 
-    public SplashUpdatePanel(UpdateManifest manifest, UpdateManager manager) {
-        this.manifest = manifest;
-        this.manager  = manager;
+    public SplashUpdatePanel(UpdateManifest manifest, UpdateManager manager, boolean isHotfix) {
+        this.manifest  = manifest;
+        this.manager   = manager;
+        this.isHotfix  = isHotfix;
 
         setOpaque(false);
         setLayout(new GridBagLayout()); // kartı ortalar
@@ -112,8 +120,9 @@ public class SplashUpdatePanel extends JPanel {
         JPanel card = card(420, 260);
 
         // İkon + Başlık
-        JLabel icon  = lbl("🔔", 28, Font.PLAIN, TEXT_MAIN);
-        JLabel title = lbl("Güncelleme Mevcut!", 16, Font.BOLD, TEXT_MAIN);
+        JLabel icon  = lbl(isHotfix ? "🔧" : "🔔", 28, Font.PLAIN, TEXT_MAIN);
+        JLabel title = lbl(isHotfix ? "Kritik Güncelleme (Yama)!" : "Güncelleme Mevcut!",
+                16, Font.BOLD, TEXT_MAIN);
 
         JPanel titleRow = transparent(new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0)));
         titleRow.add(icon);
@@ -121,7 +130,7 @@ public class SplashUpdatePanel extends JPanel {
 
         // Sürüm bilgisi
         JLabel verLbl = lbl("Sürüm v" + manifest.getVersion()
-                + (manifest.getReleaseDate() != null ? "  —  " + manifest.getReleaseDate() : ""),
+                        + (manifest.getReleaseDate() != null ? "  —  " + manifest.getReleaseDate() : ""),
                 12, Font.PLAIN, ACCENT);
 
         // Patch notları özeti (ilk sürümün ilk 3 değişikliği)
@@ -159,6 +168,10 @@ public class SplashUpdatePanel extends JPanel {
         final JButton skipVerBtn = ghostBtn("Bu Sürümü Atla");
         final JButton noBtn      = ghostBtn("Şimdi Değil");
         final JButton yesBtn     = accentBtn("Güncelle  ▶");
+
+        // Hotfix'te "Bu Sürümü Atla" gizlenir —
+        // aynı sürüm olduğu için atlamak mantıksız, dosya değişmiş demektir.
+        skipVerBtn.setVisible(!isHotfix);
 
         skipVerBtn.addActionListener(e -> {
             if (onSkipVersion != null) onSkipVersion.accept(manifest.getVersion());

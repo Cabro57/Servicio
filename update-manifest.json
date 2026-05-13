@@ -1,13 +1,13 @@
 {
   "version": "2.0-dev",
-  "releaseDate": "2026-05-12",
+  "releaseDate": "2026-05-13",
   "minRequiredVersion": "2.0.0",
   "patchNotes": [
     {
       "version": "2.0-dev",
-      "date": "2026-05-12",
+      "date": "2026-05-13",
       "changes": [
-        "IconImage gözükmeme sorunu düzeltildi"
+        "Degisiklikleri buraya yazin"
       ]
     },
     {
@@ -24,8 +24,8 @@
       "name": "servicio.jar",
       "path": "servicio.jar",
       "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
-      "sha256": "1d769965eeaf2b55ecb34ac8b48119b756a1279e15d8584f90e6347ea6f0c424",
-      "size": 11476258
+      "sha256": "cc3a48fd8bcebe3bca263ae57038472da0d218d9dce1af681eeda326072f90f4",
+      "size": 11474462
     },
     {
       "source": "url",

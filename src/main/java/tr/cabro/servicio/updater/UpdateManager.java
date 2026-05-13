@@ -72,24 +72,40 @@ public class UpdateManager {
     public void checkForUpdates(final Consumer<UpdateManifest> onUpdateAvailable,
                                 final Runnable onUpToDate,
                                 final Consumer<Exception> onError) {
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    log.info("Manifest indiriliyor: {}", manifestUrl);
-                    String json = downloadText(manifestUrl);
-                    UpdateManifest manifest = UpdateManifest.fromJson(json);
-                    log.info("Uzak: v{}  |  Yerel: v{}", manifest.getVersion(), currentVersion);
+        Thread t = new Thread(() -> {
+            try {
+                log.info("Manifest indiriliyor: {}", manifestUrl);
+                String json = downloadText(manifestUrl);
+                UpdateManifest manifest = UpdateManifest.fromJson(json);
+                log.info("Uzak: v{}  |  Yerel: v{}", manifest.getVersion(), currentVersion);
 
-                    if (isNewerVersion(manifest.getVersion(), currentVersion)) {
+                if (isNewerVersion(manifest.getVersion(), currentVersion)) {
+                    // Sürüm numarası yeni → kesinlikle güncelleme var
+                    log.info("Yeni sürüm tespit edildi → güncelleme mevcut.");
+                    onUpdateAvailable.accept(manifest);
+
+                } else if (sameVersion(manifest.getVersion(), currentVersion)) {
+                    // Sürüm aynı — ama dosyalar değişmiş olabilir (aynı sürüme yama).
+                    // Hash'leri kontrol et; en az bir fark varsa güncelleme say.
+                    List<UpdateManifest.FileEntry> changed = resolveFilesToDownload(manifest);
+                    if (!changed.isEmpty()) {
+                        log.info("Sürüm aynı (v{}) ama {} dosyada hash farkı var → yama güncelleme.",
+                                manifest.getVersion(), changed.size());
                         onUpdateAvailable.accept(manifest);
                     } else {
+                        log.info("Sürüm aynı, tüm hash'ler eşleşiyor → güncel.");
                         onUpToDate.run();
                     }
-                } catch (Exception e) {
-                    log.warn("checkForUpdates hatası: {}", e.getMessage());
-                    onError.accept(e);
+
+                } else {
+                    // Uzak sürüm daha eski (downgrade) → güncelleme yok
+                    log.info("Uzak sürüm yerel sürümden eski → güncelleme yok.");
+                    onUpToDate.run();
                 }
+
+            } catch (Exception e) {
+                log.warn("checkForUpdates hatası: {}", e.getMessage());
+                onError.accept(e);
             }
         }, "servicio-update-checker");
         t.setDaemon(true);
@@ -343,9 +359,9 @@ public class UpdateManager {
                 onBytesRead.accept(total);
             }
         } finally {
-            conn.disconnect();
             if (out != null) try { out.close(); } catch (IOException ignored) { }
             if (in  != null) try { in.close();  } catch (IOException ignored) { }
+            conn.disconnect();
         }
     }
 
@@ -362,10 +378,8 @@ public class UpdateManager {
 
     private File writeBatScript(String jarName, String jvmArgs) throws IOException {
         File script = new File(appRoot, "update-restart.bat");
-        PrintWriter pw = null;
-        try {
-            pw = new PrintWriter(new OutputStreamWriter(
-                    Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8));
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
             pw.println("@echo off");
             pw.println(":: Servicio Guncelleme Launcher");
             pw.println(":WAIT");
@@ -381,18 +395,14 @@ public class UpdateManager {
                 pw.println("start javaw -jar " + jarName);
             }
             pw.println("del \"%~f0\"");
-        } finally {
-            if (pw != null) pw.close();
         }
         return script;
     }
 
     private File writeShScript(String jarName, String jvmArgs) throws IOException {
         File script = new File(appRoot, "update-restart.sh");
-        PrintWriter pw = null;
-        try {
-            pw = new PrintWriter(new OutputStreamWriter(
-                    Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8));
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
             pw.println("#!/bin/sh");
             pw.println("# Servicio Guncelleme Launcher");
             pw.println("OLD_PID=$1");
@@ -405,8 +415,6 @@ public class UpdateManager {
                 pw.println("java -jar " + jarName + " &");
             }
             pw.println("rm -- \"$0\"");
-        } finally {
-            if (pw != null) pw.close();
         }
         script.setExecutable(true);
         return script;
@@ -414,6 +422,7 @@ public class UpdateManager {
 
     // ─── Yardımcı Metodlar ───────────────────────────────────────────────────
 
+    /** Uzak sürüm yerelden daha yeni mi? "2.1.0" > "1.9.3" → true */
     public static boolean isNewerVersion(String remote, String current) {
         int[] r = parseSemver(remote);
         int[] c = parseSemver(current);
@@ -421,6 +430,20 @@ public class UpdateManager {
             if (r[i] != c[i]) return r[i] > c[i];
         }
         return false;
+    }
+
+    /**
+     * Sürüm numaraları aynı mı?
+     * Aynı sürüme yama yüklendiğinde (hotfix) hash kontrolüne geçmek için kullanılır.
+     * "2.1.0" == "2.1.0" → true
+     */
+    public static boolean sameVersion(String remote, String current) {
+        int[] r = parseSemver(remote);
+        int[] c = parseSemver(current);
+        for (int i = 0; i < 3; i++) {
+            if (r[i] != c[i]) return false;
+        }
+        return true;
     }
 
     private static int[] parseSemver(String v) {

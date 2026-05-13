@@ -18,7 +18,7 @@ import java.util.prefs.Preferences;
 
 /**
  * İki aşamalı güncelleme kontrol servisi.
-
+ * <p>
  * ── AŞAMA 1: Splash aşaması (checkOnSplash) ──────────────────────────────
  *   Servicio(splash) constructor'ı çağrıldıktan hemen sonra arka planda
  *   manifest indirilir. Sonuç geldiğinde:
@@ -30,11 +30,11 @@ import java.util.prefs.Preferences;
  *   splash ilerlemesi devam ederken kontrol arka planda olur.
  *   Güncelleme bulunursa splash dondurulur (progress güncellenmez),
  *   kullanıcı karar verdikten sonra devam edilir.
-
+ * <p>
  * ── AŞAMA 2: Periyodik kontrol (startPeriodicCheck) ─────────────────────
  *   Uygulama tamamen açıldıktan sonra her 6 saatte bir kontrol yapılır.
  *   Güncelleme varsa UpdateDialog (modal diyalog) gösterilir.
-
+ * <p>
  * Manifest URL ve sürüm: /version.properties'ten okunur (Maven filtering).
  */
 public class UpdateChecker {
@@ -76,11 +76,11 @@ public class UpdateChecker {
 
     /**
      * Splash ekranında güncelleme kontrolü yapar.
-
+     * <p>
      * Bu metot NON-BLOCKING'dir; arka plan iş parçacığında kontrol yapar.
      * Güncelleme bulunursa splash freeze olur ve SplashUpdatePanel gösterilir.
      * Kullanıcı karar verince (güncelle/atla) bu metot döner — splice'ın devamı çalışır.
-
+     * <p>
      * Kullanım — Servicio constructor'ı içinde, diğer initler ile paralel:
      * <pre>
      *   splash.updateProgress(10, "Güncelleme kontrol ediliyor...");
@@ -100,19 +100,34 @@ public class UpdateChecker {
 
                 // Güncelleme VAR
                 manifest -> {
-                    // "Bu sürümü atla" kontrolü
-                    String skipped = prefs.get(PREF_SKIPPED_VERSION, "");
-                    if (skipped.equals(manifest.getVersion())) {
-                        log.info("Sürüm {} daha önce atlandı.", manifest.getVersion());
-                        userDecision.countDown(); // direkt devam
+                    // "Bu sürümü atla" kontrolü.
+                    //
+                    // ÖNEMLI: Yalnızca sürüm numarası yeniyse atla.
+                    // Sürüm AYNI ama hash farklıysa (aynı sürüme yama = hotfix)
+                    // kullanıcı daha önce "atla" demiş olsa bile göster;
+                    // çünkü bu farklı bir içerik değişikliğidir.
+                    String skipped     = prefs.get(PREF_SKIPPED_VERSION, "");
+                    boolean isHotfix   = UpdateManager.sameVersion(
+                            manifest.getVersion(), skipped);
+                    boolean wasSkipped = skipped.equals(manifest.getVersion());
+
+                    if (wasSkipped && !isHotfix) {
+                        // Kullanıcı bu sürümü atladı ve bu bir hotfix değil
+                        log.info("Sürüm {} daha önce atlandı, gösterilmiyor.", manifest.getVersion());
+                        userDecision.countDown();
                         return;
+                    }
+
+                    // Hotfix ise skipped kaydını sil — kullanıcı tekrar sorulsun
+                    if (wasSkipped && isHotfix) {
+                        prefs.remove(PREF_SKIPPED_VERSION);
+                        log.info("Sürüm {} için hotfix tespit edildi, atla kaydı sıfırlandı.",
+                                manifest.getVersion());
                     }
 
                     log.info("Splash'te güncelleme bulundu: v{}", manifest.getVersion());
 
-                    // Splash'in üzerine panel göster (EDT'de)
                     SwingUtilities.invokeLater(() -> showSplashPanel(splash, manifest, userDecision));
-                    // Burada bekleme yok — latch'i panel kapatacak
                 },
 
                 // Güncelleme YOK
@@ -183,7 +198,10 @@ public class UpdateChecker {
                                  final UpdateManifest manifest,
                                  final CountDownLatch latch) {
 
-        SplashUpdatePanel panel = new SplashUpdatePanel(manifest, manager);
+        // Sürüm aynıysa ama hash farklıysa bu bir hotfix/yamadır
+        boolean isHotfix = UpdateManager.sameVersion(manifest.getVersion(), currentVersion());
+
+        SplashUpdatePanel panel = new SplashUpdatePanel(manifest, manager, isHotfix);
 
         // Splash'in tam boyutunu kapla
         panel.setBounds(0, 0, splash.getWidth(), splash.getHeight());
@@ -199,12 +217,9 @@ public class UpdateChecker {
         });
 
         // "Bu sürümü atla" → kaydet
-        panel.setOnSkipVersion(new Consumer<String>() {
-            @Override
-            public void accept(String version) {
-                prefs.put(PREF_SKIPPED_VERSION, version);
-                log.info("Sürüm {} atlandı olarak işaretlendi.", version);
-            }
+        panel.setOnSkipVersion(version -> {
+            prefs.put(PREF_SKIPPED_VERSION, version);
+            log.info("Sürüm {} atlandı olarak işaretlendi.", version);
         });
 
         // "Güncelle" tamamlandıktan sonra System.exit(0) SplashUpdatePanel içinde çağrılır.
@@ -223,13 +238,32 @@ public class UpdateChecker {
     private void performPeriodicCheck() {
         manager.checkForUpdates(
                 manifest -> {
-                    String skipped = prefs.get(PREF_SKIPPED_VERSION, "");
-                    if (skipped.equals(manifest.getVersion())) return;
+                    String  skipped   = prefs.get(PREF_SKIPPED_VERSION, "");
+                    boolean wasSkipped = skipped.equals(manifest.getVersion());
+                    boolean isHotfix  = UpdateManager.sameVersion(
+                            manifest.getVersion(), skipped);
+
+                    // Hotfix ise skipped'i sıfırla, yine göster
+                    if (wasSkipped && isHotfix) {
+                        prefs.remove(PREF_SKIPPED_VERSION);
+                        log.info("Periyodik: hotfix tespit edildi, atla kaydı sıfırlandı.");
+                    } else if (wasSkipped) {
+                        log.debug("Periyodik: sürüm {} atlandı, gösterilmiyor.", manifest.getVersion());
+                        return;
+                    }
 
                     SwingUtilities.invokeLater(() -> {
                         if (ownerFrame != null) {
-                            UpdateDialog dialog = new UpdateDialog(ownerFrame, manifest, manager);
-                            dialog.setOnSkipVersion(version -> prefs.put(PREF_SKIPPED_VERSION, version));
+                            boolean hotfix = UpdateManager.sameVersion(
+                                    manifest.getVersion(), currentVersion());
+                            UpdateDialog dialog = new UpdateDialog(
+                                    ownerFrame, manifest, manager, hotfix);
+                            dialog.setOnSkipVersion(new Consumer<String>() {
+                                @Override
+                                public void accept(String version) {
+                                    prefs.put(PREF_SKIPPED_VERSION, version);
+                                }
+                            });
                             dialog.setVisible(true);
                         }
                     });
@@ -249,6 +283,11 @@ public class UpdateChecker {
 
         log.info("UpdateManager | sürüm={} | appRoot={}", version, appRoot.getAbsolutePath());
         return new UpdateManager(manifestUrl, version, appRoot);
+    }
+
+    /** Çalışan uygulamanın sürümünü version.properties'ten okur. */
+    private static String currentVersion() {
+        return readProp("version", "0.0.0");
     }
 
     private static String readProp(String key, String def) {

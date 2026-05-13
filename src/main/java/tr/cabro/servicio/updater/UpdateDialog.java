@@ -8,21 +8,19 @@ import tr.cabro.servicio.Servicio;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.List;
 import java.util.function.Consumer;
 
 /**
  * Güncelleme diyaloğu — FlatLaf temasına uyumlu, 4 ekranlı.
-
+ * <p>
  * Ekranlar:
  *   INFO     → Patch notları, dosya sayısı özeti, Güncelle / Atla / Sonra
  *   DOWNLOAD → Dosya bazlı ilerleme çubukları, canlı dosya listesi
  *   DONE     → Başarı, "Yeniden Başlat" → launcher script çalıştır + shutdown()
  *   ERROR    → Hata mesajı, Tekrar Dene / Kapat
-
+ * <p>
  * FlatLaf renkleri UIManager üzerinden okunur; ayrı renk sabiti tanımlanmamıştır.
  * Bu sayede kullanıcının seçtiği tema (koyu/açık) otomatik yansır.
  */
@@ -52,6 +50,13 @@ public class UpdateDialog extends JDialog {
     private final UpdateManifest manifest;
     private final UpdateManager  manager;
 
+    /**
+     * true  → aynı sürüm numarası, dosya içeriği değişmiş (hotfix/yama).
+     *         "Bu Sürümü Atla" butonu gizlenir.
+     * false → yeni sürüm numarası.
+     */
+    private final boolean isHotfix;
+
     // ─── Geri Çağrılar ────────────────────────────────────────────────────────
 
     @Setter
@@ -74,10 +79,21 @@ public class UpdateDialog extends JDialog {
 
     // ─── Oluşturucu ───────────────────────────────────────────────────────────
 
+    /** Geriye dönük uyumluluk — isHotfix=false varsayılır. */
     public UpdateDialog(JFrame owner, UpdateManifest manifest, UpdateManager manager) {
-        super(owner, "Güncelleme Mevcut — v" + manifest.getVersion(), true);
-        this.manifest = manifest;
-        this.manager  = manager;
+        this(owner, manifest, manager, false);
+    }
+
+    public UpdateDialog(JFrame owner, UpdateManifest manifest,
+                        UpdateManager manager, boolean isHotfix) {
+        super(owner,
+                isHotfix
+                        ? "Kritik Güncelleme (Yama) — v" + manifest.getVersion()
+                        : "Güncelleme Mevcut — v" + manifest.getVersion(),
+                true);
+        this.manifest  = manifest;
+        this.manager   = manager;
+        this.isHotfix  = isHotfix;
 
         setSize(620, 540);
         setMinimumSize(new Dimension(500, 420));
@@ -174,6 +190,9 @@ public class UpdateDialog extends JDialog {
         final JButton skipBtn   = ghostButton("Bu Sürümü Atla");
         final JButton laterBtn  = ghostButton("Sonra Hatırlat");
         final JButton updateBtn = accentButton("Güncelle  ▶");
+
+        // Hotfix'te "Bu Sürümü Atla" gizlenir — aynı sürüm, içerik değişmiş demektir
+        skipBtn.setVisible(!isHotfix);
 
         skipBtn.addActionListener(e -> {
             if (onSkipVersion != null) onSkipVersion.accept(manifest.getVersion());
@@ -382,13 +401,10 @@ public class UpdateDialog extends JDialog {
                 () -> SwingUtilities.invokeLater(() -> showCard("DONE")),
 
                 // onError
-                ex -> SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        log.error("İndirme hatası", ex);
-                        statusLabel.setText("Hata: " + ex.getMessage());
-                        showCard("ERROR");
-                    }
+                ex -> SwingUtilities.invokeLater(() -> {
+                    log.error("İndirme hatası", ex);
+                    statusLabel.setText("Hata: " + ex.getMessage());
+                    showCard("ERROR");
                 })
         );
     }
@@ -407,22 +423,16 @@ public class UpdateDialog extends JDialog {
                 manager.launchAndExit(script);
 
                 // 4. Uygulamayı kapat (Servicio.shutdown() kayıt + DB + yedek yapar)
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        dispose();
-                        Servicio.getInstance().shutdown();
-                    }
+                SwingUtilities.invokeLater(() -> {
+                    dispose();
+                    Servicio.getInstance().shutdown();
                 });
 
             } catch (Exception e) {
                 log.error("Uygulama sırasında hata", e);
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        statusLabel.setText("Uygulama hatası: " + e.getMessage());
-                        showCard("ERROR");
-                    }
+                SwingUtilities.invokeLater(() -> {
+                    statusLabel.setText("Uygulama hatası: " + e.getMessage());
+                    showCard("ERROR");
                 });
             }
         }, "servicio-apply-update").start();

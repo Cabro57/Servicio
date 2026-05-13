@@ -67,7 +67,7 @@ public class MainForm extends JPanel {
     }
 
     private JPanel createFooter() {
-        JPanel panel = new JPanel(new MigLayout("insets 1 n 1 n,al trailing center,gapx 10,height 30!", "[]push[][]", "fill"));
+        JPanel panel = new JPanel(new MigLayout("insets 1 n 1 n,al trailing center,gapx 10,height 30!", "[][]push[][]", "fill"));
         panel.putClientProperty(FlatClientProperties.STYLE, "" +
                 "[light]background:tint($Panel.background,20%);" +
                 "[dark]background:tint($Panel.background,5%);");
@@ -78,6 +78,11 @@ public class MainForm extends JPanel {
                 "foreground:$Label.disabledForeground;");
         lbDemoVersion.setIcon(new Ikon("icons/git-merge.svg", 0.7f, "Label.disabledForeground"));
         panel.add(lbDemoVersion);
+
+        JButton updater = new JButton(new Ikon("icons/download.svg", 0.7f));
+        updater.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
+
+        panel.add(updater);
 
         // java version
         String javaVendor = System.getProperty("java.vendor");
