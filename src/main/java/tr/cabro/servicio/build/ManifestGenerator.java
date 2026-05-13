@@ -3,6 +3,7 @@ package tr.cabro.servicio.build;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.MessageDigest;
@@ -14,110 +15,169 @@ import java.util.*;
  * <p>
  * mvn package sonrasında maven-antrun-plugin tarafından çalıştırılır.
  * <p>
- * Yaptıkları:
- *   1. Ana JAR (servicio.jar) → SHA-256 hesapla, GitHub Releases URL'si ile kaydet.
- *   2. target/libs/*.jar → Her biri için:
- *        a. Dosya adından groupId/artifactId/version çıkar
- *           (maven-dependency-plugin dosyaları "artifactId-version.jar" şeklinde kopyalar)
- *        b. Eğer target/libs/ yanında .pom dosyası varsa groupId oradan okunur.
- *        c. Maven Central'dan indirilip indirilemeyeceğini kontrol eder.
- *           → İndirilebiliyorsa: source="maven" koordinatlarıyla yaz.
- *           → İndirilemiyorsa (özel repo / yerel): source="url", fallback URL ile yaz.
- *        d. SHA-256 hesaplanır.
- *   3. Mevcut manifest varsa eski patch notları korunur.
- *   4. Çıktı: target/update-manifest.json
- *
- * KONUMU: src/main/java/tr/cabro/servicio/build/ManifestGenerator.java
- *
+ * groupId çözümleme kaynakları (öncelik sırasıyla):
+ *   1. target/dependency-list.txt  — mvn dependency:list çıktısı (transitifler dahil)
+ *   2. pom.xml                     — doğrudan bağımlılıklar
+ *   3. KNOWN_GROUPS tablosu        — elle tanımlı bilinen eşlemeler (fallback)
+ * <p>
  * Argümanlar:
- *   0 → appVersion       (örn: "2.1.0")
- *   1 → githubReleaseUrl (örn: "https://github.com/USER/REPO/releases/download/v2.1.0")
- *   2 → mainJarPath      (örn: "target/servicio.jar")
- *   3 → libsDir          (örn: "target/libs")
- *   4 → outputPath       (örn: "target/update-manifest.json")
- *   5 → pomPath          (örn: "pom.xml")   ← groupId eşleme için
+ *   0 → appVersion         (örn: "2.1.0")
+ *   1 → githubReleaseUrl   (örn: "https://github.com/USER/REPO/releases/download/v2.1.0")
+ *   2 → mainJarPath        (örn: "target/servicio.jar")
+ *   3 → libsDir            (örn: "target/libs")
+ *   4 → outputPath         (örn: "target/update-manifest.json")
+ *   5 → pomPath            (örn: "pom.xml")
+ *   6 → depListPath        (örn: "target/dependency-list.txt")
  */
 public class ManifestGenerator {
 
-    // Maven Central kontrol URL'si
+    // ─── Maven repo sabitleri ─────────────────────────────────────────────────
+
     private static final String MAVEN_CENTRAL_BASE = "https://repo1.maven.org/maven2";
 
-    // Özel repolar — bu listedeki groupId'ler için alternatif repo URL kullanılır
-    // pom.xml'deki <repositories> bölümünü buraya yansıtın
+    /**
+     * Özel repolar: groupId prefix → repo URL.
+     * pom.xml'deki <repositories> bölümünü buraya yansıtın.
+     */
     private static final Map<String, String> CUSTOM_REPOS = new LinkedHashMap<>();
     static {
-        // groupId prefix → repo URL
-        CUSTOM_REPOS.put("eu.okaeri",       "https://storehouse.okaeri.eu/repository/maven-public");
-        CUSTOM_REPOS.put("io.github.dj-raven", MAVEN_CENTRAL_BASE); // Maven Central'da var
+        CUSTOM_REPOS.put("eu.okaeri", "https://storehouse.okaeri.eu/repository/maven-public");
     }
 
+    /**
+     * Bilinen transitif bağımlılıklar için sabit eşleme tablosu.
+     * "artifactId" → "groupId:artifactId"
+     * <p>
+     * Maven dependency:list bunu otomatik çözüyor; bu tablo yalnızca
+     * dependency-list.txt üretilemediğinde devreye giren fallback'tir.
+     */
+    private static final Map<String, String> KNOWN_GROUPS = new LinkedHashMap<>();
+    static {
+        // artifactId  →  groupId
+        KNOWN_GROUPS.put("filters",         "com.jhlabs");
+        KNOWN_GROUPS.put("geantyref",       "io.leangen.geantyref");
+        KNOWN_GROUPS.put("gson",            "com.google.code.gson");
+        KNOWN_GROUPS.put("jsvg",            "com.github.weisj");
+        KNOWN_GROUPS.put("logback-core",    "ch.qos.logback");
+        KNOWN_GROUPS.put("miglayout-core",  "com.miglayout");
+        KNOWN_GROUPS.put("miglayout-swing", "com.miglayout");
+        KNOWN_GROUPS.put("swing-worker",    "org.swinglabs");
+        // Gerekirse buraya eklemeye devam edin
+    }
+
+    // ─── main ─────────────────────────────────────────────────────────────────
+
     public static void main(String[] args) throws Exception {
+        // Windows konsolunda UTF-8 çıktı (encoding bozukluğunu önler)
+        PrintStream out = new PrintStream(System.out, true, "UTF-8");
+        PrintStream err = new PrintStream(System.err, true, "UTF-8");
+
         if (args.length < 6) {
-            System.err.println("Kullanim: ManifestGenerator <version> <githubReleaseUrl> " +
-                    "<mainJar> <libsDir> <output> <pomPath>");
+            err.println("Kullanim: ManifestGenerator <version> <githubReleaseUrl> " +
+                    "<mainJar> <libsDir> <output> <pomPath> [depListPath]");
             System.exit(1);
         }
 
-        String appVersion      = args[0];
-        String githubBase      = args[1];  // örn: .../releases/download/v2.1.0
-        File   mainJar         = new File(args[2]);
-        File   libsDir         = new File(args[3]);
-        File   outputFile      = new File(args[4]);
-        File   pomFile         = new File(args[5]);
+        String appVersion  = args[0];
+        String githubBase  = args[1];
+        File   mainJar     = new File(args[2]);
+        File   libsDir     = new File(args[3]);
+        File   outputFile  = new File(args[4]);
+        File   pomFile     = new File(args[5]);
+        File   depListFile = args.length > 6 ? new File(args[6]) : null;
 
-        System.out.println("=== ManifestGenerator v" + appVersion + " ===");
+        out.println("=== ManifestGenerator v" + appVersion + " ===");
 
-        // pom.xml'den groupId → artifactId eşlemesi oku
-        Map<String, String> artifactGroupMap = parsePomDependencies(pomFile);
-        System.out.println("POM'dan " + artifactGroupMap.size() + " bağımlılık okundu.");
+        // ── groupId haritası oluştur ───────────────────────────────────────────
+        // Öncelik: dependency-list.txt > pom.xml > KNOWN_GROUPS
+
+        // 3. Öncelik: KNOWN_GROUPS (en düşük, üzerine yazılabilir)
+        Map<String, String> artifactGroupMap = new LinkedHashMap<>(KNOWN_GROUPS);
+        out.println("Bilinen transitifler: " + KNOWN_GROUPS.size() + " kayıt");
+
+        // 2. Öncelik: pom.xml
+        Map<String, String> pomMap = parsePomDependencies(pomFile);
+        artifactGroupMap.putAll(pomMap);
+        out.println("POM'dan okunan: " + pomMap.size() + " bağımlılık");
+
+        // 1. Öncelik: dependency-list.txt (transitifler dahil, en güvenilir kaynak)
+        if (depListFile != null && depListFile.exists()) {
+            Map<String, String> depMap = parseDependencyList(depListFile);
+            artifactGroupMap.putAll(depMap);
+            out.println("dependency-list.txt'ten okunan: " + depMap.size() + " bağımlılık");
+        } else {
+            out.println("[BILGI] dependency-list.txt bulunamadi, POM + KNOWN_GROUPS kullaniliyor.");
+            out.println("        Tum transifler icin pom-additions.xml'deki dependency:list hedefini ekleyin.");
+        }
+
+        out.println("Toplam esleme: " + artifactGroupMap.size() + " kayit");
+        out.println();
 
         // Mevcut manifest patch notlarını oku
         List<String> oldPatchNotes = new ArrayList<>();
         if (outputFile.exists()) {
             oldPatchNotes = extractPatchNotes(outputFile, appVersion);
-            System.out.println("Eski patch notları korunuyor: " + oldPatchNotes.size() + " sürüm");
+            out.println("Eski patch notlari korunuyor: " + oldPatchNotes.size() + " surum");
         }
 
-        List<FileRecord> records = new ArrayList<>();
+        List<FileRecord> records  = new ArrayList<>();
+        int mavenCount  = 0;
+        int urlCount    = 0;
+        int warnCount   = 0;
 
-        // ── 1. Ana JAR — GitHub Releases ──────────────────────────────────────
+        // ── Ana JAR ───────────────────────────────────────────────────────────
         if (mainJar.exists()) {
             FileRecord rec = new FileRecord();
-            rec.source  = "github";
-            rec.name    = mainJar.getName();
-            rec.path    = mainJar.getName();
-            rec.url     = githubBase + "/" + mainJar.getName();
-            rec.sha256  = sha256(mainJar);
-            rec.size    = mainJar.length();
+            rec.source = "github";
+            rec.name   = mainJar.getName();
+            rec.path   = mainJar.getName();
+            rec.url    = githubBase + "/" + mainJar.getName();
+            rec.sha256 = sha256(mainJar);
+            rec.size   = mainJar.length();
             records.add(rec);
-            System.out.println("[JAR]    " + rec.name + "  sha256=" + rec.sha256.substring(0, 12) + "...");
+            out.printf("[GITHUB]   %s  sha256=%s...%n", rec.name, rec.sha256.substring(0, 12));
         } else {
-            System.err.println("[UYARI] Ana JAR bulunamadı: " + mainJar);
+            err.println("[UYARI] Ana JAR bulunamadi: " + mainJar);
         }
 
-        // ── 2. Kütüphaneler — Maven Central veya özel repo ───────────────────
+        // ── Kütüphaneler ──────────────────────────────────────────────────────
         if (libsDir.exists()) {
             File[] libs = libsDir.listFiles((dir, name) -> name.endsWith(".jar"));
 
             if (libs != null) {
                 Arrays.sort(libs);
                 for (File lib : libs) {
-                    FileRecord rec = processLibrary(lib, artifactGroupMap);
+                    FileRecord rec = processLibrary(lib, artifactGroupMap, err);
                     records.add(rec);
 
-                    String sourceTag = "[" + rec.source.toUpperCase() + "]";
                     if ("maven".equals(rec.source)) {
-                        System.out.printf("%-10s %s:%s:%s%n",
-                                sourceTag, rec.groupId, rec.artifactId, rec.libVersion);
+                        out.printf("[MAVEN]    %s:%s:%s%n",
+                                rec.groupId, rec.artifactId, rec.libVersion);
+                        mavenCount++;
                     } else {
-                        System.out.printf("%-10s %s  (url=%s)%n",
-                                sourceTag, rec.name, rec.url);
+                        if (rec.url == null || rec.url.isEmpty()) {
+                            err.printf("[UYARI]    %s → groupId bulunamadi, url bos!%n", rec.name);
+                            warnCount++;
+                        } else {
+                            out.printf("[URL]      %s%n", rec.name);
+                        }
+                        urlCount++;
                     }
                 }
             }
         }
 
-        // ── 3. JSON üret ──────────────────────────────────────────────────────
+        // ── Özet ──────────────────────────────────────────────────────────────
+        out.println();
+        out.printf("Sonuc: %d maven, %d url, %d uyari%n", mavenCount, urlCount, warnCount);
+        if (warnCount > 0) {
+            err.println();
+            err.println("COZUM: Bos URL'li JAR'lar icin:");
+            err.println("  pom-additions.xml'deki dependency:list hedefini ekleyin (otomatik cozer)");
+            err.println("  VEYA ManifestGenerator.KNOWN_GROUPS'a manuel ekleyin.");
+        }
+
+        // ── JSON üret ─────────────────────────────────────────────────────────
         String today = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
         String json  = buildJson(appVersion, today, records, oldPatchNotes);
 
@@ -131,122 +191,150 @@ public class ManifestGenerator {
             if (pw != null) pw.close();
         }
 
-        System.out.println("=== Tamamlandı: " + records.size() + " dosya → " + outputFile + " ===");
+        out.println("=== Tamamlandi: " + records.size() + " dosya -> " + outputFile + " ===");
     }
 
     // ─── Kütüphane İşleme ────────────────────────────────────────────────────
 
-    /**
-     * Tek bir kütüphane JAR dosyasını inceler.
-     * maven-dependency-plugin dosyaları "artifactId-version.jar" formatında kopyalar.
-     */
     private static FileRecord processLibrary(File lib,
-                                             Map<String, String> artifactGroupMap) throws Exception {
+                                             Map<String, String> artifactGroupMap,
+                                             PrintStream err) throws Exception {
         FileRecord rec = new FileRecord();
         rec.sha256 = sha256(lib);
         rec.size   = lib.length();
         rec.name   = lib.getName();
         rec.path   = "libs/" + lib.getName();
 
-        // Dosya adından artifactId ve version çıkar
-        // Örn: "flatlaf-3.7.1.jar" → artifactId="flatlaf", version="3.7.1"
         String baseName   = lib.getName().replaceAll("\\.jar$", "");
         String artifactId = extractArtifactId(baseName);
         String version    = extractVersion(baseName);
 
         if (artifactId == null || version == null) {
-            // Parse edilemedi → doğrudan URL olarak işaretle
             rec.source = "url";
-            rec.url    = "";   // Kullanıcı doldurur
-            System.err.println("[UYARI] Dosya adı parse edilemedi: " + lib.getName());
+            rec.url    = "";
+            err.println("[UYARI] Dosya adi parse edilemedi: " + lib.getName());
             return rec;
         }
 
         rec.artifactId = artifactId;
         rec.libVersion = version;
 
-        // groupId'yi POM eşlemesinden al
-        String groupId = artifactGroupMap.get(artifactId);
+        // groupId ara — tam eşleşme veya prefix eşleşmesi
+        String groupId = findGroupId(artifactId, artifactGroupMap);
+
         if (groupId == null) {
-            // Bilinmiyor — URL olarak kaydet
             rec.source = "url";
             rec.url    = "";
-            System.err.println("[UYARI] groupId bulunamadı: " + artifactId + " → url kaynağı");
+            // Uyarı çağıran tarafta basılıyor
             return rec;
         }
+
         rec.groupId = groupId;
 
-        // Hangi repo'dan indirileceğini belirle
         String repoUrl = resolveRepository(groupId);
         rec.repository = repoUrl.equals(MAVEN_CENTRAL_BASE) ? null : repoUrl;
 
-        // Maven repo'da gerçekten var mı? HEAD isteği ile kontrol et
         String mavenUrl = buildMavenUrl(repoUrl, groupId, artifactId, version);
         if (isUrlReachable(mavenUrl)) {
             rec.source = "maven";
         } else {
-            // Repo'da yok → doğrudan URL olarak kaydet (fallback)
             rec.source = "url";
             rec.url    = mavenUrl;
-            System.err.println("[FALLBACK] Maven'da bulunamadı, url kaynağı: " + mavenUrl);
+            err.println("[FALLBACK] Maven'da bulunamadi, url kaynagi: " + mavenUrl);
         }
 
         return rec;
     }
 
     /**
-     * groupId'ye göre doğru repo URL'sini döner.
-     * CUSTOM_REPOS'ta prefix eşleşmesi arar.
+     * artifactId için groupId arar.
+     * Tam eşleşme, ardından kısmi eşleşme (prefix/suffix) dener.
      */
-    private static String resolveRepository(String groupId) {
-        for (Map.Entry<String, String> entry : CUSTOM_REPOS.entrySet()) {
-            if (groupId.startsWith(entry.getKey())) {
-                return entry.getValue();
+    private static String findGroupId(String artifactId, Map<String, String> map) {
+        // 1. Tam eşleşme
+        if (map.containsKey(artifactId)) return map.get(artifactId);
+
+        // 2. Kısmi eşleşme: haritadaki anahtar artifactId'nin prefix'i mi?
+        //    Örn: "logback" → "logback-core" ve "logback-classic" için
+        for (Map.Entry<String, String> e : map.entrySet()) {
+            String key = e.getKey();
+            if (artifactId.startsWith(key) || key.startsWith(artifactId)) {
+                return e.getValue();
             }
         }
-        return MAVEN_CENTRAL_BASE;
+
+        return null;
     }
 
-    /** Maven artifact URL'si üretir. */
-    private static String buildMavenUrl(String repoBase, String groupId,
-                                        String artifactId, String version) {
-        String groupPath = groupId.replace('.', '/');
-        String fileName  = artifactId + "-" + version + ".jar";
-        return repoBase.replaceAll("/$", "")
-                + "/" + groupPath + "/" + artifactId + "/" + version + "/" + fileName;
-    }
+    // ─── dependency-list.txt Parse ───────────────────────────────────────────
 
-    /** HTTP HEAD isteği ile URL'nin erişilebilir olduğunu kontrol eder. */
-    private static boolean isUrlReachable(String urlStr) {
+    /**
+     * mvn dependency:list -DoutputFile=target/dependency-list.txt çıktısını parse eder.
+     * <p>
+     * Format (her satır):
+     *   groupId:artifactId:jar:version:scope
+     *   örn: com.google.code.gson:gson:jar:2.9.1:compile
+     * <p>
+     * Çıktı: artifactId → groupId eşlemesi (tüm transitifler dahil).
+     */
+    private static Map<String, String> parseDependencyList(File file) throws IOException {
+        Map<String, String> map = new LinkedHashMap<>();
+        BufferedReader br = null;
         try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-            conn.setRequestMethod("HEAD");
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
-            conn.setRequestProperty("User-Agent", "Servicio-ManifestGenerator");
-            conn.setInstanceFollowRedirects(true);
-            int code = conn.getResponseCode();
-            conn.disconnect();
-            return code == 200 || code == 301 || code == 302;
-        } catch (Exception e) {
-            return false;
+            br = new BufferedReader(new InputStreamReader(
+                    Files.newInputStream(file.toPath()), detectCharset(file)));
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                // Boş satır veya başlık satırı atla
+                if (line.isEmpty() || line.startsWith("The following")) continue;
+                // groupId:artifactId:jar:version:scope formatını ayrıştır
+                String[] parts = line.split(":");
+                if (parts.length >= 4) {
+                    String groupId    = parts[0].trim();
+                    String artifactId = parts[1].trim();
+                    if (!groupId.isEmpty() && !artifactId.isEmpty()) {
+                        map.put(artifactId, groupId);
+                        // Kısa kök da ekle: "logback-core" → "logback" → ch.qos.logback
+                        String base = artifactId.split("-")[0];
+                        if (!base.equals(artifactId) && !map.containsKey(base)) {
+                            map.put(base, groupId);
+                        }
+                    }
+                }
+            }
+        } finally {
+            if (br != null) try { br.close(); } catch (IOException ignored) { }
         }
+        return map;
+    }
+
+    /**
+     * Dosyanın encoding'ini tahmin eder.
+     * Maven bazı sistemlerde platform encoding kullanır.
+     */
+    private static String detectCharset(File file) {
+        // BOM kontrolü
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            byte[] bom = new byte[3];
+            int read = fis.read(bom);
+            fis.close();
+            if (read >= 3 && bom[0] == (byte)0xEF && bom[1] == (byte)0xBB && bom[2] == (byte)0xBF) {
+                return "UTF-8";
+            }
+        } catch (IOException ignored) { }
+        // Varsayılan: sistem encoding
+        return Charset.defaultCharset().name();
     }
 
     // ─── POM Parse ───────────────────────────────────────────────────────────
 
-    /**
-     * pom.xml'den tüm <dependency> bloklarını okur.
-     * Çıktı: artifactId → groupId eşlemesi.
-     * Harici kütüphane kullanmaz; basit string arama ile parse eder.
-     */
     private static Map<String, String> parsePomDependencies(File pom) throws IOException {
-        Map<String, String> map = new LinkedHashMap<>();
+        Map<String, String> map = new LinkedHashMap<String, String>();
         if (!pom.exists()) return map;
 
         String content = readFile(pom);
-
-        // <dependency> bloklarını ayıkla
         int search = 0;
         while (true) {
             int start = content.indexOf("<dependency>", search);
@@ -260,13 +348,10 @@ public class ManifestGenerator {
             String artifactId = extractXmlTag(block, "artifactId");
 
             if (groupId != null && artifactId != null) {
-                // artifactId → groupId
                 map.put(artifactId.trim(), groupId.trim());
-
-                // Bazı artifactId'ler bileşik olabilir (örn: jdbi3-core)
-                // Temel kısmını da ekle: "jdbi3" → groupId
+                // Kısa kök: "jdbi3-core" → "jdbi3"
                 String base = artifactId.split("[-.]")[0];
-                if (!base.equals(artifactId)) {
+                if (!base.equals(artifactId.trim())) {
                     map.putIfAbsent(base, groupId.trim());
                 }
             }
@@ -283,21 +368,45 @@ public class ManifestGenerator {
         return block.substring(s + open.length(), e).trim();
     }
 
+    // ─── Repo / URL Yardımcıları ─────────────────────────────────────────────
+
+    private static String resolveRepository(String groupId) {
+        for (Map.Entry<String, String> entry : CUSTOM_REPOS.entrySet()) {
+            if (groupId.startsWith(entry.getKey())) return entry.getValue();
+        }
+        return MAVEN_CENTRAL_BASE;
+    }
+
+    private static String buildMavenUrl(String repoBase, String groupId,
+                                        String artifactId, String version) {
+        String groupPath = groupId.replace('.', '/');
+        String fileName  = artifactId + "-" + version + ".jar";
+        return repoBase.replaceAll("/$", "")
+                + "/" + groupPath + "/" + artifactId + "/" + version + "/" + fileName;
+    }
+
+    private static boolean isUrlReachable(String urlStr) {
+        try {
+            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+            conn.setRequestMethod("HEAD");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            conn.setRequestProperty("User-Agent", "Servicio-ManifestGenerator");
+            conn.setInstanceFollowRedirects(true);
+            int code = conn.getResponseCode();
+            conn.disconnect();
+            return code == 200 || code == 301 || code == 302;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ─── Dosya Adı Parse ─────────────────────────────────────────────────────
 
-    /**
-     * "flatlaf-3.7.1" → "flatlaf"
-     * "slf4j-api-1.7.36" → "slf4j-api"
-     * "jdbi3-core-3.37.1" → "jdbi3-core"
-     * <p>
-     * Strateji: sağdan ilk semver benzeri parçayı bul, öncesi artifactId'dir.
-     */
     private static String extractArtifactId(String baseName) {
-        // Sağdan tara; ilk rakamla başlayan (semver) parçayı bul
         String[] parts = baseName.split("-");
         for (int i = parts.length - 1; i >= 0; i--) {
             if (parts[i].matches("\\d+.*")) {
-                // i öncesi artifactId
                 StringBuilder sb = new StringBuilder();
                 for (int j = 0; j < i; j++) {
                     if (j > 0) sb.append('-');
@@ -309,10 +418,6 @@ public class ManifestGenerator {
         return null;
     }
 
-    /**
-     * "flatlaf-3.7.1" → "3.7.1"
-     * "slf4j-api-1.7.36" → "1.7.36"
-     */
     private static String extractVersion(String baseName) {
         String[] parts = baseName.split("-");
         StringBuilder version = new StringBuilder();
@@ -381,7 +486,6 @@ public class ManifestGenerator {
         sb.append("  \"releaseDate\": ").append(q(date)).append(",\n");
         sb.append("  \"minRequiredVersion\": \"2.0.0\",\n");
 
-        // Patch notları
         sb.append("  \"patchNotes\": [\n");
         sb.append("    {\n");
         sb.append("      \"version\": ").append(q(version)).append(",\n");
@@ -393,7 +497,6 @@ public class ManifestGenerator {
         for (String old : oldPatchNotes) sb.append(",\n    ").append(old);
         sb.append("\n  ],\n");
 
-        // Dosyalar
         sb.append("  \"files\": [\n");
         for (int i = 0; i < records.size(); i++) {
             FileRecord r = records.get(i);
@@ -423,7 +526,7 @@ public class ManifestGenerator {
         return sb.toString();
     }
 
-    // ─── Dosya / Hash Yardımcıları ────────────────────────────────────────────
+    // ─── Genel Yardımcılar ────────────────────────────────────────────────────
 
     private static String sha256(File file) throws Exception {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -461,14 +564,14 @@ public class ManifestGenerator {
     // ─── Inner ───────────────────────────────────────────────────────────────
 
     private static class FileRecord {
-        String source;      // "maven" | "github" | "url"
+        String source;
         String name;
         String path;
-        String url;         // source=github/url
-        String groupId;     // source=maven
-        String artifactId;  // source=maven
-        String libVersion;  // source=maven
-        String repository;  // source=maven, null=Maven Central
+        String url;
+        String groupId;
+        String artifactId;
+        String libVersion;
+        String repository;
         String sha256;
         long   size;
     }
