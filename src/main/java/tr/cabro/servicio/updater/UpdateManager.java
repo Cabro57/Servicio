@@ -20,12 +20,12 @@ import java.util.function.Consumer;
 
 /**
  * Güncelleme indirme motoru.
- *
+ * <p>
  * İndirme kaynakları:
  *   • source="maven"  → Maven Central veya özel repo'dan koordinatla
  *   • source="github" → GitHub Releases doğrudan URL
  *   • source="url"    → Özel HTTP/HTTPS kaynağı
- *
+ * <p>
  * Akış:
  *   1. checkForUpdates()    → manifest.json indir, sürüm karşılaştır
  *   2. downloadUpdate()     → hash'i değişen dosyaları indir (.update-tmp/)
@@ -172,12 +172,9 @@ public class UpdateManager {
                     final String finalDisplayName = displayName;
                     final long   entrySize        = entry.size;
 
-                    downloadFile(downloadUrl, dest, new Consumer<Long>() {
-                        @Override
-                        public void accept(Long bytesRead) {
-                            double pct = entrySize > 0 ? (double) bytesRead / entrySize : 0.0;
-                            onProgress.accept(finalDisplayName, pct);
-                        }
+                    downloadFile(downloadUrl, dest, (Consumer<Long>) bytesRead -> {
+                        double pct = entrySize > 0 ? (double) bytesRead / entrySize : 0.0;
+                        onProgress.accept(finalDisplayName, pct);
                     });
 
                     // Hash doğrula
@@ -339,7 +336,40 @@ public class UpdateManager {
     // ─── İndirme Yardımcıları ────────────────────────────────────────────────
 
     private String downloadText(String urlStr) throws IOException {
-        HttpURLConnection conn = openConnection(urlStr, READ_TIMEOUT_MS);
+        // GitHub CDN önbelleğini atlatmak için timestamp parametresi ekle.
+        // raw.githubusercontent.com bazen dakikalarca eski içerik döner;
+        // query string eklenmesi CDN'in farklı bir cache key kullanmasını sağlar.
+
+        // Redirect zincirini takip et (raw.githubusercontent.com → objects.githubusercontent.com)
+        String currentUrl = urlStr
+                + (urlStr.contains("?") ? "&" : "?")
+                + "_t=" + System.currentTimeMillis();
+        HttpURLConnection conn = null;
+
+        for (int redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
+            conn = openConnection(currentUrl, READ_TIMEOUT_MS);
+            conn.setInstanceFollowRedirects(false);
+            int code = conn.getResponseCode();
+
+            if (code == 200) break;
+
+            if (code == 301 || code == 302 || code == 307 || code == 308) {
+                String loc = conn.getHeaderField("Location");
+                conn.disconnect();
+                if (loc == null || loc.isEmpty())
+                    throw new IOException("Manifest redirect konumu bos");
+                if (!loc.startsWith("http")) {
+                    URL base = new URL(currentUrl);
+                    loc = base.getProtocol() + "://" + base.getHost() + loc;
+                }
+                currentUrl = loc;
+                continue;
+            }
+
+            conn.disconnect();
+            throw new IOException("Manifest HTTP " + code + " : " + currentUrl);
+        }
+
         BufferedReader reader = null;
         try {
             reader = new BufferedReader(
@@ -430,8 +460,12 @@ public class UpdateManager {
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
         conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
         conn.setReadTimeout(readTimeout);
-        conn.setRequestProperty("Cache-Control", "no-cache");
-        conn.setRequestProperty("User-Agent", "Servicio-Updater/" + currentVersion);
+        // Tüm önbellek mekanizmalarını devre dışı bırak
+        conn.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
+        conn.setRequestProperty("Pragma",        "no-cache");
+        conn.setRequestProperty("Expires",       "0");
+        conn.setRequestProperty("User-Agent",    "Servicio-Updater/" + currentVersion);
+        conn.setUseCaches(false);
         return conn;
     }
 

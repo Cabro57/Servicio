@@ -4,11 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="çıkan uarılar giderildi">
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/update-manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/update-manifest.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/version.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/version.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -306,7 +306,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778660004989</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi.">
+      <option name="closed" value="true" />
+      <created>1778670551201</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1778670551201</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -323,7 +331,8 @@
     <MESSAGE value="aynı sürüm içinde değişen dosyalar var ise onları da kontrol edip güncelleyebiliyor" />
     <MESSAGE value="libs klasöründe tanınmayan kütüphaneleri artık tanıyor" />
     <MESSAGE value="çıkan uarılar giderildi" />
-    <option name="LAST_COMMIT_MESSAGE" value="çıkan uarılar giderildi" />
+    <MESSAGE value="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi." />
+    <option name="LAST_COMMIT_MESSAGE" value="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
