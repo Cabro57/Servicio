@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.component;
 
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.events.TableActionEvent;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 
 import javax.swing.*;
 import java.awt.*;

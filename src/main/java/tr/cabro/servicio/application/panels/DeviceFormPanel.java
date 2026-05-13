@@ -4,7 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 import raven.modal.Toast;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;

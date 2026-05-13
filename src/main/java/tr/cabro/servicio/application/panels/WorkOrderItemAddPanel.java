@@ -11,7 +11,7 @@ import tr.cabro.servicio.application.renderer.AddButtonRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ItemType;
 import tr.cabro.servicio.model.enums.SourceType;

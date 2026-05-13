@@ -7,7 +7,7 @@ import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.service.DeviceDictionaryManager;

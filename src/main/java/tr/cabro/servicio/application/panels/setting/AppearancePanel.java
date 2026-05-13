@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.panels.setting;
 
 import net.miginfocom.swing.MigLayout;
-import raven.modal.themes.PanelThemes;
+import tr.cabro.servicio.application.themes.PanelThemes;
 
 import javax.swing.*;
 

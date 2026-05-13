@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.renderer;
 
 import tr.cabro.servicio.application.ui.IconManager;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.enums.CustomerType;
 

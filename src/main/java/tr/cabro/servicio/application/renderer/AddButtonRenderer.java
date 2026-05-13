@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.renderer;
 
 import tr.cabro.servicio.application.component.ActionButton;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;

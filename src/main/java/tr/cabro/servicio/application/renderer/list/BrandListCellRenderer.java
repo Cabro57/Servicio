@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.renderer.list;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;
 
 import javax.swing.*;

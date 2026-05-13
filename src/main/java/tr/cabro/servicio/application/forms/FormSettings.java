@@ -2,9 +2,9 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.system.Form;
-import raven.modal.utils.SystemForm;
 import tr.cabro.servicio.application.panels.setting.*;
+import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.utils.SystemForm;
 
 import javax.swing.*;
 

@@ -8,14 +8,13 @@ import tr.cabro.servicio.application.handlers.BrandExportHandler;
 import tr.cabro.servicio.application.handlers.TypeImportHandler;
 import tr.cabro.servicio.application.renderer.list.BrandListCellRenderer;
 import tr.cabro.servicio.application.renderer.list.TypeListCellRenderer;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.service.DeviceDictionaryManager;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
-import java.awt.*;
 
 public class SettingsDevicePanel extends JPanel {
 

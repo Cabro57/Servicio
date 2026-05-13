@@ -1,11 +1,11 @@
 package tr.cabro.servicio.util.searchableresult;
 
 import raven.modal.ModalDialog;
-import raven.modal.system.Form;
-import raven.modal.system.FormManager;
-import raven.modal.system.FormSearch;
-import raven.modal.utils.DemoPreferences;
+import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.system.FormManager;
+import tr.cabro.servicio.application.system.FormSearch;
 import tr.cabro.servicio.application.forms.FormCustomer;
+import tr.cabro.servicio.application.utils.DemoPreferences;
 import tr.cabro.servicio.model.Customer;
 
 public class CustomerSearchResult implements ISearchableResult {

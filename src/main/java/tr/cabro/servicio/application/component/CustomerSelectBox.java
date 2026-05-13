@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 
 import javax.swing.*;

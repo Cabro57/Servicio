@@ -1,12 +1,12 @@
 package tr.cabro.servicio.util.searchableresult;
 
 import raven.modal.ModalDialog;
-import raven.modal.system.AllForms;
-import raven.modal.system.Form;
-import raven.modal.system.FormManager;
-import raven.modal.system.FormSearch;
-import raven.modal.utils.DemoPreferences;
-import raven.modal.utils.SystemForm;
+import tr.cabro.servicio.application.system.AllForms;
+import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.system.FormManager;
+import tr.cabro.servicio.application.system.FormSearch;
+import tr.cabro.servicio.application.utils.DemoPreferences;
+import tr.cabro.servicio.application.utils.SystemForm;
 
 // BU SINIF YENİ OLUŞTURULACAK
 public class StaticFormResult implements ISearchableResult {

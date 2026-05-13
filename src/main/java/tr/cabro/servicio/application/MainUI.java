@@ -3,9 +3,9 @@ package tr.cabro.servicio.application;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
-import raven.modal.menu.MyDrawerBuilder;
-import raven.modal.system.FormManager;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.menu.MyDrawerBuilder;
+import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.model.User;
 
 import javax.swing.*;

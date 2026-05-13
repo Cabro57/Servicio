@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.editors;
 
 import tr.cabro.servicio.application.component.ActionButton;
 import tr.cabro.servicio.application.events.TableAddEvent;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 
 import javax.swing.*;
 import java.awt.*;

@@ -2,17 +2,16 @@ package tr.cabro.servicio.application.forms.base;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.component.dashboard.CardBox;
-import raven.modal.system.Form;
-import raven.modal.utils.SystemForm;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.component.dashboard.CardBox;
+import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.application.utils.SystemForm;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
-import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;

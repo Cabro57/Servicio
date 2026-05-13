@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.ui;
 
-import com.formdev.flatlaf.extras.FlatSVGIcon;
-import tr.cabro.servicio.application.util.Ikon;
+import tr.cabro.servicio.application.utils.Ikon;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
