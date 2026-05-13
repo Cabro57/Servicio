@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi.">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/version.properties" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/version.properties" afterDir="false" />
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi.">
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/update-manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/update-manifest.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -314,7 +312,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778670551201</updated>
     </task>
-    <option name="localTasksCounter" value="15" />
+    <task id="LOCAL-00015" summary="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi.">
+      <option name="closed" value="true" />
+      <created>1778673363960</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1778673363960</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -332,7 +338,8 @@
     <MESSAGE value="libs klasöründe tanınmayan kütüphaneleri artık tanıyor" />
     <MESSAGE value="çıkan uarılar giderildi" />
     <MESSAGE value="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi." />
-    <option name="LAST_COMMIT_MESSAGE" value="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi." />
+    <MESSAGE value="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi." />
+    <option name="LAST_COMMIT_MESSAGE" value="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
