@@ -81,7 +81,7 @@ public class MainForm extends JPanel {
 
 //        JButton updater = new JButton(new Ikon("icons/download.svg", 0.7f));
 //        updater.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
-
+//
 //        panel.add(updater);
 
         // java version

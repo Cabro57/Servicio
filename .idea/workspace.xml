@@ -6,8 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="çıkan uarılar giderildi">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/update-manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/update-manifest.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -298,7 +298,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778659098740</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="çıkan uarılar giderildi">
+      <option name="closed" value="true" />
+      <created>1778660004989</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1778660004989</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

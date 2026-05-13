@@ -20,12 +20,12 @@ import java.util.function.Consumer;
 
 /**
  * Güncelleme indirme motoru.
- * <p>
+ *
  * İndirme kaynakları:
  *   • source="maven"  → Maven Central veya özel repo'dan koordinatla
  *   • source="github" → GitHub Releases doğrudan URL
  *   • source="url"    → Özel HTTP/HTTPS kaynağı
- * <p>
+ *
  * Akış:
  *   1. checkForUpdates()    → manifest.json indir, sürüm karşılaştır
  *   2. downloadUpdate()     → hash'i değişen dosyaları indir (.update-tmp/)
@@ -58,13 +58,27 @@ public class UpdateManager {
     @Setter
     private Consumer<Long>    completionCallback = null;
 
+    /**
+     * Geliştirme modu bayrağı.
+     * true  → IDE'den çalışılıyor; hash kontrolü atlanır, yalnızca sürüm numarası karşılaştırılır.
+     * false → Gerçek JAR ortamı; tam hash kontrolü uygulanır.
+     */
+    private final boolean devMode;
+
     // ─── Oluşturucu ──────────────────────────────────────────────────────────
 
+    /** Üretim ortamı constructor'ı (devMode=false). */
     public UpdateManager(String manifestUrl, String currentVersion, File appRoot) {
+        this(manifestUrl, currentVersion, appRoot, false);
+    }
+
+    /** devMode=true → IDE ortamı; hash kontrolü yapılmaz. */
+    public UpdateManager(String manifestUrl, String currentVersion, File appRoot, boolean devMode) {
         this.manifestUrl    = manifestUrl;
         this.currentVersion = currentVersion;
         this.appRoot        = appRoot;
         this.tempDir        = new File(appRoot, ".update-tmp");
+        this.devMode        = devMode;
     }
 
     // ─── Genel API ───────────────────────────────────────────────────────────
@@ -158,9 +172,12 @@ public class UpdateManager {
                     final String finalDisplayName = displayName;
                     final long   entrySize        = entry.size;
 
-                    downloadFile(downloadUrl, dest, (Consumer<Long>) bytesRead -> {
-                        double pct = entrySize > 0 ? (double) bytesRead / entrySize : 0.0;
-                        onProgress.accept(finalDisplayName, pct);
+                    downloadFile(downloadUrl, dest, new Consumer<Long>() {
+                        @Override
+                        public void accept(Long bytesRead) {
+                            double pct = entrySize > 0 ? (double) bytesRead / entrySize : 0.0;
+                            onProgress.accept(finalDisplayName, pct);
+                        }
                     });
 
                     // Hash doğrula
@@ -193,14 +210,35 @@ public class UpdateManager {
         t.start();
     }
 
+    /**
+     * İndirilen dosyaları uygulama dizinine taşır.
+     * <p>
+     * Windows kısıtlaması: Çalışan JVM kendi JAR'ını kilitler, üzerine yazılamaz.
+     * Bu nedenle ana JAR (.update-tmp/servicio.jar) bu metodda ATLANIR.
+     * Ana JAR'ı launcher script taşır — JVM kapandıktan sonra.
+     * <p>
+     * libs/ klasöründeki JAR'lar çalışan JVM tarafından kilitlenmez (URLClassLoader
+     * onları belleğe yükler ve dosyayı serbest bırakır), doğrudan taşınabilir.
+     */
     public void applyUpdate() throws IOException {
         log.info("Güncelleme uygulanıyor: {} → {}", tempDir, appRoot);
+
+        final String mainJarName = getMainJarName();
 
         Files.walkFileTree(tempDir.toPath(), new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path src, BasicFileAttributes attrs) throws IOException {
                 Path relative = tempDir.toPath().relativize(src);
-                File dest     = new File(appRoot, relative.toString());
+                String relStr = relative.toString();
+
+                // Ana JAR'ı atla — JVM tarafından kilitli, launcher script taşıyacak
+                if (relStr.equalsIgnoreCase(mainJarName)
+                        || relStr.equalsIgnoreCase(mainJarName.replace("/", File.separator))) {
+                    log.info("Ana JAR launcher script'e bırakıldı: {}", relStr);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                File dest = new File(appRoot, relStr);
                 dest.getParentFile().mkdirs();
 
                 if (dest.exists()) {
@@ -216,8 +254,31 @@ public class UpdateManager {
             }
         });
 
-        deleteDirectory(tempDir);
-        log.info("Geçici dizin temizlendi.");
+        // tempDir'i silme — ana JAR hâlâ orada, launcher script onu taşıyacak
+        log.info("libs/ taşıma tamamlandı. Ana JAR launcher'a bırakıldı.");
+    }
+
+    /** Ana JAR'ın göreceli yolunu döner. Örn: "servicio.jar" */
+    private String getMainJarName() {
+        // MANIFEST.MF'den okumayı dene
+        try {
+            java.net.URL url = getClass().getResource("/META-INF/MANIFEST.MF");
+            if (url != null) {
+                java.util.jar.Manifest mf = new java.util.jar.Manifest(url.openStream());
+                String cp = mf.getMainAttributes().getValue("Class-Path");
+                // Class-Path: libs/a.jar libs/b.jar → ana JAR listede değil
+                // Alternatif: Start-Class veya Main-Class'tan değil, JAR adını al
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback: codeSource'dan JAR adını al
+        try {
+            File f = new File(getClass().getProtectionDomain()
+                    .getCodeSource().getLocation().toURI());
+            if (f.isFile()) return f.getName();
+        } catch (Exception ignored) {}
+
+        return "servicio.jar"; // son fallback
     }
 
     public File writeLauncherScript(String jarName, String jvmArgs) throws IOException {
@@ -377,23 +438,42 @@ public class UpdateManager {
     // ─── Launcher Script ──────────────────────────────────────────────────────
 
     private File writeBatScript(String jarName, String jvmArgs) throws IOException {
-        File script = new File(appRoot, "update-restart.bat");
+        File   script = new File(appRoot, "update-restart.bat");
+        // Ana JAR geçici dizinde bekliyor (.update-tmp\servicio.jar)
+        String tmpJar = ".update-tmp\\" + jarName;
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
             pw.println("@echo off");
+            pw.println("chcp 65001 >nul");
             pw.println(":: Servicio Guncelleme Launcher");
-            pw.println(":WAIT");
-            pw.println("tasklist /fi \"PID eq %1\" 2>nul | find /i \"java.exe\" >nul");
+            pw.println("set OLD_PID=%1");
+            pw.println("cd /d \"%~dp0\"");
+            pw.println("");
+            pw.println(":: Eski JVM tamamen kapanana kadar bekle");
+            pw.println(":WAIT_JVM");
+            pw.println("tasklist /fi \"PID eq %OLD_PID%\" 2>nul | find /i \"java\" >nul");
             pw.println("if not errorlevel 1 (");
             pw.println("    timeout /t 1 /nobreak >nul");
-            pw.println("    goto WAIT");
+            pw.println("    goto WAIT_JVM");
             pw.println(")");
-            pw.println("cd /d \"%~dp0\"");
+            pw.println("");
+            pw.println(":: Ana JAR artik serbest, gecici dizinden tasi");
+            pw.println("if exist \"" + tmpJar + "\" (");
+            pw.println("    if exist \"" + jarName + ".bak\" del /f \"" + jarName + ".bak\"");
+            pw.println("    if exist \"" + jarName + "\" ren \"" + jarName + "\" \"" + jarName + ".bak\"");
+            pw.println("    move /y \"" + tmpJar + "\" \"" + jarName + "\"");
+            pw.println(")");
+            pw.println("");
+            pw.println(":: Gecici dizini temizle");
+            pw.println("if exist \".update-tmp\" rd /s /q \".update-tmp\"");
+            pw.println("");
+            pw.println(":: Uygulamayi yeniden baslat");
             if (jvmArgs != null && !jvmArgs.isEmpty()) {
-                pw.println("start javaw " + jvmArgs + " -jar " + jarName);
+                pw.println("start javaw " + jvmArgs + " -jar \"" + jarName + "\"");
             } else {
-                pw.println("start javaw -jar " + jarName);
+                pw.println("start javaw -jar \"" + jarName + "\"");
             }
+            pw.println("");
             pw.println("del \"%~f0\"");
         }
         return script;
@@ -401,18 +481,33 @@ public class UpdateManager {
 
     private File writeShScript(String jarName, String jvmArgs) throws IOException {
         File script = new File(appRoot, "update-restart.sh");
+        // Ana JAR geçici dizinde bekliyor (.update-tmp/servicio.jar)
+        String tmpJar = ".update-tmp/" + jarName;
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
             pw.println("#!/bin/sh");
             pw.println("# Servicio Guncelleme Launcher");
             pw.println("OLD_PID=$1");
-            pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
-            pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"");
+            pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\"))\" && pwd)\"");
             pw.println("cd \"$SCRIPT_DIR\"");
+            pw.println("");
+            pw.println("# Eski JVM kapanana kadar bekle");
+            pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
+            pw.println("");
+            pw.println("# Ana JAR artik serbest, gecici dizinden tasi");
+            pw.println("if [ -f \"" + tmpJar + "\" ]; then");
+            pw.println("    mv -f \"" + jarName + "\" \"" + jarName + ".bak\" 2>/dev/null");
+            pw.println("    mv -f \"" + tmpJar + "\" \"" + jarName + "\"");
+            pw.println("fi");
+            pw.println("");
+            pw.println("# Gecici dizini temizle");
+            pw.println("rm -rf .update-tmp");
+            pw.println("");
+            pw.println("# Uygulamayi yeniden baslat");
             if (jvmArgs != null && !jvmArgs.isEmpty()) {
-                pw.println("java " + jvmArgs + " -jar " + jarName + " &");
+                pw.println("java " + jvmArgs + " -jar \"" + jarName + "\" &");
             } else {
-                pw.println("java -jar " + jarName + " &");
+                pw.println("java -jar \"" + jarName + "\" &");
             }
             pw.println("rm -- \"$0\"");
         }
@@ -496,6 +591,7 @@ public class UpdateManager {
 
     // ─── Setter / Kontrol ─────────────────────────────────────────────────────
 
-    public void cancel()                                 { cancelRequested = true;  }
-
+    public void cancel() {
+        cancelRequested = true;
+    }
 }
