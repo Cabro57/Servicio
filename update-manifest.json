@@ -7,8 +7,8 @@
       "version": "2.0-dev",
       "date": "2026-05-13",
       "changes": [
-        "Uygulama içi güncelleme özelliği eklendi",
-        "Selam Yavuz Arıcı."
+        "Güncelleme özelliği eklendi",
+        "Selamün Alyküm Yavuz Arıcı kardeşş..."
       ]
     }
   ],
@@ -18,8 +18,8 @@
       "name": "servicio.jar",
       "path": "servicio.jar",
       "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
-      "sha256": "df61f957ba4e660370f77a676452381af53f3c02d61c0a092649af4b9c8a8971",
-      "size": 11476030
+      "sha256": "26912c470026ff26cc028888815abc158291e2e64ef7ad389a4ea7db99114676",
+      "size": 11476135
     },
     {
       "source": "maven",

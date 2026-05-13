@@ -79,10 +79,10 @@ public class MainForm extends JPanel {
         lbDemoVersion.setIcon(new Ikon("icons/git-merge.svg", 0.7f, "Label.disabledForeground"));
         panel.add(lbDemoVersion);
 
-//        JButton updater = new JButton(new Ikon("icons/download.svg", 0.7f));
-//        updater.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
-//
-//        panel.add(updater);
+        JButton updater = new JButton(new Ikon("icons/download.svg", 0.7f));
+        updater.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
+
+        panel.add(updater);
 
         // java version
         String javaVendor = System.getProperty("java.vendor");
