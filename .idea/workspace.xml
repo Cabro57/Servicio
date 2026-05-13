@@ -4,9 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="libs klasöründe tanınmayan kütüphaneleri artık tanıyor">
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="çıkan uarılar giderildi">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/raven/modal/system/MainForm.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/update-manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/update-manifest.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -288,7 +290,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778655434395</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="çıkan uarılar giderildi">
+      <option name="closed" value="true" />
+      <created>1778659098740</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1778659098740</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -304,7 +314,8 @@
     <MESSAGE value="IconImage gözükmeme sorunu düzeltildi" />
     <MESSAGE value="aynı sürüm içinde değişen dosyalar var ise onları da kontrol edip güncelleyebiliyor" />
     <MESSAGE value="libs klasöründe tanınmayan kütüphaneleri artık tanıyor" />
-    <option name="LAST_COMMIT_MESSAGE" value="libs klasöründe tanınmayan kütüphaneleri artık tanıyor" />
+    <MESSAGE value="çıkan uarılar giderildi" />
+    <option name="LAST_COMMIT_MESSAGE" value="çıkan uarılar giderildi" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

@@ -85,8 +85,8 @@
                                     <arg value="${project.version}"/>
                                     <arg value="${github.release.url}"/>
                                     <arg value="${project.build.directory}/${project.build.finalName}.jar"/>
-                                    <arg value="${project.build.directory}/../libs"/>
-                                    <arg value="${project.build.directory}/update-manifest.json"/>
+                                    <arg value="${project.build.directory}/libs"/>
+                                    <arg value="${project.build.directory}/../update-manifest.json"/>
                                     <arg value="${project.basedir}/pom.xml"/>
                                     <!-- YENİ 7. argüman: dependency-list.txt -->
                                     <arg value="${project.build.directory}/dependency-list.txt"/>
