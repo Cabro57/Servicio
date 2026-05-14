@@ -1,14 +1,15 @@
 {
   "version": "2.0-dev",
-  "releaseDate": "2026-05-13",
+  "releaseDate": "2026-05-14",
   "minRequiredVersion": "2.0.0",
   "patchNotes": [
     {
       "version": "2.0-dev",
-      "date": "2026-05-13",
+      "date": "2026-05-14",
       "changes": [
         "Güncelleme özelliği eklendi",
-        "Selamün Alyküm Yavuz Arıcı kardeşş..."
+        "Selamün Alyküm Yavuz Arıcı kardeşş...",
+        "Küçük düzeltmeler"
       ]
     }
   ],
@@ -18,8 +19,8 @@
       "name": "servicio.jar",
       "path": "servicio.jar",
       "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
-      "sha256": "26912c470026ff26cc028888815abc158291e2e64ef7ad389a4ea7db99114676",
-      "size": 11476135
+      "sha256": "48e63f40a7fefea383178a341676bac18ff131c4bccbc58da71acf4005cc91a0",
+      "size": 11448999
     },
     {
       "source": "maven",
