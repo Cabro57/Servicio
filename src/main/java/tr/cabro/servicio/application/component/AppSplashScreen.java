@@ -5,16 +5,51 @@ import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.net.URL;
 
+/**
+ * Uygulama açılış ekranı.
+ * <p>
+ * Progress bar kullanılmıyor — sadece mesaj metni güncelleniyor.
+ * Güncelleme bildirim UI'si buradan kaldırıldı;
+ * UpdateChecker non-blocking çalışır, sonuç MainUI tarafından işlenir.
+ */
 public class AppSplashScreen extends JWindow {
 
     private final JLabel lblMessage;
 
     public AppSplashScreen() {
-        int windowWidth = 640;
+        int windowWidth  = 640;
         int windowHeight = 360;
-        int arcSize = 20;
+        int arcSize      = 20;
 
-        URL imgUrl = getClass().getResource("/background.png");
+        URL   imgUrl  = getClass().getResource("/background.png");
+        JPanel backgroundPanel = getBackgroundPanel(imgUrl, arcSize);
+
+        // Sol alt köşe — mesaj etiketi
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
+        bottomPanel.setOpaque(false);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 24, 14, 0));
+
+        lblMessage = new JLabel("Başlatılıyor...");
+        lblMessage.setFont(new Font("SansSerif", Font.BOLD, 13));
+        lblMessage.setForeground(Color.WHITE);
+        lblMessage.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        bottomPanel.add(lblMessage);
+        backgroundPanel.add(bottomPanel, BorderLayout.SOUTH);
+
+        setBackground(new Color(0, 0, 0, 0));
+        getContentPane().setBackground(new Color(0, 0, 0, 0));
+        ((JPanel) getContentPane()).setOpaque(false);
+        getContentPane().add(backgroundPanel);
+
+        setSize(windowWidth, windowHeight);
+        setLocationRelativeTo(null);
+        setShape(new RoundRectangle2D.Double(
+                0, 0, windowWidth, windowHeight, arcSize, arcSize));
+    }
+
+    private JPanel getBackgroundPanel(URL imgUrl, int arcSize) {
         Image bgImage = (imgUrl != null) ? new ImageIcon(imgUrl).getImage() : null;
 
         JPanel backgroundPanel = new JPanel() {
@@ -28,16 +63,15 @@ public class AppSplashScreen extends JWindow {
                 g2d.setRenderingHint(RenderingHints.KEY_RENDERING,
                         RenderingHints.VALUE_RENDER_QUALITY);
 
-                // Yuvarlak köşeli clip uygula
-                g2d.setClip(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), arcSize, arcSize));
+                g2d.setClip(new RoundRectangle2D.Float(
+                        0, 0, getWidth(), getHeight(), arcSize, arcSize));
 
                 if (bgImage != null) {
                     g2d.drawImage(bgImage, 0, 0, getWidth(), getHeight(), this);
                 } else {
-                    g2d.setColor(Color.WHITE);
+                    g2d.setColor(new Color(38, 40, 42));
                     g2d.fillRoundRect(0, 0, getWidth(), getHeight(), arcSize, arcSize);
                 }
-
                 g2d.dispose();
             }
         };
@@ -45,36 +79,19 @@ public class AppSplashScreen extends JWindow {
         backgroundPanel.setOpaque(false);
         backgroundPanel.setBorder(null);
         backgroundPanel.setLayout(new BorderLayout());
-
-        // Sol alt köşe için panel
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
-        bottomPanel.setOpaque(false);
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 24, 10, 0));
-
-        lblMessage = new JLabel("Başlatılıyor...");
-        lblMessage.setFont(new Font("SansSerif", Font.BOLD, 13));
-        lblMessage.setForeground(Color.WHITE);
-        lblMessage.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        bottomPanel.add(lblMessage);
-        backgroundPanel.add(bottomPanel, BorderLayout.SOUTH);
-
-        // JWindow arka planını şeffaf yap
-        setBackground(new Color(0, 0, 0, 0));
-        getContentPane().setBackground(new Color(0, 0, 0, 0));
-        ((JPanel) getContentPane()).setOpaque(false);
-
-        getContentPane().add(backgroundPanel);
-
-        setSize(windowWidth, windowHeight);
-        setLocationRelativeTo(null);
-
-        // Pencere şeklini yuvarlak köşeli yap
-        setShape(new RoundRectangle2D.Double(0, 0, windowWidth, windowHeight, arcSize, arcSize));
+        return backgroundPanel;
     }
 
-    public void updateProgress(int percent, String message) {
-        SwingUtilities.invokeLater(() -> lblMessage.setText(message));
+    /**
+     * Splash mesajını günceller. Her thread'den güvenle çağrılabilir.
+     *
+     * @param message Gösterilecek mesaj.
+     */
+    public void updateMessage(final String message) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            lblMessage.setText(message);
+        } else {
+            SwingUtilities.invokeLater(() -> lblMessage.setText(message));
+        }
     }
 }

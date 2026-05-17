@@ -1,18 +1,8 @@
 {
   "version": "2.0-dev",
-  "releaseDate": "2026-05-14",
+  "releaseDate": "2026-05-17",
   "minRequiredVersion": "2.0.0",
-  "patchNotes": [
-    {
-      "version": "2.0-dev",
-      "date": "2026-05-14",
-      "changes": [
-        "Güncelleme özelliği eklendi",
-        "Selamün Alyküm Yavuz Arıcı kardeşş...",
-        "Küçük düzeltmeler"
-      ]
-    }
-  ],
+  "releasesApiUrl": "https://api.github.com/repos/Cabro57/Servicio/releases/latest",
   "files": [
     {
       "source": "github",

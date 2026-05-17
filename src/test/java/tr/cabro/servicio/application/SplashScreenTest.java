@@ -23,13 +23,9 @@ public class SplashScreenTest {
                             "Son kontroller yapılıyor..."
                     };
 
-                    for (int i = 0; i <= 100; i++) {
-                        // İlerlemeye göre mesajı değiştir
-                        int stepIndex = (i / 20) >= loadingSteps.length ? loadingSteps.length - 1 : (i / 20);
-                        String currentMessage = loadingSteps[stepIndex];
-
+                    for (String step : loadingSteps) {
                         // Splash screen'i güncelle (Java 8 lambda'ları sayesinde oldukça temiz)
-                        splashScreen.updateProgress(i, currentMessage + " (%" + i + ")");
+                        splashScreen.updateMessage(step);
 
                         // Yükleme süresini simüle etmek için beklet (örneğin her %1 için 40ms)
                         Thread.sleep(40);

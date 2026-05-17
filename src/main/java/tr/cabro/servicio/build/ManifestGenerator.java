@@ -113,31 +113,75 @@ public class ManifestGenerator {
         out.println("Toplam esleme: " + artifactGroupMap.size() + " kayit");
         out.println();
 
-        // Mevcut manifest patch notlarını oku
-        List<String> oldPatchNotes = new ArrayList<>();
-        if (outputFile.exists()) {
-            oldPatchNotes = extractPatchNotes(outputFile, appVersion);
-            out.println("Eski patch notlari korunuyor: " + oldPatchNotes.size() + " surum");
-        }
+        // Patch notları artık manifest.json'da tutulmuyor — GitHub Releases API'sinden çekilir.
 
-        List<FileRecord> records  = new ArrayList<>();
+        List<FileRecord> records  = new ArrayList<FileRecord>();
         int mavenCount  = 0;
         int urlCount    = 0;
         int warnCount   = 0;
 
         // ── Ana JAR ───────────────────────────────────────────────────────────
-        if (mainJar.exists()) {
+        // ÖNEMLİ: Ana JAR'ın hash'i yerel target/ dosyasından değil,
+        // GitHub'a yüklenen gerçek dosyadan hesaplanmalıdır.
+        // Sebep: Lombok, Maven timestamp vb. nedenlerle her derlemede JAR biraz
+        // farklı çıkar → yerel hash ile GitHub'daki hash uyuşmaz → indirme başarısız.
+        //
+        // Strateji:
+        //   A) GitHub Release zaten mevcut (--verify-github=true):
+        //      JAR'ı GitHub'dan indir, hash'ini hesapla. Bu en doğru yöntem.
+        //   B) GitHub Release henüz yok (ilk yükleme):
+        //      Yerel JAR'ın hash'ini kullan; yükleme tamamlanınca manifest'i
+        //      güncelle (--verify-github=true ile tekrar çalıştır).
+        {
+            String jarName   = mainJar.getName();
+            String jarUrl    = githubBase + "/" + jarName;
+            boolean verifyGh = "true".equalsIgnoreCase(System.getProperty("verify.github", "true"));
+
             FileRecord rec = new FileRecord();
             rec.source = "github";
-            rec.name   = mainJar.getName();
-            rec.path   = mainJar.getName();
-            rec.url    = githubBase + "/" + mainJar.getName();
-            rec.sha256 = sha256(mainJar);
-            rec.size   = mainJar.length();
-            records.add(rec);
-            out.printf("[GITHUB]   %s  sha256=%s...%n", rec.name, rec.sha256.substring(0, 12));
-        } else {
-            err.println("[UYARI] Ana JAR bulunamadi: " + mainJar);
+            rec.name   = jarName;
+            rec.path   = jarName;
+            rec.url    = jarUrl;
+
+            if (verifyGh) {
+                out.println("[GITHUB]   " + jarName + " → GitHub'dan dogrulaniyor...");
+                out.println("           " + jarUrl);
+                try {
+                    // GitHub'dan indir ve hash'le (geçici dosyaya)
+                    File tmpFile = File.createTempFile("servicio-hash-", ".jar");
+                    tmpFile.deleteOnExit();
+                    downloadToFile(jarUrl, tmpFile, out);
+                    rec.sha256 = sha256(tmpFile);
+                    rec.size   = tmpFile.length();
+                    tmpFile.delete();
+                    out.printf("[GITHUB]   %s  sha256=%s... (GitHub'dan)%n",
+                            jarName, rec.sha256.substring(0, 12));
+                } catch (Exception ex) {
+                    err.println("[HATA] GitHub'dan indirilemedi: " + ex.getMessage());
+                    err.println("       GitHub Release mevcut mu? URL: " + jarUrl);
+                    err.println("       Yerel JAR hash'i kullaniliyor (fallback).");
+                    if (mainJar.exists()) {
+                        rec.sha256 = sha256(mainJar);
+                        rec.size   = mainJar.length();
+                        err.printf("[FALLBACK] %s  sha256=%s... (YEREL)%n",
+                                jarName, rec.sha256.substring(0, 12));
+                    } else {
+                        err.println("[ATLANDI] Ana JAR ne local ne GitHub'da bulunamadi!");
+                    }
+                }
+            } else {
+                // verify.github=false → hızlı mod, yerel hash kullan
+                if (mainJar.exists()) {
+                    rec.sha256 = sha256(mainJar);
+                    rec.size   = mainJar.length();
+                    out.printf("[GITHUB]   %s  sha256=%s... (yerel, dogrulama kapali)%n",
+                            jarName, rec.sha256.substring(0, 12));
+                } else {
+                    err.println("[UYARI] Ana JAR bulunamadi: " + mainJar);
+                }
+            }
+
+            if (rec.sha256 != null) records.add(rec);
         }
 
         // ── Kütüphaneler ──────────────────────────────────────────────────────
@@ -179,16 +223,12 @@ public class ManifestGenerator {
 
         // ── JSON üret ─────────────────────────────────────────────────────────
         String today = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
-        String json  = buildJson(appVersion, today, records, oldPatchNotes);
+        String json  = buildJson(appVersion, today, records);
 
         outputFile.getParentFile().mkdirs();
-        PrintWriter pw = null;
-        try {
-            pw = new PrintWriter(new OutputStreamWriter(
-                    Files.newOutputStream(outputFile.toPath()), StandardCharsets.UTF_8));
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                Files.newOutputStream(outputFile.toPath()), StandardCharsets.UTF_8))) {
             pw.print(json);
-        } finally {
-            if (pw != null) pw.close();
         }
 
         out.println("=== Tamamlandi: " + records.size() + " dosya -> " + outputFile + " ===");
@@ -331,7 +371,7 @@ public class ManifestGenerator {
     // ─── POM Parse ───────────────────────────────────────────────────────────
 
     private static Map<String, String> parsePomDependencies(File pom) throws IOException {
-        Map<String, String> map = new LinkedHashMap<String, String>();
+        Map<String, String> map = new LinkedHashMap<>();
         if (!pom.exists()) return map;
 
         String content = readFile(pom);
@@ -432,70 +472,22 @@ public class ManifestGenerator {
         return version.length() > 0 ? version.toString() : null;
     }
 
-    // ─── Patch Notu Koruma ────────────────────────────────────────────────────
-
-    private static List<String> extractPatchNotes(File manifest, String newVersion) throws IOException {
-        String content = readFile(manifest);
-        int start = content.indexOf("\"patchNotes\"");
-        if (start < 0) return new ArrayList<>();
-
-        int arrStart = content.indexOf('[', start);
-        if (arrStart < 0) return new ArrayList<>();
-
-        int depth = 0, arrEnd = -1;
-        for (int i = arrStart; i < content.length(); i++) {
-            if (content.charAt(i) == '[') depth++;
-            else if (content.charAt(i) == ']') {
-                if (--depth == 0) { arrEnd = i; break; }
-            }
-        }
-        if (arrEnd < 0) return new ArrayList<>();
-
-        List<String> objects = splitJsonObjects(content.substring(arrStart + 1, arrEnd));
-        List<String> result  = new ArrayList<>();
-        for (String obj : objects) {
-            if (!obj.contains("\"" + newVersion + "\"")) result.add(obj.trim());
-        }
-        return result;
-    }
-
-    private static List<String> splitJsonObjects(String arr) {
-        List<String> result = new ArrayList<>();
-        int depth = 0, start = -1;
-        for (int i = 0; i < arr.length(); i++) {
-            char ch = arr.charAt(i);
-            if (ch == '{') { if (depth++ == 0) start = i; }
-            else if (ch == '}') {
-                if (--depth == 0 && start >= 0) {
-                    result.add(arr.substring(start, i + 1));
-                    start = -1;
-                }
-            }
-        }
-        return result;
-    }
+    // Patch notları artık manifest.json'da saklanmıyor — GitHub Releases API kullanılıyor.
 
     // ─── JSON Üretici ─────────────────────────────────────────────────────────
 
     private static String buildJson(String version, String date,
-                                    List<FileRecord> records,
-                                    List<String> oldPatchNotes) {
+                                    List<FileRecord> records) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
         sb.append("  \"version\": ").append(q(version)).append(",\n");
         sb.append("  \"releaseDate\": ").append(q(date)).append(",\n");
         sb.append("  \"minRequiredVersion\": \"2.0.0\",\n");
 
-        sb.append("  \"patchNotes\": [\n");
-        sb.append("    {\n");
-        sb.append("      \"version\": ").append(q(version)).append(",\n");
-        sb.append("      \"date\": ").append(q(date)).append(",\n");
-        sb.append("      \"changes\": [\n");
-        sb.append("        \"Degisiklikleri buraya yazin\"\n");
-        sb.append("      ]\n");
-        sb.append("    }");
-        for (String old : oldPatchNotes) sb.append(",\n    ").append(old);
-        sb.append("\n  ],\n");
+        // patchNotes artık manifest.json'da YOK.
+        // Patch notları GitHub Releases API'sinden (releasesApiUrl) çekilir.
+        // Bkz: UpdateManifest.GitHubReleaseInfo ve UpdateManager.fetchReleaseInfo()
+        sb.append("  \"releasesApiUrl\": \"https://api.github.com/repos/Cabro57/Servicio/releases/latest\",\n");
 
         sb.append("  \"files\": [\n");
         for (int i = 0; i < records.size(); i++) {
@@ -542,6 +534,69 @@ public class ManifestGenerator {
         StringBuilder hex = new StringBuilder();
         for (byte b : digest.digest()) hex.append(String.format("%02x", b));
         return hex.toString();
+    }
+
+    /**
+     * URL'den dosyayı indirir. GitHub redirect zincirini takip eder.
+     * ManifestGenerator'ın ana JAR hash'ini GitHub'dan doğrulaması için kullanılır.
+     */
+    private static void downloadToFile(String urlStr, File dest,
+                                       PrintStream out) throws IOException {
+        String current = urlStr;
+        HttpURLConnection conn = null;
+        final int MAX_REDIRECTS = 8;
+
+        for (int i = 0; i <= MAX_REDIRECTS; i++) {
+            conn = (HttpURLConnection) new URL(current).openConnection();
+            conn.setConnectTimeout(20_000);
+            conn.setReadTimeout(120_000);
+            conn.setRequestProperty("User-Agent", "Servicio-ManifestGenerator");
+            conn.setInstanceFollowRedirects(false);
+
+            int code = conn.getResponseCode();
+            if (code == 200) break;
+
+            if (code == 301 || code == 302 || code == 307 || code == 308) {
+                String loc = conn.getHeaderField("Location");
+                conn.disconnect();
+                if (loc == null || loc.isEmpty()) throw new IOException("Redirect konumu bos");
+                if (!loc.startsWith("http")) {
+                    URL base = new URL(current);
+                    loc = base.getProtocol() + "://" + base.getHost() + loc;
+                }
+                current = loc;
+                continue;
+            }
+
+            conn.disconnect();
+            throw new IOException("HTTP " + code + " : " + current);
+        }
+
+        // İndir
+        long total = 0;
+        long contentLength = conn.getContentLengthLong();
+        InputStream  in  = null;
+        OutputStream fos = null;
+        try {
+            in  = conn.getInputStream();
+            fos = Files.newOutputStream(dest.toPath());
+            byte[] buf = new byte[65536];
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                fos.write(buf, 0, n);
+                total += n;
+                // Her 1 MB'da ilerleme yaz
+                if (contentLength > 0 && total % (1024 * 1024) < 65536) {
+                    out.printf("           %.1f / %.1f MB%n",
+                            total / 1048576.0, contentLength / 1048576.0);
+                }
+            }
+        } finally {
+            if (fos != null) try { fos.close(); } catch (IOException ignored) {}
+            if (in  != null) try { in.close();  } catch (IOException ignored) {}
+            conn.disconnect();
+        }
+        out.printf("           Indirildi: %.1f MB%n", total / 1048576.0);
     }
 
     private static String readFile(File f) throws IOException {

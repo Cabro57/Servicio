@@ -6,57 +6,55 @@ import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.application.component.AppSplashScreen;
 
 import javax.swing.*;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.prefs.Preferences;
 
 /**
- * İki aşamalı güncelleme kontrol servisi.
+ * Güncelleme kontrol servisi.
  * <p>
- * ── AŞAMA 1: Splash aşaması (checkOnSplash) ──────────────────────────────
- *   Servicio(splash) constructor'ı çağrıldıktan hemen sonra arka planda
- *   manifest indirilir. Sonuç geldiğinde:
- *     • Güncelleme varsa → SplashUpdatePanel splash'in üzerine gösterilir.
- *       Kullanıcı "Güncelle" derse indirilir ve JVM kapanır (launcher devam eder).
- *       "Şimdi Değil" / "Sürümü Atla" derse panel kaldırılır, uygulama başlar.
- *     • Güncelleme yoksa → hiçbir şey olmaz, splash ilerlemeye devam eder.
- *   checkOnSplash(), uygulama başlatma iş parçacığını BLOKElemez;
- *   splash ilerlemesi devam ederken kontrol arka planda olur.
- *   Güncelleme bulunursa splash dondurulur (progress güncellenmez),
- *   kullanıcı karar verdikten sonra devam edilir.
+ * ── AŞAMA 1: Splash kontrolü (checkOnSplash) ─────────────────────────────
+ *   Arka planda manifest indirilir. Sonuç flag'e yazılır.
+ *   Splash BLOKE EDİLMEZ — uygulama başlamaya devam eder.
+ *   Güncelleme varsa {@link #hasPendingUpdate()} true döner.
+ *   UI tarafı bunu istediği zaman sorgulamalı ve kendi diyaloğunu göstermelidir.
  * <p>
- * ── AŞAMA 2: Periyodik kontrol (startPeriodicCheck) ─────────────────────
- *   Uygulama tamamen açıldıktan sonra her 6 saatte bir kontrol yapılır.
- *   Güncelleme varsa UpdateDialog (modal diyalog) gösterilir.
- * <p>
- * Manifest URL ve sürüm: /version.properties'ten okunur (Maven filtering).
+ * ── AŞAMA 2: Periyodik kontrol (startPeriodicCheck) ──────────────────────
+ *   Her 6 saatte bir kontrol yapılır. UpdateDialog gösterilir.
  */
 public class UpdateChecker {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateChecker.class);
 
-    // ─── Sabitler ─────────────────────────────────────────────────────────────
+    // ─── Sabitler ────────────────────────────────────────────────────────────
 
-    private static final long   PERIODIC_INTERVAL_HOURS = 6;
-    private static final String PREF_NODE               = "tr/cabro/servicio";
-    private static final String PREF_SKIPPED_VERSION    = "update.skipped_version";
+    private static final long   SPLASH_CHECK_TIMEOUT_SEC = 10;
+    private static final long   PERIODIC_INTERVAL_HOURS  = 6;
+    private static final String PREF_NODE                = "tr/cabro/servicio";
+    private static final String PREF_SKIPPED_VERSION     = "update.skipped_version";
 
-    // ─── Bağımlılıklar ────────────────────────────────────────────────────────
+    // ─── Durum ───────────────────────────────────────────────────────────────
 
     /**
      * -- GETTER --
-     * UpdateManager'e doğrudan erişim (gerekirse).
+     * Doğrudan UpdateManager erişimi.
      */
     @Getter
-    private final UpdateManager manager;
-    private final Preferences   prefs;
-    private       JFrame        ownerFrame; // periyodik kontrol için, sonradan set edilir
+    private final UpdateManager             manager;
+    private final Preferences               prefs;
+    private       JFrame                    ownerFrame;
+
+    /** Splash kontrolünden gelen sonuç — null: henüz bitmedi */
+    private final AtomicReference<UpdateManifest> pendingUpdate =
+            new AtomicReference<>(null);
+
+    /** true → splash kontrolü tamamlandı (güncelleme var veya yok) */
+    private final AtomicBoolean splashCheckDone = new AtomicBoolean(false);
 
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor(r -> {
@@ -65,115 +63,139 @@ public class UpdateChecker {
                 return t;
             });
 
-    // ─── Oluşturucu ───────────────────────────────────────────────────────────
+    // ─── Oluşturucu ──────────────────────────────────────────────────────────
 
     public UpdateChecker() {
         this.prefs   = Preferences.userRoot().node(PREF_NODE);
         this.manager = buildManager();
     }
 
-    // ─── AŞAMA 1: Splash ekranında kontrol ───────────────────────────────────
+    // ─── AŞAMA 1: Splash kontrolü ────────────────────────────────────────────
 
     /**
-     * Splash ekranında güncelleme kontrolü yapar.
+     * Splash ekranı açıkken arka planda güncelleme kontrolü başlatır.
      * <p>
-     * Bu metot NON-BLOCKING'dir; arka plan iş parçacığında kontrol yapar.
-     * Güncelleme bulunursa splash freeze olur ve SplashUpdatePanel gösterilir.
-     * Kullanıcı karar verince (güncelle/atla) bu metot döner — splice'ın devamı çalışır.
+     * Bu metot NON-BLOCKING'dir — hemen döner, uygulama başlamaya devam eder.
+     * Kontrol arka planda tamamlanır; sonuç {@link #hasPendingUpdate()} ile sorgulanabilir.
      * <p>
-     * Kullanım — Servicio constructor'ı içinde, diğer initler ile paralel:
-     * <pre>
-     *   splash.updateProgress(10, "Güncelleme kontrol ediliyor...");
-     *   updateChecker.checkOnSplash(splash);
-     *   // checkOnSplash dönüşünden sonra kullanıcı ya güncellemeyi seçti (JVM kapandı)
-     *   // ya da devam et dedi; normal akış sürer.
-     * </pre>
+     * Splash mesajını günceller ama uygulamayı durdurmaz.
      *
-     * @param splash  Mevcut splash ekranı. SplashUpdatePanel buna bindirilerek gösterilir.
+     * @param splash Mesaj güncellemesi için splash ekranı referansı.
      */
     public void checkOnSplash(final AppSplashScreen splash) {
-        // Kullanıcı kararını beklemek için latch
-        final CountDownLatch userDecision = new CountDownLatch(1);
-        final AtomicBoolean  updateChosen = new AtomicBoolean(false);
+        Thread checker = new Thread(() -> {
+            try {
+                splash.updateMessage("Güncelleme kontrol ediliyor...");
 
-        Thread checker = new Thread(() -> manager.checkForUpdates(
+                manager.checkForUpdates(
+                    // Güncelleme VAR
+                    manifest -> {
+                        String skipped  = prefs.get(PREF_SKIPPED_VERSION, "");
+                        boolean wasSkipped = skipped.equals(manifest.getVersion());
+                        boolean isHotfix   = UpdateManager.sameVersion(
+                                manifest.getVersion(), skipped);
 
-                // Güncelleme VAR
-                manifest -> {
-                    // "Bu sürümü atla" kontrolü.
-                    //
-                    // ÖNEMLI: Yalnızca sürüm numarası yeniyse atla.
-                    // Sürüm AYNI ama hash farklıysa (aynı sürüme yama = hotfix)
-                    // kullanıcı daha önce "atla" demiş olsa bile göster;
-                    // çünkü bu farklı bir içerik değişikliğidir.
-                    String skipped     = prefs.get(PREF_SKIPPED_VERSION, "");
-                    boolean isHotfix   = UpdateManager.sameVersion(
-                            manifest.getVersion(), skipped);
-                    boolean wasSkipped = skipped.equals(manifest.getVersion());
+                        // Hotfix ise skip kaydını sıfırla — yeniden sor
+                        if (wasSkipped && isHotfix) {
+                            prefs.remove(PREF_SKIPPED_VERSION);
+                            log.info("Hotfix tespit edildi, atla kaydı sıfırlandı: v{}",
+                                    manifest.getVersion());
+                        } else if (wasSkipped) {
+                            log.info("Sürüm {} daha önce atlandı.", manifest.getVersion());
+                            splashCheckDone.set(true);
+                            return;
+                        }
 
-                    if (wasSkipped && !isHotfix) {
-                        // Kullanıcı bu sürümü atladı ve bu bir hotfix değil
-                        log.info("Sürüm {} daha önce atlandı, gösterilmiyor.", manifest.getVersion());
-                        userDecision.countDown();
-                        return;
-                    }
-
-                    // Hotfix ise skipped kaydını sil — kullanıcı tekrar sorulsun
-                    if (wasSkipped && isHotfix) {
-                        prefs.remove(PREF_SKIPPED_VERSION);
-                        log.info("Sürüm {} için hotfix tespit edildi, atla kaydı sıfırlandı.",
+                        log.info("Splash kontrolü: güncelleme mevcut v{}",
                                 manifest.getVersion());
+                        pendingUpdate.set(manifest);
+                        splashCheckDone.set(true);
+                        splash.updateMessage("Güncelleme mevcut: v" + manifest.getVersion());
+                    },
+                    // Güncelleme YOK
+                    () -> {
+                        log.info("Splash kontrolü: güncel.");
+                        splashCheckDone.set(true);
+                        splash.updateMessage("Başlatılıyor...");
+                    },
+                    // HATA
+                    e -> {
+                        log.warn("Splash güncelleme kontrolü başarısız: {}",
+                                e.getMessage());
+                        splashCheckDone.set(true);
+                        splash.updateMessage("Başlatılıyor...");
                     }
-
-                    log.info("Splash'te güncelleme bulundu: v{}", manifest.getVersion());
-
-                    SwingUtilities.invokeLater(() -> showSplashPanel(splash, manifest, userDecision));
-                },
-
-                // Güncelleme YOK
-                () -> {
-                    log.info("Uygulama güncel (splash kontrolü).");
-                    userDecision.countDown();
-                },
-
-                // HATA (sessiz — splash devam eder)
-                e -> {
-                    log.warn("Splash güncelleme kontrolü başarısız (sessiz): {}", e.getMessage());
-                    userDecision.countDown();
-                }
-        ), "servicio-splash-update-check");
+                );
+            } catch (Exception e) {
+                log.warn("checkOnSplash hatası: {}", e.getMessage());
+                splashCheckDone.set(true);
+            }
+        }, "servicio-splash-update-check");
         checker.setDaemon(true);
         checker.start();
+    }
 
-        // Arka plan iş parçacığı (Servicio constructor thread'i) burada bekler.
-        // Splash'in paint thread'i (EDT) ayrı olduğu için splash donmaz.
-        try {
-            // Maksimum 12 sn bekle; ağ çok yavaşsa takılmasın
-            userDecision.await(12, TimeUnit.SECONDS);
-        } catch (InterruptedException ignored) {
-            Thread.currentThread().interrupt();
+    /**
+     * Güncelleme mevcut mu?
+     * Splash kontrolü tamamlandıktan sonra güvenilir sonuç döner.
+     *
+     * @return true → bekleyen güncelleme var, {@link #getPendingUpdate()} ile manifest alınabilir.
+     */
+    public boolean hasPendingUpdate() {
+        return pendingUpdate.get() != null;
+    }
+
+    /**
+     * Splash kontrolünden gelen manifest.
+     * null dönebilir — önce {@link #hasPendingUpdate()} kontrol edin.
+     */
+    public UpdateManifest getPendingUpdate() {
+        return pendingUpdate.get();
+    }
+
+    /**
+     * Splash kontrolü tamamlandı mı?
+     * false → henüz devam ediyor (timeout bekleniyor olabilir).
+     */
+    public boolean isSplashCheckDone() {
+        return splashCheckDone.get();
+    }
+
+    /**
+     * Splash kontrolünün bitmesini bekler (maksimum SPLASH_CHECK_TIMEOUT_SEC saniye).
+     * Uygulama açılırken güncelleme sonucunu kesin bilmek istiyorsanız çağırın.
+     * NON-BLOCKING alternatifi: {@link #hasPendingUpdate()} ile polling yapın.
+     */
+    public void awaitSplashCheck() {
+        long deadline = System.currentTimeMillis() + SPLASH_CHECK_TIMEOUT_SEC * 1000L;
+        while (!splashCheckDone.get() && System.currentTimeMillis() < deadline) {
+            try { Thread.sleep(50); } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
+    }
+
+    /** Bekleyen güncelleme bildirimini temizler (kullanıcı güncellemeyi reddetti/erteledi). */
+    public void clearPendingUpdate() {
+        pendingUpdate.set(null);
     }
 
     // ─── AŞAMA 2: Periyodik kontrol ──────────────────────────────────────────
 
     /**
-     * Uygulama başladıktan sonra periyodik kontrolü aktif eder.
+     * Uygulama açıldıktan sonra periyodik kontrolü başlatır.
      * Servicio.run() içinde launchMainUI() çağrısından sonra çağrılmalıdır.
-     *
-     * @param frame  Güncelleme diyaloğunun sahibi olacak ana pencere.
      */
     public void startPeriodicCheck(JFrame frame) {
         this.ownerFrame = frame;
-
         long intervalSec = PERIODIC_INTERVAL_HOURS * 3600L;
         scheduler.scheduleAtFixedRate(this::performPeriodicCheck, intervalSec, intervalSec, TimeUnit.SECONDS);
-
         log.info("Periyodik güncelleme kontrolü başlatıldı (her {}h).", PERIODIC_INTERVAL_HOURS);
     }
 
     /**
-     * Manuel kontrol — MainUI "Yardım → Güncellemeleri Kontrol Et" menüsünden.
+     * Manuel kontrol — "Yardım → Güncellemeleri Kontrol Et" menüsünden.
      * "Bu sürümü atla" filtresini sıfırlar.
      */
     public void checkNow() {
@@ -187,106 +209,57 @@ public class UpdateChecker {
         log.info("Güncelleme zamanlayıcısı durduruldu.");
     }
 
-    // ─── İç: Splash panel gösterimi ──────────────────────────────────────────
-
-    /**
-     * SplashUpdatePanel'i splash ekranının JLayeredPane'ine ekler.
-     * Panel kendi içinde "Şimdi Değil" / "Güncelle" kararını yönetir.
-     * Karar verilince latch serbest bırakılır.
-     */
-    private void showSplashPanel(final AppSplashScreen splash,
-                                 final UpdateManifest manifest,
-                                 final CountDownLatch latch) {
-
-        // Sürüm aynıysa ama hash farklıysa bu bir hotfix/yamadır
-        boolean isHotfix = UpdateManager.sameVersion(manifest.getVersion(), currentVersion());
-
-        SplashUpdatePanel panel = new SplashUpdatePanel(manifest, manager, isHotfix);
-
-        // Splash'in tam boyutunu kapla
-        panel.setBounds(0, 0, splash.getWidth(), splash.getHeight());
-
-        // "Şimdi Değil" veya "Sürümü Atla" → paneli kaldır, devam et
-        panel.setOnSkip(() -> {
-            SwingUtilities.invokeLater(() -> {
-                splash.getLayeredPane().remove(panel);
-                splash.getLayeredPane().revalidate();
-                splash.getLayeredPane().repaint();
-            });
-            latch.countDown();
-        });
-
-        // "Bu sürümü atla" → kaydet
-        panel.setOnSkipVersion(version -> {
-            prefs.put(PREF_SKIPPED_VERSION, version);
-            log.info("Sürüm {} atlandı olarak işaretlendi.", version);
-        });
-
-        // "Güncelle" tamamlandıktan sonra System.exit(0) SplashUpdatePanel içinde çağrılır.
-        // Latch serbest bırakmaya gerek yok çünkü JVM kapanır.
-
-        // Splash'in layered pane'ine en üste ekle
-        splash.getLayeredPane().add(panel, JLayeredPane.PALETTE_LAYER);
-        splash.getLayeredPane().revalidate();
-        splash.getLayeredPane().repaint();
-
-        log.info("SplashUpdatePanel gösterildi.");
-    }
-
     // ─── İç: Periyodik kontrol ───────────────────────────────────────────────
 
     private void performPeriodicCheck() {
-        manager.checkForUpdates(
-                manifest -> {
-                    String  skipped   = prefs.get(PREF_SKIPPED_VERSION, "");
-                    boolean wasSkipped = skipped.equals(manifest.getVersion());
-                    boolean isHotfix  = UpdateManager.sameVersion(
-                            manifest.getVersion(), skipped);
+        manager.checkForUpdates(manifest -> {
+            String  skipped   = prefs.get(PREF_SKIPPED_VERSION, "");
+            boolean wasSkipped = skipped.equals(manifest.getVersion());
+            boolean isHotfix  = UpdateManager.sameVersion(
+                    manifest.getVersion(), skipped);
 
-                    // Hotfix ise skipped'i sıfırla, yine göster
-                    if (wasSkipped && isHotfix) {
-                        prefs.remove(PREF_SKIPPED_VERSION);
-                        log.info("Periyodik: hotfix tespit edildi, atla kaydı sıfırlandı.");
-                    } else if (wasSkipped) {
-                        log.debug("Periyodik: sürüm {} atlandı, gösterilmiyor.", manifest.getVersion());
-                        return;
-                    }
+            if (wasSkipped && isHotfix) {
+                prefs.remove(PREF_SKIPPED_VERSION);
+            } else if (wasSkipped) {
+                log.debug("Periyodik: sürüm {} atlandı.", manifest.getVersion());
+                return;
+            }
 
-                    SwingUtilities.invokeLater(() -> {
-                        if (ownerFrame != null) {
-                            boolean hotfix = UpdateManager.sameVersion(
-                                    manifest.getVersion(), currentVersion());
-                            UpdateDialog dialog = new UpdateDialog(
-                                    ownerFrame, manifest, manager, hotfix);
-                            dialog.setOnSkipVersion(new Consumer<String>() {
-                                @Override
-                                public void accept(String version) {
-                                    prefs.put(PREF_SKIPPED_VERSION, version);
-                                }
-                            });
-                            dialog.setVisible(true);
-                        }
-                    });
-                },
-                () -> log.debug("Periyodik kontrol: güncel."),
-                e -> log.warn("Periyodik güncelleme kontrolü başarısız: {}", e.getMessage())
+            SwingUtilities.invokeLater(() -> {
+                if (ownerFrame != null) {
+                    boolean hotfix = UpdateManager.sameVersion(
+                            manifest.getVersion(), currentVersion());
+                    UpdateDialog dialog = new UpdateDialog(
+                            ownerFrame, manifest, manager, hotfix);
+                    dialog.setOnSkipVersion(v -> prefs.put(PREF_SKIPPED_VERSION, v));
+                    dialog.setVisible(true);
+                }
+            });
+        },
+        () -> log.debug("Periyodik kontrol: güncel."),
+        e -> log.warn("Periyodik güncelleme kontrolü başarısız: {}", e.getMessage())
         );
     }
 
-    // ─── Yardımcı: UpdateManager fabrikası ───────────────────────────────────
+    // ─── Yardımcılar ─────────────────────────────────────────────────────────
 
     private static UpdateManager buildManager() {
         String manifestUrl = readProp("manifest.url",
-                "https://raw.githubusercontent.com/KULLANICI/REPO/main/update-manifest.json");
+                "https://raw.githubusercontent.com/KULLANICI/REPO/master/update-manifest.json");
         String version     = readProp("version", "0.0.0");
         File   appRoot     = resolveAppRoot();
 
-        log.info("UpdateManager | sürüm={} | appRoot={}", version, appRoot.getAbsolutePath());
-        return new UpdateManager(manifestUrl, version, appRoot);
+        if (appRoot == null) {
+            log.info("UpdateManager | surum={} | mod=GELISTIRME", version);
+            appRoot = new File(".");
+            return new UpdateManager(manifestUrl, version, appRoot, true);
+        }
+
+        log.info("UpdateManager | surum={} | appRoot={}", version, appRoot.getAbsolutePath());
+        return new UpdateManager(manifestUrl, version, appRoot, false);
     }
 
-    /** Çalışan uygulamanın sürümünü version.properties'ten okur. */
-    private static String currentVersion() {
+    static String currentVersion() {
         return readProp("version", "0.0.0");
     }
 
@@ -302,7 +275,7 @@ public class UpdateChecker {
         } catch (Exception e) {
             return def;
         } finally {
-            if (is != null) try { is.close(); } catch (IOException ignored) { }
+            if (is != null) try { is.close(); } catch (IOException ignored) {}
         }
     }
 
@@ -310,9 +283,14 @@ public class UpdateChecker {
         try {
             File f = new File(UpdateChecker.class
                     .getProtectionDomain().getCodeSource().getLocation().toURI());
-            return f.isFile() ? f.getParentFile() : new File(".");
+            if (f.isFile() && f.getName().endsWith(".jar")) return f.getParentFile();
+            return null; // IDE ortamı
         } catch (Exception e) {
-            return new File(".");
+            return null;
         }
+    }
+
+    static boolean isDevEnvironment() {
+        return resolveAppRoot() == null;
     }
 }

@@ -1,0 +1,80 @@
+package tr.cabro.servicio.application;
+
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.component.AppSplashScreen;
+import tr.cabro.servicio.application.utils.DemoPreferences;
+import tr.cabro.servicio.util.AppLock;
+
+import javax.swing.*;
+import java.io.File;
+
+/**
+ * Uygulama başlatma akışını yöneten bootstrap sınıfı.
+ * <p>
+ * Servicio.main() bu sınıfı başlatır; karmaşık başlatma mantığı buraya taşındı.
+ * <p>
+ * Akış:
+ *   1. AppLock kontrolü
+ *   2. Splash ekranını göster (EDT)
+ *   3. Arka planda Servicio'yu başlat (non-EDT)
+ *      a. Servicio constructor → init işlemleri + güncelleme kontrolü (non-blocking)
+ *      b. Servicio.run() → UI kurulumu (EDT'ye geçer)
+ *   4. UI açılınca güncel güncelleme kontrolü sonucunu işle
+ */
+public final class ApplicationBootstrap {
+
+    private static final Logger log = LoggerFactory.getLogger(ApplicationBootstrap.class);
+
+    private ApplicationBootstrap() {}
+
+    /**
+     * Uygulamayı başlatır. Servicio.main() buradan çağırır.
+     */
+    public static void launch() {
+        // 1. Tek örnek kontrolü
+        if (!AppLock.acquireLock()) {
+            JOptionPane.showMessageDialog(null,
+                    "Servicio uygulaması şu anda zaten çalışıyor!\n" +
+                            "Lütfen açık olan pencereyi kontrol edin.",
+                    "Sistem Uyarısı", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // 2. Splash'i hemen göster (EDT)
+        final AppSplashScreen splash = new AppSplashScreen();
+        SwingUtilities.invokeLater(() -> splash.setVisible(true));
+
+        // 3. Ağır işlemleri arka plana at
+        Thread startupThread = new Thread(() -> {
+            try {
+                Servicio app = new Servicio(new File("."), splash);
+                app.run(splash);
+            } catch (Exception e) {
+                log.error("Başlatma sırasında kritik hata!", e);
+                JOptionPane.showMessageDialog(null,
+                        "Uygulama başlatılamadı:\n" + e.getMessage(),
+                        "Başlatma Hatası", JOptionPane.ERROR_MESSAGE);
+                System.exit(1);
+            }
+        }, "servicio-startup");
+        startupThread.setDaemon(false); // Ana thread olarak çalışsın
+        startupThread.start();
+    }
+
+    /**
+     * FlatLaf ve font kurulumu — EDT'de çağrılmalıdır.
+     * Servicio.run() içinden çağrılır.
+     */
+    public static void setupLookAndFeel() {
+        FlatRobotoFont.install();
+        FlatLaf.registerCustomDefaultsSource("themes");
+        FlatLaf.setPreferredFontFamily(FlatRobotoFont.FAMILY);
+        FlatLaf.setPreferredLightFontFamily(FlatRobotoFont.FAMILY_LIGHT);
+        FlatLaf.setPreferredSemiboldFontFamily(FlatRobotoFont.FAMILY_SEMIBOLD);
+        DemoPreferences.setupLaf();
+    }
+}

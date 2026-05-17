@@ -299,6 +299,120 @@ public class UpdateManager {
         pb.start();
     }
 
+    // ─── GitHub Release Bilgisi ───────────────────────────────────────────────
+
+    /**
+     * GitHub Releases API'sinden release notlarını çeker.
+     * <p>
+     * manifest.json'daki releasesApiUrl kullanılır.
+     * Örn: https://api.github.com/repos/Cabro57/Servicio/releases/latest
+     * <p>
+     * GitHub API rate limit: authenticated değilse 60 istek/saat.
+     * Bu uygulama için fazlasıyla yeterli.
+     *
+     * @param manifest  Güncelleme manifesti (releasesApiUrl içerir).
+     * @param onSuccess Release bilgisi başarıyla geldiğinde çağrılır.
+     * @param onError   Hata durumunda çağrılır (sessiz başarısızlık için boş bırakılabilir).
+     */
+    public void fetchReleaseInfo(final UpdateManifest manifest,
+                                 final Consumer<UpdateManifest.GitHubReleaseInfo> onSuccess,
+                                 final Consumer<Exception> onError) {
+        final String apiUrl = manifest.getReleasesApiUrl();
+        if (apiUrl == null || apiUrl.trim().isEmpty()) {
+            onError.accept(new IllegalStateException(
+                    "manifest.json'da releasesApiUrl tanımlı değil."));
+            return;
+        }
+
+        Thread t = new Thread(() -> {
+            try {
+                log.info("GitHub Release bilgisi çekiliyor: {}", apiUrl);
+                String json = downloadGitHubApi(apiUrl);
+
+                // latest release → tek obje; /releases → array
+                UpdateManifest.GitHubReleaseInfo info;
+                if (apiUrl.contains("/releases/latest") || apiUrl.contains("/releases/tags/")) {
+                    info = UpdateManifest.GitHubReleaseInfo.fromJson(json);
+                } else {
+                    // releases listesi → ilk (en yeni) release
+                    List<UpdateManifest.GitHubReleaseInfo> list =
+                            UpdateManifest.GitHubReleaseInfo.fromJsonArray(json);
+                    info = list.isEmpty() ? null : list.get(0);
+                }
+
+                if (info != null) {
+                    log.info("Release bilgisi alındı: {} ({})", info.tagName, info.publishedAt);
+                    onSuccess.accept(info);
+                } else {
+                    onError.accept(new IOException("Release bilgisi parse edilemedi."));
+                }
+            } catch (Exception e) {
+                log.warn("fetchReleaseInfo hatası: {}", e.getMessage());
+                onError.accept(e);
+            }
+        }, "servicio-release-info");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /**
+     * GitHub API için özel HTTP bağlantısı.
+     * Accept: application/vnd.github+json header'ı ekler.
+     * GitHub API bazen JSON yerine HTML döner; bu header bunu önler.
+     */
+    private String downloadGitHubApi(String urlStr) throws IOException {
+
+        String currentUrl = urlStr + (urlStr.contains("?") ? "&" : "?")
+                + "_t=" + System.currentTimeMillis();
+        HttpURLConnection conn = null;
+
+        for (int redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
+            conn = (HttpURLConnection) new URL(currentUrl).openConnection();
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(READ_TIMEOUT_MS);
+            conn.setRequestProperty("Accept",       "application/vnd.github+json");
+            conn.setRequestProperty("User-Agent",   "Servicio-Updater/" + currentVersion);
+            conn.setRequestProperty("Cache-Control","no-cache, no-store, must-revalidate");
+            conn.setRequestProperty("Pragma",       "no-cache");
+            conn.setUseCaches(false);
+            conn.setInstanceFollowRedirects(false);
+
+            int code = conn.getResponseCode();
+            if (code == 200) break;
+
+            if (code == 301 || code == 302 || code == 307 || code == 308) {
+                String loc = conn.getHeaderField("Location");
+                conn.disconnect();
+                if (loc == null || loc.isEmpty())
+                    throw new IOException("GitHub API redirect konumu boş.");
+                currentUrl = loc;
+                continue;
+            }
+
+            // 403 → rate limit aşıldı
+            if (code == 403) {
+                conn.disconnect();
+                throw new IOException("GitHub API rate limit aşıldı (HTTP 403).");
+            }
+
+            conn.disconnect();
+            throw new IOException("GitHub API HTTP " + code + " : " + currentUrl);
+        }
+
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line).append('\n');
+            return sb.toString();
+        } finally {
+            if (reader != null) try { reader.close(); } catch (IOException ignored) {}
+            conn.disconnect();
+        }
+    }
+
     // ─── Hash Karşılaştırma ───────────────────────────────────────────────────
 
     /**
@@ -308,7 +422,7 @@ public class UpdateManager {
     private List<UpdateManifest.FileEntry> resolveFilesToDownload(UpdateManifest manifest)
             throws IOException, NoSuchAlgorithmException {
 
-        List<UpdateManifest.FileEntry> needed = new ArrayList<UpdateManifest.FileEntry>();
+        List<UpdateManifest.FileEntry> needed = new ArrayList<>();
         List<UpdateManifest.FileEntry> files  = manifest.getFiles();
         if (files == null) return needed;
 
@@ -625,7 +739,5 @@ public class UpdateManager {
 
     // ─── Setter / Kontrol ─────────────────────────────────────────────────────
 
-    public void cancel() {
-        cancelRequested = true;
-    }
+    public void cancel()                                 { cancelRequested = true;  }
 }
