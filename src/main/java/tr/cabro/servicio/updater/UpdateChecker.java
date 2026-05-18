@@ -51,7 +51,7 @@ public class UpdateChecker {
 
     /** Splash kontrolünden gelen sonuç — null: henüz bitmedi */
     private final AtomicReference<UpdateManifest> pendingUpdate =
-            new AtomicReference<>(null);
+            new AtomicReference<UpdateManifest>(null);
 
     /** true → splash kontrolü tamamlandı (güncelleme var veya yok) */
     private final AtomicBoolean splashCheckDone = new AtomicBoolean(false);
@@ -83,57 +83,42 @@ public class UpdateChecker {
      * @param splash Mesaj güncellemesi için splash ekranı referansı.
      */
     public void checkOnSplash(final AppSplashScreen splash) {
-        Thread checker = new Thread(() -> {
-            try {
-                splash.updateMessage("Güncelleme kontrol ediliyor...");
+        splash.updateMessage("Güncelleme kontrol ediliyor...");
 
-                manager.checkForUpdates(
-                    // Güncelleme VAR
-                    manifest -> {
-                        String skipped  = prefs.get(PREF_SKIPPED_VERSION, "");
-                        boolean wasSkipped = skipped.equals(manifest.getVersion());
-                        boolean isHotfix   = UpdateManager.sameVersion(
-                                manifest.getVersion(), skipped);
+        manager.checkForUpdates(
+                manifest -> {
+                    String  skipped    = prefs.get(PREF_SKIPPED_VERSION, "");
+                    boolean wasSkipped = skipped.equals(manifest.getVersion());
+                    boolean isHotfix   = UpdateManager.sameVersion(manifest.getVersion(), skipped);
 
-                        // Hotfix ise skip kaydını sıfırla — yeniden sor
-                        if (wasSkipped && isHotfix) {
-                            prefs.remove(PREF_SKIPPED_VERSION);
-                            log.info("Hotfix tespit edildi, atla kaydı sıfırlandı: v{}",
-                                    manifest.getVersion());
-                        } else if (wasSkipped) {
-                            log.info("Sürüm {} daha önce atlandı.", manifest.getVersion());
-                            splashCheckDone.set(true);
-                            return;
-                        }
-
-                        log.info("Splash kontrolü: güncelleme mevcut v{}",
+                    if (wasSkipped && isHotfix) {
+                        prefs.remove(PREF_SKIPPED_VERSION);
+                        log.info("Hotfix tespit edildi, atla kaydı sıfırlandı: v{}",
                                 manifest.getVersion());
-                        pendingUpdate.set(manifest);
+                    } else if (wasSkipped) {
+                        log.info("Sürüm {} daha önce atlandı.", manifest.getVersion());
                         splashCheckDone.set(true);
-                        splash.updateMessage("Güncelleme mevcut: v" + manifest.getVersion());
-                    },
-                    // Güncelleme YOK
-                    () -> {
-                        log.info("Splash kontrolü: güncel.");
-                        splashCheckDone.set(true);
-                        splash.updateMessage("Başlatılıyor...");
-                    },
-                    // HATA
-                    e -> {
-                        log.warn("Splash güncelleme kontrolü başarısız: {}",
-                                e.getMessage());
-                        splashCheckDone.set(true);
-                        splash.updateMessage("Başlatılıyor...");
+                        return;
                     }
-                );
-            } catch (Exception e) {
-                log.warn("checkOnSplash hatası: {}", e.getMessage());
-                splashCheckDone.set(true);
-            }
-        }, "servicio-splash-update-check");
-        checker.setDaemon(true);
-        checker.start();
+
+                    log.info("Splash kontrolü: güncelleme mevcut v{}", manifest.getVersion());
+                    pendingUpdate.set(manifest);
+                    splashCheckDone.set(true);
+                    splash.updateMessage("Güncelleme mevcut: v" + manifest.getVersion());
+                },
+                () -> {
+                    log.info("Splash kontrolü: güncel.");
+                    splashCheckDone.set(true);
+                    splash.updateMessage("Başlatılıyor...");
+                },
+                e -> {
+                    log.warn("Splash güncelleme kontrolü başarısız: {}", e.getMessage());
+                    splashCheckDone.set(true);
+                    splash.updateMessage("Başlatılıyor...");
+                }
+        );
     }
+
 
     /**
      * Güncelleme mevcut mu?
@@ -212,32 +197,31 @@ public class UpdateChecker {
     // ─── İç: Periyodik kontrol ───────────────────────────────────────────────
 
     private void performPeriodicCheck() {
-        manager.checkForUpdates(manifest -> {
-            String  skipped   = prefs.get(PREF_SKIPPED_VERSION, "");
-            boolean wasSkipped = skipped.equals(manifest.getVersion());
-            boolean isHotfix  = UpdateManager.sameVersion(
-                    manifest.getVersion(), skipped);
+        manager.checkForUpdates(
+            manifest -> {
+                String  skipped    = prefs.get(PREF_SKIPPED_VERSION, "");
+                boolean wasSkipped = skipped.equals(manifest.getVersion());
+                boolean isHotfix   = UpdateManager.sameVersion(manifest.getVersion(), skipped);
 
-            if (wasSkipped && isHotfix) {
-                prefs.remove(PREF_SKIPPED_VERSION);
-            } else if (wasSkipped) {
-                log.debug("Periyodik: sürüm {} atlandı.", manifest.getVersion());
-                return;
-            }
+                if (wasSkipped && isHotfix) {
+                    prefs.remove(PREF_SKIPPED_VERSION);
+                } else if (wasSkipped) {
+                    log.debug("Periyodik: sürüm {} atlandı.", manifest.getVersion());
+                    return;
+                }
 
-            SwingUtilities.invokeLater(() -> {
-                if (ownerFrame != null) {
+                SwingUtilities.invokeLater(() -> {
+                    if (ownerFrame == null) return;
                     boolean hotfix = UpdateManager.sameVersion(
                             manifest.getVersion(), currentVersion());
                     UpdateDialog dialog = new UpdateDialog(
                             ownerFrame, manifest, manager, hotfix);
                     dialog.setOnSkipVersion(v -> prefs.put(PREF_SKIPPED_VERSION, v));
                     dialog.setVisible(true);
-                }
-            });
-        },
-        () -> log.debug("Periyodik kontrol: güncel."),
-        e -> log.warn("Periyodik güncelleme kontrolü başarısız: {}", e.getMessage())
+                });
+            },
+            () -> log.debug("Periyodik kontrol: güncel."),
+            e  -> log.warn("Periyodik güncelleme kontrolü başarısız: {}", e.getMessage())
         );
     }
 

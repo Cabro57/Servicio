@@ -4,19 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="güncel sürüm yayını">
-      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/ApplicationBootstrap.java" afterDir="false" />
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/AppSplashScreen.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/AppSplashScreen.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/menu/MyDrawerBuilder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/menu/MyDrawerBuilder.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/system/MainForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/system/MainForm.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/build/ManifestGenerator.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/build/ManifestGenerator.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/SplashUpdatePanel.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateChecker.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateChecker.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateDialog.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateDialog.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManifest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManifest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/tr/cabro/servicio/application/SplashScreenTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/tr/cabro/servicio/application/SplashScreenTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/update-manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/update-manifest.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,7 +19,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="649" />
+    <option name="cachedIndexableFilesCount" value="664" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -47,7 +42,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Cabro57/Servicio.git&quot;,
-    &quot;accountId&quot;: &quot;4dbf82b9-08aa-487c-a4ef-9b6165819a0e&quot;
+    &quot;accountId&quot;: &quot;66088443-5ae7-4d66-8f5c-0180f0a95921&quot;
   }
 }</component>
   <component name="KubernetesApiPersistence">{}</component>
@@ -57,68 +52,6 @@
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
-  </component>
-  <component name="NextEditCompletionFeaturesState">
-    <decayedCancelled>
-      <entry key="MS100" value="3.3829793199885E-7" />
-      <entry key="MS500" value="0.07312414395379484" />
-      <entry key="S2" value="0.8616423377725475" />
-      <entry key="S5" value="1.4390107372186787" />
-      <entry key="S10" value="1.8482340800849055" />
-      <entry key="S30" value="2.8160912440479855" />
-      <entry key="S60" value="3.511859669300648" />
-      <entry key="M2" value="4.097393802577282" />
-      <entry key="M5" value="4.588240538851499" />
-      <entry key="M10" value="4.784880137439755" />
-      <entry key="M15" value="4.864147225434285" />
-      <entry key="M30" value="5.101243777749327" />
-      <entry key="H1" value="5.688149439687911" />
-      <entry key="H2" value="6.456581402448915" />
-      <entry key="H4" value="7.094418181017498" />
-      <entry key="D1" value="7.8261470568035225" />
-      <entry key="W1" value="7.974535607108739" />
-    </decayedCancelled>
-    <decayedSelected>
-      <entry key="MS100" value="1.0" />
-      <entry key="MS500" value="1.0000000000000036" />
-      <entry key="S2" value="1.0002439768558546" />
-      <entry key="S5" value="1.0405076211387845" />
-      <entry key="S10" value="1.257832899982888" />
-      <entry key="S30" value="1.9835075741656638" />
-      <entry key="S60" value="2.3975454839008306" />
-      <entry key="M2" value="2.6703639213185935" />
-      <entry key="M5" value="2.8605847864120433" />
-      <entry key="M10" value="2.929556920939847" />
-      <entry key="M15" value="2.962516684435835" />
-      <entry key="M30" value="3.1507227667338005" />
-      <entry key="H1" value="3.7119219769180583" />
-      <entry key="H2" value="4.467694549035486" />
-      <entry key="H4" value="5.099639334986939" />
-      <entry key="D1" value="5.826951947040907" />
-      <entry key="W1" value="5.97464868557114" />
-    </decayedSelected>
-    <decayedShown>
-      <entry key="MS100" value="0.004425333990164172" />
-      <entry key="MS500" value="0.3708771223822721" />
-      <entry key="S2" value="1.4663633951421025" />
-      <entry key="S5" value="2.2576598440506324" />
-      <entry key="S10" value="2.9414054858402383" />
-      <entry key="S30" value="4.653937781341696" />
-      <entry key="S60" value="5.784279475586774" />
-      <entry key="M2" value="6.6774495757097965" />
-      <entry key="M5" value="7.4021557511598255" />
-      <entry key="M10" value="7.688859425485106" />
-      <entry key="M15" value="7.80898604244516" />
-      <entry key="M30" value="8.242102786828742" />
-      <entry key="H1" value="9.393826572056318" />
-      <entry key="H2" value="10.920288751529945" />
-      <entry key="H4" value="12.191704359018848" />
-      <entry key="D1" value="13.65263800212942" />
-      <entry key="W1" value="13.949116441069101" />
-    </decayedShown>
-  </component>
-  <component name="ProblemsViewState">
-    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 7,
@@ -137,6 +70,7 @@
     &quot;Application.TestDrawer.executor&quot;: &quot;Run&quot;,
     &quot;Application.testMain.executor&quot;: &quot;Run&quot;,
     &quot;Maven.Servicio [clean,package,-U].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.Servicio [clean,package,].executor&quot;: &quot;Run&quot;,
     &quot;Maven.Servicio [clean,package].executor&quot;: &quot;Run&quot;,
     &quot;Maven.Servicio.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
@@ -152,7 +86,7 @@
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
     &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Projelerim/Servicio/src/main/java/tr/cabro/servicio/application/component&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/projects/Servicio/src/main/resources/icons&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -162,7 +96,7 @@
     &quot;project.structure.last.edited&quot;: &quot;SDKs&quot;,
     &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
     &quot;project.structure.side.proportion&quot;: &quot;0.30229884&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.updates&quot;,
     &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
@@ -174,10 +108,10 @@
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Projelerim\Servicio\src\main\java\tr\cabro\servicio\application\component" />
-      <recent name="C:\Projelerim\Servicio\src\main\java\tr\cabro\servicio\application" />
-      <recent name="C:\Projelerim\Servicio\src\main\java\tr\cabro\servicio\application\utils" />
-      <recent name="C:\Projelerim\Servicio\src\main\resources" />
+      <recent name="C:\projects\Servicio\src\main\resources\icons" />
+      <recent name="C:\projects\Servicio\src\main\resources" />
+      <recent name="C:\projects\Servicio\src\main\java\tr\cabro\servicio\updater" />
+      <recent name="C:\projects\Servicio" />
       <recent name="C:\Projelerim\Servicio" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
@@ -187,9 +121,8 @@
       <recent name="C:\Projelerim\Servicio\src\main\resources\icons" />
     </key>
     <key name="CopyClassDialog.RECENTS_KEY">
-      <recent name="tr.cabro.servicio.application" />
-      <recent name="tr.cabro.servicio.application.component" />
       <recent name="tr.cabro.servicio.application.forms" />
+      <recent name="tr.cabro.servicio.application.component" />
       <recent name="tr.cabro.servicio.forms.base" />
       <recent name="tr.cabro.servicio.auth" />
     </key>
@@ -197,6 +130,7 @@
   <component name="RunAnythingCache">
     <option name="myCommands">
       <command value="mvn clean package -U" />
+      <command value="mvn clean package," />
       <command value="mvn clean package" />
     </option>
   </component>
@@ -237,16 +171,15 @@
     <recent_temporary>
       <list>
         <item itemvalue="Application.Servicio" />
-        <item itemvalue="Application.testMain" />
         <item itemvalue="Application.SplashScreenTest" />
+        <item itemvalue="Application.testMain" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
-        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+        <option value="bundled-jdk-30f59d01ecdd-2fc7cc6b9a17-intellij.indexing.shared.core-IU-253.32098.37" />
       </set>
     </attachedChunks>
   </component>
@@ -271,7 +204,6 @@
       <workItem from="1777326639258" duration="590000" />
       <workItem from="1777327408016" duration="736000" />
       <workItem from="1777328294698" duration="1812000" />
-      <workItem from="1778520049872" duration="10350000" />
     </task>
     <task id="LOCAL-00001" summary="Refactor: Generic tablo mimarisine geçiş ve kritik UI onarımları&#10;&#10;Yapılan Değişiklikler:&#10;* GenericTableModel entegrasyonu sağlandı. Gereksiz tüm TableModel sınıfları silinerek kod tekrarı (boilerplate) önlendi.&#10;* Tablo yenileme mantığı optimize edildi. Her yenilemede yeni nesne türetmek yerine mevcut data güncellenerek RAM kullanımı düşürüldü.&#10;* Servis kaydetme ekranındaki &quot;Kaydet&quot; butonunun state (durum) hatası giderildi.&#10;* Silme işlemi sonrası ekranda görsel tepki olmaması sorunu çözüldü; artık işlem sonrası servis kayıtlarına yönlendiriyor.&#10;* Servis teslim etme işlemindeki arayüz senkronizasyon problemi çözüldü.">
       <option name="closed" value="true" />
@@ -305,31 +237,103 @@
       <option name="project" value="LOCAL" />
       <updated>1777496756826</updated>
     </task>
-    <task id="LOCAL-00005" summary="güncelleme özelliği eklendi">
+    <task id="LOCAL-00005" summary="BugFix">
       <option name="closed" value="true" />
-      <created>1778528733816</created>
+      <created>1778167332543</created>
       <option name="number" value="00005" />
       <option name="presentableId" value="LOCAL-00005" />
       <option name="project" value="LOCAL" />
-      <updated>1778528733816</updated>
+      <updated>1778167332543</updated>
     </task>
-    <task id="LOCAL-00006" summary="bazı dosyaların yolu değiştirildi">
+    <task id="LOCAL-00006" summary="BugFix">
       <option name="closed" value="true" />
-      <created>1778694665382</created>
+      <created>1778572991154</created>
       <option name="number" value="00006" />
       <option name="presentableId" value="LOCAL-00006" />
       <option name="project" value="LOCAL" />
-      <updated>1778694665382</updated>
+      <updated>1778572991155</updated>
     </task>
-    <task id="LOCAL-00007" summary="güncel sürüm yayını">
+    <task id="LOCAL-00007" summary="version update">
       <option name="closed" value="true" />
-      <created>1778784557699</created>
+      <created>1778573049670</created>
       <option name="number" value="00007" />
       <option name="presentableId" value="LOCAL-00007" />
       <option name="project" value="LOCAL" />
-      <updated>1778784557699</updated>
+      <updated>1778573049670</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="version update">
+      <option name="closed" value="true" />
+      <created>1778573242869</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1778573242869</updated>
+    </task>
+    <task id="LOCAL-00009" summary="IconImage gözükmeme sorunu düzeltildi">
+      <option name="closed" value="true" />
+      <created>1778574128203</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1778574128203</updated>
+    </task>
+    <task id="LOCAL-00010" summary="aynı sürüm içinde değişen dosyalar var ise onları da kontrol edip güncelleyebiliyor">
+      <option name="closed" value="true" />
+      <created>1778652887264</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1778652887264</updated>
+    </task>
+    <task id="LOCAL-00011" summary="libs klasöründe tanınmayan kütüphaneleri artık tanıyor">
+      <option name="closed" value="true" />
+      <created>1778655434395</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1778655434395</updated>
+    </task>
+    <task id="LOCAL-00012" summary="çıkan uarılar giderildi">
+      <option name="closed" value="true" />
+      <created>1778659098740</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1778659098740</updated>
+    </task>
+    <task id="LOCAL-00013" summary="çıkan uarılar giderildi">
+      <option name="closed" value="true" />
+      <created>1778660004989</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1778660004989</updated>
+    </task>
+    <task id="LOCAL-00014" summary="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi.">
+      <option name="closed" value="true" />
+      <created>1778670551201</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1778670551201</updated>
+    </task>
+    <task id="LOCAL-00015" summary="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi.">
+      <option name="closed" value="true" />
+      <created>1778673363960</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1778673363960</updated>
+    </task>
+    <task id="LOCAL-00016" summary="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi.">
+      <option name="closed" value="true" />
+      <created>1778673586058</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1778673586058</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -340,10 +344,15 @@
     <MESSAGE value="feat: implement core application architecture, service management modules, and UI components" />
     <MESSAGE value="feat: implement core service management logic and repair workflow with asynchronous repository operations" />
     <MESSAGE value="Yanlışıkla silinmiş geri eklendi" />
-    <MESSAGE value="güncelleme özelliği eklendi" />
-    <MESSAGE value="bazı dosyaların yolu değiştirildi" />
-    <MESSAGE value="güncel sürüm yayını" />
-    <option name="LAST_COMMIT_MESSAGE" value="güncel sürüm yayını" />
+    <MESSAGE value="BugFix" />
+    <MESSAGE value="version update" />
+    <MESSAGE value="IconImage gözükmeme sorunu düzeltildi" />
+    <MESSAGE value="aynı sürüm içinde değişen dosyalar var ise onları da kontrol edip güncelleyebiliyor" />
+    <MESSAGE value="libs klasöründe tanınmayan kütüphaneleri artık tanıyor" />
+    <MESSAGE value="çıkan uarılar giderildi" />
+    <MESSAGE value="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi." />
+    <MESSAGE value="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi." />
+    <option name="LAST_COMMIT_MESSAGE" value="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

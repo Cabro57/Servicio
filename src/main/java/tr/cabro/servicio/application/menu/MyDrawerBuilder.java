@@ -126,7 +126,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
     public SimpleFooterData getSimpleFooterData() {
         return new SimpleFooterData()
                 .setTitle("Servicio")
-                .setDescription("Version ");// + Servicio.getInstance().getAppVersion());
+                .setDescription("Version " + Servicio.getInstance().getAppVersion());// + Servicio.getInstance().getAppVersion());
     }
 
     @Override

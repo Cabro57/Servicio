@@ -124,7 +124,7 @@ public final class Servicio {
             // ile manifesti alır ve diyaloğu gösterir.
             if (updateChecker.hasPendingUpdate()) {
                 logger.info("Splash'ten bekleyen güncelleme var: v{}",
-                        updateChecker.getPendingUpdate().getVersion());
+                updateChecker.getPendingUpdate().getVersion());
                 // MainUI bu bilgiyle istediği UI'yi gösterebilir.
                 // Örnek: frame.showUpdateNotification();
             }

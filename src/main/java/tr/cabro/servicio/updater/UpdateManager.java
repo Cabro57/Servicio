@@ -1,7 +1,5 @@
 package tr.cabro.servicio.updater;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,65 +13,76 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
  * Güncelleme indirme motoru.
  * <p>
+ * Tüm ağ ve dosya işlemleri CompletableFuture üzerinde yürütülür.
+ * Ortak bir daemon thread pool kullanılır.
+ * <p>
  * İndirme kaynakları:
- *   • source="maven"  → Maven Central veya özel repo'dan koordinatla
- *   • source="github" → GitHub Releases doğrudan URL
- *   • source="url"    → Özel HTTP/HTTPS kaynağı
+ *   source="github" → GitHub Releases URL
+ *   source="maven"  → Maven Central veya özel repo koordinatı
+ *   source="url"    → Özel HTTP/HTTPS kaynağı
  * <p>
  * Akış:
- *   1. checkForUpdates()    → manifest.json indir, sürüm karşılaştır
- *   2. downloadUpdate()     → hash'i değişen dosyaları indir (.update-tmp/)
- *   3. applyUpdate()        → .update-tmp/ → uygulama köküne taşı
- *   4. writeLauncherScript() → OS'a göre .bat / .sh yaz
- *   5. launchAndExit()      → script'i çalıştır, JVM'i kapat
+ *   checkForUpdates()    → manifest indir, sürüm + hash karşılaştır
+ *   downloadUpdate()     → değişen dosyaları indir (.update-tmp/)
+ *   applyUpdate()        → libs/ dosyalarını uygulama köküne taşı
+ *                          (ana JAR kilitli olduğu için launcher script'e bırakılır)
+ *   writeLauncherScript() → JVM kapandıktan sonra ana JAR'ı taşıyan script
+ *   launchAndExit()      → script'i başlat
  */
 public class UpdateManager {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateManager.class);
 
-    // Bağlantı zaman aşımları
+    // ─── Sabitler ────────────────────────────────────────────────────────────
+
     private static final int CONNECT_TIMEOUT_MS  = 15_000;
     private static final int READ_TIMEOUT_MS     = 30_000;
     private static final int DOWNLOAD_TIMEOUT_MS = 120_000;
-    // Maven redirect zincirleri için maksimum yönlendirme
-    private static final int MAX_REDIRECTS       = 5;
+    private static final int MAX_REDIRECTS       = 8;
 
-    // ─── Yapılandırma ────────────────────────────────────────────────────────
+    // ─── Thread Pool ─────────────────────────────────────────────────────────
 
-    private final String manifestUrl;
-    private final String currentVersion;
-    private final File   appRoot;
-    private final File   tempDir;
+    /** Tüm async operasyonlar bu pool'da çalışır. */
+    private static final Executor POOL = Executors.newCachedThreadPool(r -> {
+        Thread t = new Thread(r, "servicio-updater");
+        t.setDaemon(true);
+        return t;
+    });
 
-    // ─── Durum ───────────────────────────────────────────────────────────────
+    // ─── Yapılandırma ─────────────────────────────────────────────────────────
 
-    @Getter
-    private volatile boolean  cancelRequested    = false;
-    @Setter
-    private Consumer<Long>    completionCallback = null;
+    private final String  manifestUrl;
+    private final String  currentVersion;
+    private final File    appRoot;
+    private final File    tempDir;
 
     /**
-     * Geliştirme modu bayrağı.
-     * true  → IDE'den çalışılıyor; hash kontrolü atlanır, yalnızca sürüm numarası karşılaştırılır.
-     * false → Gerçek JAR ortamı; tam hash kontrolü uygulanır.
+     * true  → IDE/geliştirme ortamı; hash kontrolü atlanır.
+     * false → Üretim; tam hash kontrolü.
      */
     private final boolean devMode;
 
+    // ─── Durum ───────────────────────────────────────────────────────────────
+
+    private volatile boolean cancelRequested = false;
+
     // ─── Oluşturucu ──────────────────────────────────────────────────────────
 
-    /** Üretim ortamı constructor'ı (devMode=false). */
     public UpdateManager(String manifestUrl, String currentVersion, File appRoot) {
         this(manifestUrl, currentVersion, appRoot, false);
     }
 
-    /** devMode=true → IDE ortamı; hash kontrolü yapılmaz. */
-    public UpdateManager(String manifestUrl, String currentVersion, File appRoot, boolean devMode) {
+    public UpdateManager(String manifestUrl, String currentVersion,
+                         File appRoot, boolean devMode) {
         this.manifestUrl    = manifestUrl;
         this.currentVersion = currentVersion;
         this.appRoot        = appRoot;
@@ -83,58 +92,93 @@ public class UpdateManager {
 
     // ─── Genel API ───────────────────────────────────────────────────────────
 
-    public void checkForUpdates(final Consumer<UpdateManifest> onUpdateAvailable,
-                                final Runnable onUpToDate,
-                                final Consumer<Exception> onError) {
-        Thread t = new Thread(() -> {
+    /**
+     * Arka planda manifest indirir ve sürüm/hash kontrolü yapar.
+     * <p>
+     * Geliştirme modunda (devMode=true) sadece sürüm numarası karşılaştırılır;
+     * hash kontrolü atlanır (appRoot'ta libs/ dizini olmadığı için).
+     *
+     * @return CompletableFuture — tamamlandığında onUpdateAvailable veya onUpToDate çağrılır.
+     */
+    public CompletableFuture<Void> checkForUpdates(
+            Consumer<UpdateManifest> onUpdateAvailable,
+            Runnable onUpToDate,
+            Consumer<Exception> onError) {
+
+        return CompletableFuture.supplyAsync(() -> {
             try {
                 log.info("Manifest indiriliyor: {}", manifestUrl);
                 String json = downloadText(manifestUrl);
-                UpdateManifest manifest = UpdateManifest.fromJson(json);
-                log.info("Uzak: v{}  |  Yerel: v{}", manifest.getVersion(), currentVersion);
+                return UpdateManifest.fromJson(json);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }, POOL).thenAccept(manifest -> {
+            log.info("Uzak: v{}  |  Yerel: v{}", manifest.getVersion(), currentVersion);
 
-                if (isNewerVersion(manifest.getVersion(), currentVersion)) {
-                    // Sürüm numarası yeni → kesinlikle güncelleme var
-                    log.info("Yeni sürüm tespit edildi → güncelleme mevcut.");
-                    onUpdateAvailable.accept(manifest);
+            if (isNewerVersion(manifest.getVersion(), currentVersion)) {
+                log.info("Yeni sürüm tespit edildi → güncelleme mevcut.");
+                onUpdateAvailable.accept(manifest);
 
-                } else if (sameVersion(manifest.getVersion(), currentVersion)) {
-                    // Sürüm aynı — ama dosyalar değişmiş olabilir (aynı sürüme yama).
-                    // Hash'leri kontrol et; en az bir fark varsa güncelleme say.
+            } else if (sameVersion(manifest.getVersion(), currentVersion)) {
+
+                if (devMode) {
+                    // Geliştirme modunda hash atla
+                    log.info("Geliştirme modu: sürüm aynı, hash kontrolü atlandı → güncel.");
+                    onUpToDate.run();
+                    return;
+                }
+
+                // Sürüm aynı — dosya hash'lerini karşılaştır (hotfix/yama desteği)
+                try {
                     List<UpdateManifest.FileEntry> changed = resolveFilesToDownload(manifest);
                     if (!changed.isEmpty()) {
-                        log.info("Sürüm aynı (v{}) ama {} dosyada hash farkı var → yama güncelleme.",
+                        log.info("Sürüm aynı (v{}) ama {} dosyada hash farkı var → yama.",
                                 manifest.getVersion(), changed.size());
                         onUpdateAvailable.accept(manifest);
                     } else {
                         log.info("Sürüm aynı, tüm hash'ler eşleşiyor → güncel.");
                         onUpToDate.run();
                     }
-
-                } else {
-                    // Uzak sürüm daha eski (downgrade) → güncelleme yok
-                    log.info("Uzak sürüm yerel sürümden eski → güncelleme yok.");
+                } catch (Exception e) {
+                    log.warn("Hash karşılaştırma hatası: {}", e.getMessage());
                     onUpToDate.run();
                 }
 
-            } catch (Exception e) {
-                log.warn("checkForUpdates hatası: {}", e.getMessage());
-                onError.accept(e);
+            } else {
+                log.info("Uzak sürüm yerel sürümden eski → güncelleme yok.");
+                onUpToDate.run();
             }
-        }, "servicio-update-checker");
-        t.setDaemon(true);
-        t.start();
+
+        }).exceptionally(ex -> {
+            log.warn("checkForUpdates hatası: {}", ex.getCause() != null
+                    ? ex.getCause().getMessage() : ex.getMessage());
+            onError.accept(ex.getCause() instanceof Exception
+                    ? (Exception) ex.getCause() : new Exception(ex));
+            return null;
+        });
     }
 
-    public void downloadUpdate(final UpdateManifest manifest,
-                               final BiConsumer<String, Double> onProgress,
-                               final Consumer<String> onFileSkipped,
-                               final Consumer<String> onFileDone,
-                               final Runnable onDone,
-                               final Consumer<Exception> onError) {
+    /**
+     * Değişen dosyaları indirir.
+     *
+     * @param onProgress    (dosyaAdı, 0.0–1.0) ilerleme bildirimi.
+     * @param onFileSkipped Hash aynı → atlandı.
+     * @param onFileDone    Bir dosya başarıyla indirildi ve doğrulandı.
+     * @param onDone        Tüm indirmeler tamamlandı.
+     * @param onError       İndirme veya hash hatası.
+     */
+    public CompletableFuture<Void> downloadUpdate(
+            UpdateManifest manifest,
+            BiConsumer<String, Double> onProgress,
+            Consumer<String> onFileSkipped,
+            Consumer<String> onFileDone,
+            Runnable onDone,
+            Consumer<Exception> onError) {
+
         cancelRequested = false;
 
-        Thread t = new Thread(() -> {
+        return CompletableFuture.runAsync(() -> {
             try {
                 tempDir.mkdirs();
 
@@ -151,31 +195,25 @@ public class UpdateManager {
                     }
                 }
 
-                long totalDownloaded = 0;
-
                 for (UpdateManifest.FileEntry entry : toDownload) {
                     if (cancelRequested) {
-                        log.info("İndirme kullanıcı tarafından iptal edildi.");
+                        log.info("İndirme iptal edildi.");
                         return;
                     }
 
-                    // İndirme URL'sini çözümle (maven / github / url)
                     String downloadUrl = entry.resolveDownloadUrl();
-                    String displayName = entry.name != null ? entry.name : entry.resolveFileName();
+                    String displayName = (entry.name != null && !entry.name.isEmpty())
+                            ? entry.name : entry.resolveFileName();
 
-                    log.info("İndiriliyor [{}]: {} → {}",
-                            entry.source, displayName, downloadUrl);
+                    log.info("İndiriliyor [{}]: {} → {}", entry.source, displayName, downloadUrl);
 
                     File dest = new File(tempDir, entry.path);
                     dest.getParentFile().mkdirs();
 
-                    final String finalDisplayName = displayName;
-                    final long   entrySize        = entry.size;
-
-                    downloadFile(downloadUrl, dest, (Consumer<Long>) bytesRead -> {
-                        double pct = entrySize > 0 ? (double) bytesRead / entrySize : 0.0;
-                        onProgress.accept(finalDisplayName, pct);
-                    });
+                    final long entrySize = entry.size;
+                    downloadFile(downloadUrl, dest,
+                            bytesRead -> onProgress.accept(displayName,
+                                    entrySize > 0 ? (double) bytesRead / entrySize : 0.0));
 
                     // Hash doğrula
                     String actualHash = sha256(dest);
@@ -189,49 +227,87 @@ public class UpdateManager {
                     }
 
                     log.info("✔ Doğrulandı: {}", displayName);
-                    totalDownloaded += dest.length();
                     onFileDone.accept(displayName);
                 }
 
-                if (!cancelRequested) {
-                    if (completionCallback != null) completionCallback.accept(totalDownloaded);
-                    onDone.run();
-                }
+                if (!cancelRequested) onDone.run();
 
             } catch (Exception e) {
                 log.error("downloadUpdate hatası", e);
                 onError.accept(e);
             }
-        }, "servicio-update-downloader");
-        t.setDaemon(true);
-        t.start();
+        }, POOL);
+    }
+
+    /**
+     * GitHub Releases API'sinden release bilgisini çeker.
+     * Patch notları manifest.json'da değil, burada saklanır.
+     */
+    public CompletableFuture<UpdateManifest.GitHubReleaseInfo> fetchReleaseInfo(
+            UpdateManifest manifest,
+            Consumer<UpdateManifest.GitHubReleaseInfo> onSuccess,
+            Consumer<Exception> onError) {
+
+        return CompletableFuture.supplyAsync(() -> {
+            String apiUrl = manifest.getReleasesApiUrl();
+            if (apiUrl == null || apiUrl.trim().isEmpty()) {
+                throw new RuntimeException(new IllegalStateException(
+                        "manifest.json'da releasesApiUrl tanımlı değil."));
+            }
+
+            try {
+                log.info("GitHub Release bilgisi çekiliyor: {}", apiUrl);
+                String json = downloadGitHubApi(apiUrl);
+
+                UpdateManifest.GitHubReleaseInfo info;
+                if (apiUrl.contains("/releases/latest") || apiUrl.contains("/releases/tags/")) {
+                    info = UpdateManifest.GitHubReleaseInfo.fromJson(json);
+                } else {
+                    List<UpdateManifest.GitHubReleaseInfo> list =
+                            UpdateManifest.GitHubReleaseInfo.fromJsonArray(json);
+                    info = list.isEmpty() ? null : list.get(0);
+                }
+
+                if (info == null) throw new IOException("Release bilgisi parse edilemedi.");
+                log.info("Release bilgisi alındı: {} ({})", info.tagName, info.publishedAt);
+                return info;
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }, POOL).thenApply(info -> {
+            onSuccess.accept(info);
+            return info;
+        }).exceptionally(ex -> {
+            Exception cause = ex.getCause() instanceof Exception
+                    ? (Exception) ex.getCause() : new Exception(ex);
+            log.warn("fetchReleaseInfo hatası: {}", cause.getMessage());
+            onError.accept(cause);
+            return null;
+        });
     }
 
     /**
      * İndirilen dosyaları uygulama dizinine taşır.
      * <p>
-     * Windows kısıtlaması: Çalışan JVM kendi JAR'ını kilitler, üzerine yazılamaz.
-     * Bu nedenle ana JAR (.update-tmp/servicio.jar) bu metodda ATLANIR.
-     * Ana JAR'ı launcher script taşır — JVM kapandıktan sonra.
-     * <p>
-     * libs/ klasöründeki JAR'lar çalışan JVM tarafından kilitlenmez (URLClassLoader
-     * onları belleğe yükler ve dosyayı serbest bırakır), doğrudan taşınabilir.
+     * Windows'ta çalışan JVM kendi JAR'ını kilitler; ana JAR ATLANIR.
+     * Ana JAR launcher script tarafından JVM kapandıktan sonra taşınır.
+     * libs/ klasöründeki JAR'lar kilitli olmadığı için doğrudan taşınır.
      */
     public void applyUpdate() throws IOException {
         log.info("Güncelleme uygulanıyor: {} → {}", tempDir, appRoot);
-
-        final String mainJarName = getMainJarName();
+        final String mainJarName = resolveMainJarName();
 
         Files.walkFileTree(tempDir.toPath(), new SimpleFileVisitor<Path>() {
             @Override
-            public FileVisitResult visitFile(Path src, BasicFileAttributes attrs) throws IOException {
-                Path relative = tempDir.toPath().relativize(src);
-                String relStr = relative.toString();
+            public FileVisitResult visitFile(Path src, BasicFileAttributes attrs)
+                    throws IOException {
+                Path   relative = tempDir.toPath().relativize(src);
+                String relStr   = relative.toString().replace("\\", "/");
 
-                // Ana JAR'ı atla — JVM tarafından kilitli, launcher script taşıyacak
-                if (relStr.equalsIgnoreCase(mainJarName)
-                        || relStr.equalsIgnoreCase(mainJarName.replace("/", File.separator))) {
-                    log.info("Ana JAR launcher script'e bırakıldı: {}", relStr);
+                // Ana JAR → launcher script'e bırak (kilitli)
+                if (relStr.equalsIgnoreCase(mainJarName)) {
+                    log.info("Ana JAR launcher'a bırakıldı: {}", relStr);
                     return FileVisitResult.CONTINUE;
                 }
 
@@ -242,183 +318,48 @@ public class UpdateManager {
                     File bak = new File(dest.getParent(), dest.getName() + ".bak");
                     if (bak.exists()) bak.delete();
                     dest.renameTo(bak);
-                    log.debug("Yedeklendi: {}.bak", dest.getName());
                 }
 
                 Files.move(src, dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                log.info("Taşındı: {}", relative);
+                log.info("Taşındı: {}", relStr);
                 return FileVisitResult.CONTINUE;
             }
         });
 
-        // tempDir'i silme — ana JAR hâlâ orada, launcher script onu taşıyacak
         log.info("libs/ taşıma tamamlandı. Ana JAR launcher'a bırakıldı.");
     }
 
-    /** Ana JAR'ın göreceli yolunu döner. Örn: "servicio.jar" */
-    private String getMainJarName() {
-        // MANIFEST.MF'den okumayı dene
-        try {
-            java.net.URL url = getClass().getResource("/META-INF/MANIFEST.MF");
-            if (url != null) {
-                java.util.jar.Manifest mf = new java.util.jar.Manifest(url.openStream());
-                String cp = mf.getMainAttributes().getValue("Class-Path");
-                // Class-Path: libs/a.jar libs/b.jar → ana JAR listede değil
-                // Alternatif: Start-Class veya Main-Class'tan değil, JAR adını al
-            }
-        } catch (Exception ignored) {}
-
-        // Fallback: codeSource'dan JAR adını al
-        try {
-            File f = new File(getClass().getProtectionDomain()
-                    .getCodeSource().getLocation().toURI());
-            if (f.isFile()) return f.getName();
-        } catch (Exception ignored) {}
-
-        return "servicio.jar"; // son fallback
-    }
-
+    /**
+     * OS'a göre launcher script üretir.
+     * Script: JVM kapandıktan sonra ana JAR'ı taşır ve uygulamayı yeniden başlatır.
+     */
     public File writeLauncherScript(String jarName, String jvmArgs) throws IOException {
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        return isWindows ? writeBatScript(jarName, jvmArgs) : writeShScript(jarName, jvmArgs);
+        boolean isWindows = System.getProperty("os.name", "")
+                .toLowerCase().contains("win");
+        return isWindows
+                ? writeBatScript(jarName, jvmArgs)
+                : writeShScript(jarName, jvmArgs);
     }
 
+    /** Launcher script'i başlatır. Ardından Servicio.shutdown() çağrılmalıdır. */
     public void launchAndExit(File script) throws IOException {
         String pid = getCurrentPid();
         log.info("Launcher başlatılıyor: {}  PID={}", script.getName(), pid);
 
-        boolean isWindows = System.getProperty("os.name", "").toLowerCase().contains("win");
-        ProcessBuilder pb;
+        boolean isWindows = System.getProperty("os.name", "")
+                .toLowerCase().contains("win");
+        ProcessBuilder pb = isWindows
+                ? new ProcessBuilder("cmd", "/c", "start", "", script.getAbsolutePath(), pid)
+                : new ProcessBuilder("sh", script.getAbsolutePath(), pid);
 
-        if (isWindows) {
-            pb = new ProcessBuilder("cmd", "/c", "start", "", script.getAbsolutePath(), pid);
-        } else {
-            pb = new ProcessBuilder("sh", script.getAbsolutePath(), pid);
-        }
         pb.directory(appRoot);
         pb.start();
     }
 
-    // ─── GitHub Release Bilgisi ───────────────────────────────────────────────
-
-    /**
-     * GitHub Releases API'sinden release notlarını çeker.
-     * <p>
-     * manifest.json'daki releasesApiUrl kullanılır.
-     * Örn: https://api.github.com/repos/Cabro57/Servicio/releases/latest
-     * <p>
-     * GitHub API rate limit: authenticated değilse 60 istek/saat.
-     * Bu uygulama için fazlasıyla yeterli.
-     *
-     * @param manifest  Güncelleme manifesti (releasesApiUrl içerir).
-     * @param onSuccess Release bilgisi başarıyla geldiğinde çağrılır.
-     * @param onError   Hata durumunda çağrılır (sessiz başarısızlık için boş bırakılabilir).
-     */
-    public void fetchReleaseInfo(final UpdateManifest manifest,
-                                 final Consumer<UpdateManifest.GitHubReleaseInfo> onSuccess,
-                                 final Consumer<Exception> onError) {
-        final String apiUrl = manifest.getReleasesApiUrl();
-        if (apiUrl == null || apiUrl.trim().isEmpty()) {
-            onError.accept(new IllegalStateException(
-                    "manifest.json'da releasesApiUrl tanımlı değil."));
-            return;
-        }
-
-        Thread t = new Thread(() -> {
-            try {
-                log.info("GitHub Release bilgisi çekiliyor: {}", apiUrl);
-                String json = downloadGitHubApi(apiUrl);
-
-                // latest release → tek obje; /releases → array
-                UpdateManifest.GitHubReleaseInfo info;
-                if (apiUrl.contains("/releases/latest") || apiUrl.contains("/releases/tags/")) {
-                    info = UpdateManifest.GitHubReleaseInfo.fromJson(json);
-                } else {
-                    // releases listesi → ilk (en yeni) release
-                    List<UpdateManifest.GitHubReleaseInfo> list =
-                            UpdateManifest.GitHubReleaseInfo.fromJsonArray(json);
-                    info = list.isEmpty() ? null : list.get(0);
-                }
-
-                if (info != null) {
-                    log.info("Release bilgisi alındı: {} ({})", info.tagName, info.publishedAt);
-                    onSuccess.accept(info);
-                } else {
-                    onError.accept(new IOException("Release bilgisi parse edilemedi."));
-                }
-            } catch (Exception e) {
-                log.warn("fetchReleaseInfo hatası: {}", e.getMessage());
-                onError.accept(e);
-            }
-        }, "servicio-release-info");
-        t.setDaemon(true);
-        t.start();
-    }
-
-    /**
-     * GitHub API için özel HTTP bağlantısı.
-     * Accept: application/vnd.github+json header'ı ekler.
-     * GitHub API bazen JSON yerine HTML döner; bu header bunu önler.
-     */
-    private String downloadGitHubApi(String urlStr) throws IOException {
-
-        String currentUrl = urlStr + (urlStr.contains("?") ? "&" : "?")
-                + "_t=" + System.currentTimeMillis();
-        HttpURLConnection conn = null;
-
-        for (int redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
-            conn = (HttpURLConnection) new URL(currentUrl).openConnection();
-            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-            conn.setReadTimeout(READ_TIMEOUT_MS);
-            conn.setRequestProperty("Accept",       "application/vnd.github+json");
-            conn.setRequestProperty("User-Agent",   "Servicio-Updater/" + currentVersion);
-            conn.setRequestProperty("Cache-Control","no-cache, no-store, must-revalidate");
-            conn.setRequestProperty("Pragma",       "no-cache");
-            conn.setUseCaches(false);
-            conn.setInstanceFollowRedirects(false);
-
-            int code = conn.getResponseCode();
-            if (code == 200) break;
-
-            if (code == 301 || code == 302 || code == 307 || code == 308) {
-                String loc = conn.getHeaderField("Location");
-                conn.disconnect();
-                if (loc == null || loc.isEmpty())
-                    throw new IOException("GitHub API redirect konumu boş.");
-                currentUrl = loc;
-                continue;
-            }
-
-            // 403 → rate limit aşıldı
-            if (code == 403) {
-                conn.disconnect();
-                throw new IOException("GitHub API rate limit aşıldı (HTTP 403).");
-            }
-
-            conn.disconnect();
-            throw new IOException("GitHub API HTTP " + code + " : " + currentUrl);
-        }
-
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) sb.append(line).append('\n');
-            return sb.toString();
-        } finally {
-            if (reader != null) try { reader.close(); } catch (IOException ignored) {}
-            conn.disconnect();
-        }
-    }
+    public void cancel() { cancelRequested = true; }
 
     // ─── Hash Karşılaştırma ───────────────────────────────────────────────────
 
-    /**
-     * Her dosyanın SHA-256'sını yerel dosyayla karşılaştırır.
-     * Hash aynıysa atlar (değişmeyen kütüphaneler tekrar indirilmez).
-     */
     private List<UpdateManifest.FileEntry> resolveFilesToDownload(UpdateManifest manifest)
             throws IOException, NoSuchAlgorithmException {
 
@@ -428,244 +369,25 @@ public class UpdateManager {
 
         for (UpdateManifest.FileEntry entry : files) {
             File local = new File(appRoot, entry.path);
-
             if (!local.exists()) {
-                log.debug("Yok → indirilecek: {}", entry.path);
+                log.debug("Eksik → indirilecek: {}", entry.path);
                 needed.add(entry);
                 continue;
             }
-
             String localHash = sha256(local);
             if (!localHash.equalsIgnoreCase(entry.sha256)) {
                 log.debug("Hash farklı → indirilecek: {}  (yerel={}…)",
                         entry.name, localHash.substring(0, 8));
                 needed.add(entry);
             } else {
-                log.debug("Hash aynı → atlanıyor: {}", entry.name);
+                log.debug("Hash aynı → atlıyor: {}", entry.name);
             }
         }
         return needed;
     }
 
-    // ─── İndirme Yardımcıları ────────────────────────────────────────────────
+    // ─── Sürüm Karşılaştırma ─────────────────────────────────────────────────
 
-    private String downloadText(String urlStr) throws IOException {
-        // GitHub CDN önbelleğini atlatmak için timestamp parametresi ekle.
-        // raw.githubusercontent.com bazen dakikalarca eski içerik döner;
-        // query string eklenmesi CDN'in farklı bir cache key kullanmasını sağlar.
-
-        // Redirect zincirini takip et (raw.githubusercontent.com → objects.githubusercontent.com)
-        String currentUrl = urlStr
-                + (urlStr.contains("?") ? "&" : "?")
-                + "_t=" + System.currentTimeMillis();
-        HttpURLConnection conn = null;
-
-        for (int redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
-            conn = openConnection(currentUrl, READ_TIMEOUT_MS);
-            conn.setInstanceFollowRedirects(false);
-            int code = conn.getResponseCode();
-
-            if (code == 200) break;
-
-            if (code == 301 || code == 302 || code == 307 || code == 308) {
-                String loc = conn.getHeaderField("Location");
-                conn.disconnect();
-                if (loc == null || loc.isEmpty())
-                    throw new IOException("Manifest redirect konumu bos");
-                if (!loc.startsWith("http")) {
-                    URL base = new URL(currentUrl);
-                    loc = base.getProtocol() + "://" + base.getHost() + loc;
-                }
-                currentUrl = loc;
-                continue;
-            }
-
-            conn.disconnect();
-            throw new IOException("Manifest HTTP " + code + " : " + currentUrl);
-        }
-
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) sb.append(line).append('\n');
-            return sb.toString();
-        } finally {
-            if (reader != null) try { reader.close(); } catch (IOException ignored) { }
-            conn.disconnect();
-        }
-    }
-
-    /**
-     * Dosyayı HTTP(S) üzerinden indirir.
-     * Maven Central ve GitHub Releases her ikisi de 302 redirect kullanır;
-     * manuel redirect takibi yapılır (http → https geçişlerinde de çalışır).
-     */
-    private void downloadFile(String urlStr, File dest,
-                              Consumer<Long> onBytesRead) throws IOException {
-
-        // Redirect zincirini takip et
-        String currentUrl = urlStr;
-        HttpURLConnection conn = null;
-
-        for (int redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
-            conn = openConnection(currentUrl, DOWNLOAD_TIMEOUT_MS);
-            conn.setInstanceFollowRedirects(false); // Manuel takip ediyoruz
-
-            int code = conn.getResponseCode();
-
-            if (code == HttpURLConnection.HTTP_OK) {
-                break; // Bulduk
-            }
-
-            if (code == HttpURLConnection.HTTP_MOVED_PERM  // 301
-                    || code == HttpURLConnection.HTTP_MOVED_TEMP  // 302
-                    || code == 307 || code == 308) {
-
-                String location = conn.getHeaderField("Location");
-                conn.disconnect();
-
-                if (location == null || location.isEmpty()) {
-                    throw new IOException("Redirect konumu boş: " + currentUrl);
-                }
-
-                // Göreli URL'yi mutlak yap
-                if (!location.startsWith("http")) {
-                    URL base = new URL(currentUrl);
-                    location = base.getProtocol() + "://" + base.getHost() + location;
-                }
-
-                log.debug("Redirect ({}) → {}", code, location);
-                currentUrl = location;
-
-            } else {
-                conn.disconnect();
-                throw new IOException("HTTP " + code + " : " + currentUrl);
-            }
-        }
-
-        // conn burada HTTP 200 bağlantısı
-        InputStream  in  = null;
-        OutputStream out = null;
-        try {
-            in  = conn.getInputStream();
-            out = Files.newOutputStream(dest.toPath());
-
-            byte[] buf   = new byte[16384];
-            long   total = 0;
-            int    n;
-
-            while ((n = in.read(buf)) != -1) {
-                if (cancelRequested) return;
-                out.write(buf, 0, n);
-                total += n;
-                onBytesRead.accept(total);
-            }
-        } finally {
-            if (out != null) try { out.close(); } catch (IOException ignored) { }
-            if (in  != null) try { in.close();  } catch (IOException ignored) { }
-            conn.disconnect();
-        }
-    }
-
-    private HttpURLConnection openConnection(String urlStr, int readTimeout) throws IOException {
-        HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-        conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
-        conn.setReadTimeout(readTimeout);
-        // Tüm önbellek mekanizmalarını devre dışı bırak
-        conn.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
-        conn.setRequestProperty("Pragma",        "no-cache");
-        conn.setRequestProperty("Expires",       "0");
-        conn.setRequestProperty("User-Agent",    "Servicio-Updater/" + currentVersion);
-        conn.setUseCaches(false);
-        return conn;
-    }
-
-    // ─── Launcher Script ──────────────────────────────────────────────────────
-
-    private File writeBatScript(String jarName, String jvmArgs) throws IOException {
-        File   script = new File(appRoot, "update-restart.bat");
-        // Ana JAR geçici dizinde bekliyor (.update-tmp\servicio.jar)
-        String tmpJar = ".update-tmp\\" + jarName;
-        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
-                Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
-            pw.println("@echo off");
-            pw.println("chcp 65001 >nul");
-            pw.println(":: Servicio Guncelleme Launcher");
-            pw.println("set OLD_PID=%1");
-            pw.println("cd /d \"%~dp0\"");
-            pw.println("");
-            pw.println(":: Eski JVM tamamen kapanana kadar bekle");
-            pw.println(":WAIT_JVM");
-            pw.println("tasklist /fi \"PID eq %OLD_PID%\" 2>nul | find /i \"java\" >nul");
-            pw.println("if not errorlevel 1 (");
-            pw.println("    timeout /t 1 /nobreak >nul");
-            pw.println("    goto WAIT_JVM");
-            pw.println(")");
-            pw.println("");
-            pw.println(":: Ana JAR artik serbest, gecici dizinden tasi");
-            pw.println("if exist \"" + tmpJar + "\" (");
-            pw.println("    if exist \"" + jarName + ".bak\" del /f \"" + jarName + ".bak\"");
-            pw.println("    if exist \"" + jarName + "\" ren \"" + jarName + "\" \"" + jarName + ".bak\"");
-            pw.println("    move /y \"" + tmpJar + "\" \"" + jarName + "\"");
-            pw.println(")");
-            pw.println("");
-            pw.println(":: Gecici dizini temizle");
-            pw.println("if exist \".update-tmp\" rd /s /q \".update-tmp\"");
-            pw.println("");
-            pw.println(":: Uygulamayi yeniden baslat");
-            if (jvmArgs != null && !jvmArgs.isEmpty()) {
-                pw.println("start javaw " + jvmArgs + " -jar \"" + jarName + "\"");
-            } else {
-                pw.println("start javaw -jar \"" + jarName + "\"");
-            }
-            pw.println("");
-            pw.println("del \"%~f0\"");
-        }
-        return script;
-    }
-
-    private File writeShScript(String jarName, String jvmArgs) throws IOException {
-        File script = new File(appRoot, "update-restart.sh");
-        // Ana JAR geçici dizinde bekliyor (.update-tmp/servicio.jar)
-        String tmpJar = ".update-tmp/" + jarName;
-        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
-                Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
-            pw.println("#!/bin/sh");
-            pw.println("# Servicio Guncelleme Launcher");
-            pw.println("OLD_PID=$1");
-            pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\"))\" && pwd)\"");
-            pw.println("cd \"$SCRIPT_DIR\"");
-            pw.println("");
-            pw.println("# Eski JVM kapanana kadar bekle");
-            pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
-            pw.println("");
-            pw.println("# Ana JAR artik serbest, gecici dizinden tasi");
-            pw.println("if [ -f \"" + tmpJar + "\" ]; then");
-            pw.println("    mv -f \"" + jarName + "\" \"" + jarName + ".bak\" 2>/dev/null");
-            pw.println("    mv -f \"" + tmpJar + "\" \"" + jarName + "\"");
-            pw.println("fi");
-            pw.println("");
-            pw.println("# Gecici dizini temizle");
-            pw.println("rm -rf .update-tmp");
-            pw.println("");
-            pw.println("# Uygulamayi yeniden baslat");
-            if (jvmArgs != null && !jvmArgs.isEmpty()) {
-                pw.println("java " + jvmArgs + " -jar \"" + jarName + "\" &");
-            } else {
-                pw.println("java -jar \"" + jarName + "\" &");
-            }
-            pw.println("rm -- \"$0\"");
-        }
-        script.setExecutable(true);
-        return script;
-    }
-
-    // ─── Yardımcı Metodlar ───────────────────────────────────────────────────
-
-    /** Uzak sürüm yerelden daha yeni mi? "2.1.0" > "1.9.3" → true */
     public static boolean isNewerVersion(String remote, String current) {
         int[] r = parseSemver(remote);
         int[] c = parseSemver(current);
@@ -675,11 +397,6 @@ public class UpdateManager {
         return false;
     }
 
-    /**
-     * Sürüm numaraları aynı mı?
-     * Aynı sürüme yama yüklendiğinde (hotfix) hash kontrolüne geçmek için kullanılır.
-     * "2.1.0" == "2.1.0" → true
-     */
     public static boolean sameVersion(String remote, String current) {
         int[] r = parseSemver(remote);
         int[] c = parseSemver(current);
@@ -695,49 +412,212 @@ public class UpdateManager {
         int[] nums = new int[3];
         for (int i = 0; i < Math.min(parts.length, 3); i++) {
             try { nums[i] = Integer.parseInt(parts[i]); }
-            catch (NumberFormatException ignored) { }
+            catch (NumberFormatException ignored) {}
         }
         return nums;
     }
 
+    // ─── HTTP Yardımcıları ────────────────────────────────────────────────────
+
+    private String downloadText(String urlStr) throws IOException {
+        // Cache-bust: GitHub CDN'in eski içerik dönmesini engeller
+        String bustedUrl = urlStr + (urlStr.contains("?") ? "&" : "?")
+                + "_t=" + System.currentTimeMillis();
+
+        HttpURLConnection conn = followRedirects(bustedUrl, READ_TIMEOUT_MS, false);
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line).append('\n');
+            return sb.toString();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private String downloadGitHubApi(String urlStr) throws IOException {
+        String bustedUrl = urlStr + (urlStr.contains("?") ? "&" : "?")
+                + "_t=" + System.currentTimeMillis();
+        HttpURLConnection conn = followRedirects(bustedUrl, READ_TIMEOUT_MS, true);
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line).append('\n');
+            return sb.toString();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private void downloadFile(String urlStr, File dest,
+                              Consumer<Long> onBytesRead) throws IOException {
+        HttpURLConnection conn = followRedirects(urlStr, DOWNLOAD_TIMEOUT_MS, false);
+        try (InputStream in  = conn.getInputStream();
+             OutputStream out = Files.newOutputStream(dest.toPath())) {
+            byte[] buf   = new byte[16384];
+            long   total = 0;
+            int    n;
+            while ((n = in.read(buf)) != -1) {
+                if (cancelRequested) return;
+                out.write(buf, 0, n);
+                total += n;
+                onBytesRead.accept(total);
+            }
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    /**
+     * Redirect zincirini takip ederek HTTP 200 bağlantısı döner.
+     * GitHub Releases ve Maven Central her ikisi de redirect kullanır.
+     *
+     * @param githubApi true → GitHub API header'ları eklenir.
+     */
+    private HttpURLConnection followRedirects(String urlStr, int readTimeout,
+                                              boolean githubApi) throws IOException {
+        String current = urlStr;
+
+        for (int i = 0; i <= MAX_REDIRECTS; i++) {
+            HttpURLConnection conn = (HttpURLConnection) new URL(current).openConnection();
+            conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            conn.setReadTimeout(readTimeout);
+            conn.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
+            conn.setRequestProperty("Pragma",        "no-cache");
+            conn.setRequestProperty("Expires",       "0");
+            conn.setRequestProperty("User-Agent",    "Servicio-Updater/" + currentVersion);
+            conn.setUseCaches(false);
+            conn.setInstanceFollowRedirects(false);
+
+            if (githubApi) {
+                conn.setRequestProperty("Accept", "application/vnd.github+json");
+            }
+
+            int code = conn.getResponseCode();
+
+            if (code == HttpURLConnection.HTTP_OK) return conn;
+
+            if (code == 301 || code == 302 || code == 307 || code == 308) {
+                String loc = conn.getHeaderField("Location");
+                conn.disconnect();
+                if (loc == null || loc.isEmpty())
+                    throw new IOException("Redirect konumu boş: " + current);
+                if (!loc.startsWith("http")) {
+                    URL base = new URL(current);
+                    loc = base.getProtocol() + "://" + base.getHost() + loc;
+                }
+                current = loc;
+                log.debug("Redirect {} → {}", code, current);
+                continue;
+            }
+
+            if (code == 403) {
+                conn.disconnect();
+                throw new IOException("HTTP 403 — GitHub API rate limit aşıldı: " + current);
+            }
+
+            conn.disconnect();
+            throw new IOException("HTTP " + code + " : " + current);
+        }
+
+        throw new IOException("Çok fazla redirect: " + urlStr);
+    }
+
+    // ─── Launcher Script ──────────────────────────────────────────────────────
+
+    private File writeBatScript(String jarName, String jvmArgs) throws IOException {
+        File   script = new File(appRoot, "update-restart.bat");
+        String tmpJar = ".update-tmp\\" + jarName;
+
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
+            pw.println("@echo off");
+            pw.println("chcp 65001 >nul");
+            pw.println(":: Servicio Guncelleme Launcher");
+            pw.println("set OLD_PID=%1");
+            pw.println("cd /d \"%~dp0\"");
+            pw.println("");
+            pw.println(":WAIT_JVM");
+            pw.println("tasklist /fi \"PID eq %OLD_PID%\" 2>nul | find /i \"java\" >nul");
+            pw.println("if not errorlevel 1 (");
+            pw.println("    timeout /t 1 /nobreak >nul");
+            pw.println("    goto WAIT_JVM");
+            pw.println(")");
+            pw.println("");
+            pw.println("if exist \"" + tmpJar + "\" (");
+            pw.println("    if exist \"" + jarName + ".bak\" del /f \"" + jarName + ".bak\"");
+            pw.println("    if exist \"" + jarName + "\" ren \"" + jarName + "\" \"" + jarName + ".bak\"");
+            pw.println("    move /y \"" + tmpJar + "\" \"" + jarName + "\"");
+            pw.println(")");
+            pw.println("");
+            pw.println("if exist \".update-tmp\" rd /s /q \".update-tmp\"");
+            pw.println("");
+            String startCmd = (jvmArgs != null && !jvmArgs.isEmpty())
+                    ? "start javaw " + jvmArgs + " -jar \"" + jarName + "\""
+                    : "start javaw -jar \"" + jarName + "\"";
+            pw.println(startCmd);
+            pw.println("");
+            pw.println("del \"%~f0\"");
+        }
+        return script;
+    }
+
+    private File writeShScript(String jarName, String jvmArgs) throws IOException {
+        File   script = new File(appRoot, "update-restart.sh");
+        String tmpJar = ".update-tmp/" + jarName;
+
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
+            pw.println("#!/bin/sh");
+            pw.println("# Servicio Guncelleme Launcher");
+            pw.println("OLD_PID=$1");
+            pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"");
+            pw.println("cd \"$SCRIPT_DIR\"");
+            pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
+            pw.println("if [ -f \"" + tmpJar + "\" ]; then");
+            pw.println("    mv -f \"" + jarName + "\" \"" + jarName + ".bak\" 2>/dev/null");
+            pw.println("    mv -f \"" + tmpJar + "\" \"" + jarName + "\"");
+            pw.println("fi");
+            pw.println("rm -rf .update-tmp");
+            String javaCmd = (jvmArgs != null && !jvmArgs.isEmpty())
+                    ? "java " + jvmArgs + " -jar \"" + jarName + "\" &"
+                    : "java -jar \"" + jarName + "\" &";
+            pw.println(javaCmd);
+            pw.println("rm -- \"$0\"");
+        }
+        script.setExecutable(true);
+        return script;
+    }
+
+    // ─── Genel Yardımcılar ───────────────────────────────────────────────────
+
     public static String sha256(File file) throws IOException, NoSuchAlgorithmException {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        InputStream in = null;
-        try {
-            in = Files.newInputStream(file.toPath());
+        try (InputStream in = Files.newInputStream(file.toPath())) {
             byte[] buf = new byte[16384];
             int n;
             while ((n = in.read(buf)) != -1) digest.update(buf, 0, n);
-        } finally {
-            if (in != null) try { in.close(); } catch (IOException ignored) { }
         }
         StringBuilder hex = new StringBuilder();
         for (byte b : digest.digest()) hex.append(String.format("%02x", b));
         return hex.toString();
     }
 
-    private void deleteDirectory(File dir) throws IOException {
-        if (dir == null || !dir.exists()) return;
-        Files.walkFileTree(dir.toPath(), new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult visitFile(Path f, BasicFileAttributes a) throws IOException {
-                Files.delete(f); return FileVisitResult.CONTINUE;
-            }
-            @Override
-            public FileVisitResult postVisitDirectory(Path d, IOException e) throws IOException {
-                Files.delete(d); return FileVisitResult.CONTINUE;
-            }
-        });
+    private String resolveMainJarName() {
+        try {
+            File f = new File(getClass().getProtectionDomain()
+                    .getCodeSource().getLocation().toURI());
+            if (f.isFile()) return f.getName();
+        } catch (Exception ignored) {}
+        return "servicio.jar";
     }
 
     private static String getCurrentPid() {
         String name = java.lang.management.ManagementFactory
-                .getRuntimeMXBean().getName(); // "12345@hostname"
+                .getRuntimeMXBean().getName();
         int at = name.indexOf('@');
         return at > 0 ? name.substring(0, at) : name;
     }
-
-    // ─── Setter / Kontrol ─────────────────────────────────────────────────────
-
-    public void cancel()                                 { cancelRequested = true;  }
 }

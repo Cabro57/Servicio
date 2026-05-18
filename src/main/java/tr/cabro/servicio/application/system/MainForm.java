@@ -3,6 +3,10 @@ package tr.cabro.servicio.application.system;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
+import raven.modal.Toast;
+import raven.modal.toast.ToastPromise;
+import raven.modal.toast.option.ToastLocation;
+import raven.modal.toast.option.ToastOption;
 import tr.cabro.servicio.application.component.FormSearchButton;
 import tr.cabro.servicio.application.component.MemoryBar;
 import tr.cabro.servicio.application.component.RefreshLine;
@@ -66,7 +70,7 @@ public class MainForm extends JPanel {
     }
 
     private JPanel createFooter() {
-        JPanel panel = new JPanel(new MigLayout("insets 1 n 1 n,al trailing center,gapx 10,height 30!", "[][]push[][]", "fill"));
+        JPanel panel = new JPanel(new MigLayout("insets 1 n 1 n,al trailing center,gapx 10,height 30!", "[]push[][][]", "fill"));
         panel.putClientProperty(FlatClientProperties.STYLE, "" +
                 "[light]background:tint($Panel.background,20%);" +
                 "[dark]background:tint($Panel.background,5%);");
@@ -78,10 +82,6 @@ public class MainForm extends JPanel {
         lbDemoVersion.setIcon(new Ikon("icons/git-merge.svg", 0.7f, "Label.disabledForeground"));
         panel.add(lbDemoVersion);
 
-        JButton updater = new JButton(new Ikon("icons/download.svg", 0.7f));
-        updater.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
-
-        panel.add(updater);
 
         // java version
         String javaVendor = System.getProperty("java.vendor");
@@ -101,6 +101,65 @@ public class MainForm extends JPanel {
         // memory
         MemoryBar memoryBar = new MemoryBar();
         panel.add(memoryBar);
+
+        JButton helper = new JButton(new Ikon("icons/circle-alert.svg", 0.7f));
+        helper.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
+
+        JPopupMenu popupMenu = new JPopupMenu();
+
+        // 1. Öğe: Standart Güncelleme Kontrol Linki
+        JMenuItem menuCheckUpdate = new JMenuItem("Güncellemeleri Kontrol Et");
+        menuCheckUpdate.setIcon(new Ikon("icons/refresh-cw.svg", 0.7f));
+        menuCheckUpdate.addActionListener(ae -> {
+
+            ToastOption option = Toast.createOption();
+            option.setHtmlEnabled(true)
+                    .setCloseOnClick(true)
+                    .getLayoutOption()
+                    .setLocation(ToastLocation.TOP_TRAILING);
+
+            Toast.showPromise(this, "", option, new ToastPromise() {
+                @Override
+                public void execute(PromiseCallback callback) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    Servicio.getInstance().getUpdateChecker().checkNow();
+                    callback.done(Toast.Type.SUCCESS, "Tamamlandı");
+                }
+            });
+        });
+        popupMenu.add(menuCheckUpdate);
+
+        popupMenu.addSeparator();
+
+        JMenuItem menuUpdateNow = new JMenuItem("Yeni Güncelleme Mevcut! Şimdi Güncelle");
+        menuUpdateNow.putClientProperty(FlatClientProperties.STYLE, "foreground:$Component.warningForeground;");
+        menuUpdateNow.setIcon(new Ikon("icons/download.svg", 0.7f));
+
+        menuUpdateNow.addActionListener(ae -> {
+            JOptionPane.showMessageDialog(this, "Güncelleme paketi indiriliyor...", "Güncelleme Başladı", JOptionPane.INFORMATION_MESSAGE);
+        });
+        popupMenu.add(menuUpdateNow);
+
+        helper.addActionListener(e -> {
+            int popupWidth = popupMenu.getPreferredSize().width;
+            int popupHeight = popupMenu.getPreferredSize().height;
+
+            // X Ekseni: Menünün sağ kenarı ile butonun sağ kenarını hizalayarak sağa taşmayı önlüyoruz
+            int x = helper.getWidth() - popupWidth;
+
+            // Y Ekseni: Butonun tam üstünde başlaması için eksi değerde kendi yüksekliğini veriyoruz
+            int y = -popupHeight;
+
+            // Hesaplanan yeni konumda popup'ı göster
+            popupMenu.show(helper, x, y);
+        });
+
+        panel.add(helper);
+
         return panel;
     }
 
