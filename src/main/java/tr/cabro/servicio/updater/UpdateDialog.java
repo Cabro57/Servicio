@@ -13,22 +13,22 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Güncelleme diyaloğu — FlatLaf temasına uyumlu, 4 ekranlı.
+ * Güncelleme diyaloğu — FlatLaf + IntelliJ IDEA tarzı akış.
  * <p>
  * Ekranlar:
- *   INFO     → GitHub Releases API'sinden asenkron yüklenen patch notları
- *   DOWNLOAD → Dosya bazlı ilerleme çubukları, canlı dosya listesi
- *   DONE     → Başarı, "Yeniden Başlat" → launcher script + shutdown()
- *   ERROR    → Hata mesajı, Tekrar Dene / Kapat
+ *   INFO     → GitHub Releases API'sinden asenkron patch notları
+ *   DOWNLOAD → Dosya bazlı ilerleme çubukları
+ *   ERROR    → Hata + Tekrar Dene / Kapat
  * <p>
- * PatchNote / getPatchNotes() kullanılmaz — bunlar UpdateManifest'ten kaldırıldı.
- * Patch notları UpdateManager.fetchReleaseInfo() ile GitHub API'sinden çekilir.
+ * İndirme tamamlanınca DONE ekranı yerine doğrudan JOptionPane:
+ *   [Şimdi Yeniden Başlat] → applyUpdate + launchAndExit + shutdown
+ *   [Daha Sonra]           → dialog kapanır, .update-tmp bir sonraki açılışta uygulanır
  */
 public class UpdateDialog extends JDialog {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateDialog.class);
 
-    // ─── Renkler (FlatLaf uyumlu) ─────────────────────────────────────────────
+    // ─── Renkler ─────────────────────────────────────────────────────────────
 
     private static Color accent() { return getUI("Button.default.background", new Color(75, 110, 175)); }
     private static Color fg()     { return getUI("Label.foreground",           new Color(220, 220, 220)); }
@@ -46,14 +46,7 @@ public class UpdateDialog extends JDialog {
 
     private final UpdateManifest manifest;
     private final UpdateManager  manager;
-
-    /**
-     * true  → aynı sürüm numarası, dosya içeriği değişmiş (hotfix/yama).
-     * false → yeni sürüm numarası.
-     */
-    private final boolean isHotfix;
-
-    // ─── Geri Çağrılar ────────────────────────────────────────────────────────
+    private final boolean        isHotfix;
 
     @Setter
     private Consumer<String> onSkipVersion;
@@ -63,7 +56,7 @@ public class UpdateDialog extends JDialog {
     private final CardLayout cards     = new CardLayout();
     private final JPanel     cardPanel = new JPanel(cards);
 
-    // INFO ekranı — asenkron doldurulur
+    // INFO ekranı
     private JPanel notesWrapper;
 
     // DOWNLOAD ekranı
@@ -78,7 +71,6 @@ public class UpdateDialog extends JDialog {
 
     // ─── Oluşturucu ───────────────────────────────────────────────────────────
 
-    /** Geriye dönük uyumluluk — isHotfix=false. */
     public UpdateDialog(JFrame owner, UpdateManifest manifest, UpdateManager manager) {
         this(owner, manifest, manager, false);
     }
@@ -86,8 +78,7 @@ public class UpdateDialog extends JDialog {
     public UpdateDialog(JFrame owner, UpdateManifest manifest,
                         UpdateManager manager, boolean isHotfix) {
         super(owner,
-                isHotfix
-                        ? "Kritik Güncelleme (Yama) — v" + manifest.getVersion()
+                isHotfix ? "Kritik Güncelleme (Yama) — v" + manifest.getVersion()
                         : "Güncelleme Mevcut — v" + manifest.getVersion(),
                 true);
         this.manifest = manifest;
@@ -98,24 +89,20 @@ public class UpdateDialog extends JDialog {
         setMinimumSize(new Dimension(500, 420));
         setLocationRelativeTo(owner);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-
         getRootPane().putClientProperty("JRootPane.titleBarBackground",
                 UIManager.getColor("TitlePane.background"));
 
         buildCards();
         add(cardPanel);
         showCard("INFO");
-
-        // Diyalog gösterilirken arka planda patch notlarını çek
         fetchReleaseNotesAsync();
     }
 
-    // ─── Kart Kurulumu ────────────────────────────────────────────────────────
+    // ─── Kartlar ─────────────────────────────────────────────────────────────
 
     private void buildCards() {
         cardPanel.add(buildInfoCard(),     "INFO");
         cardPanel.add(buildDownloadCard(), "DOWNLOAD");
-        cardPanel.add(buildDoneCard(),     "DONE");
         cardPanel.add(buildErrorCard(),    "ERROR");
     }
 
@@ -124,18 +111,18 @@ public class UpdateDialog extends JDialog {
     // ════════════════════════════════════════════════════════════
 
     private JPanel buildInfoCard() {
-        JPanel root = new JPanel(new BorderLayout(0, 0));
+        JPanel root = new JPanel(new BorderLayout());
 
-        // ── Başlık ──
+        // Başlık
         JPanel header = new JPanel(new BorderLayout(0, 6));
         header.setBorder(new EmptyBorder(22, 26, 18, 26));
         header.setOpaque(false);
 
-        String titleText = (isHotfix ? "🔧  Kritik Güncelleme — " : "🚀  Yeni Sürüm — ")
-                + "v" + manifest.getVersion();
-        JLabel title = styledLabel(titleText, 17, Font.BOLD);
+        JLabel title = styledLabel(
+                (isHotfix ? "🔧  Kritik Güncelleme — " : "🚀  Yeni Sürüm — ")
+                        + "v" + manifest.getVersion(), 17, Font.BOLD);
 
-        String dateStr = manifest.getReleaseDate() != null && !manifest.getReleaseDate().isEmpty()
+        String dateStr = (manifest.getReleaseDate() != null && !manifest.getReleaseDate().isEmpty())
                 ? "Yayın tarihi: " + manifest.getReleaseDate() : "";
         JLabel sub = styledLabel(dateStr, 12, Font.PLAIN);
         sub.setForeground(fgDim());
@@ -143,14 +130,11 @@ public class UpdateDialog extends JDialog {
         header.add(title, BorderLayout.CENTER);
         header.add(sub,   BorderLayout.SOUTH);
 
-        JSeparator sep1 = new JSeparator();
-
-        // ── Patch Notları alanı (GitHub API'sinden asenkron doldurulur) ──
+        // Patch notları (asenkron)
         notesWrapper = new JPanel();
         notesWrapper.setLayout(new BoxLayout(notesWrapper, BoxLayout.Y_AXIS));
         notesWrapper.setBorder(new EmptyBorder(10, 22, 10, 22));
         notesWrapper.setOpaque(false);
-
         JLabel loadingLbl = styledLabel("  Sürüm notları yükleniyor…", 12, Font.PLAIN);
         loadingLbl.setForeground(fgDim());
         notesWrapper.add(loadingLbl);
@@ -160,7 +144,7 @@ public class UpdateDialog extends JDialog {
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(10);
 
-        // ── Alt bilgi ──
+        // Alt bilgi
         int fileCount = manifest.getFiles() != null ? manifest.getFiles().size() : 0;
         JLabel hint = styledLabel(
                 "  " + fileCount + " bileşen kontrol edilecek — yalnızca değişenler indirilir",
@@ -168,16 +152,15 @@ public class UpdateDialog extends JDialog {
         hint.setForeground(fgDim());
         hint.setBorder(new EmptyBorder(8, 10, 6, 10));
 
-        // ── Butonlar ──
+        // Butonlar
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
         btnRow.setOpaque(false);
 
-        final JButton skipBtn   = ghostButton("Bu Sürümü Atla");
-        final JButton laterBtn  = ghostButton("Sonra Hatırlat");
-        final JButton updateBtn = accentButton("Güncelle  ▶");
+        JButton skipBtn   = ghostButton("Bu Sürümü Atla");
+        JButton laterBtn  = ghostButton("Sonra");
+        JButton updateBtn = accentButton("İndir ve Kur  ▶");
 
-        skipBtn.setVisible(!isHotfix); // Hotfix'te "atla" anlamsız
-
+        skipBtn.setVisible(!isHotfix);
         skipBtn.addActionListener(e -> {
             if (onSkipVersion != null) onSkipVersion.accept(manifest.getVersion());
             dispose();
@@ -196,22 +179,21 @@ public class UpdateDialog extends JDialog {
 
         JPanel topBlock = new JPanel(new BorderLayout());
         topBlock.setOpaque(false);
-        topBlock.add(header, BorderLayout.CENTER);
-        topBlock.add(sep1,   BorderLayout.SOUTH);
+        topBlock.add(header,           BorderLayout.CENTER);
+        topBlock.add(new JSeparator(), BorderLayout.SOUTH);
 
         root.add(topBlock, BorderLayout.NORTH);
         root.add(scroll,   BorderLayout.CENTER);
         root.add(south,    BorderLayout.SOUTH);
-
         return root;
     }
 
-    // ─── GitHub Release Notları Asenkron Yükleme ─────────────────────────────
+    // ─── Patch Notları Asenkron ───────────────────────────────────────────────
 
     private void fetchReleaseNotesAsync() {
         manager.fetchReleaseInfo(
                 manifest,
-                info -> SwingUtilities.invokeLater(() -> populateReleaseNotes(info)),
+                info -> SwingUtilities.invokeLater(() -> populateNotes(info)),
                 ex   -> {
                     log.warn("Patch notları yüklenemedi: {}", ex.getMessage());
                     SwingUtilities.invokeLater(this::showNotesError);
@@ -219,33 +201,28 @@ public class UpdateDialog extends JDialog {
         );
     }
 
-    /** Release bilgisini notesWrapper'a doldurur. EDT'de çağrılmalıdır. */
-    private void populateReleaseNotes(UpdateManifest.GitHubReleaseInfo info) {
+    private void populateNotes(UpdateManifest.GitHubReleaseInfo info) {
         notesWrapper.removeAll();
 
-        // Release başlığı
-        String releaseName = (info.name != null && !info.name.isEmpty()) ? info.name : info.tagName;
-        JLabel titleLbl = styledLabel(releaseName, 13, Font.BOLD);
+        String relName = (info.name != null && !info.name.isEmpty()) ? info.name : info.tagName;
+        JLabel titleLbl = styledLabel(relName, 13, Font.BOLD);
         titleLbl.setForeground(accent());
         titleLbl.setBorder(new EmptyBorder(4, 0, 4, 0));
         notesWrapper.add(titleLbl);
 
-        // Tarih
         if (info.publishedAt != null && !info.publishedAt.isEmpty()) {
-            JLabel dateLbl = styledLabel("  " + info.publishedAt, 11, Font.PLAIN);
-            dateLbl.setForeground(fgDim());
-            dateLbl.setBorder(new EmptyBorder(0, 0, 8, 0));
-            notesWrapper.add(dateLbl);
+            JLabel date = styledLabel("  " + info.publishedAt, 11, Font.PLAIN);
+            date.setForeground(fgDim());
+            date.setBorder(new EmptyBorder(0, 0, 8, 0));
+            notesWrapper.add(date);
         }
 
-        // Değişiklik satırları
         List<String> lines = info.changeLines;
         if (lines != null && !lines.isEmpty()) {
             for (String line : lines) {
                 if (line.startsWith("**") && line.endsWith("**")) {
-                    // Başlık satırı
-                    String heading = line.substring(2, line.length() - 2);
-                    JLabel hl = styledLabel("  " + heading, 12, Font.BOLD);
+                    JLabel hl = styledLabel(
+                            "  " + line.substring(2, line.length() - 2), 12, Font.BOLD);
                     hl.setForeground(fg());
                     hl.setBorder(new EmptyBorder(8, 0, 3, 0));
                     notesWrapper.add(hl);
@@ -256,9 +233,9 @@ public class UpdateDialog extends JDialog {
                 }
             }
         } else {
-            notesWrapper.add(styledLabel("  Bu sürüm için açıklama bulunmuyor.", 12, Font.PLAIN));
+            notesWrapper.add(styledLabel(
+                    "  Bu sürüm için açıklama bulunmuyor.", 12, Font.PLAIN));
         }
-
         notesWrapper.revalidate();
         notesWrapper.repaint();
     }
@@ -266,8 +243,7 @@ public class UpdateDialog extends JDialog {
     private void showNotesError() {
         notesWrapper.removeAll();
         JLabel err = styledLabel(
-                "  Sürüm notları yüklenemedi. GitHub bağlantısını kontrol edin.",
-                12, Font.PLAIN);
+                "  Sürüm notları yüklenemedi.", 12, Font.PLAIN);
         err.setForeground(fgDim());
         notesWrapper.add(err);
         notesWrapper.revalidate();
@@ -286,21 +262,20 @@ public class UpdateDialog extends JDialog {
 
         currentFileLabel = styledLabel("Hazırlanıyor…", 11, Font.PLAIN);
         currentFileLabel.setForeground(fgDim());
-
         currentFileBar = makeProgressBar(accent());
         totalBar       = makeProgressBar(green());
         statusLabel    = styledLabel("", 11, Font.PLAIN);
         statusLabel.setForeground(fgDim());
 
-        JPanel barsPanel = new JPanel(new GridLayout(0, 1, 0, 4));
-        barsPanel.setOpaque(false);
-        barsPanel.add(dimLabel("Şu anki dosya:"));
-        barsPanel.add(currentFileBar);
-        barsPanel.add(currentFileLabel);
-        barsPanel.add(Box.createVerticalStrut(4));
-        barsPanel.add(dimLabel("Genel ilerleme:"));
-        barsPanel.add(totalBar);
-        barsPanel.add(statusLabel);
+        JPanel bars = new JPanel(new GridLayout(0, 1, 0, 4));
+        bars.setOpaque(false);
+        bars.add(dimLabel("Şu anki dosya:"));
+        bars.add(currentFileBar);
+        bars.add(currentFileLabel);
+        bars.add(Box.createVerticalStrut(4));
+        bars.add(dimLabel("Genel ilerleme:"));
+        bars.add(totalBar);
+        bars.add(statusLabel);
 
         fileListPanel = new JPanel();
         fileListPanel.setLayout(new BoxLayout(fileListPanel, BoxLayout.Y_AXIS));
@@ -312,71 +287,26 @@ public class UpdateDialog extends JDialog {
         listScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         listScroll.getVerticalScrollBar().setUnitIncrement(8);
 
-        final JButton cancelBtn = ghostButton("İptal");
+        JButton cancelBtn = ghostButton("İptal");
         cancelBtn.addActionListener(e -> { manager.cancel(); dispose(); });
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 6));
         btnRow.setOpaque(false);
         btnRow.add(cancelBtn);
 
-        JPanel topSection = new JPanel(new BorderLayout(0, 12));
-        topSection.setOpaque(false);
-        topSection.add(title,     BorderLayout.NORTH);
-        topSection.add(barsPanel, BorderLayout.CENTER);
+        JPanel top = new JPanel(new BorderLayout(0, 12));
+        top.setOpaque(false);
+        top.add(title, BorderLayout.NORTH);
+        top.add(bars,  BorderLayout.CENTER);
 
-        root.add(topSection, BorderLayout.NORTH);
+        root.add(top,        BorderLayout.NORTH);
         root.add(listScroll, BorderLayout.CENTER);
         root.add(btnRow,     BorderLayout.SOUTH);
-
         return root;
     }
 
     // ════════════════════════════════════════════════════════════
-    // EKRAN 3 — Tamamlandı
-    // ════════════════════════════════════════════════════════════
-
-    private JPanel buildDoneCard() {
-        JPanel root = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        c.gridx = 0;
-
-        JLabel icon = styledLabel("✔", 52, Font.BOLD);
-        icon.setForeground(green());
-
-        JLabel msg = styledLabel("Güncelleme Hazır!", 20, Font.BOLD);
-
-        JLabel sub = styledLabel(
-                "<html><center>Değişikliklerin uygulanması için<br>" +
-                        "uygulama yeniden başlatılacak.</center></html>",
-                13, Font.PLAIN);
-        sub.setForeground(fgDim());
-        sub.setHorizontalAlignment(SwingConstants.CENTER);
-
-        final JButton restartBtn = accentButton("Yeniden Başlat  ↺");
-        JButton       laterBtn   = ghostButton("Daha Sonra");
-
-        restartBtn.addActionListener(e -> {
-            restartBtn.setEnabled(false);
-            restartBtn.setText("Uygulanıyor…");
-            applyAndRestart();
-        });
-        laterBtn.addActionListener(e -> dispose());
-
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 0));
-        btnRow.setOpaque(false);
-        btnRow.add(laterBtn);
-        btnRow.add(restartBtn);
-
-        c.gridy = 0; c.insets = new Insets(0, 0, 12, 0); root.add(icon,   c);
-        c.gridy = 1; c.insets = new Insets(0, 0, 8,  0); root.add(msg,    c);
-        c.gridy = 2; c.insets = new Insets(0, 0, 32, 0); root.add(sub,    c);
-        c.gridy = 3; c.insets = new Insets(0, 0, 0,  0); root.add(btnRow, c);
-
-        return root;
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // EKRAN 4 — Hata
+    // EKRAN 3 — Hata
     // ════════════════════════════════════════════════════════════
 
     private JPanel buildErrorCard() {
@@ -388,17 +318,14 @@ public class UpdateDialog extends JDialog {
         icon.setForeground(red());
 
         JLabel msg = styledLabel("İndirme Başarısız", 20, Font.BOLD);
-
         JLabel sub = styledLabel(
-                "<html><center>Lütfen internet bağlantınızı kontrol edip<br>" +
-                        "tekrar deneyin.</center></html>",
+                "<html><center>Lütfen internet bağlantınızı kontrol edip<br>tekrar deneyin.</center></html>",
                 13, Font.PLAIN);
         sub.setForeground(fgDim());
         sub.setHorizontalAlignment(SwingConstants.CENTER);
 
         JButton retryBtn = accentButton("Tekrar Dene");
         JButton closeBtn = ghostButton("Kapat");
-
         retryBtn.addActionListener(e -> startDownload());
         closeBtn.addActionListener(e -> dispose());
 
@@ -411,7 +338,6 @@ public class UpdateDialog extends JDialog {
         c.gridy = 1; c.insets = new Insets(0, 0, 8,  0); root.add(msg,    c);
         c.gridy = 2; c.insets = new Insets(0, 0, 32, 0); root.add(sub,    c);
         c.gridy = 3; c.insets = new Insets(0, 0, 0,  0); root.add(btnRow, c);
-
         return root;
     }
 
@@ -430,14 +356,14 @@ public class UpdateDialog extends JDialog {
 
         manager.downloadUpdate(
                 manifest,
-                (fileName, pct) -> SwingUtilities.invokeLater(() -> {
-                    currentFileLabel.setText(fileName);
+                (name, pct) -> SwingUtilities.invokeLater(() -> {
+                    currentFileLabel.setText(name);
                     currentFileBar.setValue((int)(pct * 100));
                 }),
-                fileName -> SwingUtilities.invokeLater(() -> appendFileRow(fileName, RowState.SKIPPED)),
-                fileName -> SwingUtilities.invokeLater(() -> appendFileRow(fileName, RowState.DONE)),
-                ()       -> SwingUtilities.invokeLater(() -> showCard("DONE")),
-                ex       -> SwingUtilities.invokeLater(() -> {
+                name -> SwingUtilities.invokeLater(() -> appendRow(name, RowState.SKIPPED)),
+                name -> SwingUtilities.invokeLater(() -> appendRow(name, RowState.DONE)),
+                ()   -> SwingUtilities.invokeLater(this::onDownloadComplete),
+                ex   -> SwingUtilities.invokeLater(() -> {
                     log.error("İndirme hatası", ex);
                     statusLabel.setText("Hata: " + ex.getMessage());
                     showCard("ERROR");
@@ -445,7 +371,101 @@ public class UpdateDialog extends JDialog {
         );
     }
 
+    // ─── İndirme Tamamlandı — IntelliJ IDEA tarzı ────────────────────────────
+
+    /**
+     * İndirme bitti → "Yeniden Başlat?" JOptionPane sorusu.
+     * <p>
+     * [Şimdi Yeniden Başlat] → applyUpdate + launchAndExit + shutdown
+     * [Daha Sonra]           → dialog kapanır, .update-tmp korunur;
+     *                          bir sonraki açılışta launcher dosyaları taşır
+     */
+    private void onDownloadComplete() {
+        totalBar.setValue(100);
+        statusLabel.setText("İndirme tamamlandı!");
+
+        // IntelliJ IDEA tarzı mesaj paneli
+        JPanel msg = new JPanel(new BorderLayout(12, 0));
+        msg.setOpaque(false);
+
+        JLabel iconLbl = new JLabel("✔");
+        iconLbl.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 32));
+        iconLbl.setForeground(green());
+        iconLbl.setVerticalAlignment(SwingConstants.TOP);
+
+        JPanel text = new JPanel();
+        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+        text.setOpaque(false);
+
+        JLabel titleLbl = new JLabel("Güncelleme indirildi!");
+        titleLbl.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+
+        JLabel subLbl = new JLabel(
+                "<html>v" + manifest.getVersion() + " kurulmaya hazır.<br>"
+                        + "<font color='#888888'>Uygulamayı şimdi yeniden başlatmak ister misiniz?<br>"
+                        + "<i>\"Daha Sonra\" seçerseniz bir sonraki açılışta otomatik uygulanır.</i>"
+                        + "</font></html>");
+        subLbl.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+
+        text.add(titleLbl);
+        text.add(Box.createVerticalStrut(6));
+        text.add(subLbl);
+
+        msg.add(iconLbl, BorderLayout.WEST);
+        msg.add(text,    BorderLayout.CENTER);
+
+        String[] options = {"Şimdi Yeniden Başlat", "Daha Sonra"};
+
+        int choice = JOptionPane.showOptionDialog(
+                this, msg,
+                "Güncelleme Hazır",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                options,
+                options[0]   // Varsayılan: yeniden başlat
+        );
+
+        if (choice == JOptionPane.YES_OPTION) {
+            applyAndRestart();
+        } else {
+            // Daha sonra — launcher script yaz, .update-tmp koru
+            scheduleLauncherForNextStart();
+            dispose();
+        }
+    }
+
+    /**
+     * "Daha Sonra" seçildi:
+     * Launcher script oluşturulur. Bir sonraki JVM başlangıcında
+     * update-restart.bat/sh mevcut ise çalışır ve dosyaları taşır.
+     * <p>
+     * Bu davranışı etkinleştirmek için ApplicationBootstrap.launch() içine
+     * aşağıdaki kontrolü ekleyin:
+     * <pre>
+     *   File launcherScript = new File(".", "update-restart.bat"); // veya .sh
+     *   if (launcherScript.exists()) {
+     *       // .update-tmp mevcut — uygulama başlamadan önce uygula
+     *       // Veya bildirim göster: "Bekleyen güncelleme var"
+     *   }
+     * </pre>
+     */
+    private void scheduleLauncherForNextStart() {
+        new Thread(() -> {
+            try {
+                manager.writeLauncherScript("servicio.jar", "");
+                log.info("Launcher script yazıldı. Güncelleme bir sonraki başlatmada uygulanacak.");
+            } catch (Exception e) {
+                log.warn("Launcher script yazılamadı: {}", e.getMessage());
+            }
+        }, "servicio-schedule-launcher").start();
+    }
+
     private void applyAndRestart() {
+        statusLabel.setText("Uygulanıyor…");
+        currentFileBar.setIndeterminate(true);
+        currentFileLabel.setText("");
+
         new Thread(() -> {
             try {
                 manager.applyUpdate();
@@ -458,7 +478,8 @@ public class UpdateDialog extends JDialog {
             } catch (Exception e) {
                 log.error("Güncelleme uygulama hatası", e);
                 SwingUtilities.invokeLater(() -> {
-                    statusLabel.setText("Uygulama hatası: " + e.getMessage());
+                    currentFileBar.setIndeterminate(false);
+                    statusLabel.setText("Hata: " + e.getMessage());
                     showCard("ERROR");
                 });
             }
@@ -469,7 +490,7 @@ public class UpdateDialog extends JDialog {
 
     private enum RowState { DONE, SKIPPED, ERROR }
 
-    private void appendFileRow(String name, RowState state) {
+    private void appendRow(String name, RowState state) {
         String prefix;
         Color  color;
         if      (state == RowState.DONE)    { prefix = "  ✔  "; color = green(); }
@@ -526,7 +547,7 @@ public class UpdateDialog extends JDialog {
         JButton b = new JButton(text);
         b.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
         b.putClientProperty("JButton.buttonType", "borderless");
-        b.setPreferredSize(new Dimension(140, 34));
+        b.setPreferredSize(new Dimension(120, 34));
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return b;
     }

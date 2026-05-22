@@ -4,14 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi.">
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="uygulama içi güncelleme kontrolu ve güncelleme butonu eklendi">
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/HelperPopup.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateNotifier.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/Servicio.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/menu/MyDrawerBuilder.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/menu/MyDrawerBuilder.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/system/MainForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/system/MainForm.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/build/ManifestGenerator.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/build/ManifestGenerator.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateChecker.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateChecker.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateManager.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateDialog.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateDialog.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/searchableresult/CustomerSearchResult.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/searchableresult/CustomerSearchResult.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -62,57 +61,57 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Application.App.executor&quot;: &quot;Run&quot;,
-    &quot;Application.Servicio.executor&quot;: &quot;Run&quot;,
-    &quot;Application.SplashScreenTest.executor&quot;: &quot;Run&quot;,
-    &quot;Application.TestDrawer.executor&quot;: &quot;Run&quot;,
-    &quot;Application.testMain.executor&quot;: &quot;Run&quot;,
-    &quot;Maven.Servicio [clean,package,-U].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.Servicio [clean,package,].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.Servicio [clean,package].executor&quot;: &quot;Run&quot;,
-    &quot;Maven.Servicio.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;database.data.extractors.current.export.id&quot;: &quot;Comma-separated (CSV)_id&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/projects/Servicio/src/main/resources/icons&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;onboarding.tips.debug.path&quot;: &quot;C:/Projelerim/Servicio/src/main/java/org/example/Main.java&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;SDKs&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.30229884&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.updates&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Application.App.executor": "Run",
+    "Application.Servicio.executor": "Run",
+    "Application.SplashScreenTest.executor": "Run",
+    "Application.TestDrawer.executor": "Run",
+    "Application.testMain.executor": "Run",
+    "Maven.Servicio [clean,package,-U].executor": "Run",
+    "Maven.Servicio [clean,package,].executor": "Run",
+    "Maven.Servicio [clean,package].executor": "Run",
+    "Maven.Servicio.executor": "Run",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "database.data.extractors.current.export.id": "Comma-separated (CSV)_id",
+    "git-widget-placeholder": "master",
+    "ignore.virus.scanning.warn.message": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "C:/projects/Servicio/src/main/java/tr/cabro/servicio/updater",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "onboarding.tips.debug.path": "C:/Projelerim/Servicio/src/main/java/org/example/Main.java",
+    "project.structure.last.edited": "SDKs",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.30229884",
+    "settings.editor.selected.configurable": "preferences.updates",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;DatabaseDriversLRU&quot;: [
-      &quot;sqlite&quot;
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "sqlite"
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\projects\Servicio\src\main\java\tr\cabro\servicio\updater" />
+      <recent name="C:\projects\Servicio\src\main\java\tr\cabro\servicio\application\component" />
       <recent name="C:\projects\Servicio\src\main\resources\icons" />
       <recent name="C:\projects\Servicio\src\main\resources" />
-      <recent name="C:\projects\Servicio\src\main\java\tr\cabro\servicio\updater" />
       <recent name="C:\projects\Servicio" />
-      <recent name="C:\Projelerim\Servicio" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="C:\Projelerim\Servicio\src\main\resources" />
@@ -333,7 +332,15 @@
       <option name="project" value="LOCAL" />
       <updated>1778673586058</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="uygulama içi güncelleme kontrolu ve güncelleme butonu eklendi">
+      <option name="closed" value="true" />
+      <created>1779118008329</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1779118008329</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -352,7 +359,8 @@
     <MESSAGE value="çıkan uarılar giderildi" />
     <MESSAGE value="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi." />
     <MESSAGE value="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi." />
-    <option name="LAST_COMMIT_MESSAGE" value="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi." />
+    <MESSAGE value="uygulama içi güncelleme kontrolu ve güncelleme butonu eklendi" />
+    <option name="LAST_COMMIT_MESSAGE" value="uygulama içi güncelleme kontrolu ve güncelleme butonu eklendi" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

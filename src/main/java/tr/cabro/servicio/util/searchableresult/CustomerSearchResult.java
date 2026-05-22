@@ -7,6 +7,7 @@ import tr.cabro.servicio.application.system.FormSearch;
 import tr.cabro.servicio.application.forms.FormCustomer;
 import tr.cabro.servicio.application.utils.DemoPreferences;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.util.PhoneHelper;
 
 public class CustomerSearchResult implements ISearchableResult {
 
@@ -23,7 +24,24 @@ public class CustomerSearchResult implements ISearchableResult {
 
     @Override
     public String getDescription() {
-        return "Müşteri hakkında bilgilere bakarsın";
+        String phoneNumber = (customer.getPhoneNumber1() != null && !customer.getPhoneNumber1().isEmpty())
+                ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1())
+                : null;
+
+        String idNo = (customer.getIdentityNo() != null && !customer.getIdentityNo().isEmpty())
+                ? customer.getIdentityNo()
+                : null;
+
+        // Verilerin durumuna göre dinamik yapı
+        if (phoneNumber != null && idNo != null) {
+            return phoneNumber + " • " + idNo; // Daha şık bir ayraç
+        } else if (phoneNumber != null) {
+            return phoneNumber;
+        } else if (idNo != null) {
+            return "Kimlik No: " + idNo;
+        } else {
+            return "Bilgi tanımlı değil"; // Veya boş döndürebilirsiniz: ""
+        }
     }
 
     @Override
