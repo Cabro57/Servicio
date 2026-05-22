@@ -4,13 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="uygulama içi güncelleme kontrolu ve güncelleme butonu eklendi">
-      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/component/HelperPopup.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateNotifier.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/system/MainForm.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/application/system/MainForm.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateDialog.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/updater/UpdateDialog.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/searchableresult/CustomerSearchResult.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/tr/cabro/servicio/util/searchableresult/CustomerSearchResult.java" afterDir="false" />
+    <list default="true" id="fc8d0f55-89f7-4173-8015-15eb61a18e22" name="Changes" comment="güncelleme bildirmleri ve arama çubuğunda çıkan servis ve kişilerin gösterim şekli değişti">
+      <change beforePath="$PROJECT_DIR$/update-manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/update-manifest.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -340,7 +335,23 @@
       <option name="project" value="LOCAL" />
       <updated>1779118008329</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="güncelleme bildirmleri ve arama çubuğunda çıkan servis ve kişilerin gösterim şekli değişti">
+      <option name="closed" value="true" />
+      <created>1779460764194</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1779460764194</updated>
+    </task>
+    <task id="LOCAL-00019" summary="güncelleme bildirmleri ve arama çubuğunda çıkan servis ve kişilerin gösterim şekli değişti">
+      <option name="closed" value="true" />
+      <created>1779461054421</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1779461054421</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -360,7 +371,8 @@
     <MESSAGE value="güncelleme sırasında bu dosya kullanılıyor sorunu düzeltildi." />
     <MESSAGE value="güncelleme sırasında aynı dosyanın hashi farklı çıkma sorunu düzeltildi." />
     <MESSAGE value="uygulama içi güncelleme kontrolu ve güncelleme butonu eklendi" />
-    <option name="LAST_COMMIT_MESSAGE" value="uygulama içi güncelleme kontrolu ve güncelleme butonu eklendi" />
+    <MESSAGE value="güncelleme bildirmleri ve arama çubuğunda çıkan servis ve kişilerin gösterim şekli değişti" />
+    <option name="LAST_COMMIT_MESSAGE" value="güncelleme bildirmleri ve arama çubuğunda çıkan servis ve kişilerin gösterim şekli değişti" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

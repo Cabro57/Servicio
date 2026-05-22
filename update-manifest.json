@@ -2,7 +2,7 @@
   "version": "2.0-dev",
   "releaseDate": "2026-05-22",
   "minRequiredVersion": "2.0.0",
-  "releasesApiUrl": "https://api.github.com/repos/KULLANICI/REPO/releases/latest",
+  "releasesApiUrl": "https://api.github.com/repos/Cabro57/Servicio/releases/latest",
   "files": [
     {
       "source": "github",
