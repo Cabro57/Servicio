@@ -187,7 +187,6 @@ public class MainForm extends JPanel {
         ToastOption option = Toast.createOption();
         option.setHtmlEnabled(true)
                 .setCloseOnClick(false)
-                .setAutoClose(false)
                 .getLayoutOption()
                 .setLocation(ToastLocation.TOP_TRAILING);
 
@@ -229,11 +228,11 @@ public class MainForm extends JPanel {
                             // Toast başarı mesajı
                             callback.done(Toast.Type.SUCCESS,
                                     (isHotfix ? "🔧 " : "🚀 ")
-                                            + "<b>v" + manifest.getVersion() + " hazır!</b>"
+                                            + "<html><b>v" + manifest.getVersion() + " hazır!</b>"
                                             + "<br><font color='#888888' size='-1'>"
                                             + (isHotfix ? "Yama güncelleme mevcut."
                                             : "Yeni sürüm indirilebilir.")
-                                            + "</font>");
+                                            + "</font></html>");
 
                             // UpdateDialog EDT'de aç
                             SwingUtilities.invokeLater(() ->
@@ -241,14 +240,14 @@ public class MainForm extends JPanel {
 
                         } else if (err[0] != null) {
                             callback.done(Toast.Type.ERROR,
-                                    "⚠ <b>Kontrol başarısız.</b>"
+                                    "<html>⚠ <b>Kontrol başarısız.</b>"
                                             + "<br><font color='#888888' size='-1'>"
-                                            + "İnternet bağlantınızı kontrol edin.</font>");
+                                            + "İnternet bağlantınızı kontrol edin.</font></html>");
                         } else {
                             callback.done(Toast.Type.INFO,
-                                    "✔ <b>En güncel sürümdesiniz.</b>"
+                                    "<html>✔ <b>En güncel sürümdesiniz.</b>"
                                             + "<br><font color='#888888' size='-1'>v"
-                                            + Servicio.getInstance().getAppVersion() + "</font>");
+                                            + Servicio.getInstance().getAppVersion() + "</font></html>");
                         }
                     }
                 });
@@ -296,11 +295,12 @@ public class MainForm extends JPanel {
                 .getLayoutOption()
                 .setLocation(ToastLocation.TOP_TRAILING);
 
-        String msg = (isHotfix ? "🔧 <b>Kritik Güncelleme</b>" : "🚀 <b>Güncelleme Hazır</b>")
+        String msg = (isHotfix ? "<html>🔧 <b>Kritik Güncelleme</b>" : "🚀 <b>Güncelleme Hazır</b>")
                 + " — v" + manifest.getVersion()
                 + "<br><font color='#888888' size='-1'>"
                 + "Güncellemek için sağ alttaki "
-                + "<b>❕</b> butonuna tıklayın.</font>";
+                + "<b>❕</b> butonuna tıklayın.</font>" +
+                "</html>";
 
         Toast.show(this, isHotfix ? Toast.Type.WARNING : Toast.Type.INFO, msg, option);
     }
