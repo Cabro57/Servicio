@@ -1,16 +1,16 @@
 {
   "version": "2.0-dev",
-  "releaseDate": "2026-05-22",
+  "releaseDate": "2026-06-21",
   "minRequiredVersion": "2.0.0",
-  "releasesApiUrl": "https://api.github.com/repos/Cabro57/Servicio/releases/latest",
+  "releasesApiUrl": "https://api.github.com/repos/KULLANICI/REPO/releases/latest",
   "files": [
     {
       "source": "github",
       "name": "servicio.jar",
       "path": "servicio.jar",
       "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
-      "sha256": "dd6957026de1fbd45ac19b51fa108b0ff77c6689ea1ee8ed21a33531dd80dc1d",
-      "size": 11452830
+      "sha256": "d415cb788092ab1f8f3343babc86132df6ceddbc46f0cb8c0143e4447d31c479",
+      "size": 11475319
     },
     {
       "source": "maven",
@@ -101,6 +101,16 @@
       "libVersion": "4.0.3",
       "sha256": "7c024aeff1c1063576d74453513f9de6447d8e624d17f8e27f30a2e97688c6c9",
       "size": 159222
+    },
+    {
+      "source": "maven",
+      "name": "jbcrypt-0.4.jar",
+      "path": "libs/jbcrypt-0.4.jar",
+      "groupId": "org.mindrot",
+      "artifactId": "jbcrypt",
+      "libVersion": "0.4",
+      "sha256": "e183f6f59404fc1e12073cfea4ace7ea103c900463cd21fb609a7c617ecdf624",
+      "size": 17429
     },
     {
       "source": "maven",
