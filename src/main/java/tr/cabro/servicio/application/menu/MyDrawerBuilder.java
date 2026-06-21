@@ -7,10 +7,12 @@ import raven.extras.AvatarIcon;
 import raven.modal.drawer.DrawerPanel;
 import raven.modal.drawer.item.Item;
 import raven.modal.drawer.item.MenuItem;
+import raven.modal.drawer.menu.AbstractMenuElement;
 import raven.modal.drawer.menu.MenuOption;
 import raven.modal.drawer.menu.MenuStyle;
 import raven.modal.drawer.renderer.DrawerNoneLineStyle;
 import raven.modal.drawer.simple.SimpleDrawerBuilder;
+import raven.modal.drawer.simple.header.SimpleHeader;
 import raven.modal.drawer.simple.footer.LightDarkButtonFooter;
 import raven.modal.drawer.simple.footer.SimpleFooterData;
 import raven.modal.drawer.simple.header.SimpleHeader;
@@ -26,6 +28,8 @@ import tr.cabro.servicio.model.User;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 
 public class MyDrawerBuilder extends SimpleDrawerBuilder {
@@ -96,6 +100,22 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         lightDarkButtonFooter.addModeChangeListener(isDarkMode -> {
             // event for light dark mode changed
         });
+    }
+
+    @Override
+    public AbstractMenuElement createHeader() {
+        return new SimpleHeader(getSimpleHeaderData()) {
+            {
+                setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                setToolTipText("Profil Ayarları");
+                addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        tr.cabro.servicio.application.system.FormManager.showProfile();
+                    }
+                });
+            }
+        };
     }
 
     @Override

@@ -179,6 +179,10 @@ public class WorkOrderService {
         return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findByDeviceId(deviceId)));
     }
 
+    public CompletableFuture<List<WorkOrder>> getAllByPart(Long partId) {
+        return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findByPartId(partId)));
+    }
+
     public CompletableFuture<List<WorkOrder>> getAll(String statusStr) {
         if (statusStr == null || statusStr.isEmpty() || statusStr.equalsIgnoreCase("ALL")) {
             return getAll();

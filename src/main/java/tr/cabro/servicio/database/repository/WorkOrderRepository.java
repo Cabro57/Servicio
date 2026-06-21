@@ -51,6 +51,11 @@ public interface WorkOrderRepository {
     @SqlQuery("SELECT * FROM work_orders WHERE device_id = :deviceId ORDER BY created_at DESC")
     List<WorkOrder> findByDeviceId(@Bind("deviceId") Long deviceId);
 
+    @SqlQuery("SELECT DISTINCT wo.* FROM work_orders wo " +
+            "INNER JOIN work_order_items woi ON woi.service_id = wo.id " +
+            "WHERE woi.part_id = :partId ORDER BY wo.created_at DESC")
+    List<WorkOrder> findByPartId(@Bind("partId") Long partId);
+
     @SqlQuery("SELECT * FROM work_orders WHERE service_status IN (<statuses>) ORDER BY created_at DESC")
     List<WorkOrder> findByStatuses(@BindList("statuses") List<ServiceStatus> statuses);
 

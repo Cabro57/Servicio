@@ -16,6 +16,7 @@ import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
+import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.model.Part;
@@ -202,7 +203,10 @@ public class FormParts extends AbstractTableForm {
 
             @Override
             public void onView(int row) {
-                Toast.show(FormParts.this, Toast.Type.WARNING, "Yapım aşamasında ");
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+                int modelRow = table.convertRowIndexToModel(row);
+                Part part = tableModel.getItemAt(modelRow);
+                if (part != null) FormManager.showForm(new FormPart(part));
             }
         }));
 

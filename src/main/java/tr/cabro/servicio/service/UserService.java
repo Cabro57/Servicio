@@ -4,6 +4,7 @@ import tr.cabro.servicio.application.menu.MyDrawerBuilder;
 import tr.cabro.servicio.database.repository.UserRepository;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.exception.ValidationException;
+import tr.cabro.servicio.util.PasswordUtil;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,19 +20,19 @@ public class UserService {
 
     public CompletableFuture<User> save(User user, boolean update) {
         return CompletableFuture.supplyAsync(() -> {
-            // ... validasyonlar (PIN 6 haneli mi kontrolü vb.)
-
-            if (user.getPassword().length() != 6 || !user.getPassword().matches("\\d+")) {
-                throw new ValidationException("Şifre sadece 6 haneli rakamlardan oluşmalıdır!");
+            // Şifre henüz hash'lenmemişse (düz PIN) doğrula ve hash'le
+            if (!PasswordUtil.isHashed(user.getPassword())) {
+                if (user.getPassword().length() != 6 || !user.getPassword().matches("\\d+")) {
+                    throw new ValidationException("Şifre sadece 6 haneli rakamlardan oluşmalıdır!");
+                }
+                user.setPassword(PasswordUtil.hash(user.getPassword()));
             }
 
             if (!update) {
-                // KRİTİK: Sisteme ilk kez kayıt olunuyorsa, id'yi 1'e zorla.
-                // Eğer id=1 zaten varsa SQLite hata fırlatır ve 2. kişinin kaydını reddeder.
                 user.setId(1L);
-                repository.insert(user); // SQL'ini "INSERT INTO users (id, name... )" şeklinde güncellemelisin
+                repository.insert(user);
             } else {
-                user.setId(1L); // Güncellemede de her zaman 1. kullanıcıyı güncelle
+                user.setId(1L);
                 repository.update(user);
             }
             return user;
@@ -62,17 +63,20 @@ public class UserService {
                 return false;
             }
 
-            // Kurulum aşamasında (SetupPanel) kullanıcının ID'sini hep 1'e zorlamıştık.
-            // Bu yüzden direkt 1 numaralı kullanıcıyı veritabanından çekiyoruz.
             Optional<User> userOpt = repository.findById(1L);
+            if (!userOpt.isPresent()) return false;
 
-            // Kullanıcı veritabanında varsa ve şifresi girilen PIN ile birebir aynıysa
-            if (userOpt.isPresent() && userOpt.get().getPassword().equals(pin)) {
-                MyDrawerBuilder.getInstance().setUser(userOpt.get());
-                return true; // Giriş Başarılı
+            User user = userOpt.get();
+            if (!PasswordUtil.verify(pin, user.getPassword())) return false;
+
+            // Lazy migration: eski düz metin şifreyi hash'le
+            if (!PasswordUtil.isHashed(user.getPassword())) {
+                user.setPassword(PasswordUtil.hash(pin));
+                repository.update(user);
             }
 
-            return false; // Yanlış PIN
+            MyDrawerBuilder.getInstance().setUser(user);
+            return true;
         });
     }
 

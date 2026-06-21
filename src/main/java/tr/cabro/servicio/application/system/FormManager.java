@@ -8,6 +8,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.About;
 import tr.cabro.servicio.application.forms.FormDashboard;
 import tr.cabro.servicio.application.panels.PinPanel;
+import tr.cabro.servicio.application.panels.ProfileSettingsPanel;
 import tr.cabro.servicio.application.panels.SetupPanel;
 import tr.cabro.servicio.application.utils.UndoRedo;
 import tr.cabro.servicio.service.ServiceManager;
@@ -172,6 +173,14 @@ public class FormManager {
     // FormManager.java
     public static UndoRedo<Form> getForms() {
         return FORMS;
+    }
+
+    public static void showProfile() {
+        ModalDialog.showModal(frame,
+                new SimpleModalBorder(new ProfileSettingsPanel(), "Profil Ayarları"),
+                ModalDialog.createOption(),
+                ProfileSettingsPanel.MODAL_ID
+        );
     }
 
     public static void showAbout() {

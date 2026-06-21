@@ -71,6 +71,16 @@ public class PartService {
         });
     }
 
+    public CompletableFuture<Void> addStock(Long partId, int amount, Long warehouseId) {
+        if (amount <= 0) throw new ValidationException("Miktar 0'dan büyük olmalıdır.");
+        StockMovement movement = new StockMovement();
+        movement.setPartId(partId);
+        movement.setQuantity(amount);
+        movement.setWarehouseId(warehouseId != null ? warehouseId : 1L);
+        movement.setReferenceType(ReferenceType.PURCHASE);
+        return stockService.addStock(movement);
+    }
+
     /** ID tabanlı silme */
     public CompletableFuture<Void> delete(Long id) {
         return CompletableFuture.runAsync(() -> partRepository.delete(id));
