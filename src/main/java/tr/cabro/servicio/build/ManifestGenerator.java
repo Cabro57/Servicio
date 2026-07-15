@@ -178,8 +178,10 @@ public class ManifestGenerator {
         }
 
         // ── JSON üret ─────────────────────────────────────────────────────────
-        String today = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
-        String json  = buildJson(appVersion, today, records);
+        String today          = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+        String releasesApiUrl = deriveReleasesApiUrl(githubBase);
+        out.println("releasesApiUrl: " + releasesApiUrl);
+        String json  = buildJson(appVersion, today, releasesApiUrl, records);
 
         outputFile.getParentFile().mkdirs();
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
@@ -432,8 +434,28 @@ public class ManifestGenerator {
 
     // ─── JSON Üretici ─────────────────────────────────────────────────────────
 
+    /**
+     * GitHub Release download URL'inden Releases API URL'i türetir.
+     * <p>
+     * Girdi:  https://github.com/Cabro57/Servicio/releases/download/v2.0-dev
+     * Çıktı:  https://api.github.com/repos/Cabro57/Servicio/releases/latest
+     * <p>
+     * Ayrıştırılamazsa placeholder döner (build durmaz).
+     */
+    private static String deriveReleasesApiUrl(String githubBase) {
+        final String fallback = "https://api.github.com/repos/KULLANICI/REPO/releases/latest";
+        if (githubBase == null) return fallback;
+        int idx = githubBase.indexOf("github.com/");
+        if (idx < 0) return fallback;
+        String rest = githubBase.substring(idx + "github.com/".length());
+        String[] parts = rest.split("/");
+        if (parts.length < 2 || parts[0].isEmpty() || parts[1].isEmpty()) return fallback;
+        return "https://api.github.com/repos/" + parts[0] + "/" + parts[1]
+                + "/releases/latest";
+    }
+
     private static String buildJson(String version, String date,
-                                    List<FileRecord> records) {
+                                    String releasesApiUrl, List<FileRecord> records) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
         sb.append("  \"version\": ").append(q(version)).append(",\n");
@@ -443,7 +465,7 @@ public class ManifestGenerator {
         // patchNotes artık manifest.json'da YOK.
         // Patch notları GitHub Releases API'sinden (releasesApiUrl) çekilir.
         // Bkz: UpdateManifest.GitHubReleaseInfo ve UpdateManager.fetchReleaseInfo()
-        sb.append("  \"releasesApiUrl\": \"https://api.github.com/repos/KULLANICI/REPO/releases/latest\",\n");
+        sb.append("  \"releasesApiUrl\": ").append(q(releasesApiUrl)).append(",\n");
 
         sb.append("  \"files\": [\n");
         for (int i = 0; i < records.size(); i++) {

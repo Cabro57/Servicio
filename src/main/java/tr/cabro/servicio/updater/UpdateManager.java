@@ -348,12 +348,37 @@ public class UpdateManager {
 
         boolean isWindows = System.getProperty("os.name", "")
                 .toLowerCase().contains("win");
-        ProcessBuilder pb = isWindows
-                ? new ProcessBuilder("cmd", "/c", "start", "", script.getAbsolutePath(), pid)
-                : new ProcessBuilder("sh", script.getAbsolutePath(), pid);
 
-        pb.directory(appRoot);
-        pb.start();
+        if (isWindows) {
+            // .bat'ı görünür konsol penceresi olmadan çalıştır.
+            // 'cmd /c start bat' bir konsol açar; bunun yerine bir VBS
+            // sarmalayıcı ile pencere stili 0 (gizli) kullanılır.
+            File vbs = writeHiddenLauncherVbs(script, pid);
+            ProcessBuilder pb = new ProcessBuilder("wscript.exe", vbs.getAbsolutePath());
+            pb.directory(appRoot);
+            pb.start();
+        } else {
+            ProcessBuilder pb = new ProcessBuilder("sh", script.getAbsolutePath(), pid);
+            pb.directory(appRoot);
+            pb.start();
+        }
+    }
+
+    /**
+     * .bat launcher'ını gizli (pencere stili 0) çalıştıran VBS sarmalayıcı üretir.
+     * Böylece güncelleme sırasında hiçbir konsol penceresi görünmez.
+     * VBS dosyasını .bat kendini silmeden önce siler (writeBatScript).
+     */
+    private File writeHiddenLauncherVbs(File batScript, String pid) throws IOException {
+        File vbs = new File(appRoot, "update-restart.vbs");
+        // VBS string literali için tırnakları ikiye katla
+        String batPath = batScript.getAbsolutePath().replace("\"", "\"\"");
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                Files.newOutputStream(vbs.toPath()), StandardCharsets.UTF_8))) {
+            pw.println("Set WshShell = CreateObject(\"WScript.Shell\")");
+            pw.println("WshShell.Run \"cmd /c \"\"" + batPath + "\"\" " + pid + "\", 0, False");
+        }
+        return vbs;
     }
 
     public void cancel() { cancelRequested = true; }
@@ -559,6 +584,7 @@ public class UpdateManager {
                     : "start javaw -jar \"" + jarName + "\"";
             pw.println(startCmd);
             pw.println("");
+            pw.println("if exist \"update-restart.vbs\" del /f \"update-restart.vbs\"");
             pw.println("del \"%~f0\"");
         }
         return script;

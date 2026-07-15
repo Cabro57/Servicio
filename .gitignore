@@ -5,6 +5,9 @@ target/
 
 *.servicio
 
+### Release script'in indirdiği taşınabilir Maven ###
+build-tools/
+
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml
