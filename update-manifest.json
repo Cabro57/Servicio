@@ -1,16 +1,16 @@
 {
   "version": "2.0-dev",
-  "releaseDate": "2026-06-21",
+  "releaseDate": "2026-07-15",
   "minRequiredVersion": "2.0.0",
-  "releasesApiUrl": "https://api.github.com/repos/KULLANICI/REPO/releases/latest",
+  "releasesApiUrl": "https://api.github.com/repos/Cabro57/Servicio/releases/latest",
   "files": [
     {
       "source": "github",
       "name": "servicio.jar",
       "path": "servicio.jar",
       "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
-      "sha256": "d415cb788092ab1f8f3343babc86132df6ceddbc46f0cb8c0143e4447d31c479",
-      "size": 11475319
+      "sha256": "846dd8110863abb00b952c7462e58ca23e0ccb783fd93379f6cac76acb8a56f3",
+      "size": 11475683
     },
     {
       "source": "maven",
