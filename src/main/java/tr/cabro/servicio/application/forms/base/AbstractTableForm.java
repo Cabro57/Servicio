@@ -95,7 +95,7 @@ public abstract class AbstractTableForm extends Form {
         }
 
         // 3. Tablo Konteyneri
-        JPanel tableContainer = new JPanel(new MigLayout("fill, insets 15, gapy 15", "[grow]", "[pref][grow]"));
+        JPanel tableContainer = new JPanel(new MigLayout("fill, insets 15, gapy 15", "[grow]", "[pref][grow][pref!]"));
         tableContainer.putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");
 
         JLabel tableTitle = new JLabel(getTableTitleText());
@@ -139,9 +139,20 @@ public abstract class AbstractTableForm extends Form {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
 
         tableContainer.add(toolbar, "wrap, growx, pushx");
-        tableContainer.add(scrollPane, "grow, push");
+        tableContainer.add(scrollPane, "grow, push, wrap");
+
+        // Alt sınıflar DB-tabanlı sayfalama bileşeni (örn. JPagination) döndürebilir.
+        JComponent paginationComponent = createPaginationComponent();
+        if (paginationComponent != null) {
+            tableContainer.add(paginationComponent, "align center");
+        }
 
         add(tableContainer, "grow");
+    }
+
+    /** Alt sınıflar DB-tabanlı sayfalama için bir bileşen (örn. JPagination) döndürebilir. */
+    protected JComponent createPaginationComponent() {
+        return null;
     }
 
     protected void setTableModel(TableModel model) {

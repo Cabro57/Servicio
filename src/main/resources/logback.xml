@@ -7,11 +7,16 @@
         </encoder>
     </appender>
 
-    <!-- Günlük dosyası logu -->
+    <!--
+      Günlük dosyası logu.
+      ${servicio.baseDir} Launcher.main() tarafından (logback konfigüre olmadan ÖNCE) sistem
+      özelliği olarak set edilir — bkz. tr.cabro.servicio.util.DataDirResolver. Özellik yoksa
+      (ör. IDE'den doğrudan Servicio.main çalıştırılırsa) "." varsayılanı kullanılır (eski davranış).
+    -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>.servicio/logs/servicio.log</file>
+        <file>${servicio.baseDir:-.}/.servicio/logs/servicio.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>.servicio/logs/log-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>${servicio.baseDir:-.}/.servicio/logs/log-%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>7</maxHistory>
         </rollingPolicy>
         <encoder>

@@ -5,6 +5,7 @@ import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
@@ -197,7 +198,7 @@ public class FormSuppliers extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Yeni Tedarikçi Ekle", options,
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Yeni Tedarikçi Ekle", options,
                 (controller, action) -> {
                     if (action == SimpleModalBorder.OK_OPTION) {
                         Supplier updated = panel.getData();
@@ -243,7 +244,7 @@ public class FormSuppliers extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Tedarikçi Düzenle", options,
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Tedarikçi Düzenle", options,
                 (controller, action) -> {
                     if (action == SimpleModalBorder.OK_OPTION) {
                         Supplier updated = panel.getData();

@@ -46,3 +46,7 @@ build/
 /publish-patch.bat
 /release-notes.md
 /src/main/resources/config.properties
+
+### jpackage native paketleme ###
+packaging/app-input/
+packaging/dist/

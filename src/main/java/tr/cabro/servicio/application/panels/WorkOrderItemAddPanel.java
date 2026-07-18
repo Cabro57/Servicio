@@ -13,6 +13,7 @@ import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.*;
+import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.model.enums.ItemType;
 import tr.cabro.servicio.model.enums.SourceType;
 import tr.cabro.servicio.service.ServiceManager;
@@ -27,6 +28,8 @@ import java.awt.*;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -37,12 +40,25 @@ public class WorkOrderItemAddPanel extends JPanel {
 
     private final WorkOrder workOrder;
 
+    private static final DeviceType ALL_TYPES = new DeviceType(null, "Tümü", 0);
+    private static final String ALL_CATEGORIES = "Tümü";
+    private static final String STOCK_ALL = "Tümü";
+    private static final String STOCK_IN = "Stokta Olanlar";
+    private static final String STOCK_OUT = "Tükenenler";
+
     private GenericTableModel<Part> partTableModel;
     private GenericTableModel<Labor> laborTableModel;
 
     // Tabloları filtrelemek için Sorter tanımlamaları ekledik
     private TableRowSorter<GenericTableModel<Part>> partSorter;
     private TableRowSorter<GenericTableModel<Labor>> laborSorter;
+
+    private JTextField txtPartSearch;
+    private JComboBox<String> categoryCombo;
+    private JComboBox<String> stockCombo;
+
+    private JTextField txtLaborSearch;
+    private JComboBox<DeviceType> laborTypeCombo;
 
     @Getter
     private WorkOrderItem item;
@@ -66,24 +82,116 @@ public class WorkOrderItemAddPanel extends JPanel {
         loadData();
     }
 
+    private Long getWorkOrderDeviceTypeId() {
+        return (workOrder.getDevice() != null && workOrder.getDevice().getDeviceType() != null)
+                ? workOrder.getDevice().getDeviceType().getId() : null;
+    }
+
     private void loadData() {
         ServiceManager.getPartService().getAll().thenAccept(parts -> {
-            SwingUtilities.invokeLater(() -> partTableModel.setData(parts));
+            SwingUtilities.invokeLater(() -> {
+                partTableModel.setData(parts);
+                populateCategoryCombo(parts);
+                applyPartFilters();
+            });
         });
 
-        ServiceManager.getLaborService().getAll().thenAccept(labors -> {
-            SwingUtilities.invokeLater(() -> laborTableModel.setData(labors));
+        ServiceManager.getDeviceDictionaryManager().getAllTypes().thenAccept(types -> {
+            SwingUtilities.invokeLater(() -> {
+                Long currentTypeId = getWorkOrderDeviceTypeId();
+                types.forEach(laborTypeCombo::addItem);
+
+                if (currentTypeId != null) {
+                    for (int i = 0; i < laborTypeCombo.getItemCount(); i++) {
+                        DeviceType candidate = laborTypeCombo.getItemAt(i);
+                        if (currentTypeId.equals(candidate.getId())) {
+                            laborTypeCombo.setSelectedItem(candidate);
+                            break;
+                        }
+                    }
+                }
+            });
+        });
+
+        loadLabors(getWorkOrderDeviceTypeId());
+    }
+
+    private void loadLabors(Long deviceTypeId) {
+        var laborFuture = deviceTypeId != null
+                ? ServiceManager.getLaborService().getByTypeId(deviceTypeId)
+                : ServiceManager.getLaborService().getAll();
+
+        laborFuture.thenAccept(labors -> {
+            SwingUtilities.invokeLater(() -> {
+                laborTableModel.setData(labors);
+                applyFilter(txtLaborSearch != null ? txtLaborSearch.getText() : null, laborSorter);
+            });
+        });
+    }
+
+    private void populateCategoryCombo(List<Part> parts) {
+        String previous = (String) categoryCombo.getSelectedItem();
+
+        categoryCombo.removeAllItems();
+        categoryCombo.addItem(ALL_CATEGORIES);
+
+        new TreeSet<>(parts.stream()
+                .map(Part::getCategory)
+                .filter(c -> c != null && !c.trim().isEmpty())
+                .collect(java.util.stream.Collectors.toSet()))
+                .forEach(categoryCombo::addItem);
+
+        if (previous != null) {
+            categoryCombo.setSelectedItem(previous);
+        }
+    }
+
+    private void applyPartFilters() {
+        if (partSorter == null) return;
+
+        String text = txtPartSearch.getText();
+        String category = (String) categoryCombo.getSelectedItem();
+        String stock = (String) stockCombo.getSelectedItem();
+
+        partSorter.setRowFilter(new RowFilter<GenericTableModel<Part>, Integer>() {
+            @Override
+            public boolean include(Entry<? extends GenericTableModel<Part>, ? extends Integer> entry) {
+                Part p = entry.getModel().getItemAt(entry.getIdentifier());
+
+                if (category != null && !ALL_CATEGORIES.equals(category) && !category.equals(p.getCategory())) {
+                    return false;
+                }
+
+                if (STOCK_IN.equals(stock) && p.getStockQuantity() <= 0) return false;
+                if (STOCK_OUT.equals(stock) && p.getStockQuantity() > 0) return false;
+
+                if (text != null && !text.trim().isEmpty()) {
+                    String needle = text.trim().toLowerCase(Locale.forLanguageTag("tr"));
+                    String haystack = ((p.getName() != null ? p.getName() : "") + " "
+                            + (p.getBarcode() != null ? p.getBarcode() : "")).toLowerCase(Locale.forLanguageTag("tr"));
+                    return haystack.contains(needle);
+                }
+
+                return true;
+            }
         });
     }
 
     // --- 1. STOKTAKİ PARÇALAR PANELİ ---
     private JPanel createStockPanel() {
-        JPanel panel = new JPanel(new MigLayout("fill, insets 15", "[grow]", "[][grow]"));
+        JPanel panel = new JPanel(new MigLayout("fill, insets 15", "[grow]", "[][][][grow]"));
 
-        JTextField txtSearch = new JTextField();
-        txtSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Parça adı veya barkod ara...");
-        txtSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 0.8f));
-        panel.add(txtSearch, "growx, wrap");
+        txtPartSearch = new JTextField();
+        txtPartSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Parça adı veya barkod ara...");
+        txtPartSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 0.8f));
+        panel.add(txtPartSearch, "growx, wrap");
+
+        categoryCombo = new JComboBox<>();
+        categoryCombo.addItem(ALL_CATEGORIES);
+        panel.add(categoryCombo, "growx, split 2");
+
+        stockCombo = new JComboBox<>(new String[]{STOCK_ALL, STOCK_IN, STOCK_OUT});
+        panel.add(stockCombo, "growx, wrap");
 
         List<ColumnDef<Part>> cols = Arrays.asList(
                 new ColumnDef<>("Parça Bilgisi", Part.class, p -> p),
@@ -98,12 +206,14 @@ public class WorkOrderItemAddPanel extends JPanel {
         partSorter = new TableRowSorter<>(partTableModel);
         table.setRowSorter(partSorter);
 
-        // Arama kutusuna DocumentListener ekliyoruz
-        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), partSorter); }
-            public void removeUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), partSorter); }
-            public void changedUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), partSorter); }
+        // Arama kutusu ve filtre kutuları değiştikçe birleşik filtreyi uyguluyoruz
+        txtPartSearch.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { applyPartFilters(); }
+            public void removeUpdate(DocumentEvent e) { applyPartFilters(); }
+            public void changedUpdate(DocumentEvent e) { applyPartFilters(); }
         });
+        categoryCombo.addActionListener(e -> applyPartFilters());
+        stockCombo.addActionListener(e -> applyPartFilters());
 
         table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Part>(
                 Part::getName,
@@ -152,12 +262,16 @@ public class WorkOrderItemAddPanel extends JPanel {
 
     // --- 2. HAZIR İŞÇİLİK (LABOR) PANELİ ---
     private JPanel createLaborPanel() {
-        JPanel panel = new JPanel(new MigLayout("fill, insets 15", "[grow]", "[][grow]"));
+        JPanel panel = new JPanel(new MigLayout("fill, insets 15", "[grow]", "[][][grow]"));
 
-        JTextField txtSearch = new JTextField();
-        txtSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "İşlem veya paket ara...");
-        txtSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 0.8f));
-        panel.add(txtSearch, "growx, wrap");
+        txtLaborSearch = new JTextField();
+        txtLaborSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "İşlem veya paket ara...");
+        txtLaborSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 0.8f));
+        panel.add(txtLaborSearch, "wrap, growx");
+
+        laborTypeCombo = new JComboBox<>();
+        laborTypeCombo.addItem(ALL_TYPES);
+        panel.add(laborTypeCombo, "wrap, growx");
 
         List<ColumnDef<Labor>> cols = Arrays.asList(
                 new ColumnDef<>("İşlem Bilgisi", Labor.class, l -> l),
@@ -173,10 +287,17 @@ public class WorkOrderItemAddPanel extends JPanel {
         table.setRowSorter(laborSorter);
 
         // İşçilik arama kutusuna DocumentListener ekliyoruz
-        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), laborSorter); }
-            public void removeUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), laborSorter); }
-            public void changedUpdate(DocumentEvent e) { applyFilter(txtSearch.getText(), laborSorter); }
+        txtLaborSearch.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { applyFilter(txtLaborSearch.getText(), laborSorter); }
+            public void removeUpdate(DocumentEvent e) { applyFilter(txtLaborSearch.getText(), laborSorter); }
+            public void changedUpdate(DocumentEvent e) { applyFilter(txtLaborSearch.getText(), laborSorter); }
+        });
+
+        // Tür değiştikçe veriyi yeniden yükle (backend'de filtreleniyor)
+        laborTypeCombo.addActionListener(e -> {
+            DeviceType selected = (DeviceType) laborTypeCombo.getSelectedItem();
+            Long typeId = (selected != null) ? selected.getId() : null;
+            loadLabors(typeId);
         });
 
         table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Labor>(

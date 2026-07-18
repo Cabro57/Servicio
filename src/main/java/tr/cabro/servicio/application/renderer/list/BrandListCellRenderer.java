@@ -19,6 +19,7 @@ public class BrandListCellRenderer extends JPanel implements ListCellRenderer<De
 
     private final Consumer<DeviceBrand> onDelete;
     private DeviceBrand current;
+    private int hoveredIndex = -1;
 
     public BrandListCellRenderer(JList<DeviceBrand> list, Consumer<DeviceBrand> onDelete) {
         this.onDelete = onDelete;
@@ -50,6 +51,7 @@ public class BrandListCellRenderer extends JPanel implements ListCellRenderer<De
         list.addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
+                hoveredIndex = list.locationToIndex(e.getPoint());
                 list.repaint();
             }
         });
@@ -93,10 +95,7 @@ public class BrandListCellRenderer extends JPanel implements ListCellRenderer<De
 
         nameLabel.setText(value.getName());
 
-        Point mouse = list.getMousePosition();
-        boolean hovered = mouse != null
-                && list.getCellBounds(index, index) != null
-                && list.getCellBounds(index, index).contains(mouse);
+        boolean hovered = index == hoveredIndex;
         deleteBtn.setVisible(selected || hovered);
 
         if (selected) {

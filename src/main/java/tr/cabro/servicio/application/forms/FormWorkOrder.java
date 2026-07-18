@@ -3,11 +3,11 @@ package tr.cabro.servicio.application.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.system.AllForms;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.Servicio;
@@ -390,7 +390,7 @@ public class FormWorkOrder extends Form {
                 new SimpleModalBorder.Option("Ekle", SimpleModalBorder.YES_OPTION),
                 new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
         };
-        ModalDialog.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", null, (controller, action) -> {
+        AppModal.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", null, (controller, action) -> {
 
             if (action == WorkOrderItemAddPanel.CREAT_ITEM) {
                 WorkOrderItem newItem = addPanel.getItem();
@@ -429,7 +429,7 @@ public class FormWorkOrder extends Form {
                 controller.consume();
 
                 WorkOrderItemEditPanel editPanel = new WorkOrderItemEditPanel(newItem);
-                ModalDialog.pushModal(new SimpleModalBorder(editPanel, "Kalem Ekle", options, (controller1, action1) -> {
+                AppModal.pushModal(new SimpleModalBorder(editPanel, "Kalem Ekle", options, (controller1, action1) -> {
                     if (action1 != SimpleModalBorder.YES_OPTION) return;
 
                     WorkOrderItem updated = editPanel.getUpdatedItem();
@@ -463,7 +463,7 @@ public class FormWorkOrder extends Form {
                 new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
                 new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
         };
-        ModalDialog.showModal(FormManager.getFrame(), new SimpleModalBorder(editPanel, "Kalemi Düzenle", options, (controller, action) -> {
+        AppModal.showModal(FormManager.getFrame(), new SimpleModalBorder(editPanel, "Kalemi Düzenle", options, (controller, action) -> {
             if (action != SimpleModalBorder.YES_OPTION) return;
 
             WorkOrderItem updated = editPanel.getUpdatedItem();

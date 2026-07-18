@@ -5,7 +5,6 @@ import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.ApplicationBootstrap;
 import tr.cabro.servicio.application.MainUI;
 import tr.cabro.servicio.application.component.AppSplashScreen;
@@ -180,8 +179,7 @@ public final class Servicio {
         Action lockAction = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                FormManager.lock();
-                ModalDialog.closeAllModalImmediately();
+                FormManager.lockForInactivity();
             }
         };
         inactivityMonitor = new InactivityMonitor(lockAction);

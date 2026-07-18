@@ -1,6 +1,6 @@
 {
   "version": "2.0-dev",
-  "releaseDate": "2026-07-15",
+  "releaseDate": "2026-07-19",
   "minRequiredVersion": "2.0.0",
   "releasesApiUrl": "https://api.github.com/repos/Cabro57/Servicio/releases/latest",
   "files": [
@@ -9,18 +9,8 @@
       "name": "servicio.jar",
       "path": "servicio.jar",
       "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
-      "sha256": "846dd8110863abb00b952c7462e58ca23e0ccb783fd93379f6cac76acb8a56f3",
-      "size": 11475683
-    },
-    {
-      "source": "maven",
-      "name": "filters-2.0.235.jar",
-      "path": "libs/filters-2.0.235.jar",
-      "groupId": "com.jhlabs",
-      "artifactId": "filters",
-      "libVersion": "2.0.235",
-      "sha256": "be6a1d54ebb043495e31e25e72b440f69156a5624cdd7e1c55c47e30d4fae308",
-      "size": 340318
+      "sha256": "bbc4683bebff6328ebb2a73f76b4846bb0149b9cca9b7ded72d47487cd5841a3",
+      "size": 11505225
     },
     {
       "source": "maven",
@@ -64,23 +54,53 @@
     },
     {
       "source": "maven",
-      "name": "flyway-core-7.15.0.jar",
-      "path": "libs/flyway-core-7.15.0.jar",
+      "name": "flyway-core-12.9.0.jar",
+      "path": "libs/flyway-core-12.9.0.jar",
       "groupId": "org.flywaydb",
       "artifactId": "flyway-core",
-      "libVersion": "7.15.0",
-      "sha256": "5924f275af4e84e7ce16ba1544da7a4e485166fcc84a0406006f2ae3184b5356",
-      "size": 695083
+      "libVersion": "12.9.0",
+      "sha256": "e597cec7f68dc2950fb7e88dfae2b2aa156193209791e6b60bf619df74a123d8",
+      "size": 803797
     },
     {
       "source": "maven",
-      "name": "geantyref-1.3.14.jar",
-      "path": "libs/geantyref-1.3.14.jar",
+      "name": "flyway-database-nc-sqlite-12.9.0.jar",
+      "path": "libs/flyway-database-nc-sqlite-12.9.0.jar",
+      "groupId": "org.flywaydb",
+      "artifactId": "flyway-database-nc-sqlite",
+      "libVersion": "12.9.0",
+      "sha256": "6f421f2e7a9d5730f7c63e87126642531a9662fa78a6a3fa1cd9f0c2b23df262",
+      "size": 6531
+    },
+    {
+      "source": "maven",
+      "name": "flyway-nc-core-12.9.0.jar",
+      "path": "libs/flyway-nc-core-12.9.0.jar",
+      "groupId": "org.flywaydb",
+      "artifactId": "flyway-nc-core",
+      "libVersion": "12.9.0",
+      "sha256": "4161c010599e234ef43e0c6658485c236809674b53b9de536931d0a324f29027",
+      "size": 75789
+    },
+    {
+      "source": "maven",
+      "name": "filters-2.0.235.jar",
+      "path": "libs/filters-2.0.235.jar",
+      "groupId": "com.jhlabs",
+      "artifactId": "filters",
+      "libVersion": "2.0.235",
+      "sha256": "be6a1d54ebb043495e31e25e72b440f69156a5624cdd7e1c55c47e30d4fae308",
+      "size": 340318
+    },
+    {
+      "source": "maven",
+      "name": "geantyref-1.3.15.jar",
+      "path": "libs/geantyref-1.3.15.jar",
       "groupId": "io.leangen.geantyref",
       "artifactId": "geantyref",
-      "libVersion": "1.3.14",
-      "sha256": "62b722d132454503904a5f7b0a47a24f0fc581821ec8d3687df1e0f146c6d61e",
-      "size": 69679
+      "libVersion": "1.3.15",
+      "sha256": "6907affedb63ab3e77c7cd988141f3293cbd847ff3df58eec1e48c7d2990fb89",
+      "size": 70988
     },
     {
       "source": "maven",
@@ -94,13 +114,43 @@
     },
     {
       "source": "maven",
-      "name": "HikariCP-4.0.3.jar",
-      "path": "libs/HikariCP-4.0.3.jar",
+      "name": "HikariCP-6.2.1.jar",
+      "path": "libs/HikariCP-6.2.1.jar",
       "groupId": "com.zaxxer",
       "artifactId": "HikariCP",
-      "libVersion": "4.0.3",
-      "sha256": "7c024aeff1c1063576d74453513f9de6447d8e624d17f8e27f30a2e97688c6c9",
-      "size": 159222
+      "libVersion": "6.2.1",
+      "sha256": "c659a083727ce9590277357b8c3f63fbae67207bb04beabc964c8f4f15307dbc",
+      "size": 168900
+    },
+    {
+      "source": "maven",
+      "name": "jackson-annotations-2.21.jar",
+      "path": "libs/jackson-annotations-2.21.jar",
+      "groupId": "com.fasterxml.jackson.core",
+      "artifactId": "jackson-annotations",
+      "libVersion": "2.21",
+      "sha256": "53ca085f4a150f703f49e1aabd935bd03b43e1ea3d55d135438292af22cef56b",
+      "size": 82104
+    },
+    {
+      "source": "maven",
+      "name": "jackson-core-3.1.1.jar",
+      "path": "libs/jackson-core-3.1.1.jar",
+      "groupId": "tools.jackson.core",
+      "artifactId": "jackson-core",
+      "libVersion": "3.1.1",
+      "sha256": "4cd270bee1a1aa34be18da78268f3879355b6ea09154beff496831785b6194c9",
+      "size": 600613
+    },
+    {
+      "source": "maven",
+      "name": "jackson-databind-3.1.1.jar",
+      "path": "libs/jackson-databind-3.1.1.jar",
+      "groupId": "tools.jackson.core",
+      "artifactId": "jackson-databind",
+      "libVersion": "3.1.1",
+      "sha256": "a80302c80cb02803e33d7b3301a0d619146d3191d285e6bbd39fa17d3aa5f24a",
+      "size": 1939126
     },
     {
       "source": "maven",
@@ -114,33 +164,33 @@
     },
     {
       "source": "maven",
-      "name": "jdbi3-core-3.37.1.jar",
-      "path": "libs/jdbi3-core-3.37.1.jar",
+      "name": "jdbi3-core-3.45.4.jar",
+      "path": "libs/jdbi3-core-3.45.4.jar",
       "groupId": "org.jdbi",
       "artifactId": "jdbi3-core",
-      "libVersion": "3.37.1",
-      "sha256": "4a7c70ee1e1cff1a7f0af641cce4205acd7f68beb166771bcc25dace0836c8eb",
-      "size": 938910
+      "libVersion": "3.45.4",
+      "sha256": "a30710c52091d345c84dabc518b3814216a7ff4929e85c2762fe533282cf68df",
+      "size": 1019070
     },
     {
       "source": "maven",
-      "name": "jdbi3-sqlite-3.37.1.jar",
-      "path": "libs/jdbi3-sqlite-3.37.1.jar",
-      "groupId": "org.jdbi",
-      "artifactId": "jdbi3-sqlite",
-      "libVersion": "3.37.1",
-      "sha256": "01db1e4ed6cd90963588792479ef6557eee0100b46394d092c01187ed57d19aa",
-      "size": 5226
-    },
-    {
-      "source": "maven",
-      "name": "jdbi3-sqlobject-3.37.1.jar",
-      "path": "libs/jdbi3-sqlobject-3.37.1.jar",
+      "name": "jdbi3-sqlobject-3.45.4.jar",
+      "path": "libs/jdbi3-sqlobject-3.45.4.jar",
       "groupId": "org.jdbi",
       "artifactId": "jdbi3-sqlobject",
-      "libVersion": "3.37.1",
-      "sha256": "ade3a3d58750773be818e092db120e156020fdff62fe74042128edd4204b2278",
-      "size": 220889
+      "libVersion": "3.45.4",
+      "sha256": "81c65556db7ac944c6827f15129ea4fcccb00afbaef79ebc5241fde30bda213b",
+      "size": 215907
+    },
+    {
+      "source": "maven",
+      "name": "jdbi3-sqlite-3.45.4.jar",
+      "path": "libs/jdbi3-sqlite-3.45.4.jar",
+      "groupId": "org.jdbi",
+      "artifactId": "jdbi3-sqlite",
+      "libVersion": "3.45.4",
+      "sha256": "0c665d1077848c8ced077804feb24a7a817e2d08d1949dba0f9c3e641d2b8af8",
+      "size": 5241
     },
     {
       "source": "maven",
@@ -164,33 +214,23 @@
     },
     {
       "source": "maven",
-      "name": "libphonenumber-8.13.27.jar",
-      "path": "libs/libphonenumber-8.13.27.jar",
-      "groupId": "com.googlecode.libphonenumber",
-      "artifactId": "libphonenumber",
-      "libVersion": "8.13.27",
-      "sha256": "70de2b581e9e6b5da7977aa09b935ddff5a66ad337e77d84e205fd1b015cb52d",
-      "size": 358397
-    },
-    {
-      "source": "maven",
-      "name": "logback-classic-1.2.13.jar",
-      "path": "libs/logback-classic-1.2.13.jar",
+      "name": "logback-classic-1.5.16.jar",
+      "path": "libs/logback-classic-1.5.16.jar",
       "groupId": "ch.qos.logback",
       "artifactId": "logback-classic",
-      "libVersion": "1.2.13",
-      "sha256": "937afb220b91d8a394d78befdbf587c71aeed289d582e2a91e72a7d92172371d",
-      "size": 232073
+      "libVersion": "1.5.16",
+      "sha256": "f985a33a68d900badec5b0c3c613ab9db66415d2cf378987357ded9da5370e32",
+      "size": 306722
     },
     {
       "source": "maven",
-      "name": "logback-core-1.2.13.jar",
-      "path": "libs/logback-core-1.2.13.jar",
+      "name": "logback-core-1.5.16.jar",
+      "path": "libs/logback-core-1.5.16.jar",
       "groupId": "ch.qos.logback",
       "artifactId": "logback-core",
-      "libVersion": "1.2.13",
-      "sha256": "07b1586faf220c05821d0f3ed8e2e417e214c83f40641f76e8a90b134c31ff6b",
-      "size": 449638
+      "libVersion": "1.5.16",
+      "sha256": "f15e206b98ca25294506d2dadfe5ce2a6da9df9cf7c85d8e7191f99a422df3c9",
+      "size": 621606
     },
     {
       "source": "maven",
@@ -201,6 +241,26 @@
       "libVersion": "1.18.38",
       "sha256": "1e1e427c36ff63c44fd30ef292d9e773ea3154460ab6265d3fed7e6f5bc50fb9",
       "size": 2056090
+    },
+    {
+      "source": "maven",
+      "name": "libphonenumber-8.13.51.jar",
+      "path": "libs/libphonenumber-8.13.51.jar",
+      "groupId": "com.googlecode.libphonenumber",
+      "artifactId": "libphonenumber",
+      "libVersion": "8.13.51",
+      "sha256": "fea7c5cc22026f0efc89c325bfca737834511ff950cd8834e9fcc529675e1603",
+      "size": 359986
+    },
+    {
+      "source": "maven",
+      "name": "modal-dialog-2.6.1.jar",
+      "path": "libs/modal-dialog-2.6.1.jar",
+      "groupId": "io.github.dj-raven",
+      "artifactId": "modal-dialog",
+      "libVersion": "2.6.1",
+      "sha256": "7e9fd52b9aef9366be83c06897892efa6eee27975d65b85fdb34497f6978e905",
+      "size": 295645
     },
     {
       "source": "maven",
@@ -221,16 +281,6 @@
       "libVersion": "5.3",
       "sha256": "ae384b680242234170de6b939bebf56effa40dd483477e13cd898104ba1e1de1",
       "size": 22576
-    },
-    {
-      "source": "maven",
-      "name": "modal-dialog-2.6.1.jar",
-      "path": "libs/modal-dialog-2.6.1.jar",
-      "groupId": "io.github.dj-raven",
-      "artifactId": "modal-dialog",
-      "libVersion": "2.6.1",
-      "sha256": "7e9fd52b9aef9366be83c06897892efa6eee27975d65b85fdb34497f6978e905",
-      "size": 295645
     },
     {
       "source": "maven",
@@ -256,13 +306,13 @@
     },
     {
       "source": "maven",
-      "name": "slf4j-api-1.7.36.jar",
-      "path": "libs/slf4j-api-1.7.36.jar",
+      "name": "slf4j-api-2.0.16.jar",
+      "path": "libs/slf4j-api-2.0.16.jar",
       "groupId": "org.slf4j",
       "artifactId": "slf4j-api",
-      "libVersion": "1.7.36",
-      "sha256": "d3ef575e3e4979678dc01bf1dcce51021493b4d11fb7f1be8ad982877c16a1c0",
-      "size": 41125
+      "libVersion": "2.0.16",
+      "sha256": "a12578dde1ba00bd9b816d388a0b879928d00bab3c83c240f7013bf4196c579a",
+      "size": 69435
     },
     {
       "source": "maven",

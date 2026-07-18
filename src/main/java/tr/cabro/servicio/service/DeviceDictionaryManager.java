@@ -4,6 +4,7 @@ import tr.cabro.servicio.database.repository.DeviceDictionaryRepository;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.service.exception.AlreadyExistsException;
+import tr.cabro.servicio.service.exception.ValidationException;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -32,7 +33,27 @@ public class DeviceDictionaryManager {
     }
 
     public CompletableFuture<Void> deleteType(Long id) {
-        return CompletableFuture.runAsync(() -> repository.deleteType(id));
+        return CompletableFuture.runAsync(() -> {
+            try {
+                repository.deleteType(id);
+            } catch (Exception ex) {
+                if (isForeignKeyViolation(ex)) {
+                    throw new ValidationException("Bu tür bir veya daha fazla cihazda kullanıldığı için silinemez.");
+                }
+                throw ex;
+            }
+        });
+    }
+
+    private boolean isForeignKeyViolation(Throwable ex) {
+        while (ex != null) {
+            String message = ex.getMessage();
+            if (message != null && message.toUpperCase().contains("FOREIGN KEY")) {
+                return true;
+            }
+            ex = ex.getCause();
+        }
+        return false;
     }
 
     // --- MARKALAR (Brands) ---
@@ -40,20 +61,38 @@ public class DeviceDictionaryManager {
         return CompletableFuture.supplyAsync(() -> repository.findBrandsByTypeId(typeId));
     }
 
-    public CompletableFuture<Integer> addBrand(String name) {
+    // Marka adı zaten kayıtlıysa var olanı kullanır, yoksa yeni oluşturur; ardından türe bağlar.
+    public CompletableFuture<Void> addBrandToType(Long typeId, String name) {
         return CompletableFuture.supplyAsync(() -> {
-            // 1. Validasyon: Mevcut mu kontrol et
-            repository.findBrandByName(name.trim()).ifPresent(brand -> {
-                throw new AlreadyExistsException("Bu marka zaten kayıtlı: " + name);
-            });
+            String trimmedName = name.trim();
 
-            // 2. Kaydet
-            return repository.insertBrand(name.trim());
+            Long brandId = repository.findBrandByName(trimmedName)
+                    .map(DeviceBrand::getId)
+                    .orElseGet(() -> (long) repository.insertBrand(trimmedName));
+
+            boolean alreadyLinked = repository.findBrandsByTypeId(typeId).stream()
+                    .anyMatch(brand -> brand.getId().equals(brandId));
+
+            if (alreadyLinked) {
+                throw new AlreadyExistsException("Bu marka zaten bu türe kayıtlı: " + trimmedName);
+            }
+
+            repository.linkTypeAndBrand(typeId, brandId);
+            return null;
         });
     }
 
     public CompletableFuture<Void> deleteBrand(Long id) {
-        return CompletableFuture.runAsync(() -> repository.deleteBrand(id));
+        return CompletableFuture.runAsync(() -> {
+            try {
+                repository.deleteBrand(id);
+            } catch (Exception ex) {
+                if (isForeignKeyViolation(ex)) {
+                    throw new ValidationException("Bu marka bir veya daha fazla cihazda kullanıldığı için silinemez.");
+                }
+                throw ex;
+            }
+        });
     }
 
     // --- İLİŞKİLENDİRME (Bağlantı Tablosu) ---

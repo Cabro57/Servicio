@@ -3,8 +3,8 @@ package tr.cabro.servicio.application.panels;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.ModalDialog;
 import raven.modal.Toast;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
 import tr.cabro.servicio.model.User;
@@ -195,7 +195,7 @@ public class ProfileSettingsPanel extends JPanel {
         us.save(currentUser, true).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
             MyDrawerBuilder.getInstance().setUser(saved);
             Toast.show(this, Toast.Type.SUCCESS, "Profil güncellendi!");
-            ModalDialog.closeModal(MODAL_ID);
+            AppModal.closeModal(MODAL_ID);
         })).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
                 Throwable cause = ex.getCause() != null ? ex.getCause() : ex;

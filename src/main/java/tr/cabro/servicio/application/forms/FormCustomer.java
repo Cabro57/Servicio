@@ -2,10 +2,10 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.*;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.Servicio;
@@ -112,7 +112,7 @@ public class FormCustomer extends Form {
         QuickIntakePanel[] panelRef = new QuickIntakePanel[1];
         panelRef[0] = new QuickIntakePanel(data, () -> {
             CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
-            ModalDialog.pushModal(
+            AppModal.pushModal(
                     new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
                         if (a1 != SimpleModalBorder.YES_OPTION) return;
                         Customer newCustomer = newCustomerPanel.getData();
@@ -122,7 +122,7 @@ public class FormCustomer extends Form {
                         customerService.save(newCustomer, false).thenAccept(saved ->
                                 SwingUtilities.invokeLater(() -> {
                                     panelRef[0].appendNewCustomer(saved);
-                                    ModalDialog.popModal(MODAL_ID);
+                                    AppModal.popModal(MODAL_ID);
                                 })
                         );
                     }),
@@ -142,7 +142,7 @@ public class FormCustomer extends Form {
                 new SimpleModalBorder.Option("İptal",           SimpleModalBorder.CANCEL_OPTION)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, title, options, (controller, action) -> {
+        AppModal.showModal(this, new SimpleModalBorder(panel, title, options, (controller, action) -> {
             if (action == SimpleModalBorder.OPENED) {
                 panel.requestInitialFocus();
                 return;

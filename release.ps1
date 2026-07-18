@@ -87,28 +87,28 @@ $mvn = Resolve-Maven
 Info "Maven: $mvn"
 
 # ── 2b) Derleme için uyumlu JDK seç ────────────────────────────────────
-# Proje Java 8 hedefliyor. Lombok 1.18.38 JDK 25 ile çalışmaz (tüm
-# @Getter/@Data metotları "cannot find symbol" verir). JDK 8 tercih edilir.
+# Proje Java 21 hedefliyor (release 21 → JDK 21+ zorunlu). JetBrains JDK 21
+# (JBR) tercih edilir. Lombok 1.18.38 JDK 21 ile uyumlu; JDK 25 ile DEĞİL.
 function Resolve-Jdk {
     param([string]$Explicit)
     if ($Explicit) {
         if (Test-Path "$Explicit\bin\javac.exe") { return $Explicit }
         Fail "-JdkHome geçersiz (javac yok): $Explicit"
     }
-    $candidates = @(
-        "$env:USERPROFILE\.jdks\temurin-1.8.0_492",
-        "$env:USERPROFILE\.jdks\temurin-1.8.0_482"
-    )
-    # .jdks içindeki herhangi bir JDK 8 (temurin/corretto 1.8)
-    $candidates += (Get-ChildItem "$env:USERPROFILE\.jdks" -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -match '1\.8\.0' } | Select-Object -Expand FullName)
-    # Sonra JDK 21 (Lombok destekli)
-    $candidates += (Get-ChildItem "$env:USERPROFILE\.jdks" -Directory -ErrorAction SilentlyContinue |
+    $jdksRoot = "$env:USERPROFILE\.jdks"
+    # Öncelik: JetBrains Runtime 21 → temurin 21 → herhangi bir JDK 21
+    # Tercih edilen kesin sürüm en başta.
+    $candidates = @("$jdksRoot\jbr-21.0.10")
+    $candidates += (Get-ChildItem $jdksRoot -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^jbr-21' } | Sort-Object Name -Descending | Select-Object -Expand FullName)
+    $candidates += (Get-ChildItem $jdksRoot -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -match 'temurin-21' } | Select-Object -Expand FullName)
+    $candidates += (Get-ChildItem $jdksRoot -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '-21\.' -or $_.Name -match '21\.0' } | Select-Object -Expand FullName)
     foreach ($c in $candidates) {
         if ($c -and (Test-Path "$c\bin\javac.exe")) { return $c }
     }
-    Warn "Uyumlu JDK (8 veya 21) bulunamadı; sistem varsayılanı kullanılacak (Lombok hatası olabilir)."
+    Warn "JDK 21 bulunamadı; sistem varsayılanı kullanılacak (uyumsuz olabilir)."
     return $null
 }
 

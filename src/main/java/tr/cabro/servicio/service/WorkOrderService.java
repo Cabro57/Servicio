@@ -4,6 +4,7 @@ import tr.cabro.servicio.database.repository.*;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ItemType;
 import tr.cabro.servicio.model.enums.ReferenceType;
+import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.exception.ValidationException;
 
@@ -213,6 +214,66 @@ public class WorkOrderService {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
         return CompletableFuture.supplyAsync(
                 () -> hydrateServices(workOrderRepository.search("%" + searchTerm.trim() + "%")));
+    }
+
+    // =========================================================================
+    // SAYFALAMA (LIMIT/OFFSET) — DB-tabanlı liste ekranları ve dashboard için
+    // =========================================================================
+
+    public CompletableFuture<PageResult<WorkOrder>> getAllPaged(int page, int pageSize) {
+        int offset = (page - 1) * pageSize;
+        return CompletableFuture.supplyAsync(() -> {
+            List<WorkOrder> items = hydrateServices(workOrderRepository.findAllPaged(pageSize, offset));
+            long total = workOrderRepository.countAll();
+            return new PageResult<>(items, page, pageSize, total);
+        });
+    }
+
+    public CompletableFuture<PageResult<WorkOrder>> getAllPaged(int page, int pageSize, String statusStr) {
+        if (statusStr == null || statusStr.isEmpty() || statusStr.equalsIgnoreCase("ALL")) {
+            return getAllPaged(page, pageSize);
+        }
+        int offset = (page - 1) * pageSize;
+        if (statusStr.equalsIgnoreCase("OPEN")) {
+            return getOpenPaged(page, pageSize);
+        }
+        ServiceStatus status = ServiceStatus.of(statusStr);
+        List<ServiceStatus> statuses = Collections.singletonList(status);
+        return CompletableFuture.supplyAsync(() -> {
+            List<WorkOrder> items = hydrateServices(workOrderRepository.findByStatusesPaged(statuses, pageSize, offset));
+            long total = workOrderRepository.countByStatuses(statuses);
+            return new PageResult<>(items, page, pageSize, total);
+        });
+    }
+
+    public CompletableFuture<PageResult<WorkOrder>> getOpenPaged(int page, int pageSize) {
+        int offset = (page - 1) * pageSize;
+        List<ServiceStatus> closed = Arrays.asList(ServiceStatus.DELIVERED, ServiceStatus.RETURN);
+        return CompletableFuture.supplyAsync(() -> {
+            List<WorkOrder> items = hydrateServices(workOrderRepository.findByStatusesExcludedPaged(closed, pageSize, offset));
+            long total = workOrderRepository.countByStatusesExcluded(closed);
+            return new PageResult<>(items, page, pageSize, total);
+        });
+    }
+
+    public CompletableFuture<PageResult<WorkOrder>> getWithDebtPaged(int page, int pageSize) {
+        int offset = (page - 1) * pageSize;
+        return CompletableFuture.supplyAsync(() -> {
+            List<WorkOrder> items = hydrateServices(workOrderRepository.findWithDebtPaged(pageSize, offset));
+            long total = workOrderRepository.countWithDebt();
+            return new PageResult<>(items, page, pageSize, total);
+        });
+    }
+
+    public CompletableFuture<PageResult<WorkOrder>> searchPaged(String searchTerm, int page, int pageSize) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) return getAllPaged(page, pageSize);
+        int offset = (page - 1) * pageSize;
+        String likeTerm = "%" + searchTerm.trim() + "%";
+        return CompletableFuture.supplyAsync(() -> {
+            List<WorkOrder> items = hydrateServices(workOrderRepository.searchPaged(likeTerm, pageSize, offset));
+            long total = workOrderRepository.countSearch(likeTerm);
+            return new PageResult<>(items, page, pageSize, total);
+        });
     }
 
     // =========================================================================

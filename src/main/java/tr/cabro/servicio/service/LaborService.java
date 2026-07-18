@@ -40,6 +40,11 @@ public class LaborService {
         return CompletableFuture.supplyAsync(repository::findAll);
     }
 
+    // Belirli bir cihaz türüne özel + türden bağımsız (Genel) işçilikleri getirir.
+    public CompletableFuture<List<Labor>> getByTypeId(Long typeId) {
+        return CompletableFuture.supplyAsync(() -> repository.findByTypeId(typeId));
+    }
+
     public CompletableFuture<List<Labor>> search(String searchStr) {
         return CompletableFuture.supplyAsync(() -> repository.search("%" + searchStr + "%"));
     }

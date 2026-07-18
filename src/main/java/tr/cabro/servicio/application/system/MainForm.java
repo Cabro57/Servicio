@@ -19,6 +19,7 @@ import tr.cabro.servicio.updater.UpdateNotifier;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.HierarchyEvent;
 import java.util.prefs.Preferences;
 
 public class MainForm extends JPanel {
@@ -27,10 +28,21 @@ public class MainForm extends JPanel {
     private static final String PREF_NODE        = "tr/cabro/servicio";
     private static final String PREF_SKIPPED_VER = "update.skipped_version";
 
+    private boolean startupUpdateCheckScheduled = false;
+
     public MainForm() {
         init();
-        // UI tamamen yüklendikten sonra splash kontrolü sonucunu işle
-        scheduleStartupUpdateCheck();
+
+        // MainForm oluşturulduğu anda henüz frame'e eklenmemiş olabilir
+        // (örn. kullanıcı PIN ekranındayken). Toast'ın parent penceresi
+        // bulabilmesi için gerçekten ekranda görünür olana kadar bekle.
+        addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0
+                    && isShowing() && !startupUpdateCheckScheduled) {
+                startupUpdateCheckScheduled = true;
+                scheduleStartupUpdateCheck();
+            }
+        });
     }
 
     private void init() {

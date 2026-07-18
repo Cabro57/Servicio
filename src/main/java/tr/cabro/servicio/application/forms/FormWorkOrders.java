@@ -1,9 +1,9 @@
 package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
@@ -19,12 +19,14 @@ import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
+import raven.swingpack.JPagination;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -36,6 +38,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @SystemForm(name = "Servis Kayıtları", description = "Tüm servis kayıtlarını oluşturmak için kullanılabilir")
 public class FormWorkOrders extends AbstractTableForm {
@@ -44,6 +47,13 @@ public class FormWorkOrders extends AbstractTableForm {
     private final ReportManager reportManager;
     private GenericTableModel<WorkOrder> tableModal;
     private ServiceStatus currentStatusFilter;
+
+    // --- SAYFALAMA (DB-tabanlı) ---
+    private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
+    private int pageSize = Servicio.getSettings().getWorkOrderPageSize();
+    private int currentPage = 1;
+    private String currentSearchTerm = "";
+    private JPagination pagination;
 
     public FormWorkOrders() {
         this.service = ServiceManager.getWorkOrderService();
@@ -85,20 +95,37 @@ public class FormWorkOrders extends AbstractTableForm {
         filterCombo.addActionListener(e -> {
             Object selected = filterCombo.getSelectedItem();
             currentStatusFilter = (selected instanceof ServiceStatus) ? (ServiceStatus) selected : null;
-            applyFilter();
+            currentPage = 1;
+            refreshTable();
         });
         return filterCombo;
     }
 
     @Override
-    protected RowFilter<TableModel, Object> getCustomFilter() {
-        if (currentStatusFilter == null) return null;
-        return new RowFilter<TableModel, Object>() {
-            @Override
-            public boolean include(Entry<? extends TableModel, ?> entry) {
-                return entry.getValue(6) == currentStatusFilter; // 6. sütun = Durum
-            }
-        };
+    protected JComponent createPaginationComponent() {
+        pagination = new JPagination(5, 1, 1);
+        pagination.addChangeListener(e -> {
+            currentPage = pagination.getSelectedPage();
+            refreshTable();
+        });
+
+        JComboBox<Integer> pageSizeCombo = new JComboBox<>(PAGE_SIZE_OPTIONS);
+        pageSizeCombo.setSelectedItem(pageSize);
+        pageSizeCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
+        pageSizeCombo.addActionListener(e -> {
+            pageSize = (Integer) pageSizeCombo.getSelectedItem();
+            currentPage = 1;
+            Servicio.getSettings().setWorkOrderPageSize(pageSize);
+            Servicio.getSettings().save();
+            refreshTable();
+        });
+
+        JPanel panel = new JPanel(new net.miginfocom.swing.MigLayout("insets 0, gapx 10", "[][]", "[]"));
+        panel.setOpaque(false);
+        panel.add(new JLabel("Sayfa başına:"));
+        panel.add(pageSizeCombo);
+        panel.add(pagination);
+        return panel;
     }
 
     @Override
@@ -168,9 +195,19 @@ public class FormWorkOrders extends AbstractTableForm {
     @Override
     protected void refreshTable() {
         if (tableModal == null) return;
-        service.getAll()
-                .thenAccept(list -> SwingUtilities.invokeLater(() -> {
-                    tableModal.setData(list);
+
+        CompletableFuture<PageResult<WorkOrder>> future;
+        if (!currentSearchTerm.isEmpty()) {
+            future = service.searchPaged(currentSearchTerm, currentPage, pageSize);
+        } else if (currentStatusFilter != null) {
+            future = service.getAllPaged(currentPage, pageSize, currentStatusFilter.name());
+        } else {
+            future = service.getAllPaged(currentPage, pageSize);
+        }
+
+        future.thenAccept(result -> SwingUtilities.invokeLater(() -> {
+                    tableModal.setData(result.getItems());
+                    if (pagination != null) pagination.setPageRange(result.getPage(), result.getTotalPages());
                     refreshStats();
                 }))
                 .exceptionally(ex -> {
@@ -179,6 +216,13 @@ public class FormWorkOrders extends AbstractTableForm {
                     Servicio.getLogger().error("Tablo yenileme hatası", ex);
                     return null;
                 });
+    }
+
+    @Override
+    protected void applyFilter() {
+        currentSearchTerm = searchField.getText().trim();
+        currentPage = 1;
+        refreshTable();
     }
 
     // -------------------------------------------------------------------------
@@ -214,7 +258,7 @@ public class FormWorkOrders extends AbstractTableForm {
         QuickIntakePanel[] panelRef = new QuickIntakePanel[1];
         panelRef[0] = new QuickIntakePanel(data, () -> {
             CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
-            ModalDialog.pushModal(
+            AppModal.pushModal(
                     new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
                         if (a1 != SimpleModalBorder.YES_OPTION) return;
                         Customer newCustomer = newCustomerPanel.getData();
@@ -224,7 +268,7 @@ public class FormWorkOrders extends AbstractTableForm {
                         ServiceManager.getCustomerService().save(newCustomer, false).thenAccept(saved ->
                                 SwingUtilities.invokeLater(() -> {
                                     panelRef[0].appendNewCustomer(saved);
-                                    ModalDialog.popModal(MODAL_ID);
+                                    AppModal.popModal(MODAL_ID);
                                 })
                         );
                     }),
@@ -246,7 +290,7 @@ public class FormWorkOrders extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal",           SimpleModalBorder.CANCEL_OPTION)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, title, options, (controller, action) -> {
+        AppModal.showModal(this, new SimpleModalBorder(panel, title, options, (controller, action) -> {
             if (action == SimpleModalBorder.OPENED) {
                 panel.requestInitialFocus();
                 return;

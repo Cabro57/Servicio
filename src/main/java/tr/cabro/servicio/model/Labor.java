@@ -18,6 +18,13 @@ public class Labor {
     @ColumnName("default_price")
     private BigDecimal defaultPrice = BigDecimal.ZERO;
 
+    @ColumnName("device_type_id")
+    private Long deviceTypeId;
+
+    // Yalnızca listeleme sorgularında JOIN ile doldurulur, insert/update'te kullanılmaz.
+    @ColumnName("device_type_name")
+    private String deviceTypeName;
+
     @ColumnName("is_deleted")
     private boolean isDeleted;
 

@@ -23,7 +23,7 @@ public interface ReportRepository {
             "           SUM(CASE WHEN si.item_type = 'PART' THEN si.purchase_price * si.quantity ELSE 0 END), 0.0) AS total_profit " +
             "FROM work_orders s " +
             "LEFT JOIN work_order_items si ON s.id = si.service_id " +
-            "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate)")
+            "WHERE s.created_at >= :startDate AND s.created_at < date(:endDate, '+1 day')")
     SummaryCardDto getSummaryCards(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
 
 
@@ -35,7 +35,7 @@ public interface ReportRepository {
             "FROM work_orders s " +
             "JOIN devices d ON s.device_id = d.id " +
             "JOIN device_types dt ON d.device_type_id = dt.id " +
-            "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
+            "WHERE s.created_at >= :startDate AND s.created_at < date(:endDate, '+1 day') " +
             "GROUP BY dt.name ORDER BY value DESC") // GROUP BY dt.name
     List<ChartDataDto> getDeviceTypeDistribution(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
 
@@ -44,7 +44,7 @@ public interface ReportRepository {
             "FROM work_orders s " +
             "JOIN devices d ON s.device_id = d.id " +
             "JOIN device_brands db ON d.brand_id = db.id " +
-            "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
+            "WHERE s.created_at >= :startDate AND s.created_at < date(:endDate, '+1 day') " +
             "GROUP BY db.name ORDER BY value DESC") // GROUP BY db.name
     List<ChartDataDto> getBrandDistribution(@Bind("startDate") String startDate, @Bind("endDate") String endDate);
 
@@ -58,7 +58,7 @@ public interface ReportRepository {
             "  COALESCE(SUM(si.unit_price * si.quantity), 0.0) AS value " +
             "FROM work_orders s " +
             "LEFT JOIN work_order_items si ON s.id = si.service_id " +
-            "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
+            "WHERE s.created_at >= :startDate AND s.created_at < date(:endDate, '+1 day') " +
             "GROUP BY label ORDER BY label ASC")
     List<ChartDataDto> getRevenueTrend(@Bind("sqlFormat") String sqlFormat,
                                        @Bind("startDate") String startDate,
@@ -70,7 +70,7 @@ public interface ReportRepository {
             "           SUM(CASE WHEN si.item_type = 'PART' THEN si.purchase_price * si.quantity ELSE 0 END), 0.0) AS value " +
             "FROM work_orders s " +
             "LEFT JOIN work_order_items si ON s.id = si.service_id " +
-            "WHERE date(s.created_at) BETWEEN date(:startDate) AND date(:endDate) " +
+            "WHERE s.created_at >= :startDate AND s.created_at < date(:endDate, '+1 day') " +
             "GROUP BY label ORDER BY label ASC")
     List<ChartDataDto> getProfitTrend(@Bind("sqlFormat") String sqlFormat,
                                       @Bind("startDate") String startDate,

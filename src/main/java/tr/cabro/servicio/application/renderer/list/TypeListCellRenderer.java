@@ -20,6 +20,7 @@ public class TypeListCellRenderer extends JPanel implements ListCellRenderer<Dev
 
     private final Consumer<DeviceType> onDelete;
     private DeviceType current;
+    private int hoveredIndex = -1;
 
     public TypeListCellRenderer(JList<DeviceType> list, Consumer<DeviceType> onDelete) {
         this.onDelete = onDelete;
@@ -58,6 +59,7 @@ public class TypeListCellRenderer extends JPanel implements ListCellRenderer<Dev
         list.addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
+                hoveredIndex = list.locationToIndex(e.getPoint());
                 list.repaint();
             }
         });
@@ -105,10 +107,7 @@ public class TypeListCellRenderer extends JPanel implements ListCellRenderer<Dev
         nameLabel.setText(value.getName());
         badgeLabel.setText(String.valueOf(value.getBrandCount()));
 
-        Point mouse = list.getMousePosition();
-        boolean hovered = mouse != null
-                && list.getCellBounds(index, index) != null
-                && list.getCellBounds(index, index).contains(mouse);
+        boolean hovered = index == hoveredIndex;
 
         if (hovered) {
             putClientProperty(FlatClientProperties.STYLE_CLASS, "hovered");

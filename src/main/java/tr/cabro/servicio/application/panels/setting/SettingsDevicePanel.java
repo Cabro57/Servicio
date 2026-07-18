@@ -66,11 +66,12 @@ public class SettingsDevicePanel extends JPanel {
 
         deviceDictService.addType(typeName).thenAccept(id -> {
             SwingUtilities.invokeLater(() -> {
+                typeModel.addElement(new DeviceType((long) id, typeName, 0));
                 Toast.show(this, Toast.Type.SUCCESS, "Cihaz türü eklendi: " + typeName);
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+                Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
             });
 
             return null;
@@ -94,7 +95,7 @@ public class SettingsDevicePanel extends JPanel {
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+                Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
             });
             Servicio.getLogger().error(ex.getMessage(), ex);
             return null;
@@ -106,18 +107,20 @@ public class SettingsDevicePanel extends JPanel {
         DeviceType selectedType = typeList.getSelectedValue();
         String brandName = brandField.getText().trim();
         if (selectedType != null) {
-            deviceDictService.addBrand(brandName).thenAccept(id -> {
+            deviceDictService.addBrandToType(selectedType.getId(), brandName).thenAccept(v -> {
                 SwingUtilities.invokeLater(() -> {
                     Toast.show(this, Toast.Type.SUCCESS, "Marka oluşturuldu: " + brandName);
                     loadBrands(selectedType);
                 });
             }).exceptionally(ex -> {
                 SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.WARNING, ex.getMessage());
+                    Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
                 });
 
                 return null;
             });
+        } else {
+            Toast.show(this, Toast.Type.WARNING, "Önce bir cihaz türü seçin.");
         }
 
         brandField.setText("");
@@ -128,8 +131,14 @@ public class SettingsDevicePanel extends JPanel {
         if (selectedType != null && selectedBrand != null) {
             deviceDictService.unlinkBrandFromType(selectedType.getId(), selectedBrand.getId()).thenAccept(v -> {
                 SwingUtilities.invokeLater(() -> {
+                    brandModel.removeElement(selectedBrand);
                     Toast.show(this, Toast.Type.INFO, String.format("%s türüne ait %s markası silindi.", selectedType.getName(), selectedBrand.getName()));
                 });
+            }).exceptionally(ex -> {
+                SwingUtilities.invokeLater(() -> {
+                    Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
+                });
+                return null;
             });
         }
     }
@@ -146,7 +155,7 @@ public class SettingsDevicePanel extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 brandModel.clear();
                 deviceBrands.forEach(brandModel::addElement);
-                brandTitle.setText(deviceType.getName() + "Markaları");
+                brandTitle.setText(deviceType.getName() + " Markaları");
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
@@ -232,6 +241,6 @@ public class SettingsDevicePanel extends JPanel {
     public JList<DeviceType> typeList;
     JTextField brandField;
     JButton brandAddButton;
-    JList<DeviceBrand> brandList;
+    public JList<DeviceBrand> brandList;
 
 }

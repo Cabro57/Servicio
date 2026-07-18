@@ -8,6 +8,7 @@ import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.model.dto.PartStatsDto;
 
 import java.util.List;
 import java.util.Optional;
@@ -90,4 +91,39 @@ public interface PartRepository {
             "(name LIKE :search OR barcode LIKE :search OR category LIKE :search OR model_compatibility LIKE :search) " +
             "ORDER BY name")
     List<Part> search(@Bind("search") String searchTerm);
+
+    // =========================================================================
+    // SAYFALAMA (LIMIT/OFFSET) — DB-tabanlı liste ekranı için
+    // =========================================================================
+
+    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
+            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
+            "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 " +
+            "ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
+    List<Part> findAllPaged(@Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM parts WHERE is_deleted = 0")
+    long countAll();
+
+    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
+            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
+            "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 AND " +
+            "(name LIKE :search OR barcode LIKE :search OR category LIKE :search OR model_compatibility LIKE :search) " +
+            "ORDER BY name LIMIT :limit OFFSET :offset")
+    List<Part> searchPaged(@Bind("search") String searchTerm, @Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) FROM parts WHERE is_deleted = 0 AND " +
+            "(name LIKE :search OR barcode LIKE :search OR category LIKE :search OR model_compatibility LIKE :search)")
+    long countSearch(@Bind("search") String searchTerm);
+
+    // İstatistik kartları için tek sorguda agregat — FormParts.refreshStats()'daki tam-tablo
+    // client-side hesaplamanın yerine geçer.
+    @RegisterBeanMapper(PartStatsDto.class)
+    @SqlQuery("SELECT " +
+            "  COUNT(*) AS part_variety_count, " +
+            "  COALESCE(SUM(stock_quantity), 0) AS total_stock, " +
+            "  COUNT(CASE WHEN stock_quantity < min_stock_level THEN 1 END) AS critical_stock_count, " +
+            "  COALESCE(SUM(purchase_price * stock_quantity), 0.0) AS total_inventory_value " +
+            "FROM parts WHERE is_deleted = 0")
+    PartStatsDto getStats();
 }

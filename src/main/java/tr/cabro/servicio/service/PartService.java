@@ -5,6 +5,8 @@ import tr.cabro.servicio.database.repository.SupplierRepository;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.StockMovement;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.model.dto.PageResult;
+import tr.cabro.servicio.model.dto.PartStatsDto;
 import tr.cabro.servicio.model.enums.ReferenceType;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.Validator;
@@ -130,6 +132,34 @@ public class PartService {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
         return CompletableFuture.supplyAsync(
                 () -> hydrateParts(partRepository.search("%" + searchTerm.trim() + "%")));
+    }
+
+    // =========================================================================
+    // SAYFALAMA (LIMIT/OFFSET) — DB-tabanlı liste ekranı için
+    // =========================================================================
+
+    public CompletableFuture<PageResult<Part>> getAllPaged(int page, int pageSize) {
+        int offset = (page - 1) * pageSize;
+        return CompletableFuture.supplyAsync(() -> {
+            List<Part> items = hydrateParts(partRepository.findAllPaged(pageSize, offset));
+            long total = partRepository.countAll();
+            return new PageResult<>(items, page, pageSize, total);
+        });
+    }
+
+    public CompletableFuture<PageResult<Part>> searchPaged(String searchTerm, int page, int pageSize) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) return getAllPaged(page, pageSize);
+        int offset = (page - 1) * pageSize;
+        String likeTerm = "%" + searchTerm.trim() + "%";
+        return CompletableFuture.supplyAsync(() -> {
+            List<Part> items = hydrateParts(partRepository.searchPaged(likeTerm, pageSize, offset));
+            long total = partRepository.countSearch(likeTerm);
+            return new PageResult<>(items, page, pageSize, total);
+        });
+    }
+
+    public CompletableFuture<PartStatsDto> getStats() {
+        return CompletableFuture.supplyAsync(partRepository::getStats);
     }
 
     // --- Helper ---

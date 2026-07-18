@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
 import net.miginfocom.swing.MigLayout;
-import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
@@ -9,6 +8,7 @@ import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.ProcessEditPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.Labor;
@@ -22,6 +22,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public class SettingsRepairPanel extends JPanel {
+
+    private static final DeviceType ALL_TYPES = new DeviceType(null, "Tümü", 0);
 
     private final DefaultComboBoxModel<DeviceType> comboBoxModel = new DefaultComboBoxModel<>();
     private GenericTableModel<Labor> tableModal;
@@ -38,7 +40,16 @@ public class SettingsRepairPanel extends JPanel {
         initComponent();
 
         setupTable();
+
+        comboBoxModel.addElement(ALL_TYPES);
+        device_type_combo.setModel(comboBoxModel);
+        ServiceManager.getDeviceDictionaryManager().getAllTypes().thenAccept(types -> {
+            SwingUtilities.invokeLater(() -> types.forEach(comboBoxModel::addElement));
+        });
+
         refreshTable();
+
+        device_type_combo.addActionListener(e -> refreshTable());
 
         add_button.addActionListener(e -> {
             setupEditModal("LABOR_ADD", false, new Labor());
@@ -48,6 +59,7 @@ public class SettingsRepairPanel extends JPanel {
     private void setupTable() {
         List<ColumnDef<Labor>> columns = Arrays.asList(
                 new ColumnDef<>("İşlem Adı", String.class, Labor::getName),
+                new ColumnDef<>("Tür", String.class, l -> l.getDeviceTypeId() == null ? "Genel" : l.getDeviceTypeName()),
                 new ColumnDef<>("Açıklama", String.class, Labor::getDescription),
                 new ColumnDef<>("Fiyat", BigDecimal.class, Labor::getDefaultPrice),
                 new ColumnDef<>("İşlem", String.class, labor -> "Detay")
@@ -68,7 +80,7 @@ public class SettingsRepairPanel extends JPanel {
                 new SimpleModalBorder.Option("Çık", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(
+        AppModal.showModal(this, new SimpleModalBorder(
                 panel, "İşçilik Formu", options,
                 (controller, action) -> {
                     if (action == SimpleModalBorder.OPENED) {
@@ -97,7 +109,14 @@ public class SettingsRepairPanel extends JPanel {
     }
 
     private void refreshTable() {
-        laborService.getAll().thenAccept(labors -> {
+        DeviceType selectedType = (DeviceType) device_type_combo.getSelectedItem();
+        boolean filterByType = selectedType != null && selectedType.getId() != null;
+
+        var future = filterByType
+                ? laborService.getByTypeId(selectedType.getId())
+                : laborService.getAll();
+
+        future.thenAccept(labors -> {
             SwingUtilities.invokeLater(() -> {
                 tableModal.setData(labors);
             });
@@ -112,8 +131,8 @@ public class SettingsRepairPanel extends JPanel {
 
     private void configureTableColumns() {
 
-        table.getColumnModel().getColumn(3).setCellRenderer(new ActionButtonRenderer());
-        table.getColumnModel().getColumn(3).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+        table.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());
+        table.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onEdit(int row) {
                 int modelRow = table.convertRowIndexToModel(row);
@@ -138,7 +157,7 @@ public class SettingsRepairPanel extends JPanel {
                 if (confirm == JOptionPane.YES_OPTION) {
                     laborService.delete(l.getId()).thenAccept(response -> {
                         SwingUtilities.invokeLater(() -> {
-                            Toast.show(SettingsRepairPanel.this, Toast.Type.SUCCESS, "Müşteri silindi.");
+                            Toast.show(SettingsRepairPanel.this, Toast.Type.SUCCESS, "İşçilik silindi.");
                             refreshTable();
                         });
                     });
@@ -152,11 +171,11 @@ public class SettingsRepairPanel extends JPanel {
             }
         }));
 
-        table.getColumnModel().getColumn(2).setMaxWidth(100);
+        table.getColumnModel().getColumn(3).setMaxWidth(100);
     }
 
     private void initComponent() {
-        setLayout(new MigLayout("fillx,insets 5,gapy 10", "[grow][pref][pref][pref]", "[][grow]"));
+        setLayout(new MigLayout("fillx,insets 5,gapy 10", "[grow][pref]", "[][grow]"));
 
         // Cihaz tipi combobox
         device_type_combo = new JComboBox<>();
@@ -164,13 +183,7 @@ public class SettingsRepairPanel extends JPanel {
 
         // Butonlar
         add_button = new JButton("Ekle");
-        add(add_button, "split 3");
-
-        edit_button = new JButton("Düzenle");
-        add(edit_button);
-
-        delete_button = new JButton("Sil");
-        add(delete_button, "wrap");
+        add(add_button, "wrap");
 
         // Tablo + scrollpane
         table = new JTable();
@@ -181,7 +194,5 @@ public class SettingsRepairPanel extends JPanel {
     JTable table;
     JComboBox<DeviceType> device_type_combo;
     JButton add_button;
-    JButton edit_button;
-    JButton delete_button;
 
 }

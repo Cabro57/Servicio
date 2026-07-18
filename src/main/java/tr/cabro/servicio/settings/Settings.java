@@ -7,6 +7,8 @@ import lombok.Setter;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.model.enums.BackupMode;
 
+import java.io.File;
+
 
 @Getter
 @Setter
@@ -20,12 +22,16 @@ public class Settings extends OkaeriConfig {
     @Variable("barcode_prefix")
     private String barcodePrefix = "123456";
 
+    // Liste ekranlarında sayfa başına gösterilen kayıt sayısı (uygulama yeniden başlatılsa da korunur)
+    private int workOrderPageSize = 10;
+    private int partPageSize = 10;
+
     private BackupSettings backup = new BackupSettings();
 
     @Getter @Setter
     public static class BackupSettings extends OkaeriConfig {
 
-        private String path = Servicio.getInstance().getDataFolder().getAbsolutePath() + "\\backups";
+        private String path = new File(Servicio.getInstance().getDataFolder(), "backups").getAbsolutePath();
         private BackupMode mode = BackupMode.ON_START;
         private int interval = 15;
 

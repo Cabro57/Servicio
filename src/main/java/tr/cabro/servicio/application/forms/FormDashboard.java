@@ -21,7 +21,6 @@ import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.model.dto.ChartDataDto;
 import tr.cabro.servicio.model.dto.SummaryCardDto;
 import tr.cabro.servicio.model.enums.TimeFilter;
-import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
 
@@ -75,7 +74,6 @@ public class FormDashboard extends Form {
 
     private void loadData() {
         ReportManager reportManager = ServiceManager.getReportManager();
-        WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
 
         // Tarihleri Enum'dan doğrudan alıyoruz (Switch-case'e gerek kalmadı)
         LocalDate[] dates = selectedTimeFilter.getRanges();
@@ -171,18 +169,9 @@ public class FormDashboard extends Form {
             return null;
         });;
 
-        // ALT TABLOLAR
-        workOrderService.getAll("OPEN")
-                .thenAccept(services -> {
-                    SwingUtilities.invokeLater(() -> activeServiceTable.setData(services));
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.WARNING, ex.getMessage());
-                    });
-                    Servicio.getLogger().error("HATA:", ex);
-                    return null;
-                });
-        workOrderService.getServicesWithDebt().thenAccept(services -> SwingUtilities.invokeLater(() -> pendingPaymentsTable.setData(services)));
+        // ALT TABLOLAR (kendi içlerinde DB-tabanlı sayfalama ile çekiyor, sayfa 1'e dönülür)
+        activeServiceTable.loadPage(1);
+        pendingPaymentsTable.loadPage(1);
     }
 
     /**
@@ -311,8 +300,8 @@ public class FormDashboard extends Form {
         JPanel panel = new JPanel(new MigLayout("", "[fill]", "[fill]"));
         panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
 
-        activeServiceTable = new ActiveServiceTable();
-        pendingPaymentsTable = new PendingPaymentsTable();
+        activeServiceTable = new ActiveServiceTable(ServiceManager.getWorkOrderService());
+        pendingPaymentsTable = new PendingPaymentsTable(ServiceManager.getWorkOrderService());
         panel.add(activeServiceTable, "sgx 1, width 100%");
         panel.add(new JSeparator(JSeparator.VERTICAL), "width 3!");
         panel.add(pendingPaymentsTable, "sgx 1, width 100%");

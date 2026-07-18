@@ -1,10 +1,10 @@
 package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.*;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
@@ -340,7 +340,7 @@ public class FormCustomers extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Yeni Müşteri Ekle", options, (controller, action) -> {
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Yeni Müşteri Ekle", options, (controller, action) -> {
             if (action == SimpleModalBorder.OK_OPTION) {
                 Customer updated = panel.getData();
                 if (updated == null) {
@@ -374,7 +374,7 @@ public class FormCustomers extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Müşteri Düzenle", options, (controller, action) -> {
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Müşteri Düzenle", options, (controller, action) -> {
             if (action == SimpleModalBorder.OK_OPTION) {
                 Customer updated = panel.getData();
                 if (updated == null) {

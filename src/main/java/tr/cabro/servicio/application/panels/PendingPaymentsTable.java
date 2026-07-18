@@ -11,6 +11,9 @@ import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.dto.PageResult;
+import tr.cabro.servicio.service.WorkOrderService;
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.util.Format;
 import raven.swingpack.JPagination;
 
@@ -20,51 +23,45 @@ import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class PendingPaymentsTable extends JPanel {
 
+    private final WorkOrderService workOrderService;
     private GenericTableModel<WorkOrder> tableModel;
     private JTable table;
 
-    // --- SAYFALAMA DEĞİŞKENLERİ ---
-    private List<WorkOrder> allData = new ArrayList<>();
+    // --- SAYFALAMA (DB-tabanlı) ---
     private final int ITEMS_PER_PAGE = 5; // Her sayfada kaç veri gösterilecek
     private JPagination pagination;
 
-    public PendingPaymentsTable() {
+    public PendingPaymentsTable(WorkOrderService workOrderService) {
+        this.workOrderService = workOrderService;
         init();
     }
 
     private void init() {
         initComponent();
+        loadPage(1);
     }
 
-    // --- YENİ VERİ YÜKLEME METODU ---
-    public void setData(List<WorkOrder> workOrder) {
-        this.allData = workOrder != null ? workOrder : new ArrayList<>();
+    // --- DB-TABANLI SAYFA YÜKLEME ---
+    public void loadPage(int page) {
+        workOrderService.getWithDebtPaged(page, ITEMS_PER_PAGE).thenAccept(result ->
+                SwingUtilities.invokeLater(() -> applyPage(result))
+        ).exceptionally(ex -> {
+            Servicio.getLogger().error("Bekleyen tahsilatlar yüklenirken hata oluştu", ex);
+            return null;
+        });
+    }
 
-        int totalPages = (int) Math.ceil((double) allData.size() / ITEMS_PER_PAGE);
-        if (totalPages == 0) totalPages = 1;
-
-        // Kütüphanenizin DOĞRU metodu: setPageRange(GuncelSayfa, ToplamSayfa)
+    private void applyPage(PageResult<WorkOrder> result) {
         if (pagination != null) {
-            pagination.setPageRange(1, totalPages);
+            pagination.setPageRange(result.getPage(), result.getTotalPages());
         }
-
-        // İlk sayfayı tabloya bas
-        updateTablePage(1);
-    }
-
-    // --- SAYFA GÜNCELLEME MOTORU ---
-    private void updateTablePage(int page) {
-        int startIndex = (page - 1) * ITEMS_PER_PAGE;
-        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, allData.size());
-
-        if (startIndex <= endIndex && tableModel != null) {
-            tableModel.setData(allData.subList(startIndex, endIndex));
+        if (tableModel != null) {
+            tableModel.setData(result.getItems());
             revalidate();
             repaint();
         }
@@ -173,11 +170,7 @@ public class PendingPaymentsTable extends JPanel {
         // --- 3. SAYFALAMA (PAGINATION) BİLEŞENİ ---
         // (Maksimum 5 görünür buton, başlangıç sayfası 1, toplam sayfa 1)
         pagination = new JPagination(5, 1, 1);
-        pagination.addChangeListener(e -> {
-            // Kütüphanenizin DOĞRU metodu: getSelectedPage()
-            int page = pagination.getSelectedPage();
-            updateTablePage(page);
-        });
+        pagination.addChangeListener(e -> loadPage(pagination.getSelectedPage()));
 
         // Bileşenleri ana panele ekle
         add(headerPanel);

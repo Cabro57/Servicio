@@ -16,14 +16,18 @@ import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.model.dto.PageResult;
+import tr.cabro.servicio.model.dto.PartStatsDto;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
+import raven.swingpack.JPagination;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -38,6 +42,13 @@ public class FormParts extends AbstractTableForm {
 
     private final PartService partService;
     private GenericTableModel<Part> tableModel;
+
+    // --- SAYFALAMA (DB-tabanlı) ---
+    private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
+    private int pageSize = Servicio.getSettings().getPartPageSize();
+    private int currentPage = 1;
+    private String currentSearchTerm = "";
+    private JPagination pagination;
 
     public FormParts() {
         this.partService = ServiceManager.getPartService();
@@ -73,39 +84,52 @@ public class FormParts extends AbstractTableForm {
 
     @Override
     protected void refreshStats() {
-        partService.getAll().thenAccept(allParts -> {
-
-            // 1. Parça Çeşidi (Sistemdeki farklı ürün/barkod sayısı)
-            long partVarietyCount = allParts.size();
-
-            // 2. Toplam Stok (Tüm parçaların stok adetlerinin toplamı)
-            long totalStock = allParts.stream()
-                    .mapToLong(Part::getStockQuantity)
-                    .sum();
-
-            // 3. Kritik Stok (Stok seviyesi 'minStock' değerinin altına düşen parça sayısı)
-            long criticalStockCount = allParts.stream()
-                    .filter(p -> p.getStockQuantity() < p.getMinStockLevel())
-                    .count();
-
-            // 4. Envanter Değeri (Stoktaki ürünlerin alış fiyatı üzerinden toplam sermaye değeri)
-            BigDecimal totalInventoryValue = allParts.stream()
-                    .map(Part::getTotalStockValue)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            SwingUtilities.invokeLater(() -> {
-                cardBox.setValueAt(0, String.valueOf(partVarietyCount), "Parça Çeşidi", "", true);
-                cardBox.setValueAt(1, String.valueOf(totalStock), "Toplam Stok", "", true);
-                cardBox.setValueAt(2, String.valueOf(criticalStockCount), "Kritik Stok", "", true);
-                cardBox.setValueAt(3, Format.formatPrice(totalInventoryValue), "Envanter Değeri", "", true);
-            });
-        }).exceptionally(ex -> {
+        partService.getStats().thenAccept(stats -> SwingUtilities.invokeLater(() -> {
+            cardBox.setValueAt(0, String.valueOf(stats.getPartVarietyCount()), "Parça Çeşidi", "", true);
+            cardBox.setValueAt(1, String.valueOf(stats.getTotalStock()), "Toplam Stok", "", true);
+            cardBox.setValueAt(2, String.valueOf(stats.getCriticalStockCount()), "Kritik Stok", "", true);
+            cardBox.setValueAt(3, Format.formatPrice(stats.getTotalInventoryValue()), "Envanter Değeri", "", true);
+        })).exceptionally(ex -> {
             Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
             SwingUtilities.invokeLater(() -> {
                 Toast.show(this, Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
             });
             return null;
         });
+    }
+
+    @Override
+    protected JComponent createPaginationComponent() {
+        pagination = new JPagination(5, 1, 1);
+        pagination.addChangeListener(e -> {
+            currentPage = pagination.getSelectedPage();
+            refreshTable();
+        });
+
+        JComboBox<Integer> pageSizeCombo = new JComboBox<>(PAGE_SIZE_OPTIONS);
+        pageSizeCombo.setSelectedItem(pageSize);
+        pageSizeCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
+        pageSizeCombo.addActionListener(e -> {
+            pageSize = (Integer) pageSizeCombo.getSelectedItem();
+            currentPage = 1;
+            Servicio.getSettings().setPartPageSize(pageSize);
+            Servicio.getSettings().save();
+            refreshTable();
+        });
+
+        JPanel panel = new JPanel(new net.miginfocom.swing.MigLayout("insets 0, gapx 10", "[][]", "[]"));
+        panel.setOpaque(false);
+        panel.add(new JLabel("Sayfa başına:"));
+        panel.add(pageSizeCombo);
+        panel.add(pagination);
+        return panel;
+    }
+
+    @Override
+    protected void applyFilter() {
+        currentSearchTerm = searchField.getText().trim();
+        currentPage = 1;
+        refreshTable();
     }
 
     @Override
@@ -220,10 +244,14 @@ public class FormParts extends AbstractTableForm {
 
     @Override
     protected void refreshTable() {
+        java.util.concurrent.CompletableFuture<PageResult<Part>> future = currentSearchTerm.isEmpty()
+                ? partService.getAllPaged(currentPage, pageSize)
+                : partService.searchPaged(currentSearchTerm, currentPage, pageSize);
 
-        partService.getAll().thenAccept(parts -> {
+        future.thenAccept(result -> {
             SwingUtilities.invokeLater(() -> {
-                tableModel.setData(parts);
+                tableModel.setData(result.getItems());
+                if (pagination != null) pagination.setPageRange(result.getPage(), result.getTotalPages());
                 refreshStats();
             });
         }).exceptionally(ex -> {
@@ -247,7 +275,7 @@ public class FormParts extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Yeni Parça Ekle", options,
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Yeni Parça Ekle", options,
             (controller, action) -> {
                 if (action == SimpleModalBorder.OK_OPTION) {
                     Part updated = panel.getData();
@@ -284,7 +312,7 @@ public class FormParts extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        ModalDialog.showModal(this, new SimpleModalBorder(panel, "Parça Düzenle", options,
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Parça Düzenle", options,
             (controller, action) -> {
                  if (action == SimpleModalBorder.OK_OPTION) {
                     Part updated = panel.getData();

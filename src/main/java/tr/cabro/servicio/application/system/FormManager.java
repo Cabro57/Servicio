@@ -15,6 +15,7 @@ import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
 
 import javax.swing.*;
+import java.util.List;
 
 public class FormManager {
 
@@ -23,6 +24,7 @@ public class FormManager {
     private static JFrame frame;
     private static MainForm mainForm;
     private static PinPanel pinPanel;
+    private static List<AppModal.ModalRecord> pendingModals;
 
     public static void install(JFrame f) {
         frame = f;
@@ -156,6 +158,29 @@ public class FormManager {
         frame.revalidate();
     }
 
+    /**
+     * Otomatik boşta-kalma kilidi için: açık bir modal varsa (yazılmış veriler dahil)
+     * yakalanır, kilit sonrası {@link #unlock()} ile aynı nesneyle yeniden açılır.
+     */
+    public static void lockForInactivity() {
+        pendingModals = AppModal.captureOpenAndClear();
+        lock();
+        ModalDialog.closeAllModalImmediately();
+    }
+
+    /** PIN doğrulandıktan sonra tek giriş noktası: kaldığı yere döner, varsa bekleyen modalı yeniden açar. */
+    public static void unlock() {
+        if (FORMS.getCurrent() != null) {
+            loginResume();
+        } else {
+            loginFresh();
+        }
+        if (pendingModals != null && !pendingModals.isEmpty()) {
+            AppModal.reopen(pendingModals);
+        }
+        pendingModals = null;
+    }
+
     private static MainForm getMainForm() {
         if (mainForm == null) {
             mainForm = new MainForm();
@@ -176,7 +201,7 @@ public class FormManager {
     }
 
     public static void showProfile() {
-        ModalDialog.showModal(frame,
+        AppModal.showModal(frame,
                 new SimpleModalBorder(new ProfileSettingsPanel(), "Profil Ayarları"),
                 ModalDialog.createOption(),
                 ProfileSettingsPanel.MODAL_ID

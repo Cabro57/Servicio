@@ -8,6 +8,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.AppSplashScreen;
 import tr.cabro.servicio.application.utils.DemoPreferences;
 import tr.cabro.servicio.util.AppLock;
+import tr.cabro.servicio.util.DataDirResolver;
 
 import javax.swing.*;
 import java.io.File;
@@ -51,7 +52,7 @@ public final class ApplicationBootstrap {
         // 3. Ağır işlemleri arka plana at
         Thread startupThread = new Thread(() -> {
             try {
-                Servicio app = new Servicio(new File("."), splash);
+                Servicio app = new Servicio(resolveBaseFolder(), splash);
                 app.run(splash);
             } catch (Exception e) {
                 log.error("Başlatma sırasında kritik hata!", e);
@@ -63,6 +64,19 @@ public final class ApplicationBootstrap {
         }, "servicio-startup");
         startupThread.setDaemon(false); // Ana thread olarak çalışsın
         startupThread.start();
+    }
+
+    /**
+     * Veri klasörünün ({@code .servicio/}) oluşturulacağı kök dizini döner.
+     * <p>
+     * Normalde {@link Launcher#main} bunu çok daha erken (logback konfigüre olmadan önce)
+     * {@link DataDirResolver} ile hesaplayıp {@code servicio.baseDir} sistem özelliğine yazar —
+     * burada aynı değeri okuyup tekrar kullanıyoruz (logback'in kullandığı yolla tutarlı kalması için).
+     * Özellik yoksa (ör. IDE'den doğrudan {@code Servicio.main} çalıştırılırsa) yeniden hesaplanır.
+     */
+    private static File resolveBaseFolder() {
+        String resolved = System.getProperty("servicio.baseDir");
+        return (resolved != null) ? new File(resolved) : DataDirResolver.resolveBaseFolder();
     }
 
     /**

@@ -1,6 +1,6 @@
 package tr.cabro.servicio.util.searchableresult;
 
-import raven.modal.ModalDialog;
+import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.system.FormSearch;
@@ -55,7 +55,7 @@ public class ServiceSearchResult implements ISearchableResult {
 
     @Override
     public void executeAction() {
-        ModalDialog.closeModal(FormSearch.ID); // Arama panelini kapat
+        AppModal.closeModal(FormSearch.ID); // Arama panelini kapat
 
         // SİZİN MİMARİNİZDEKİ DOĞRU ÇAĞRI:
         // Yeni, veri odaklı formu 'new' ile oluştur
