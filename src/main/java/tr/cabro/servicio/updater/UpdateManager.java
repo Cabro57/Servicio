@@ -2,6 +2,7 @@ package tr.cabro.servicio.updater;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tr.cabro.servicio.util.DataDirResolver;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -66,6 +67,13 @@ public class UpdateManager {
     private final File    tempDir;
 
     /**
+     * false → appRoot (ör. Program Files\Servicio\app) admin olmayan kullanıcıyla
+     * yazılamıyor. Bu durumda indirme kullanıcı veri dizinine yapılır ve dosyaları
+     * appRoot'a taşıyan adım yönetici izniyle (UAC) çalıştırılır.
+     */
+    private final boolean appRootWritable;
+
+    /**
      * true  → IDE/geliştirme ortamı; hash kontrolü atlanır.
      * false → Üretim; tam hash kontrolü.
      */
@@ -83,11 +91,28 @@ public class UpdateManager {
 
     public UpdateManager(String manifestUrl, String currentVersion,
                          File appRoot, boolean devMode) {
-        this.manifestUrl    = manifestUrl;
-        this.currentVersion = currentVersion;
-        this.appRoot        = appRoot;
-        this.tempDir        = new File(appRoot, ".update-tmp");
-        this.devMode        = devMode;
+        this.manifestUrl     = manifestUrl;
+        this.currentVersion  = currentVersion;
+        this.appRoot         = appRoot;
+        this.appRootWritable = isWritable(appRoot);
+        this.tempDir         = this.appRootWritable
+                ? new File(appRoot, ".update-tmp")
+                : new File(DataDirResolver.resolveBaseFolder(), ".servicio/update-tmp");
+        this.devMode         = devMode;
+    }
+
+    private static boolean isWritable(File dir) {
+        try {
+            if (!dir.isDirectory()) return dir.mkdirs() || dir.isDirectory();
+            File probe = new File(dir, ".write-test-" + System.nanoTime());
+            if (probe.createNewFile()) {
+                probe.delete();
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ─── Genel API ───────────────────────────────────────────────────────────
@@ -295,6 +320,12 @@ public class UpdateManager {
      * libs/ klasöründeki JAR'lar kilitli olmadığı için doğrudan taşınır.
      */
     public void applyUpdate() throws IOException {
+        if (!appRootWritable) {
+            log.info("appRoot yazılamıyor ({}) → dosya taşıma yönetici izniyle "
+                    + "launcher script'e bırakıldı.", appRoot);
+            return;
+        }
+
         log.info("Güncelleme uygulanıyor: {} → {}", tempDir, appRoot);
         final String mainJarName = resolveMainJarName();
 
@@ -350,16 +381,24 @@ public class UpdateManager {
                 .toLowerCase().contains("win");
 
         if (isWindows) {
-            // .bat'ı görünür konsol penceresi olmadan çalıştır.
-            // 'cmd /c start bat' bir konsol açar; bunun yerine bir VBS
-            // sarmalayıcı ile pencere stili 0 (gizli) kullanılır.
             File vbs = writeHiddenLauncherVbs(script, pid);
-            ProcessBuilder pb = new ProcessBuilder("wscript.exe", vbs.getAbsolutePath());
-            pb.directory(appRoot);
-            pb.start();
+            if (appRootWritable) {
+                // appRoot yazılabilir → yükseltme gerekmez, gizli (pencere stili 0)
+                // wscript sarmalayıcısıyla doğrudan çalıştır.
+                ProcessBuilder pb = new ProcessBuilder("wscript.exe", vbs.getAbsolutePath());
+                pb.directory(appRoot);
+                pb.start();
+            } else {
+                // appRoot (ör. Program Files) admin olmayan kullanıcıyla yazılamıyor →
+                // VBS'i ShellExecute "runas" ile başlatarak tek seferlik UAC istemi tetiklenir;
+                // script bu izinle appRoot'a dosya taşıyabilir.
+                ProcessBuilder pb = new ProcessBuilder("wscript.exe", vbs.getAbsolutePath());
+                pb.directory(tempDir);
+                pb.start();
+            }
         } else {
             ProcessBuilder pb = new ProcessBuilder("sh", script.getAbsolutePath(), pid);
-            pb.directory(appRoot);
+            pb.directory(appRootWritable ? appRoot : tempDir);
             pb.start();
         }
     }
@@ -367,16 +406,26 @@ public class UpdateManager {
     /**
      * .bat launcher'ını gizli (pencere stili 0) çalıştıran VBS sarmalayıcı üretir.
      * Böylece güncelleme sırasında hiçbir konsol penceresi görünmez.
+     * <p>
+     * appRoot yazılamıyorsa (ör. Program Files kurulumu), Shell.Application'ın
+     * ShellExecute "runas" fiiliyle çalıştırılır — bu, tek seferlik bir UAC istemi
+     * tetikler ve .bat script'i yönetici izniyle çalışır (dosyaları appRoot'a taşıyabilir).
      * VBS dosyasını .bat kendini silmeden önce siler (writeBatScript).
      */
     private File writeHiddenLauncherVbs(File batScript, String pid) throws IOException {
-        File vbs = new File(appRoot, "update-restart.vbs");
+        File vbs = new File(appRootWritable ? appRoot : tempDir, "update-restart.vbs");
         // VBS string literali için tırnakları ikiye katla
         String batPath = batScript.getAbsolutePath().replace("\"", "\"\"");
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 Files.newOutputStream(vbs.toPath()), StandardCharsets.UTF_8))) {
-            pw.println("Set WshShell = CreateObject(\"WScript.Shell\")");
-            pw.println("WshShell.Run \"cmd /c \"\"" + batPath + "\"\" " + pid + "\", 0, False");
+            if (appRootWritable) {
+                pw.println("Set WshShell = CreateObject(\"WScript.Shell\")");
+                pw.println("WshShell.Run \"cmd /c \"\"" + batPath + "\"\" " + pid + "\", 0, False");
+            } else {
+                pw.println("Set objShell = CreateObject(\"Shell.Application\")");
+                pw.println("objShell.ShellExecute \"cmd.exe\", \"/c \"\"" + batPath
+                        + "\"\" " + pid + "\", \"\", \"runas\", 0");
+            }
         }
         return vbs;
     }
@@ -553,16 +602,58 @@ public class UpdateManager {
     // ─── Launcher Script ──────────────────────────────────────────────────────
 
     private File writeBatScript(String jarName, String jvmArgs) throws IOException {
-        File   script = new File(appRoot, "update-restart.bat");
-        String tmpJar = ".update-tmp\\" + jarName;
+        String startCmd = (jvmArgs != null && !jvmArgs.isEmpty())
+                ? "start javaw " + jvmArgs + " -jar \"" + jarName + "\""
+                : "start javaw -jar \"" + jarName + "\"";
 
+        if (appRootWritable) {
+            File   script = new File(appRoot, "update-restart.bat");
+            String tmpJar = ".update-tmp\\" + jarName;
+
+            try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                    Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
+                pw.println("@echo off");
+                pw.println("chcp 65001 >nul");
+                pw.println(":: Servicio Guncelleme Launcher");
+                pw.println("set OLD_PID=%1");
+                pw.println("cd /d \"%~dp0\"");
+                pw.println("");
+                pw.println(":WAIT_JVM");
+                pw.println("tasklist /fi \"PID eq %OLD_PID%\" 2>nul | find /i \"java\" >nul");
+                pw.println("if not errorlevel 1 (");
+                pw.println("    timeout /t 1 /nobreak >nul");
+                pw.println("    goto WAIT_JVM");
+                pw.println(")");
+                pw.println("");
+                pw.println("if exist \"" + tmpJar + "\" (");
+                pw.println("    if exist \"" + jarName + ".bak\" del /f \"" + jarName + ".bak\"");
+                pw.println("    if exist \"" + jarName + "\" ren \"" + jarName + "\" \"" + jarName + ".bak\"");
+                pw.println("    move /y \"" + tmpJar + "\" \"" + jarName + "\"");
+                pw.println(")");
+                pw.println("");
+                pw.println("if exist \".update-tmp\" rd /s /q \".update-tmp\"");
+                pw.println("");
+                pw.println(startCmd);
+                pw.println("");
+                pw.println("if exist \"update-restart.vbs\" del /f \"update-restart.vbs\"");
+                pw.println("del \"%~f0\"");
+            }
+            return script;
+        }
+
+        // appRoot yazılamıyor (ör. Program Files) → script yönetici izniyle çalıştırılacak.
+        // tüm indirilen dosyalar (ana JAR dahil) robocopy ile appRoot'a taşınır — eski JVM
+        // zaten kapanmış olduğu için ana JAR'ın da tek adımda taşınması güvenlidir.
+        File script = new File(tempDir, "update-restart.bat");
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
             pw.println("@echo off");
             pw.println("chcp 65001 >nul");
-            pw.println(":: Servicio Guncelleme Launcher");
+            pw.println(":: Servicio Guncelleme Launcher (yukseltilmis)");
             pw.println("set OLD_PID=%1");
-            pw.println("cd /d \"%~dp0\"");
+            pw.println("set TEMPDIR=" + tempDir.getAbsolutePath());
+            pw.println("set APPROOT=" + appRoot.getAbsolutePath());
+            pw.println("cd /d \"%APPROOT%\"");
             pw.println("");
             pw.println(":WAIT_JVM");
             pw.println("tasklist /fi \"PID eq %OLD_PID%\" 2>nul | find /i \"java\" >nul");
@@ -571,47 +662,61 @@ public class UpdateManager {
             pw.println("    goto WAIT_JVM");
             pw.println(")");
             pw.println("");
-            pw.println("if exist \"" + tmpJar + "\" (");
-            pw.println("    if exist \"" + jarName + ".bak\" del /f \"" + jarName + ".bak\"");
-            pw.println("    if exist \"" + jarName + "\" ren \"" + jarName + "\" \"" + jarName + ".bak\"");
-            pw.println("    move /y \"" + tmpJar + "\" \"" + jarName + "\"");
-            pw.println(")");
+            pw.println("robocopy \"%TEMPDIR%\" \"%APPROOT%\" /E /MOVE /IS /IT /R:3 /W:1 /NFL /NDL /NJH /NJS"
+                    + " /XF update-restart.bat update-restart.vbs");
+            pw.println("rd /s /q \"%TEMPDIR%\" 2>nul");
             pw.println("");
-            pw.println("if exist \".update-tmp\" rd /s /q \".update-tmp\"");
-            pw.println("");
-            String startCmd = (jvmArgs != null && !jvmArgs.isEmpty())
-                    ? "start javaw " + jvmArgs + " -jar \"" + jarName + "\""
-                    : "start javaw -jar \"" + jarName + "\"";
             pw.println(startCmd);
-            pw.println("");
-            pw.println("if exist \"update-restart.vbs\" del /f \"update-restart.vbs\"");
-            pw.println("del \"%~f0\"");
         }
         return script;
     }
 
     private File writeShScript(String jarName, String jvmArgs) throws IOException {
-        File   script = new File(appRoot, "update-restart.sh");
-        String tmpJar = ".update-tmp/" + jarName;
+        String javaCmd = (jvmArgs != null && !jvmArgs.isEmpty())
+                ? "java " + jvmArgs + " -jar \"" + jarName + "\" &"
+                : "java -jar \"" + jarName + "\" &";
+
+        if (appRootWritable) {
+            File   script = new File(appRoot, "update-restart.sh");
+            String tmpJar = ".update-tmp/" + jarName;
+
+            try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                    Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
+                pw.println("#!/bin/sh");
+                pw.println("# Servicio Guncelleme Launcher");
+                pw.println("OLD_PID=$1");
+                pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"");
+                pw.println("cd \"$SCRIPT_DIR\"");
+                pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
+                pw.println("if [ -f \"" + tmpJar + "\" ]; then");
+                pw.println("    mv -f \"" + jarName + "\" \"" + jarName + ".bak\" 2>/dev/null");
+                pw.println("    mv -f \"" + tmpJar + "\" \"" + jarName + "\"");
+                pw.println("fi");
+                pw.println("rm -rf .update-tmp");
+                pw.println(javaCmd);
+                pw.println("rm -- \"$0\"");
+            }
+            script.setExecutable(true);
+            return script;
+        }
+
+        // appRoot yazılamıyor → indirilenler kullanıcı veri dizininden mutlak yollarla taşınır.
+        File script = new File(tempDir, "update-restart.sh");
+        String tempDirAbs = tempDir.getAbsolutePath();
+        String appRootAbs = appRoot.getAbsolutePath();
 
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
             pw.println("#!/bin/sh");
-            pw.println("# Servicio Guncelleme Launcher");
+            pw.println("# Servicio Guncelleme Launcher (appRoot yazilamiyor)");
             pw.println("OLD_PID=$1");
-            pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"");
-            pw.println("cd \"$SCRIPT_DIR\"");
+            pw.println("TEMPDIR=\"" + tempDirAbs + "\"");
+            pw.println("APPROOT=\"" + appRootAbs + "\"");
+            pw.println("cd \"$APPROOT\"");
             pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
-            pw.println("if [ -f \"" + tmpJar + "\" ]; then");
-            pw.println("    mv -f \"" + jarName + "\" \"" + jarName + ".bak\" 2>/dev/null");
-            pw.println("    mv -f \"" + tmpJar + "\" \"" + jarName + "\"");
-            pw.println("fi");
-            pw.println("rm -rf .update-tmp");
-            String javaCmd = (jvmArgs != null && !jvmArgs.isEmpty())
-                    ? "java " + jvmArgs + " -jar \"" + jarName + "\" &"
-                    : "java -jar \"" + jarName + "\" &";
+            pw.println("cp -a \"$TEMPDIR\"/. \"$APPROOT\"/ && rm -rf \"$TEMPDIR\"");
+            pw.println("rm -f \"$APPROOT/update-restart.sh\"");
             pw.println(javaCmd);
-            pw.println("rm -- \"$0\"");
         }
         script.setExecutable(true);
         return script;
