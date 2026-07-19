@@ -68,7 +68,17 @@ public class PhoneHelper {
         return "5XX XXX XX XX"; // Varsayılan
     }
 
-    public static List<CountryCode> getSupportedCountries() {
+    /**
+     * ~250 ülke için Locale çözümü + FlatSVGIcon oluşturma pahalı bir işlemdir.
+     * Bu liste uygulama çalışırken değişmediği için bir kez hesaplanıp önbelleğe
+     * alınır — aksi halde her PhoneField (dolayısıyla her müşteri/cihaz formu)
+     * açılışında EDT üzerinde tekrar tekrar hesaplanması arayüzü anlık donduruyordu.
+     */
+    private static List<CountryCode> supportedCountriesCache;
+
+    public static synchronized List<CountryCode> getSupportedCountries() {
+        if (supportedCountriesCache != null) return supportedCountriesCache;
+
         List<CountryCode> countries = new ArrayList<>();
         for (String region : phoneUtil.getSupportedRegions()) {
             int code = phoneUtil.getCountryCodeForRegion(region);
@@ -83,6 +93,8 @@ public class PhoneHelper {
             countries.remove(tr);
             countries.add(0, tr);
         });
+
+        supportedCountriesCache = countries;
         return countries;
     }
 
