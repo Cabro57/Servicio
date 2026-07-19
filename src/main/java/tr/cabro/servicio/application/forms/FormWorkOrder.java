@@ -428,30 +428,31 @@ public class FormWorkOrder extends Form {
 
                 controller.consume();
 
-                WorkOrderItemEditPanel editPanel = new WorkOrderItemEditPanel(newItem);
-                AppModal.pushModal(new SimpleModalBorder(editPanel, "Kalem Ekle", options, (controller1, action1) -> {
-                    if (action1 != SimpleModalBorder.YES_OPTION) return;
+                AppModal.pushModalDeferred(() -> {
+                    WorkOrderItemEditPanel editPanel = new WorkOrderItemEditPanel(newItem);
+                    return new SimpleModalBorder(editPanel, "Kalem Ekle", options, (controller1, action1) -> {
+                        if (action1 != SimpleModalBorder.YES_OPTION) return;
 
-                    WorkOrderItem updated = editPanel.getUpdatedItem();
+                        WorkOrderItem updated = editPanel.getUpdatedItem();
 
-                    workOrderService.addItem(updated).thenAccept(saved -> {
-                        workOrder.getItems().add(saved);
+                        workOrderService.addItem(updated).thenAccept(saved -> {
+                            workOrder.getItems().add(saved);
 
-                        SwingUtilities.invokeLater(() -> {
-                            populateItemsTable();
+                            SwingUtilities.invokeLater(() -> {
+                                populateItemsTable();
 
-                            updatePaymentSummary();
-                            Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+                                updatePaymentSummary();
+                                Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+                            });
+                        }).exceptionally(ex -> {
+                            SwingUtilities.invokeLater(() -> {
+                                Toast.show(this, Toast.Type.ERROR, ex.getMessage());
+                            });
+                            Servicio.getLogger().error("ERROR", ex);
+                            return null;
                         });
-                    }).exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> {
-                            Toast.show(this, Toast.Type.ERROR, ex.getMessage());
-                        });
-                        Servicio.getLogger().error("ERROR", ex);
-                        return null;
                     });
-
-                }), "itemAddModal");
+                }, "itemAddModal");
             }
         }), "itemAddModal");
     }

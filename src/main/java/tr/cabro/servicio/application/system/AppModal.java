@@ -4,11 +4,13 @@ import raven.modal.ModalDialog;
 import raven.modal.component.Modal;
 import raven.modal.option.Option;
 
+import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Tüm ekranların modal açma/kapatma çağrılarının geçtiği tek merkezi nokta.
@@ -51,6 +53,19 @@ public class AppModal {
         ModalRecord record = OPEN.get(rootId);
         if (record != null) record.pushedStack.add(modal);
         ModalDialog.pushModal(modal, rootId);
+    }
+
+    /**
+     * Bir modalın içinden ikinci bir modal açarken kullanılır (ör. "Yeni Müşteri Ekle"
+     * butonu bir hücre editörünü/butonu kapatırken aynı anda yeni panel kurup üzerine
+     * modal push ediyor). Panel kurulumu + push işlemi tetikleyen olayla (hücre editörü
+     * iptali, buton tıklaması) AYNI EDT event'inde yapılırsa, iki ağır Swing işlemi
+     * arka arkaya biriktiği için ekran anlık donuyor. {@code modalSupplier} bir sonraki
+     * EDT döngüsüne ertelenir; böylece tetikleyen olay önce tamamlanıp ekrana yansır,
+     * ardından yeni panel kurulup modal push edilir.
+     */
+    public static void pushModalDeferred(Supplier<Modal> modalSupplier, String rootId) {
+        SwingUtilities.invokeLater(() -> pushModal(modalSupplier.get(), rootId));
     }
 
     public static void popModal(String rootId) {

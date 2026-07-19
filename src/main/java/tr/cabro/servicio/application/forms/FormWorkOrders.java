@@ -256,25 +256,22 @@ public class FormWorkOrders extends AbstractTableForm {
         // Lambda içinde 'panel' referansına ihtiyaç duyduğumuz için önce bir dizi wrapper kullanıyoruz.
         // Java'da lambda içindeki değişken effectively-final olmalı; tek elemanlı dizi bu kısıtlamayı aşar.
         QuickIntakePanel[] panelRef = new QuickIntakePanel[1];
-        panelRef[0] = new QuickIntakePanel(data, () -> {
+        panelRef[0] = new QuickIntakePanel(data, () -> AppModal.pushModalDeferred(() -> {
             CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
-            AppModal.pushModal(
-                    new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
-                        if (a1 != SimpleModalBorder.YES_OPTION) return;
-                        Customer newCustomer = newCustomerPanel.getData();
-                        if (newCustomer == null) { c1.consume(); return; }
-                        c1.consume();
-                        newCustomer.setCreatedAt(LocalDateTime.now());
-                        ServiceManager.getCustomerService().save(newCustomer, false).thenAccept(saved ->
-                                SwingUtilities.invokeLater(() -> {
-                                    panelRef[0].appendNewCustomer(saved);
-                                    AppModal.popModal(MODAL_ID);
-                                })
-                        );
-                    }),
-                    MODAL_ID
-            );
-        });
+            return new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
+                if (a1 != SimpleModalBorder.YES_OPTION) return;
+                Customer newCustomer = newCustomerPanel.getData();
+                if (newCustomer == null) { c1.consume(); return; }
+                c1.consume();
+                newCustomer.setCreatedAt(LocalDateTime.now());
+                ServiceManager.getCustomerService().save(newCustomer, false).thenAccept(saved ->
+                        SwingUtilities.invokeLater(() -> {
+                            panelRef[0].appendNewCustomer(saved);
+                            AppModal.popModal(MODAL_ID);
+                        })
+                );
+            });
+        }, MODAL_ID));
         QuickIntakePanel panel = panelRef[0];
 
         // Düzenleme modunda sadece "Kaydet" ve "İptal" butonu gösterilir.
