@@ -9,8 +9,8 @@
       "name": "servicio.jar",
       "path": "servicio.jar",
       "url": "https://github.com/Cabro57/Servicio/releases/download/v2.0-dev/servicio.jar",
-      "sha256": "a10285b23af59fc3240ccd3f60e699ba12e6505a8de52a09189d0610f4c1975d",
-      "size": 11506542
+      "sha256": "5f8d84fce9937041e07c02313b1e070d7dec81d5be1f591ac22a32361f3280d1",
+      "size": 11507238
     },
     {
       "source": "maven",
