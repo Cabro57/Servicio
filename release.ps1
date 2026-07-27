@@ -136,9 +136,15 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) { Fail "gh CLI kurulu d
 & gh auth status 1>$null 2>$null
 if ($LASTEXITCODE -ne 0) { Fail "gh oturumu yok. Önce: gh auth login" }
 
-# Release var mı?
-& gh release view $tag 1>$null 2>$null
-$releaseExists = ($LASTEXITCODE -eq 0)
+# Release var mı? (gh release yoksa stderr'e yazıp exit 1 döner; $ErrorActionPreference=Stop
+# altında bu native-command hatası olarak script'i durdurur — try/catch ile yutuyoruz.)
+$releaseExists = $false
+try {
+    & gh release view $tag 1>$null 2>$null
+    $releaseExists = ($LASTEXITCODE -eq 0)
+} catch {
+    $releaseExists = $false
+}
 
 if ($releaseExists) {
     Info "Release '$tag' zaten var → JAR asset'i değiştirilecek (--clobber)."
