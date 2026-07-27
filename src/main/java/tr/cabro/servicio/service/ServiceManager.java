@@ -16,6 +16,8 @@ public final class ServiceManager {
 
     // --- YENİ EKLENEN YÖNETİCİLER ---
     @Getter private static DeviceDictionaryManager deviceDictionaryManager;
+    @Getter private static PartCategoryManager partCategoryManager;
+    @Getter private static DocumentTemplateService documentTemplateService;
     @Getter private static LaborService laborService;
     @Getter private static ReportManager reportManager;
     @Getter private static StockService stockService;
@@ -35,6 +37,8 @@ public final class ServiceManager {
 
         // --- Yeni Kurumsal Repository'ler ---
         DeviceDictionaryRepository dictRepo = jdbi.onDemand(DeviceDictionaryRepository.class);
+        PartCategoryRepository partCategoryRepo = jdbi.onDemand(PartCategoryRepository.class);
+        DocumentTemplateRepository documentTemplateRepo = jdbi.onDemand(DocumentTemplateRepository.class);
         LaborRepository laborRepo = jdbi.onDemand(LaborRepository.class);
         ReportRepository reportRepo = jdbi.onDemand(ReportRepository.class);
         ServiceNoteRepository noteRepo = jdbi.onDemand(ServiceNoteRepository.class);
@@ -49,9 +53,11 @@ public final class ServiceManager {
 
         // --- Yeni Servislerin Başlatılması ---
         deviceDictionaryManager = new DeviceDictionaryManager(dictRepo);
+        partCategoryManager = new PartCategoryManager(partCategoryRepo);
+        documentTemplateService = new DocumentTemplateService(documentTemplateRepo);
         laborService = new LaborService(laborRepo);
         reportManager = new ReportManager(reportRepo);
-        partService = new PartService(partRepo, supplierRepo, stockService);
+        partService = new PartService(partRepo, supplierRepo, stockService, partCategoryRepo);
 
         workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo, partService, stockService, deviceService);
     }

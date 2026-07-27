@@ -17,15 +17,15 @@ import java.util.Optional;
 public interface PartRepository {
 
     // --- INSERT ---
-    @SqlUpdate("INSERT INTO parts (barcode, name, category, model_compatibility, supplier_id, warehouse_id, " +
+    @SqlUpdate("INSERT INTO parts (barcode, name, category_id, model_compatibility, supplier_id, warehouse_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, created_at, updated_at) " +
-            "VALUES (:barcode, :name, :category, :modelCompatibility, :supplierId, :warehouseId, " +
+            "VALUES (:barcode, :name, :categoryId, :modelCompatibility, :supplierId, :warehouseId, " +
             ":purchasePrice, :salePrice, :stockQuantity, :minStockLevel, :description, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean Part part);
 
     // --- UPDATE ---
-    @SqlUpdate("UPDATE parts SET barcode=:barcode, name=:name, category=:category, model_compatibility=:modelCompatibility, " +
+    @SqlUpdate("UPDATE parts SET barcode=:barcode, name=:name, category_id=:categoryId, model_compatibility=:modelCompatibility, " +
             "supplier_id=:supplierId, warehouse_id=:warehouseId, purchase_price=:purchasePrice, sale_price=:salePrice, " +
             "stock_quantity=:stockQuantity, min_stock_level=:minStockLevel, " +
             "description=:description, updated_at=:updatedAt WHERE id=:id")
@@ -60,22 +60,22 @@ public interface PartRepository {
     boolean existsByBarcode(@Bind("barcode") String barcode);
 
     // --- SELECT ---
-    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
+    @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE id = :id AND is_deleted = 0")
     Optional<Part> findById(@Bind("id") Long id);
 
-    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
+    @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE barcode = :barcode AND is_deleted = 0")
     Optional<Part> findByBarcode(@Bind("barcode") String barcode);
 
-    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
+    @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<Part> findAll();
 
-    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
+    @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 AND stock_quantity <= min_stock_level " +
             "ORDER BY stock_quantity ASC")
@@ -85,18 +85,29 @@ public interface PartRepository {
         return findLowStockParts();
     }
 
-    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
-            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
-            "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 AND " +
-            "(name LIKE :search OR barcode LIKE :search OR category LIKE :search OR model_compatibility LIKE :search) " +
-            "ORDER BY name")
+    // Arama alanı tedarikçi ve kategori adını da kapsar; bu yüzden aşağıdaki sorgular
+    // parts'ı suppliers ve part_categories ile JOIN eder.
+    String SEARCH_SELECT = "SELECT p.id, p.barcode, p.name, p.category_id, p.model_compatibility, p.supplier_id, " +
+            "p.purchase_price, p.sale_price, p.stock_quantity, p.min_stock_level, p.description, " +
+            "p.is_deleted, p.created_at, p.updated_at ";
+    String SEARCH_FROM = "FROM parts p " +
+            "LEFT JOIN suppliers sup ON sup.id = p.supplier_id " +
+            "LEFT JOIN part_categories pc ON pc.id = p.category_id ";
+    String SEARCH_WHERE = "WHERE p.is_deleted = 0 AND " +
+            "(p.name LIKE :search OR p.barcode LIKE :search OR p.model_compatibility LIKE :search " +
+            "OR pc.name LIKE :search OR sup.name LIKE :search OR sup.business_name LIKE :search) ";
+
+    @SqlQuery(SEARCH_SELECT + SEARCH_FROM + SEARCH_WHERE + "ORDER BY p.name")
     List<Part> search(@Bind("search") String searchTerm);
+
+    @SqlQuery(SEARCH_SELECT + SEARCH_FROM + "WHERE p.supplier_id = :supplierId AND p.is_deleted = 0 ORDER BY p.name")
+    List<Part> findBySupplierId(@Bind("supplierId") Long supplierId);
 
     // =========================================================================
     // SAYFALAMA (LIMIT/OFFSET) — DB-tabanlı liste ekranı için
     // =========================================================================
 
-    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
+    @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 " +
             "ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
@@ -105,15 +116,10 @@ public interface PartRepository {
     @SqlQuery("SELECT COUNT(*) FROM parts WHERE is_deleted = 0")
     long countAll();
 
-    @SqlQuery("SELECT id, barcode, name, category, model_compatibility, supplier_id, " +
-            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
-            "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 AND " +
-            "(name LIKE :search OR barcode LIKE :search OR category LIKE :search OR model_compatibility LIKE :search) " +
-            "ORDER BY name LIMIT :limit OFFSET :offset")
+    @SqlQuery(SEARCH_SELECT + SEARCH_FROM + SEARCH_WHERE + "ORDER BY p.name LIMIT :limit OFFSET :offset")
     List<Part> searchPaged(@Bind("search") String searchTerm, @Bind("limit") int limit, @Bind("offset") int offset);
 
-    @SqlQuery("SELECT COUNT(*) FROM parts WHERE is_deleted = 0 AND " +
-            "(name LIKE :search OR barcode LIKE :search OR category LIKE :search OR model_compatibility LIKE :search)")
+    @SqlQuery("SELECT COUNT(*) " + SEARCH_FROM + SEARCH_WHERE)
     long countSearch(@Bind("search") String searchTerm);
 
     // İstatistik kartları için tek sorguda agregat — FormParts.refreshStats()'daki tam-tablo

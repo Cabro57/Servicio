@@ -10,15 +10,15 @@ import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.*;
-import java.awt.*;
 import java.text.ParseException;
-import java.util.List;
 
 
-// TODO: bu sınıfı gözden geçir
+// Ülke seçici kaldırıldı — şimdilik sadece Türkiye numaraları kabul ediliyor.
+// PhoneHelper.getSupportedCountries()/CountryCode kodu ileride tekrar kullanılabilmesi
+// için dokunulmadan bırakıldı, sadece bu sınıf artık onu çağırmıyor.
 public class PhoneField extends JFormattedTextField {
 
-    private JComboBox<PhoneHelper.CountryCode> countryCombo;
+    private static final String REGION_CODE = "TR";
     private int maxDigitLength = 15; // Varsayılan güvenlik sınırı
 
     public PhoneField() {
@@ -27,33 +27,6 @@ public class PhoneField extends JFormattedTextField {
     }
 
     private void init() {
-        // 1. Ülke Listesini Hazırla
-        List<PhoneHelper.CountryCode> countries = PhoneHelper.getSupportedCountries();
-        countryCombo = new JComboBox<>(countries.toArray(new PhoneHelper.CountryCode[0]));
-        countryCombo.setLightWeightPopupEnabled(false);
-
-        // 2. Varsayılan Seçim (TR)
-        for (int i = 0; i < countryCombo.getItemCount(); i++) {
-            if ("TR".equals(countryCombo.getItemAt(i).getRegionCode())) {
-                countryCombo.setSelectedIndex(i);
-                break;
-            }
-        }
-
-        // --- GÖRÜNÜM (Renderer vb.) ---
-        setupRenderer();
-
-        // UI Ayarları
-        countryCombo.putClientProperty("JComboBox.showArrowButton", false);
-        countryCombo.putClientProperty(FlatClientProperties.STYLE, "border: null; background: null;");
-        countryCombo.setFocusable(false);
-
-        // TextField Entegrasyonu
-        putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_COMPONENT, countryCombo);
-
-        // Event Listener: Ülke değiştiğinde Formatter'ı güncelle
-        countryCombo.addActionListener(e -> updateFormatter());
-
         // --- SÜREKLİ KONTROL (Validasyon) ---
         // Kullanıcı her yazı yazdığında veya sildiğinde kontrol et
         getDocument().addDocumentListener(new DocumentListener() {
@@ -85,16 +58,11 @@ public class PhoneField extends JFormattedTextField {
             // Sadece rakamları al
             String digits = text.replaceAll("[^\\d]", "");
 
-            // Seçili ülkeyi al
-            PhoneHelper.CountryCode selected = (PhoneHelper.CountryCode) countryCombo.getSelectedItem();
+            // normalize metodu numara geçersizse hata fırlatır
+            PhoneHelper.normalize(REGION_CODE, digits);
 
-            if (selected != null) {
-                // normalize metodu numara geçersizse hata fırlatır
-                PhoneHelper.normalize(selected.getRegionCode(), digits);
-
-                // Hata fırlatmadıysa geçerlidir, kırmızılığı kaldır
-                putClientProperty(FlatClientProperties.OUTLINE, null);
-            }
+            // Hata fırlatmadıysa geçerlidir, kırmızılığı kaldır
+            putClientProperty(FlatClientProperties.OUTLINE, null);
         } catch (Exception e) {
             // Hata varsa çerçeveyi kırmızı yap
             putClientProperty(FlatClientProperties.OUTLINE, FlatClientProperties.OUTLINE_ERROR);
@@ -102,37 +70,29 @@ public class PhoneField extends JFormattedTextField {
     }
 
     /**
-     * Seçili ülkeye göre JFormattedTextField'in FormatterFactory'sini günceller.
+     * Formatter'ı Türkiye numara formatına göre ayarlar.
      */
     private void updateFormatter() {
-        PhoneHelper.CountryCode selected = (PhoneHelper.CountryCode) countryCombo.getSelectedItem();
-        if (selected != null) {
-            String regionCode = selected.getRegionCode();
-
-            // 1. Placeholder ve Max Length Hesapla
-            PhoneNumberUtil util = PhoneNumberUtil.getInstance();
-            Phonenumber.PhoneNumber example = util.getExampleNumber(regionCode);
-            if (example != null) {
-                String formattedExample = util.format(example, PhoneNumberUtil.PhoneNumberFormat.NATIONAL);
-                maxDigitLength = String.valueOf(example.getNationalNumber()).length();
-                putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, formattedExample);
-            } else {
-                maxDigitLength = 15;
-                putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Numara giriniz");
-            }
-
-            setToolTipText("+" + selected.getPhoneCode() + " " + selected.getName());
-
-            // 2. Formatter'ı Değiştir
-            Object currentValue = getValue();
-            setFormatterFactory(new DefaultFormatterFactory(new PhoneFormatter(regionCode, maxDigitLength)));
-            if (currentValue != null) {
-                setValue(currentValue);
-            }
-
-            // Ülke değişince mevcut numaranın o ülke için geçerliliğini tekrar kontrol et
-            checkValidity();
+        // 1. Placeholder ve Max Length Hesapla
+        PhoneNumberUtil util = PhoneNumberUtil.getInstance();
+        Phonenumber.PhoneNumber example = util.getExampleNumber(REGION_CODE);
+        if (example != null) {
+            String formattedExample = util.format(example, PhoneNumberUtil.PhoneNumberFormat.NATIONAL);
+            maxDigitLength = String.valueOf(example.getNationalNumber()).length();
+            putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, formattedExample);
+        } else {
+            maxDigitLength = 15;
+            putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Numara giriniz");
         }
+
+        // 2. Formatter'ı Değiştir
+        Object currentValue = getValue();
+        setFormatterFactory(new DefaultFormatterFactory(new PhoneFormatter(REGION_CODE, maxDigitLength)));
+        if (currentValue != null) {
+            setValue(currentValue);
+        }
+
+        checkValidity();
     }
 
     // --- Helper Methods ---
@@ -145,13 +105,10 @@ public class PhoneField extends JFormattedTextField {
         String text = getText();
         if (text == null || text.trim().isEmpty()) return null;
 
-        PhoneHelper.CountryCode selected = (PhoneHelper.CountryCode) countryCombo.getSelectedItem();
-        if (selected == null) return null;
-
         try {
             // getValue() yerine anlık text üzerinden gidiyoruz
             String digits = text.replaceAll("[^\\d]", "");
-            return PhoneHelper.normalize(selected.getRegionCode(), digits);
+            return PhoneHelper.normalize(REGION_CODE, digits);
         } catch (Exception e) {
             // Geçersiz numara girildiyse uygulama çökmesin, null dönsün.
             // Zaten ekranda kırmızı yandığı için kullanıcı farkındadır.
@@ -169,43 +126,13 @@ public class PhoneField extends JFormattedTextField {
             if (!e164Number.startsWith("+")) e164Number = "+" + e164Number;
 
             Phonenumber.PhoneNumber number = util.parse(e164Number, null);
-            String regionCode = util.getRegionCodeForNumber(number);
             long nationalNumber = number.getNationalNumber();
-
-            for (int i = 0; i < countryCombo.getItemCount(); i++) {
-                if (countryCombo.getItemAt(i).getRegionCode().equals(regionCode)) {
-                    countryCombo.setSelectedIndex(i);
-                    break;
-                }
-            }
             setValue(String.valueOf(nationalNumber));
         } catch (Exception e) {
             setValue(e164Number);
         }
         // Numarayı set ettikten sonra da validasyonu kontrol et
         checkValidity();
-    }
-
-    private void setupRenderer() {
-
-        countryCombo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-
-                if (value instanceof PhoneHelper.CountryCode) {
-                    PhoneHelper.CountryCode code = (PhoneHelper.CountryCode) value;
-                    if (index == -1) {
-                        label.setIcon(code.getFlag());
-                        label.setText("+" + code.getPhoneCode());
-                    } else {
-                        label.setIcon(code.getFlag());
-                        label.setText(" +" + code.getPhoneCode() + " " + code.getName());
-                    }
-                }
-                return label;
-            }
-        });
     }
 
     // =================================================================================

@@ -3,6 +3,7 @@ package tr.cabro.servicio.model;
 import lombok.Getter;
 import lombok.Setter;
 import org.jdbi.v3.core.mapper.reflect.ColumnName;
+import tr.cabro.servicio.model.dictionary.PartCategory;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -13,7 +14,12 @@ public class Part {
     private String barcode;
 
     private String name;
-    private String category;
+
+    @ColumnName("category_id")
+    private Long categoryId;
+
+    // DB kolonu değil; PartService.hydrateParts() ile doldurulur (supplier ile aynı desen)
+    private PartCategory category;
 
     @ColumnName("model_compatibility")
     private String modelCompatibility;
@@ -60,7 +66,7 @@ public class Part {
                 "id=" + id +
                 ", barcode='" + barcode + '\'' +
                 ", name='" + name + '\'' +
-                ", category='" + category + '\'' +
+                ", categoryId=" + categoryId +
                 ", modelCompatibility='" + modelCompatibility + '\'' +
                 ", supplierId=" + supplierId +
                 ", purchasePrice=" + purchasePrice +

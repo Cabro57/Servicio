@@ -172,6 +172,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 new Item("Ana Sayfa", "layout-dashboard.svg", FormDashboard.class),
                 new Item("Servis Kayıtları", "wrench.svg", FormWorkOrders.class),
                 new Item("Müşteriler", "user-search.svg", FormCustomers.class),
+                new Item("Cihazlar", "tablet-smartphone.svg", FormDevices.class),
                 new Item("Parçalar", "circuit-board.svg", FormParts.class),
                 new Item("Tedarikçiler", "store.svg", FormSuppliers.class),
                 new Item("Ayarlar", "settings.svg", FormSettings.class),
@@ -203,7 +204,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 //                System.out.println("Drawer menu selected " + Arrays.toString(index));
             Class<?> itemClass = action.getItem().getItemClass();
             int i = index[0];
-            if (i == 6) {
+            if (i == 7) {
                 action.consume();
                 FormManager.showAbout();
                 return;

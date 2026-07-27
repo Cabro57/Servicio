@@ -16,6 +16,10 @@ public class User {
 
     private String businessName;
     private String phoneNumber;
+    private String address;
+
+    // İşletme logosu — "logos/" alt klasöründeki dosya adı (opsiyonel, PDF belge antetinde kullanılır)
+    private String logoPath;
 
     // YENİ EKLENDİ: Profil resminin dosya adı veya yolu (Örn: "avatar_1.png")
     private String profilePicture;

@@ -30,8 +30,11 @@ public class ProfileSettingsPanel extends JPanel {
     private JTextField txtEmail;
     private JTextField txtBusinessName;
     private JTextField txtPhone;
+    private JTextField txtAddress;
     private JLabel lblPhotoName;
     private String selectedPhotoName;
+    private JLabel lblLogoName;
+    private String selectedLogoName;
 
     private JPasswordField txtCurrentPin;
     private JPasswordField txtNewPin;
@@ -56,12 +59,14 @@ public class ProfileSettingsPanel extends JPanel {
         txtEmail = new JTextField();
         txtBusinessName = new JTextField();
         txtPhone = new JTextField();
+        txtAddress = new JTextField();
 
         styleField(txtName, "Adınız");
         styleField(txtSurname, "Soyadınız");
         styleField(txtEmail, "e-posta@example.com");
         styleField(txtBusinessName, "İşletme adı");
         styleField(txtPhone, "05xx xxx xx xx");
+        styleField(txtAddress, "İşletme adresi (İsteğe bağlı)");
 
         JPanel twoCol = new JPanel(new MigLayout("fillx,wrap 2,insets 0", "[fill,grow][fill,grow]", ""));
         twoCol.setOpaque(false);
@@ -77,6 +82,8 @@ public class ProfileSettingsPanel extends JPanel {
         add(txtBusinessName);
         add(new JLabel("Telefon:"), "gapy 8");
         add(txtPhone);
+        add(new JLabel("Adres:"), "gapy 8");
+        add(txtAddress);
 
         // Profil fotoğrafı
         add(new JLabel("Profil Fotoğrafı:"), "gapy 8");
@@ -89,6 +96,18 @@ public class ProfileSettingsPanel extends JPanel {
         photoRow.add(lblPhotoName);
         add(photoRow);
         btnPhoto.addActionListener(e -> selectPhoto());
+
+        // İşletme logosu (PDF belge antetinde kullanılır)
+        add(new JLabel("İşletme Logosu:"), "gapy 8");
+        lblLogoName = new JLabel("Değiştirilmedi");
+        JButton btnLogo = new JButton("Logo Seç...");
+        btnLogo.putClientProperty(FlatClientProperties.STYLE, "arc:10;");
+        JPanel logoRow = new JPanel(new MigLayout("insets 0", "[][grow,fill]"));
+        logoRow.setOpaque(false);
+        logoRow.add(btnLogo);
+        logoRow.add(lblLogoName);
+        add(logoRow);
+        btnLogo.addActionListener(e -> selectLogo());
 
         // --- Güvenlik ---
         add(new JSeparator(), "gapy 15");
@@ -143,9 +162,14 @@ public class ProfileSettingsPanel extends JPanel {
             txtEmail.setText(nvl(currentUser.getEmail()));
             txtBusinessName.setText(nvl(currentUser.getBusinessName()));
             txtPhone.setText(nvl(currentUser.getPhoneNumber()));
+            txtAddress.setText(nvl(currentUser.getAddress()));
             selectedPhotoName = currentUser.getProfilePicture();
             if (selectedPhotoName != null && !selectedPhotoName.trim().isEmpty()) {
                 lblPhotoName.setText(selectedPhotoName);
+            }
+            selectedLogoName = currentUser.getLogoPath();
+            if (selectedLogoName != null && !selectedLogoName.trim().isEmpty()) {
+                lblLogoName.setText(selectedLogoName);
             }
         })).exceptionally(ex -> {
             SwingUtilities.invokeLater(() ->
@@ -187,7 +211,9 @@ public class ProfileSettingsPanel extends JPanel {
         currentUser.setEmail(txtEmail.getText().trim());
         currentUser.setBusinessName(txtBusinessName.getText().trim());
         currentUser.setPhoneNumber(txtPhone.getText().trim());
+        currentUser.setAddress(txtAddress.getText().trim());
         if (selectedPhotoName != null) currentUser.setProfilePicture(selectedPhotoName);
+        if (selectedLogoName != null) currentUser.setLogoPath(selectedLogoName);
         if (changingPin) currentUser.setPassword(newPin);
 
         btnSave.setEnabled(false);
@@ -223,6 +249,28 @@ public class ProfileSettingsPanel extends JPanel {
                     lblPhotoName.setText(selectedPhotoName);
                 } catch (Exception ex) {
                     Toast.show(this, Toast.Type.ERROR, "Fotoğraf kopyalanamadı: " + ex.getMessage());
+                }
+            }
+        }
+    }
+
+    private void selectLogo() {
+        SystemFileChooser fc = new SystemFileChooser();
+        fc.setDialogTitle("İşletme Logosu Seç");
+        fc.setFileFilter(new SystemFileChooser.FileNameExtensionFilter(
+                "Resim Dosyaları (*.jpg, *.png)", "jpg", "png", "jpeg"));
+        if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File src = fc.getSelectedFile();
+            if (src != null) {
+                try {
+                    File dir = new File(Servicio.getInstance().getDataFolder(), "logos");
+                    if (!dir.exists()) dir.mkdirs();
+                    Files.copy(src.toPath(), new File(dir, src.getName()).toPath(),
+                            StandardCopyOption.REPLACE_EXISTING);
+                    selectedLogoName = src.getName();
+                    lblLogoName.setText(selectedLogoName);
+                } catch (Exception ex) {
+                    Toast.show(this, Toast.Type.ERROR, "Logo kopyalanamadı: " + ex.getMessage());
                 }
             }
         }

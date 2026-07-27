@@ -2,15 +2,20 @@ package tr.cabro.servicio.application.panels.edit;
 
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.renderer.CustomerTypeRenderer;
 import tr.cabro.servicio.application.component.PhoneField;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
+import java.awt.CardLayout;
+import java.awt.event.ActionListener;
 
 public class CustomerEditPanel extends AbstractEditPanel<Customer> {
+
+    private static final String CARD_BIREYSEL = "BIREYSEL";
+    private static final String CARD_KURUMSAL = "KURUMSAL";
 
     public CustomerEditPanel(Customer data) {
         super(data);
@@ -51,11 +56,22 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
             return false;
         }
 
-        // TC Kimlik — isteğe bağlı, doluysa 11 hane ve sadece rakam
-        String idNo = idNoField.getText().trim();
-        if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
-            showValidationError("T.C. Kimlik numarası 11 rakamdan oluşmalı.");
-            idNoField.requestFocus();
+        boolean kurumsal = btnKurumsal.isSelected();
+
+        // TC Kimlik — sadece Bireysel'de anlamlı; isteğe bağlı, doluysa 11 hane ve sadece rakam
+        if (!kurumsal) {
+            String idNo = idNoField.getText().trim();
+            if (!Validator.isEmpty(idNo) && (!Validator.isNumeric(idNo) || !Validator.hasLength(idNo, 11))) {
+                showValidationError("T.C. Kimlik numarası 11 rakamdan oluşmalı.");
+                idNoField.requestFocus();
+                return false;
+            }
+        }
+
+        // Firma İsmi — sadece Kurumsal'da zorunlu
+        if (kurumsal && Validator.isEmpty(businessNameField.getText())) {
+            showValidationError("Kurumsal müşteri için firma ismi zorunludur.");
+            businessNameField.requestFocus();
             return false;
         }
 
@@ -73,19 +89,29 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
 
     @Override
     protected Customer collectFormData(@NonNull Customer data) {
-        data.setBusinessName(businessNameField.getText().trim());
+        boolean kurumsal = btnKurumsal.isSelected();
+
+        data.setType(kurumsal ? CustomerType.KURUMSAL : CustomerType.BIREYSEL);
         data.setFirstName(nameField.getText().trim());
         data.setLastName(surnameField.getText().trim());
         data.setPhoneNumber1(phone1Field.getNormalizedNumber());
         data.setPhoneNumber2(phone2Field.getNormalizedNumber());
-        String identity = idNoField.getText().trim();
-        if (!identity.isEmpty()) {
-            data.setIdentityNo(idNoField.getText().trim());
-        }
         data.setAddress(addressField.getText().trim());
         data.setEmail(emailField.getText().trim());
         data.setNote(notesField.getText().trim());
-        data.setType((CustomerType) customerTypeBox.getSelectedItem());
+        data.setProblematic(problematicCheck.isSelected());
+
+        if (kurumsal) {
+            data.setBusinessName(businessNameField.getText().trim());
+            data.setTaxNumber(taxNumberField.getText().trim());
+            data.setTaxOffice(taxOfficeField.getText().trim());
+        } else {
+            String identity = idNoField.getText().trim();
+            if (!identity.isEmpty()) {
+                data.setIdentityNo(identity);
+            }
+        }
+
         return data;
     }
 
@@ -97,10 +123,13 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         phone1Field.setNumber(data.getPhoneNumber1());
         phone2Field.setNumber(data.getPhoneNumber2());
         idNoField.setText(data.getIdentityNo());
+        taxNumberField.setText(nvl(data.getTaxNumber()));
+        taxOfficeField.setText(nvl(data.getTaxOffice()));
         addressField.setText(data.getAddress());
         emailField.setText(data.getEmail());
         notesField.setText(data.getNote());
-        customerTypeBox.setSelectedItem(data.getType());
+        problematicCheck.setSelected(data.isProblematic());
+        syncCard(data.getType() == CustomerType.KURUMSAL);
     }
 
     @Override
@@ -111,10 +140,13 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         phone1Field.setNumber("");
         phone2Field.setNumber("");
         idNoField.setText("");
+        taxNumberField.setText("");
+        taxOfficeField.setText("");
         addressField.setText("");
         emailField.setText("");
         notesField.setText("");
-        customerTypeBox.setSelectedItem(CustomerType.NORMAL);
+        problematicCheck.setSelected(false);
+        syncCard(false);
     }
 
     @Override
@@ -122,12 +154,19 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         return new Customer();
     }
 
+    /** Bireysel/Kurumsal toggle ile CardLayout'un senkron kalmasını garantileyen tek nokta. */
+    private void syncCard(boolean kurumsal) {
+        btnKurumsal.setSelected(kurumsal);
+        btnBireysel.setSelected(!kurumsal);
+        cardLayout.show(typeCardPanel, kurumsal ? CARD_KURUMSAL : CARD_BIREYSEL);
+    }
+
     @Override
     protected void initComponent() {
         JPanel formPanel = new JPanel(new MigLayout(
                 "wrap 1, insets 5, width 400", // az boşluk, tek sütun
                 "[grow,fill]",
-                "[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]"
+                "[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]10[]1[]"
         ));
 
         JScrollPane scrollPane = new JScrollPane(formPanel);
@@ -137,9 +176,46 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         java.util.function.Function<String, JLabel> label = text ->
                 new JLabel("<html><b>" + text + "</b></html>");
 
-        formPanel.add(label.apply("Firma İsmi (İsteğe Bağlı):"));
+        // --- Bireysel / Kurumsal segmented toggle ---
+        btnBireysel = new JToggleButton("Bireysel", new Ikon("icons/user.svg", 0.8f));
+        btnKurumsal = new JToggleButton("Kurumsal", new Ikon("icons/store.svg", 0.8f));
+        ButtonGroup typeGroup = new ButtonGroup();
+        typeGroup.add(btnBireysel);
+        typeGroup.add(btnKurumsal);
+        btnBireysel.setSelected(true);
+
+        JPanel togglePanel = new JPanel(new MigLayout("insets 0, gap 0", "[grow,fill][grow,fill]", "[]"));
+        togglePanel.add(btnBireysel);
+        togglePanel.add(btnKurumsal);
+        formPanel.add(togglePanel, "growx");
+
+        // --- Bireysel/Kurumsal'a göre değişen alanlar ---
+        cardLayout = new CardLayout();
+        typeCardPanel = new JPanel(cardLayout);
+
+        JPanel bireyselCard = new JPanel(new MigLayout("wrap 1, insets 0", "[grow,fill]"));
+        idNoField = new JTextField();
+        bireyselCard.add(label.apply("TC Kimlik No:"));
+        bireyselCard.add(idNoField, "growx");
+
+        JPanel kurumsalCard = new JPanel(new MigLayout("wrap 1, insets 0", "[grow,fill]"));
         businessNameField = new JTextField();
-        formPanel.add(businessNameField, "growx");
+        taxNumberField = new JTextField();
+        taxOfficeField = new JTextField();
+        kurumsalCard.add(label.apply("Firma İsmi:"));
+        kurumsalCard.add(businessNameField, "growx");
+        kurumsalCard.add(label.apply("Vergi No:"));
+        kurumsalCard.add(taxNumberField, "growx");
+        kurumsalCard.add(label.apply("Vergi Dairesi:"));
+        kurumsalCard.add(taxOfficeField, "growx");
+
+        typeCardPanel.add(bireyselCard, CARD_BIREYSEL);
+        typeCardPanel.add(kurumsalCard, CARD_KURUMSAL);
+        formPanel.add(typeCardPanel, "growx");
+
+        ActionListener toggleListener = e -> syncCard(btnKurumsal.isSelected());
+        btnBireysel.addActionListener(toggleListener);
+        btnKurumsal.addActionListener(toggleListener);
 
         formPanel.add(label.apply("Ad:"));
         nameField = new JTextField();
@@ -157,10 +233,6 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         phone2Field = new PhoneField();
         formPanel.add(phone2Field, "growx");
 
-        formPanel.add(label.apply("TC Kimlik No:"));
-        idNoField = new JTextField();
-        formPanel.add(idNoField, "growx");
-
         formPanel.add(label.apply("Adres:"));
         addressField = new JTextField();
         formPanel.add(addressField, "growx");
@@ -169,21 +241,26 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         emailField = new JTextField();
         formPanel.add(emailField, "growx");
 
-        formPanel.add(label.apply("Müşteri Tipi:"));
-        customerTypeBox = new JComboBox<>();
-        DefaultComboBoxModel<CustomerType> model = new DefaultComboBoxModel<>(CustomerType.values());
-        model.setSelectedItem(CustomerType.NORMAL);
-        customerTypeBox.setModel(model);
-        customerTypeBox.setRenderer(new CustomerTypeRenderer());
-        formPanel.add(customerTypeBox, "growx");
+        problematicCheck = new JCheckBox("Sorunlu Müşteri (İş Yapılmayacak)");
+        formPanel.add(problematicCheck, "growx");
 
         formPanel.add(label.apply("Notlar (İsteğe Bağlı):"));
         notesField = new JTextField();
         formPanel.add(notesField, "growx");
     }
 
+    private static String nvl(String s) {
+        return s == null ? "" : s;
+    }
 
+
+    private JToggleButton btnBireysel;
+    private JToggleButton btnKurumsal;
+    private CardLayout cardLayout;
+    private JPanel typeCardPanel;
     private JTextField businessNameField;
+    private JTextField taxNumberField;
+    private JTextField taxOfficeField;
     private JTextField nameField;
     private JTextField surnameField;
     private PhoneField phone1Field;
@@ -191,6 +268,6 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
     private JTextField idNoField;
     private JTextField addressField;
     private JTextField emailField;
-    private JComboBox<CustomerType> customerTypeBox;
+    private JCheckBox problematicCheck;
     private JTextField notesField;
 }

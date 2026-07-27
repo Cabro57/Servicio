@@ -6,6 +6,7 @@ import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.application.system.AppModal;
+import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
@@ -160,7 +161,10 @@ public class FormSuppliers extends AbstractTableForm {
 
             @Override
             public void onView(int row) {
-
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+                int modelRow = table.convertRowIndexToModel(row);
+                Supplier s = tableModel.getItemAt(modelRow);
+                FormManager.showForm(new FormSupplier(s));
             }
         }));
 

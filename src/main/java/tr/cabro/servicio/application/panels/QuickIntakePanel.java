@@ -4,6 +4,7 @@
     import net.miginfocom.swing.MigLayout;
     import raven.modal.component.ModalBorderAction;
     import raven.modal.component.SimpleModalBorder;
+    import tr.cabro.servicio.Servicio;
     import tr.cabro.servicio.application.component.CustomerSelectBox;
     import tr.cabro.servicio.application.panels.edit.AbstractEditPanel;
     import raven.modal.Toast;
@@ -97,6 +98,19 @@
             addSectionTitle("Cihaz Bilgileri");
             deviceFormPanel = new DeviceFormPanel();
             add(deviceFormPanel, "growx");
+
+            customerCombo.setOnSelectionChanged(customer -> {
+                if (customer == null) {
+                    deviceFormPanel.setSuggestedDevices(java.util.Collections.emptyList());
+                    return;
+                }
+                ServiceManager.getDeviceService().getAllByCustomerId(customer.getId())
+                        .thenAccept(devices -> SwingUtilities.invokeLater(() -> deviceFormPanel.setSuggestedDevices(devices)))
+                        .exceptionally(ex -> {
+                            Servicio.getLogger().error("Müşteri cihazları yüklenemedi", ex);
+                            return null;
+                        });
+            });
 
             // --- Müşteri Şikayeti ---
             addSectionTitle("Müşteri Şikayeti");

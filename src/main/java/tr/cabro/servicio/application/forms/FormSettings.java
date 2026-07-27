@@ -24,6 +24,8 @@ public class FormSettings extends Form {
         addPanel("Genel", new SettingsMainPanel());
         addPanel("Cihazlar", new SettingsDevicePanel());
         addPanel("Tamirler", new SettingsRepairPanel());
+        addPanel("Parça Kategorileri", new SettingsPartCategoryPanel());
+        addPanel("WhatsApp Şablonları", new SettingsTemplatesPanel());
         addPanel("Yedeklemeler", new SettingsDatabasePanel());
         addPanel("Görünüm", new AppearancePanel());
 

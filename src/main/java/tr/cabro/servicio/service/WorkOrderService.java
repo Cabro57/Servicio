@@ -276,6 +276,32 @@ public class WorkOrderService {
         });
     }
 
+    /** Arama terimi ile durum filtresini (combo) aynı anda uygular. */
+    public CompletableFuture<PageResult<WorkOrder>> searchPaged(String searchTerm, int page, int pageSize, String statusStr) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) return getAllPaged(page, pageSize, statusStr);
+        if (statusStr == null || statusStr.isEmpty() || statusStr.equalsIgnoreCase("ALL")) return searchPaged(searchTerm, page, pageSize);
+
+        int offset = (page - 1) * pageSize;
+        String likeTerm = "%" + searchTerm.trim() + "%";
+
+        if (statusStr.equalsIgnoreCase("OPEN")) {
+            List<ServiceStatus> closed = Arrays.asList(ServiceStatus.DELIVERED, ServiceStatus.RETURN);
+            return CompletableFuture.supplyAsync(() -> {
+                List<WorkOrder> items = hydrateServices(workOrderRepository.searchPagedByStatusesExcluded(likeTerm, closed, pageSize, offset));
+                long total = workOrderRepository.countSearchByStatusesExcluded(likeTerm, closed);
+                return new PageResult<>(items, page, pageSize, total);
+            });
+        }
+
+        ServiceStatus status = ServiceStatus.of(statusStr);
+        List<ServiceStatus> statuses = Collections.singletonList(status);
+        return CompletableFuture.supplyAsync(() -> {
+            List<WorkOrder> items = hydrateServices(workOrderRepository.searchPagedByStatuses(likeTerm, statuses, pageSize, offset));
+            long total = workOrderRepository.countSearchByStatuses(likeTerm, statuses);
+            return new PageResult<>(items, page, pageSize, total);
+        });
+    }
+
     // =========================================================================
     // HYDRATION
     // =========================================================================

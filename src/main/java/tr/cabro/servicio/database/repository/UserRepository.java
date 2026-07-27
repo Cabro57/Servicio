@@ -14,13 +14,13 @@ import java.util.Optional;
 @RegisterBeanMapper(User.class)
 public interface UserRepository {
 
-    @SqlUpdate("INSERT INTO users (name, surname, email, password, business_name, phone_number, profile_picture, created_at) " +
-            "VALUES (:name, :surname, :email, :password, :businessName, :phoneNumber, :profilePicture, :createdAt)")
+    @SqlUpdate("INSERT INTO users (name, surname, email, password, business_name, phone_number, address, profile_picture, logo_path, created_at) " +
+            "VALUES (:name, :surname, :email, :password, :businessName, :phoneNumber, :address, :profilePicture, :logoPath, :createdAt)")
     @GetGeneratedKeys
     int insert(@BindBean User user);
 
     @SqlUpdate("UPDATE users SET name=:name, surname=:surname, email=:email, password=:password, " +
-            "business_name=:businessName, phone_number=:phoneNumber, profile_picture=:profilePicture WHERE id=:id")
+            "business_name=:businessName, phone_number=:phoneNumber, address=:address, profile_picture=:profilePicture, logo_path=:logoPath WHERE id=:id")
     void update(@BindBean User user);
 
     @SqlUpdate("DELETE FROM users WHERE id = :id")

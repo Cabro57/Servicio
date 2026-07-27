@@ -13,6 +13,15 @@ import tr.cabro.servicio.service.DeviceDictionaryManager;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import java.awt.Dimension;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Cihaz bilgilerini (tür, marka, model, seri no, şifre, aksesuar) yöneten bağımsız panel.
@@ -55,6 +64,12 @@ public class DeviceFormPanel extends JPanel {
     private boolean isPopulating;
 
     private final DeviceDictionaryManager dictionaryManager;
+
+    // --- Müşteriye özel cihaz önerileri (seri no alanına yazarken/odaklanırken gösterilir) ---
+    private final List<Device> suggestedDevices = new ArrayList<>();
+    private JPopupMenu suggestionPopup;
+    private DefaultListModel<Device> suggestionListModel;
+    private JList<Device> suggestionList;
 
     public DeviceFormPanel() {
         this.dictionaryManager = ServiceManager.getDeviceDictionaryManager();
@@ -105,6 +120,8 @@ public class DeviceFormPanel extends JPanel {
         add(new JLabel("Ekran Şifresi:"),   "sg col");
         add(accessoryField,                 "sg col");
         add(passwordField,                  "sg col");
+
+        initSuggestionPopup();
     }
 
     private void initEvents() {
@@ -114,6 +131,104 @@ public class DeviceFormPanel extends JPanel {
             DeviceType selected = (DeviceType) deviceTypeCombo.getSelectedItem();
             loadBrands(selected, null);
         });
+
+        serialNoField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (isPopulating) return;
+                filterSuggestions(serialNoField.getText());
+                if (suggestionListModel.getSize() > 0) showSuggestionPopup();
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                suggestionPopup.setVisible(false);
+            }
+        });
+        serialNoField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { onSerialTextChanged(); }
+            public void removeUpdate(DocumentEvent e) { onSerialTextChanged(); }
+            public void changedUpdate(DocumentEvent e) { onSerialTextChanged(); }
+        });
+    }
+
+    private void onSerialTextChanged() {
+        if (isPopulating) return; // applyDevice() alanları doldururken tetiklenmesin
+        filterSuggestions(serialNoField.getText());
+        if (serialNoField.isFocusOwner() && suggestionListModel.getSize() > 0) {
+            showSuggestionPopup();
+        } else if (suggestionPopup.isVisible()) {
+            suggestionPopup.setVisible(false);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Müşteriye özel cihaz önerileri
+    // -------------------------------------------------------------------------
+
+    private void initSuggestionPopup() {
+        suggestionPopup = new JPopupMenu();
+        suggestionPopup.setFocusable(false); // odak serialNoField'de kalsın
+
+        suggestionListModel = new DefaultListModel<>();
+        suggestionList = new JList<>(suggestionListModel);
+        suggestionList.setFocusable(false); // serialNoField'in odağını kaybetmesini (focusLost) önler
+        suggestionList.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Device) {
+                    Device d = (Device) value;
+                    String brand = d.getBrand() != null ? d.getBrand().getName() : "-";
+                    setText(brand + " " + nullToEmpty(d.getModel()) + " — " + nullToEmpty(d.getSerialNo()));
+                }
+                setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+                return this;
+            }
+        });
+
+        JScrollPane scroll = new JScrollPane(suggestionList);
+        suggestionPopup.add(scroll);
+        suggestionPopup.setPreferredSize(new Dimension(320, 150));
+
+        suggestionList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int index = suggestionList.locationToIndex(e.getPoint());
+                if (index >= 0) {
+                    applyDevice(suggestionListModel.getElementAt(index));
+                    suggestionPopup.setVisible(false);
+                }
+            }
+        });
+    }
+
+    private void showSuggestionPopup() {
+        suggestionPopup.setPopupSize(Math.max(serialNoField.getWidth(), 250),
+                Math.min(200, suggestionListModel.getSize() * 36 + 10));
+        suggestionPopup.show(serialNoField, 0, serialNoField.getHeight() + 2);
+    }
+
+    private void filterSuggestions(String text) {
+        suggestionListModel.clear();
+        String lower = text == null ? "" : text.toLowerCase();
+        for (Device d : suggestedDevices) {
+            String brand = d.getBrand() != null ? d.getBrand().getName().toLowerCase() : "";
+            String model = d.getModel() != null ? d.getModel().toLowerCase() : "";
+            String serial = d.getSerialNo() != null ? d.getSerialNo().toLowerCase() : "";
+            if (brand.contains(lower) || model.contains(lower) || serial.contains(lower)) {
+                suggestionListModel.addElement(d);
+            }
+        }
+    }
+
+    /** Seçili müşterinin daha önce sistemde kayıtlı cihazlarını önerilecek listeye yükler. */
+    public void setSuggestedDevices(List<Device> devices) {
+        suggestedDevices.clear();
+        if (devices != null) suggestedDevices.addAll(devices);
+        if (suggestionPopup != null && suggestionPopup.isVisible()) {
+            filterSuggestions(serialNoField.getText());
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -278,6 +393,7 @@ public class DeviceFormPanel extends JPanel {
             serialNoField.setText("");
             passwordField.setText("");
             accessoryField.setText("");
+            suggestedDevices.clear();
         } finally {
             isPopulating = false;
         }

@@ -14,11 +14,13 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class CustomerSelectBox extends JPanel {
 
     private Customer selectedCustomer;
     private final List<Customer> allCustomers = new ArrayList<>();
+    private Consumer<Customer> onSelectionChanged;
 
     private JButton selectButton;
     private JButton btnNewCustomer;
@@ -154,6 +156,12 @@ public class CustomerSelectBox extends JPanel {
         } else {
             selectButton.setText("Müşteri Seçiniz...");
         }
+        if (onSelectionChanged != null) onSelectionChanged.accept(customer);
+    }
+
+    /** Müşteri seçimi değiştiğinde (kullanıcı tıklaması veya programatik çağrı) tetiklenir. */
+    public void setOnSelectionChanged(Consumer<Customer> listener) {
+        this.onSelectionChanged = listener;
     }
 
     public Customer getSelectedItem() {

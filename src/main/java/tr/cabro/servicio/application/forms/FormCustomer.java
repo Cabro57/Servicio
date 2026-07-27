@@ -200,13 +200,23 @@ public class FormCustomer extends Form {
 
     private void updateNameAndBadge() {
         if (customer == null) return;
-        String isim = (customer.getType() == CustomerType.SMALL_BUSINESS || customer.getType() == CustomerType.DEALER)
+        boolean hasBusinessName = customer.getBusinessName() != null && !customer.getBusinessName().isBlank();
+        String isim = (customer.getType() == CustomerType.KURUMSAL && hasBusinessName)
                 ? customer.getBusinessName()
                 : customer.getFullName();
-        String badge = customer.getType() == CustomerType.NORMAL ? "Bireysel" : "Kurumsal";
-        lblNameBadge.setText("<html><span>" + isim + "</span>&nbsp;&nbsp;"
-                + "<span style='background-color:#2a2d36; color:#a0a0a0; font-size:11px; "
-                + "padding:3px 8px; border-radius:6px; font-weight:normal;'> " + badge + " </span></html>");
+        String badge = customer.getType() != null ? customer.getType().getDisplayName() : "Bireysel";
+
+        StringBuilder html = new StringBuilder("<html><span>").append(isim).append("</span>&nbsp;&nbsp;")
+                .append("<span style='background-color:#2a2d36; color:#a0a0a0; font-size:11px; ")
+                .append("padding:3px 8px; border-radius:6px; font-weight:normal;'> ").append(badge).append(" </span>");
+
+        if (customer.isProblematic()) {
+            html.append("&nbsp;<span style='background-color:#4a1919; color:#e74c3c; font-size:11px; ")
+                    .append("padding:3px 8px; border-radius:6px; font-weight:bold;'>&#9888; Sorunlu Müşteri</span>");
+        }
+
+        html.append("</html>");
+        lblNameBadge.setText(html.toString());
     }
 
     private void createLeftColumn() {

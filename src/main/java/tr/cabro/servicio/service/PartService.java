@@ -1,10 +1,12 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.database.repository.PartCategoryRepository;
 import tr.cabro.servicio.database.repository.PartRepository;
 import tr.cabro.servicio.database.repository.SupplierRepository;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.StockMovement;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.model.dictionary.PartCategory;
 import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.dto.PartStatsDto;
 import tr.cabro.servicio.model.enums.ReferenceType;
@@ -24,11 +26,14 @@ public class PartService {
     private final PartRepository partRepository;
     private final SupplierRepository supplierRepository;
     private final StockService stockService;
+    private final PartCategoryRepository partCategoryRepository;
 
-    public PartService(PartRepository partRepository, SupplierRepository supplierRepository, StockService stockService) {
+    public PartService(PartRepository partRepository, SupplierRepository supplierRepository, StockService stockService,
+                        PartCategoryRepository partCategoryRepository) {
         this.partRepository = partRepository;
         this.supplierRepository = supplierRepository;
         this.stockService = stockService;
+        this.partCategoryRepository = partCategoryRepository;
     }
 
     public CompletableFuture<Part> save(Part part, boolean update) {
@@ -119,6 +124,10 @@ public class PartService {
         });
     }
 
+    public CompletableFuture<List<Part>> getBySupplierId(Long supplierId) {
+        return CompletableFuture.supplyAsync(() -> hydrateParts(partRepository.findBySupplierId(supplierId)));
+    }
+
     public CompletableFuture<List<Part>> getPartsBelowMinStock() {
         // FIX: findBelowMinStock() → artık PartRepository'de default alias olarak tanımlı
         return CompletableFuture.supplyAsync(() -> hydrateParts(partRepository.findBelowMinStock()));
@@ -172,16 +181,25 @@ public class PartService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        if (supplierIds.isEmpty()) {
-            parts.forEach(p -> p.setSupplier(new Supplier()));
-            return parts;
-        }
+        Map<Long, Supplier> supplierMap = supplierIds.isEmpty()
+                ? Collections.emptyMap()
+                : supplierRepository.findByIds(supplierIds).stream()
+                  .collect(Collectors.toMap(Supplier::getId, s -> s));
 
-        Map<Long, Supplier> supplierMap = supplierRepository.findByIds(supplierIds).stream()
-                .collect(Collectors.toMap(Supplier::getId, s -> s));
+        List<Long> categoryIds = parts.stream()
+                .map(Part::getCategoryId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, PartCategory> categoryMap = categoryIds.isEmpty()
+                ? Collections.emptyMap()
+                : partCategoryRepository.findByIds(categoryIds).stream()
+                  .collect(Collectors.toMap(PartCategory::getId, c -> c));
 
         for (Part part : parts) {
-            part.setSupplier(supplierMap.get(part.getSupplierId()));
+            part.setSupplier(supplierMap.getOrDefault(part.getSupplierId(), new Supplier()));
+            part.setCategory(categoryMap.get(part.getCategoryId()));
         }
         return parts;
     }

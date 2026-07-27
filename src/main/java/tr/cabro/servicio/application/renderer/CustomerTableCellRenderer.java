@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.renderer;
 
+import com.formdev.flatlaf.extras.FlatSVGIcon;
 import tr.cabro.servicio.application.ui.IconManager;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
@@ -18,15 +19,19 @@ public class CustomerTableCellRenderer extends DefaultTableCellRenderer {
         if (value instanceof Customer) {
             Customer ct = (Customer) value;
             label.setText(ct.getFullName());
+            label.setToolTipText(null);
 
-            // GÜVENLİK ÖNLEMİ: Type null ise varsayılan ikonu (NORMAL) kullan veya boş geç
-            if (ct.getType() != null) {
+            if (ct.isProblematic()) {
+                label.setIcon(new FlatSVGIcon("icons/triangle-alert.svg", 16, 16)
+                        .setColorFilter(new FlatSVGIcon.ColorFilter(c -> new Color(231, 76, 60))));
+                label.setToolTipText("Sorunlu Müşteri");
+            } else if (ct.getType() != null) {
                 CustomerType type = CustomerType.valueOf(ct.getType().name());
                 IconManager.getIcon(type.getIconPath(), 16);
                 label.setIcon(new Ikon(ct.getType().getIconPath()));
             } else {
-                label.setIcon(new Ikon(CustomerType.NORMAL.getIconPath()));
-                // Veri hatası varsa varsayılan olarak NORMAL kabul et
+                // Veri hatası varsa varsayılan olarak BIREYSEL kabul et
+                label.setIcon(new Ikon(CustomerType.BIREYSEL.getIconPath()));
             }
 
             label.setHorizontalTextPosition(SwingConstants.RIGHT);

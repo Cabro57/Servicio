@@ -25,6 +25,7 @@ public class CustomerTableMapper implements RowMapper<Customer> {
         c.setAddress(rs.getString("address"));
         c.setNote(rs.getString("note"));
         c.setIdentityNo(rs.getString("identity_no"));
+        c.setProblematic(rs.getBoolean("is_problematic"));
         c.setTaxNumber(rs.getString("tax_number"));
         c.setTaxOffice(rs.getString("tax_office"));
         c.setCreatedAt(rs.getObject("created_at", LocalDateTime.class));

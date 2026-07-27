@@ -68,8 +68,8 @@ public class FormCustomers extends AbstractTableForm {
     @Override
     protected void initCards() {
         cardBox.addCardItem(new Ikon("icons/users.svg", 0.7f), "Toplam Müşteri");
-        cardBox.addCardItem(new Ikon("icons/user.svg", 0.7f), "Normal Müşteri");
-        cardBox.addCardItem(new Ikon("icons/store.svg", 0.7f), "Esnaf & Bayi");
+        cardBox.addCardItem(new Ikon("icons/store.svg", 0.7f), "Kurumsal Müşteri");
+        cardBox.addCardItem(new Ikon("icons/triangle-alert.svg", 0.7f), "Sorunlu Müşteri");
         cardBox.addCardItem(new Ikon("icons/badge-turkish-lira.svg", 0.7f), "Toplam Ciro");
     }
 
@@ -80,13 +80,12 @@ public class FormCustomers extends AbstractTableForm {
 
             long totalCustomer = customers.size();
 
-            long totalNormal = customers.stream()
-                    .filter(c -> c.getType() == CustomerType.NORMAL)
+            long totalKurumsal = customers.stream()
+                    .filter(c -> c.getType() == CustomerType.KURUMSAL)
                     .count();
 
-            long totalBusiness = customers.stream()
-                    .filter(c -> c.getType() == CustomerType.DEALER
-                    || c.getType() == CustomerType.SMALL_BUSINESS)
+            long totalProblematic = customers.stream()
+                    .filter(Customer::isProblematic)
                     .count();
 
             long totalCiro = customers.stream()
@@ -96,8 +95,8 @@ public class FormCustomers extends AbstractTableForm {
 
             SwingUtilities.invokeLater(() -> {
                 cardBox.setValueAt(0, String.valueOf(totalCustomer), " ", "", true);
-                cardBox.setValueAt(1, String.valueOf(totalNormal), " ", "", true);
-                cardBox.setValueAt(2, String.valueOf(totalBusiness), " ", "", true);
+                cardBox.setValueAt(1, String.valueOf(totalKurumsal), " ", "", true);
+                cardBox.setValueAt(2, String.valueOf(totalProblematic), " ", "", true);
                 cardBox.setValueAt(3, String.valueOf(totalCiro), " ", "", true);
             });
         }).exceptionally(throwable -> {

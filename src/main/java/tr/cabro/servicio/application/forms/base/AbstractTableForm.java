@@ -233,6 +233,18 @@ public abstract class AbstractTableForm extends Form {
         sorter = new TableRowSorter<>(model);
     }
 
+    /**
+     * Sayfalanmış veri asenkron geldikten sonra çağrılmalı. JTable'ın kendi iç
+     * revalidate'i sadece en yakın JViewport'a kadar yayılır (JViewport bir
+     * "validate root"tur) — dıştaki tableContainer MigLayout'unun "[grow]" satırı
+     * bu olmadan yeniden hesaplanmaz ve tablo ilk açılışta sadece birkaç satırlık
+     * yer kaplar (başka forma geçip dönünce MainForm'un genel revalidate'i düzeltir).
+     */
+    protected void refreshLayout() {
+        revalidate();
+        repaint();
+    }
+
     // --- Mevcut Abstract Metodlar ---
 
     protected abstract void setupTable();

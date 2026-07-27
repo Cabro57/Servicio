@@ -55,4 +55,11 @@ public interface DeviceRepository {
     @SqlQuery(BASE_SELECT + "WHERE db.name LIKE :search OR d.model LIKE :search OR d.serial_no LIKE :search " +
             "ORDER BY d.created_at DESC")
     List<Device> search(@Bind("search") String searchTerm);
+
+    // Bir müşterinin daha önce servise getirdiği cihazlar — devices tablosunda customer_id yok,
+    // ilişki work_orders üzerinden kuruluyor (bkz. V7 migration notu).
+    @SqlQuery(BASE_SELECT + "JOIN work_orders wo ON wo.device_id = d.id " +
+            "WHERE wo.customer_id = :customerId AND d.is_deleted = 0 " +
+            "GROUP BY d.id ORDER BY MAX(d.created_at) DESC")
+    List<Device> findByCustomerId(@Bind("customerId") Long customerId);
 }

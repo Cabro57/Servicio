@@ -62,10 +62,22 @@ public interface WorkOrderRepository {
     @SqlQuery("SELECT * FROM work_orders WHERE service_status NOT IN (<statuses>) ORDER BY created_at DESC")
     List<WorkOrder> findByStatusesExcluded(@BindList("statuses") List<ServiceStatus> statuses);
 
-    @SqlQuery("SELECT s.* FROM work_orders s " +
-            "WHERE s.reported_fault LIKE :search " +
-            "OR EXISTS (SELECT 1 FROM work_order_notes sn WHERE sn.service_id = s.id AND sn.note LIKE :search) " +
-            "ORDER BY s.created_at DESC")
+    // Arama alanı sadece şikayet/notlarla sınırlı DEĞİL: müşteri adı/telefonu, cihaz marka/model/seri no
+    // ve kayıt ID'si de kapsanmalı — sayfalama öncesi client-side arama tüm kolonları tarıyordu, bu kapsamı korur.
+    String SEARCH_SELECT = "SELECT s.* ";
+    String SEARCH_FROM = "FROM work_orders s " +
+            "LEFT JOIN customers c ON c.id = s.customer_id " +
+            "LEFT JOIN devices d ON d.id = s.device_id " +
+            "LEFT JOIN device_brands db ON db.id = d.brand_id ";
+    String SEARCH_WHERE = "WHERE (" +
+            "CAST(s.id AS TEXT) LIKE :search " +
+            "OR s.reported_fault LIKE :search " +
+            "OR c.first_name LIKE :search OR c.last_name LIKE :search OR c.business_name LIKE :search OR c.phone_number_1 LIKE :search " +
+            "OR db.name LIKE :search OR d.model LIKE :search OR d.serial_no LIKE :search " +
+            "OR EXISTS (SELECT 1 FROM work_order_notes sn WHERE sn.service_id = s.id AND sn.note LIKE :search)" +
+            ") ";
+
+    @SqlQuery(SEARCH_SELECT + SEARCH_FROM + SEARCH_WHERE + "ORDER BY s.created_at DESC")
     List<WorkOrder> search(@Bind("search") String searchTerm);
 
     // =========================================================================
@@ -78,16 +90,25 @@ public interface WorkOrderRepository {
     @SqlQuery("SELECT COUNT(*) FROM work_orders")
     long countAll();
 
-    @SqlQuery("SELECT s.* FROM work_orders s " +
-            "WHERE s.reported_fault LIKE :search " +
-            "OR EXISTS (SELECT 1 FROM work_order_notes sn WHERE sn.service_id = s.id AND sn.note LIKE :search) " +
-            "ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset")
+    @SqlQuery(SEARCH_SELECT + SEARCH_FROM + SEARCH_WHERE + "ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset")
     List<WorkOrder> searchPaged(@Bind("search") String searchTerm, @Bind("limit") int limit, @Bind("offset") int offset);
 
-    @SqlQuery("SELECT COUNT(*) FROM work_orders s " +
-            "WHERE s.reported_fault LIKE :search " +
-            "OR EXISTS (SELECT 1 FROM work_order_notes sn WHERE sn.service_id = s.id AND sn.note LIKE :search)")
+    @SqlQuery("SELECT COUNT(*) " + SEARCH_FROM + SEARCH_WHERE)
     long countSearch(@Bind("search") String searchTerm);
+
+    @SqlQuery(SEARCH_SELECT + SEARCH_FROM + SEARCH_WHERE + "AND s.service_status IN (<statuses>) ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset")
+    List<WorkOrder> searchPagedByStatuses(@Bind("search") String searchTerm, @BindList("statuses") List<ServiceStatus> statuses,
+                                          @Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) " + SEARCH_FROM + SEARCH_WHERE + "AND s.service_status IN (<statuses>)")
+    long countSearchByStatuses(@Bind("search") String searchTerm, @BindList("statuses") List<ServiceStatus> statuses);
+
+    @SqlQuery(SEARCH_SELECT + SEARCH_FROM + SEARCH_WHERE + "AND s.service_status NOT IN (<statuses>) ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset")
+    List<WorkOrder> searchPagedByStatusesExcluded(@Bind("search") String searchTerm, @BindList("statuses") List<ServiceStatus> statuses,
+                                                   @Bind("limit") int limit, @Bind("offset") int offset);
+
+    @SqlQuery("SELECT COUNT(*) " + SEARCH_FROM + SEARCH_WHERE + "AND s.service_status NOT IN (<statuses>)")
+    long countSearchByStatusesExcluded(@Bind("search") String searchTerm, @BindList("statuses") List<ServiceStatus> statuses);
 
     @SqlQuery("SELECT * FROM work_orders WHERE service_status IN (<statuses>) ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
     List<WorkOrder> findByStatusesPaged(@BindList("statuses") List<ServiceStatus> statuses,

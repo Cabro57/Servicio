@@ -42,6 +42,7 @@ public class WorkOrderItemAddPanel extends JPanel {
 
     private static final DeviceType ALL_TYPES = new DeviceType(null, "Tümü", 0);
     private static final String ALL_CATEGORIES = "Tümü";
+    private static final String ALL_MODELS = "Tümü";
     private static final String STOCK_ALL = "Tümü";
     private static final String STOCK_IN = "Stokta Olanlar";
     private static final String STOCK_OUT = "Tükenenler";
@@ -55,6 +56,7 @@ public class WorkOrderItemAddPanel extends JPanel {
 
     private JTextField txtPartSearch;
     private JComboBox<String> categoryCombo;
+    private JComboBox<String> modelCombo;
     private JComboBox<String> stockCombo;
 
     private JTextField txtLaborSearch;
@@ -91,7 +93,8 @@ public class WorkOrderItemAddPanel extends JPanel {
         ServiceManager.getPartService().getAll().thenAccept(parts -> {
             SwingUtilities.invokeLater(() -> {
                 partTableModel.setData(parts);
-                populateCategoryCombo(parts);
+                populateCategoryCombo();
+                populateModelCombo(parts);
                 applyPartFilters();
             });
         });
@@ -129,20 +132,43 @@ public class WorkOrderItemAddPanel extends JPanel {
         });
     }
 
-    private void populateCategoryCombo(List<Part> parts) {
+    // Kategori artık veritabanı sözlüğünden (part_categories) geliyor — sadece stoktaki
+    // parçalarda görünenlerle sınırlı kalmaz, tüm tanımlı kategoriler listelenir.
+    private void populateCategoryCombo() {
         String previous = (String) categoryCombo.getSelectedItem();
 
-        categoryCombo.removeAllItems();
-        categoryCombo.addItem(ALL_CATEGORIES);
+        ServiceManager.getPartCategoryManager().getAll().thenAccept(categories -> SwingUtilities.invokeLater(() -> {
+            categoryCombo.removeAllItems();
+            categoryCombo.addItem(ALL_CATEGORIES);
+            categories.forEach(c -> categoryCombo.addItem(c.getName()));
 
-        new TreeSet<>(parts.stream()
-                .map(Part::getCategory)
-                .filter(c -> c != null && !c.trim().isEmpty())
-                .collect(java.util.stream.Collectors.toSet()))
-                .forEach(categoryCombo::addItem);
+            if (previous != null) {
+                categoryCombo.setSelectedItem(previous);
+            }
+        }));
+    }
+
+    // Uyumlu model alanı serbest metin ve virgülle ayrılmış birden fazla model içerebilir
+    // (ör. "iPhone 11, iPhone 11 Pro"); combo'yu bu tekil model adlarından türetiyoruz.
+    private void populateModelCombo(List<Part> parts) {
+        String previous = (String) modelCombo.getSelectedItem();
+
+        modelCombo.removeAllItems();
+        modelCombo.addItem(ALL_MODELS);
+
+        TreeSet<String> models = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        parts.stream()
+                .map(Part::getModelCompatibility)
+                .filter(m -> m != null && !m.trim().isEmpty())
+                .flatMap(m -> Arrays.stream(m.split(",")))
+                .map(String::trim)
+                .filter(m -> !m.isEmpty())
+                .forEach(models::add);
+
+        models.forEach(modelCombo::addItem);
 
         if (previous != null) {
-            categoryCombo.setSelectedItem(previous);
+            modelCombo.setSelectedItem(previous);
         }
     }
 
@@ -151,6 +177,7 @@ public class WorkOrderItemAddPanel extends JPanel {
 
         String text = txtPartSearch.getText();
         String category = (String) categoryCombo.getSelectedItem();
+        String model = (String) modelCombo.getSelectedItem();
         String stock = (String) stockCombo.getSelectedItem();
 
         partSorter.setRowFilter(new RowFilter<GenericTableModel<Part>, Integer>() {
@@ -158,8 +185,17 @@ public class WorkOrderItemAddPanel extends JPanel {
             public boolean include(Entry<? extends GenericTableModel<Part>, ? extends Integer> entry) {
                 Part p = entry.getModel().getItemAt(entry.getIdentifier());
 
-                if (category != null && !ALL_CATEGORIES.equals(category) && !category.equals(p.getCategory())) {
+                String categoryName = p.getCategory() != null ? p.getCategory().getName() : null;
+                if (category != null && !ALL_CATEGORIES.equals(category) && !category.equals(categoryName)) {
                     return false;
+                }
+
+                if (model != null && !ALL_MODELS.equals(model)) {
+                    String compatibility = p.getModelCompatibility();
+                    if (compatibility == null
+                            || !compatibility.toLowerCase(Locale.forLanguageTag("tr")).contains(model.toLowerCase(Locale.forLanguageTag("tr")))) {
+                        return false;
+                    }
                 }
 
                 if (STOCK_IN.equals(stock) && p.getStockQuantity() <= 0) return false;
@@ -193,6 +229,10 @@ public class WorkOrderItemAddPanel extends JPanel {
         stockCombo = new JComboBox<>(new String[]{STOCK_ALL, STOCK_IN, STOCK_OUT});
         panel.add(stockCombo, "growx, wrap");
 
+        modelCombo = new JComboBox<>();
+        modelCombo.addItem(ALL_MODELS);
+        panel.add(modelCombo, "growx, wrap");
+
         List<ColumnDef<Part>> cols = Arrays.asList(
                 new ColumnDef<>("Parça Bilgisi", Part.class, p -> p),
                 new ColumnDef<>("Fiyat", String.class, p -> Format.formatPrice(p.getSalePrice())),
@@ -213,6 +253,7 @@ public class WorkOrderItemAddPanel extends JPanel {
             public void changedUpdate(DocumentEvent e) { applyPartFilters(); }
         });
         categoryCombo.addActionListener(e -> applyPartFilters());
+        modelCombo.addActionListener(e -> applyPartFilters());
         stockCombo.addActionListener(e -> applyPartFilters());
 
         table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Part>(

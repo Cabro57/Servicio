@@ -58,6 +58,10 @@ public class DeviceService {
         return CompletableFuture.supplyAsync(() -> deviceRepository.findByIds(ids));
     }
 
+    public CompletableFuture<List<Device>> getAllByCustomerId(Long customerId) {
+        return CompletableFuture.supplyAsync(() -> deviceRepository.findByCustomerId(customerId));
+    }
+
     public CompletableFuture<List<Device>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
         return CompletableFuture.supplyAsync(

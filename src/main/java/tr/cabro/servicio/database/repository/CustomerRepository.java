@@ -17,14 +17,14 @@ import java.util.Optional;
 @RegisterBeanMapper(Customer.class)
 public interface CustomerRepository {
 
-    @SqlUpdate("INSERT INTO customers (customer_type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at) " +
-            "VALUES (:type, :businessName, :firstName, :lastName, :identityNo, :taxNumber, :taxOffice, :phoneNumber1, :phoneNumber2, :email, :address, :note, :createdAt, :updatedAt)")
+    @SqlUpdate("INSERT INTO customers (customer_type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at) " +
+            "VALUES (:type, :businessName, :firstName, :lastName, :identityNo, :taxNumber, :taxOffice, :phoneNumber1, :phoneNumber2, :email, :address, :note, :problematic, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean Customer customer);
 
     @SqlUpdate("UPDATE customers SET customer_type=:type, business_name=:businessName, first_name=:firstName, last_name=:lastName, " +
             "identity_no=:identityNo, tax_number=:taxNumber, tax_office=:taxOffice, phone_number_1=:phoneNumber1, phone_number_2=:phoneNumber2, " +
-            "email=:email, address=:address, note=:note, updated_at=:updatedAt WHERE id=:id")
+            "email=:email, address=:address, note=:note, is_problematic=:problematic, updated_at=:updatedAt WHERE id=:id")
     void update(@BindBean Customer customer);
 
     // --- SOFT DELETE İŞLEMLERİ ---
@@ -36,13 +36,13 @@ public interface CustomerRepository {
 
     // --- SEÇME (SELECT) İŞLEMLERİ ---
     // DÜZELTME: customer_type kolonu Java'daki "type" değişkeniyle eşleşmesi için "AS type" olarak seçildi
-    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE id = :id AND is_deleted = 0")
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at FROM customers WHERE id = :id AND is_deleted = 0")
     Optional<Customer> findById(@Bind("id") Long id);
 
-    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE id IN (<ids>) AND is_deleted = 0")
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at FROM customers WHERE id IN (<ids>) AND is_deleted = 0")
     List<Customer> findByIds(@BindList("ids") List<Long> ids);
 
-    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC")
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<Customer> findAll();
 
     @SqlQuery("SELECT " +
@@ -50,7 +50,7 @@ public interface CustomerRepository {
             "c.business_name, c.first_name, c.last_name, " +
             "c.identity_no, c.tax_number, c.tax_office, " +
             "c.phone_number_1, c.phone_number_2, c.email, " +
-            "c.address, c.note, c.created_at, c.updated_at, " +
+            "c.address, c.note, c.is_problematic, c.created_at, c.updated_at, " +
             "COUNT(DISTINCT wo.device_id) AS device_count, " +
             "COALESCE(SUM(woi.unit_price * woi.quantity), 0) AS spent " +
             "FROM customers c " +
@@ -59,12 +59,12 @@ public interface CustomerRepository {
             "WHERE c.is_deleted = 0 GROUP BY " +
             "c.id, c.customer_type, c.business_name, c.first_name, c.last_name, " +
             "c.identity_no, c.tax_number, c.tax_office, c.phone_number_1, c.phone_number_2, " +
-            "c.email, c.address, c.note, c.created_at, c.updated_at " +
+            "c.email, c.address, c.note, c.is_problematic, c.created_at, c.updated_at " +
             "ORDER BY c.created_at DESC")
     @UseRowMapper(CustomerTableMapper.class)
     List<Customer> findAllTable();
 
-    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, created_at, updated_at FROM customers WHERE is_deleted = 0 AND " +
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at FROM customers WHERE is_deleted = 0 AND " +
             "(first_name LIKE :search OR last_name LIKE :search OR business_name LIKE :search OR " +
             "phone_number_1 LIKE :search OR identity_no LIKE :search) " +
             "ORDER BY created_at DESC")

@@ -11,6 +11,8 @@ import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.model.dictionary.DeviceType;
+import tr.cabro.servicio.model.dictionary.PartCategory;
+import tr.cabro.servicio.service.PartCategoryManager;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.SupplierService;
@@ -25,11 +27,12 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
 
     private PartService partService;
     private SupplierService supplierService;
+    private PartCategoryManager partCategoryService;
 
     // Arayüz Bileşenleri
     private JTextField barcode_field;
     private JTextField name_field;
-    private JTextField categroy_field;
+    private JComboBox<PartCategory> category_combo;
     private JComboBox<DeviceType> device_type_combo;
     private JTextField models_field;
     private JFormattedTextField purchase_price_field;
@@ -97,6 +100,38 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         });
     }
 
+    private void loadCategories(Long selectedCategoryId) {
+        partCategoryService.getAll().thenAccept(categories -> SwingUtilities.invokeLater(() -> {
+            category_combo.removeAllItems();
+
+            PartCategory target = null;
+            for (PartCategory c : categories) {
+                category_combo.addItem(c);
+                if (c.getId().equals(selectedCategoryId)) {
+                    target = c;
+                }
+            }
+
+            category_combo.setSelectedItem(target);
+        })).exceptionally(ex -> {
+            Servicio.getLogger().error("Kategori listesi combobox'a yüklenemedi", ex);
+            return null;
+        });
+    }
+
+    private void onAddCategory() {
+        String name = JOptionPane.showInputDialog(this, "Yeni kategori adı:", "Kategori Ekle", JOptionPane.PLAIN_MESSAGE);
+        if (name == null || name.trim().isEmpty()) return;
+
+        partCategoryService.add(name.trim()).thenAccept(id ->
+                loadCategories((long) id)
+        ).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() ->
+                    showValidationError(Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
+            return null;
+        });
+    }
+
     @Override
     protected boolean validateForm() {
         // Barkod zorunlu
@@ -123,13 +158,6 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
             return false;
         }
 
-        // Kategori — isteğe bağlı; doluysa max 100 karakter
-        if (Validator.exceedsMaxLength(categroy_field.getText(), 100)) {
-            showValidationError("Kategori en fazla 100 karakter olabilir.");
-            categroy_field.requestFocus();
-            return false;
-        }
-
         // Alış fiyatı negatif olamaz
         Object ppVal = purchase_price_field.getValue();
         if (ppVal instanceof Number && ((Number) ppVal).doubleValue() < 0) {
@@ -153,7 +181,9 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
     protected Part collectFormData(@NonNull Part data) {
         data.setName(name_field.getText().trim());
         data.setBarcode(barcode_field.getText().trim());
-        data.setCategory(categroy_field.getText());
+
+        PartCategory selectedCategory = (PartCategory) category_combo.getSelectedItem();
+        data.setCategoryId(selectedCategory != null ? selectedCategory.getId() : null);
 
         Supplier selectedSupplier = (Supplier) supplier_combo.getSelectedItem();
         if (selectedSupplier != null) {
@@ -195,7 +225,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         barcode_field.setText(data.getBarcode());
         name_field.setText(data.getName());
         models_field.setText(data.getModelCompatibility());
-        categroy_field.setText(data.getCategory());
+        loadCategories(data.getCategoryId());
 
         BigDecimal pp = data.getPurchasePrice();
         BigDecimal sp = data.getSalePrice();
@@ -215,7 +245,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
 
     @Override
     public void clearForm() {
-        categroy_field.setText("");
+        loadCategories(null);
         supplier_combo.setSelectedIndex(-1);
         name_field.setText("");
         models_field.setText("");
@@ -236,6 +266,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
     protected void initComponent() {
         this.partService = ServiceManager.getPartService();
         this.supplierService = ServiceManager.getSupplierService();
+        this.partCategoryService = ServiceManager.getPartCategoryManager();
 
         setLayout(new MigLayout("wrap 2, width 600", "[grow,fill][grow,fill]", "[]10[]"));
 
@@ -262,8 +293,27 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         add(name_field, "span, growx");
 
         add(new JLabel("Kategori"));
-        categroy_field = new JTextField();
-        add(categroy_field);
+        category_combo = new JComboBox<>();
+        category_combo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof PartCategory) {
+                    setText(((PartCategory) value).getName());
+                } else if (value == null) {
+                    setText("Seçiniz...");
+                }
+                return this;
+            }
+        });
+        JButton addCategoryButton = new JButton(new Ikon("icons/plus.svg", name_field.getFont().getSize()));
+        addCategoryButton.setToolTipText("Yeni kategori ekle");
+        addCategoryButton.addActionListener(e -> onAddCategory());
+
+        JPanel categoryPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow][pref!]", "[]"));
+        categoryPanel.add(category_combo, "growx");
+        categoryPanel.add(addCategoryButton);
+        add(categoryPanel, "growx");
 
         add(new JLabel("Tedarikçi"));
         supplier_combo = new JComboBox<>();

@@ -19,7 +19,7 @@ public class Customer {
     private Long id;
 
     @ColumnName("customer_type")
-    private CustomerType type = CustomerType.NORMAL;
+    private CustomerType type = CustomerType.BIREYSEL;
 
     @ColumnName("business_name")
     private String businessName;
@@ -49,6 +49,10 @@ public class Customer {
     private String email;
     private String address;
     private String note;
+
+    // Sorunlu/iş yapılmayacak müşteri bayrağı (eski CustomerType.BE_CAREFUL/DOING_BUSINESS/PROBLEM'in yerine geçti)
+    @ColumnName("is_problematic")
+    private boolean problematic = false;
 
     // Denetim (Audit) & Soft Delete Alanları
     // DİKKAT: "deleted" olarak tutulmalı — Lombok, boolean isDeleted için isIsDeleted() üretir (JDBI hatası).
@@ -88,6 +92,7 @@ public class Customer {
                 ", lastName='" + lastName + '\'' +
                 ", identityNo='" + identityNo + '\'' +
                 ", phoneNumber1='" + phoneNumber1 + '\'' +
+                ", problematic=" + problematic +
                 ", deleted=" + deleted +
                 ", createdAt=" + createdAt +
                 '}';

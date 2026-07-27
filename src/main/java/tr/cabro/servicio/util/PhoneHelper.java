@@ -45,6 +45,12 @@ public class PhoneHelper {
         }
     }
 
+    /** wa.me deep link'i için "+" olmadan E.164 rakam dizisi üretir (ör. 905321234567). */
+    public static String toWhatsAppDigits(String e164Number) {
+        if (e164Number == null || e164Number.isEmpty()) return null;
+        return e164Number.startsWith("+") ? e164Number.substring(1) : e164Number;
+    }
+
     // --- YENİ EKLENEN METODLAR ---
 
     /**

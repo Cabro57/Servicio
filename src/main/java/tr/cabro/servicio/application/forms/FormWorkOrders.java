@@ -198,7 +198,8 @@ public class FormWorkOrders extends AbstractTableForm {
 
         CompletableFuture<PageResult<WorkOrder>> future;
         if (!currentSearchTerm.isEmpty()) {
-            future = service.searchPaged(currentSearchTerm, currentPage, pageSize);
+            String statusName = currentStatusFilter != null ? currentStatusFilter.name() : null;
+            future = service.searchPaged(currentSearchTerm, currentPage, pageSize, statusName);
         } else if (currentStatusFilter != null) {
             future = service.getAllPaged(currentPage, pageSize, currentStatusFilter.name());
         } else {
@@ -209,6 +210,7 @@ public class FormWorkOrders extends AbstractTableForm {
                     tableModal.setData(result.getItems());
                     if (pagination != null) pagination.setPageRange(result.getPage(), result.getTotalPages());
                     refreshStats();
+                    refreshLayout();
                 }))
                 .exceptionally(ex -> {
                     SwingUtilities.invokeLater(() ->

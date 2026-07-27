@@ -9,12 +9,8 @@ import java.util.Arrays;
 @Getter
 @EnumByName
 public enum CustomerType implements Visualizable {
-    NORMAL("Normal", "icons/user.svg", BadgeColor.BLUE),
-    BE_CAREFUL("Dikkat Et", "icons/triangle-alert.svg", BadgeColor.RED),
-    DOING_BUSINESS("İş Yapma", "icons/triangle-alert.svg", BadgeColor.RED),
-    SMALL_BUSINESS("Esnaf",  "icons/store.svg", BadgeColor.YELLOW),
-    DEALER("Bayi", "icons/handshake.svg", BadgeColor.GREEN),
-    PROBLEM("Problemli", "icons/triangle-alert.svg", BadgeColor.RED);
+    BIREYSEL("Bireysel", "icons/user.svg", BadgeColor.BLUE),
+    KURUMSAL("Kurumsal", "icons/store.svg", BadgeColor.GREEN);
 
     private final String displayName;
     private final String iconPath;
@@ -27,11 +23,11 @@ public enum CustomerType implements Visualizable {
     }
 
     public static CustomerType of(String name) {
-        if (name == null) return NORMAL;
+        if (name == null) return BIREYSEL;
         return Arrays.stream(values())
                 .filter(ct -> ct.name().equalsIgnoreCase(name) || ct.displayName.equalsIgnoreCase(name))
                 .findFirst()
-                .orElse(NORMAL);
+                .orElse(BIREYSEL);
     }
 
     @Override

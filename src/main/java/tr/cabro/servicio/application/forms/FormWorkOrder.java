@@ -23,25 +23,35 @@ import tr.cabro.servicio.application.renderer.AddButtonRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.documents.ServiceFormType;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ItemType;
 import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.model.enums.SourceType;
+import tr.cabro.servicio.model.enums.TemplateType;
 import tr.cabro.servicio.service.*;
+import tr.cabro.servicio.util.DesktopHelper;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
+import tr.cabro.servicio.util.TemplateEngine;
 
 import javax.swing.*;
 import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public class FormWorkOrder extends Form {
 
@@ -60,6 +70,7 @@ public class FormWorkOrder extends Form {
 
     // --- Left Column Labels ---
     private JLabel lblCustomerName, lblCustomerPhone, lblCustomerEmail;
+    private JButton btnWhatsapp;
     private JLabel lblDeviceType, lblDeviceBrand, lblDeviceModel, lblDeviceSerial;
     private JTextArea txtReportedFault;
     private JLabel lblDateArrival, lblDateEstimated;
@@ -213,13 +224,134 @@ public class FormWorkOrder extends Form {
         statusPanel.add(new JLabel("Durum Güncelle:"));
         statusPanel.add(statusComboBox);
 
+        JButton btnGenerateDoc = new JButton("Belge Oluştur", new Ikon("icons/file-text.svg", 1f));
+        btnGenerateDoc.putClientProperty(FlatClientProperties.STYLE,
+                "background: lighten($Panel.background, 5%); arc: 10; font: bold");
+        btnGenerateDoc.addActionListener(e -> openGenerateDocumentModal());
+
         headerPanel.add(btnBack, "w 40!, h 40!, aligny top");
         headerPanel.add(titlePanel, "gapleft 15, aligny top");
         headerPanel.add(lblHeaderBadge, "gapleft 10, aligny top, gaptop 5");
         headerPanel.add(new JLabel(""), "growx, pushx");
         headerPanel.add(statusPanel, "align right, aligny top");
+        headerPanel.add(btnGenerateDoc, "gapleft 10, aligny top");
 
         add(headerPanel, "wrap, growx");
+    }
+
+    // =========================================================================
+    // BELGE (PDF) OLUŞTURMA
+    // =========================================================================
+
+    private void openGenerateDocumentModal() {
+        JPanel panel = new JPanel(new MigLayout("fillx, wrap, insets 10, width 350", "[fill,grow]", "[][]"));
+        panel.add(new JLabel("Oluşturulacak belge:"));
+        JComboBox<ServiceFormType> combo = new JComboBox<>(ServiceFormType.values());
+        panel.add(combo, "growx");
+
+        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Oluştur", SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option("Çık", SimpleModalBorder.CANCEL_OPTION)
+        };
+
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Belge Oluştur", options, (controller, action) -> {
+            if (action != SimpleModalBorder.YES_OPTION) return;
+            ServiceFormType selected = (ServiceFormType) combo.getSelectedItem();
+            if (selected == null) {
+                controller.consume();
+                return;
+            }
+            generateAndOpenDocument(selected);
+        }), "generate_document_modal");
+    }
+
+    private void generateAndOpenDocument(ServiceFormType formType) {
+        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
+            User shop = shopOpt.orElse(null);
+            try {
+                File pdf = formType.generate(workOrder, shop);
+                SwingUtilities.invokeLater(() -> {
+                    if (DesktopHelper.openFile(pdf)) {
+                        Toast.show(this, Toast.Type.SUCCESS, "Belge oluşturuldu.");
+                    } else {
+                        Toast.show(this, Toast.Type.WARNING, "Belge oluşturuldu ama açılamadı: " + pdf.getAbsolutePath());
+                    }
+                });
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Belge oluşturulamadı: " + ex.getMessage()));
+                Servicio.getLogger().error("PDF belge oluşturma hatası", ex);
+            }
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, ex.getMessage()));
+            return null;
+        });
+    }
+
+    // =========================================================================
+    // WHATSAPP MESAJ GÖNDERME
+    // =========================================================================
+
+    private void openWhatsAppModal() {
+        if (workOrder.getCustomer() == null || workOrder.getCustomer().getPhoneNumber1() == null) return;
+
+        CompletableFuture<List<DocumentTemplate>> templatesFuture =
+                ServiceManager.getDocumentTemplateService().getByType(TemplateType.WHATSAPP_MESSAGE);
+        CompletableFuture<Optional<User>> shopFuture = ServiceManager.getUserService().get(1L);
+
+        CompletableFuture.allOf(templatesFuture, shopFuture).thenAccept(v -> {
+            List<DocumentTemplate> templates = templatesFuture.join();
+            User shop = shopFuture.join().orElse(null);
+            Map<String, String> tokens = TemplateTokenBuilder.fromWorkOrder(workOrder, shop);
+
+            SwingUtilities.invokeLater(() -> {
+                if (templates.isEmpty()) {
+                    Toast.show(this, Toast.Type.WARNING, "Önce Ayarlar > WhatsApp Şablonları'ndan bir mesaj şablonu ekleyin.");
+                    return;
+                }
+
+                JPanel panel = new JPanel(new MigLayout("fillx, wrap, insets 10, width 400", "[fill,grow]", "[][][]"));
+                panel.add(new JLabel("Mesaj şablonu:"));
+                JComboBox<DocumentTemplate> combo = new JComboBox<>(templates.toArray(new DocumentTemplate[0]));
+                panel.add(combo, "growx");
+
+                panel.add(new JLabel("Mesaj (göndermeden önce düzenleyebilirsiniz):"));
+                JTextArea txtMessage = new JTextArea(6, 0);
+                txtMessage.setLineWrap(true);
+                txtMessage.setWrapStyleWord(true);
+                DocumentTemplate initial = (DocumentTemplate) combo.getSelectedItem();
+                if (initial != null) txtMessage.setText(TemplateEngine.render(initial.getBody(), tokens));
+                panel.add(new JScrollPane(txtMessage), "growx");
+
+                combo.addActionListener(e -> {
+                    DocumentTemplate selected = (DocumentTemplate) combo.getSelectedItem();
+                    if (selected != null) txtMessage.setText(TemplateEngine.render(selected.getBody(), tokens));
+                });
+
+                SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                        new SimpleModalBorder.Option("Gönder", SimpleModalBorder.YES_OPTION),
+                        new SimpleModalBorder.Option("Çık", SimpleModalBorder.CANCEL_OPTION)
+                };
+
+                AppModal.showModal(this, new SimpleModalBorder(panel, "WhatsApp Mesaj Gönder", options, (controller, action) -> {
+                    if (action != SimpleModalBorder.YES_OPTION) return;
+
+                    String digits = PhoneHelper.toWhatsAppDigits(workOrder.getCustomer().getPhoneNumber1());
+                    if (digits == null) {
+                        controller.consume();
+                        Toast.show(this, Toast.Type.WARNING, "Müşterinin telefon numarası yok.");
+                        return;
+                    }
+
+                    String url = "https://wa.me/" + digits + "?text=" + URLEncoder.encode(txtMessage.getText(), StandardCharsets.UTF_8);
+                    if (!DesktopHelper.browseUrl(url)) {
+                        Toast.show(this, Toast.Type.ERROR, "WhatsApp açılamadı.");
+                    }
+                }), "whatsapp_message_modal");
+            });
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Şablonlar yüklenemedi: " + ex.getMessage()));
+            return null;
+        });
     }
 
     // =========================================================================
@@ -248,6 +380,10 @@ public class FormWorkOrder extends Form {
                     ? PhoneHelper.formatForDisplay(workOrder.getCustomer().getPhoneNumber1()) : "-");
             lblCustomerEmail.setText(workOrder.getCustomer().getEmail() != null
                     ? workOrder.getCustomer().getEmail() : "-");
+            btnWhatsapp.setVisible(workOrder.getCustomer().getPhoneNumber1() != null
+                    && !workOrder.getCustomer().getPhoneNumber1().isBlank());
+        } else {
+            btnWhatsapp.setVisible(false);
         }
 
         Device device = workOrder.getDevice();
@@ -921,7 +1057,7 @@ public class FormWorkOrder extends Form {
 
     private JPanel createCustomerCard() {
         JPanel card = createCardPanel();
-        card.setLayout(new MigLayout("insets 20, fillx, wrap 2", "[grow][]", "[]15[][][]"));
+        card.setLayout(new MigLayout("insets 20, fillx, wrap 2", "[grow][]", "[]15[][][]10[]"));
         JLabel title = new JLabel("Müşteri Bilgileri");
         title.setIcon(new Ikon("icons/user.svg"));
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
@@ -931,10 +1067,18 @@ public class FormWorkOrder extends Form {
         lblCustomerPhone.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
         lblCustomerEmail = new JLabel("-");
         lblCustomerEmail.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+
+        btnWhatsapp = new JButton("WhatsApp Mesaj Gönder", new Ikon("icons/message-circle.svg", 1f));
+        btnWhatsapp.putClientProperty(FlatClientProperties.STYLE,
+                "background: #0b4a3a; foreground: #2ecc71; arc: 10; font: bold; borderWidth: 0");
+        btnWhatsapp.addActionListener(e -> openWhatsAppModal());
+        btnWhatsapp.setVisible(false);
+
         card.add(title, "span 2");
         card.add(lblCustomerName, "span 2");
         card.add(lblCustomerPhone, "span 2");
         card.add(lblCustomerEmail, "span 2");
+        card.add(btnWhatsapp, "span 2, growx");
         return card;
     }
 

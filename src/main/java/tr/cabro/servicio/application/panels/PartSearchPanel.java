@@ -58,7 +58,7 @@ public class PartSearchPanel extends JPanel {
         List<ColumnDef<Part>> columns = Arrays.asList(
                 new ColumnDef<>("Barkod", String.class, Part::getBarcode),
                 new ColumnDef<>("Ürün Adı", String.class, Part::getName),
-                new ColumnDef<>("Kategori", String.class, Part::getCategory),
+                new ColumnDef<>("Kategori", String.class, p -> p.getCategory() != null ? p.getCategory().getName() : "-"),
                 new ColumnDef<>("Uyumlu Model", String.class, Part::getModelCompatibility),
                 new ColumnDef<>("Stok", Integer.class, Part::getStockQuantity),
                 new ColumnDef<>("Alış Fiyatı", String.class, p -> Format.formatPrice(p.getPurchasePrice())),
@@ -148,7 +148,8 @@ public class PartSearchPanel extends JPanel {
 
                 // Cihaz türü filtresi
                 if (selectedType != null && !selectedType.equals("(Tümü)") && !selectedType.isEmpty()) {
-                    if (!selectedType.equalsIgnoreCase(p.getCategory())) {
+                    String categoryName = p.getCategory() != null ? p.getCategory().getName() : "";
+                    if (!selectedType.equalsIgnoreCase(categoryName)) {
                         return false;
                     }
                 }

@@ -295,7 +295,7 @@ public class FormPart extends Form {
 
         lblPartName.setText(part.getName());
         valSku.setText(nvl(part.getBarcode()));
-        valCategory.setText(nvl(part.getCategory()));
+        valCategory.setText(nvl(part.getCategory() != null ? part.getCategory().getName() : null));
         valPrice.setText(part.getSalePrice() != null ? Format.formatPrice(part.getSalePrice()) : "-");
         valLastStock.setText(part.getUpdatedAt() != null ? part.getUpdatedAt().format(df) : "-");
         valCurrentStock.setText(String.valueOf(part.getStockQuantity()));

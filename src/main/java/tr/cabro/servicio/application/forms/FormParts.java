@@ -137,7 +137,7 @@ public class FormParts extends AbstractTableForm {
         List<ColumnDef<Part>> columns = Arrays.asList(
                 new ColumnDef<>("SKU", String.class, Part::getBarcode),
                 new ColumnDef<>("Parça Adı", String.class, Part::getName),
-                new ColumnDef<>("Kategori",  String.class, Part::getCategory),
+                new ColumnDef<>("Kategori",  String.class, p -> p.getCategory() != null ? p.getCategory().getName() : "-"),
                 new ColumnDef<>("Uyumlu Model", String.class, Part::getModelCompatibility),
                 new ColumnDef<>("Tedarikçi",  Supplier.class, Part::getSupplier),
                 new ColumnDef<>("Stok", Integer.class, Part::getStockQuantity),
@@ -253,6 +253,7 @@ public class FormParts extends AbstractTableForm {
                 tableModel.setData(result.getItems());
                 if (pagination != null) pagination.setPageRange(result.getPage(), result.getTotalPages());
                 refreshStats();
+                refreshLayout();
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
