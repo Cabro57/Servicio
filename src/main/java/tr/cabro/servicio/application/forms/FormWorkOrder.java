@@ -72,6 +72,11 @@ public class FormWorkOrder extends Form {
     private JLabel lblCustomerName, lblCustomerPhone, lblCustomerEmail;
     private JButton btnWhatsapp;
     private JLabel lblDeviceType, lblDeviceBrand, lblDeviceModel, lblDeviceSerial;
+    private JLabel lblDeviceAccess;
+    private JButton btnRevealAccess;
+    private String currentAccessTypeLabel;
+    private String currentAccessSecret; // düz metin — sadece "göster"e basılınca gösterilir
+    private boolean accessRevealed;
     private JTextArea txtReportedFault;
     private JLabel lblDateArrival, lblDateEstimated;
 
@@ -393,6 +398,7 @@ public class FormWorkOrder extends Form {
             lblDeviceModel.setText(device.getModel() != null ? device.getModel() : "-");
             lblDeviceSerial.setText(device.getSerialNo() != null ? device.getSerialNo() : "-");
         }
+        loadDeviceAccessCredential();
 
         txtReportedFault.setText(workOrder.getReportedFault() != null ? workOrder.getReportedFault() : "Belirtilmemiş.");
         lblDateArrival.setText(dateStr);
@@ -1084,7 +1090,7 @@ public class FormWorkOrder extends Form {
 
     private JPanel createDeviceCard() {
         JPanel card = createCardPanel();
-        card.setLayout(new MigLayout("insets 20, fillx", "[100!][grow]", "[]15[][][][]15[]5[]"));
+        card.setLayout(new MigLayout("insets 20, fillx", "[100!][grow]", "[]15[][][][][]15[]5[]"));
         JLabel title = new JLabel("Cihaz Bilgileri");
         title.setIcon(new Ikon("icons/tablet-smartphone.svg"));
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
@@ -1101,6 +1107,18 @@ public class FormWorkOrder extends Form {
         card.add(createMutedLabel("Marka:")); card.add(lblDeviceBrand, "wrap");
         card.add(createMutedLabel("Model:")); card.add(lblDeviceModel, "wrap");
         card.add(createMutedLabel("Seri No:")); card.add(lblDeviceSerial, "wrap");
+
+        lblDeviceAccess = new JLabel("-");
+        lblDeviceAccess.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        btnRevealAccess = new JButton(new Ikon("icons/eye.svg", 0.7f));
+        btnRevealAccess.setToolTipText("Erişim kodunu göster/gizle");
+        btnRevealAccess.setVisible(false);
+        btnRevealAccess.addActionListener(e -> toggleAccessReveal());
+        JPanel accessRow = new JPanel(new MigLayout("insets 0, fillx", "[grow][]"));
+        accessRow.add(lblDeviceAccess, "growx");
+        accessRow.add(btnRevealAccess);
+        card.add(createMutedLabel("Erişim Kodu:")); card.add(accessRow, "wrap, growx");
+
         card.add(createMutedLabel("Müşteri Şikayeti:"), "span 2, wrap");
         txtReportedFault = new JTextArea();
         txtReportedFault.setEditable(false);
@@ -1110,6 +1128,43 @@ public class FormWorkOrder extends Form {
                 "background: lighten($Panel.background, 3%); border: 10,10,10,10;");
         card.add(txtReportedFault, "span 2, growx, h 60!");
         return card;
+    }
+
+    /** Bu servis kaydına ait cihaz erişim kodunu (varsa) yükler; süresi dolup silindiyse "-" gösterir. */
+    private void loadDeviceAccessCredential() {
+        lblDeviceAccess.setText("-");
+        btnRevealAccess.setVisible(false);
+        currentAccessSecret = null;
+        currentAccessTypeLabel = null;
+        accessRevealed = false;
+
+        if (workOrder.getId() == null) return;
+
+        ServiceManager.getDeviceAccessCredentialService().getActive(workOrder.getId())
+                .thenAccept(credentialOpt -> SwingUtilities.invokeLater(() -> credentialOpt.ifPresent(c -> {
+                    if (c.getSecret() == null) {
+                        lblDeviceAccess.setText("Süresi doldu, silindi.");
+                        return;
+                    }
+                    currentAccessTypeLabel = c.getAccessType().getDisplayName();
+                    currentAccessSecret = c.getSecret();
+                    btnRevealAccess.setVisible(true);
+                    updateAccessLabel();
+                })))
+                .exceptionally(ex -> {
+                    Servicio.getLogger().error("Cihaz erişim kodu yüklenemedi", ex);
+                    return null;
+                });
+    }
+
+    private void toggleAccessReveal() {
+        accessRevealed = !accessRevealed;
+        updateAccessLabel();
+    }
+
+    private void updateAccessLabel() {
+        if (currentAccessSecret == null) return;
+        lblDeviceAccess.setText(currentAccessTypeLabel + ": " + (accessRevealed ? currentAccessSecret : "••••••"));
     }
 
     private JPanel createTimelineCard() {

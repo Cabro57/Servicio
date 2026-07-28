@@ -6,6 +6,7 @@ import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.forms.FormWorkOrder;
 import tr.cabro.servicio.application.forms.FormWorkOrders;
 import tr.cabro.servicio.application.renderer.UniversalVisualizableRenderer;
+import tr.cabro.servicio.application.component.table.TableStyler;
 import tr.cabro.servicio.application.system.AllForms;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
@@ -109,7 +110,7 @@ public class ActiveServiceTable extends JPanel {
         table.setFocusable(false);
         table.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        applyTableStyles(table);
+        TableStyler.applyDashboardStyle(table);
 
         // -- ÖZEL RENDERER İŞLEMLERİ --
         TableCellRenderer defaultHeaderRenderer = table.getTableHeader().getDefaultRenderer();
@@ -162,6 +163,7 @@ public class ActiveServiceTable extends JPanel {
 
         // --- 3. SAYFALAMA (PAGINATION) BİLEŞENİ ---
         pagination = new JPagination(10, 1, 1);
+        pagination.setBackground(null);
         pagination.addChangeListener(e -> loadPage(pagination.getSelectedPage()));
 
         // Bileşenleri ana panele ekle
@@ -169,20 +171,6 @@ public class ActiveServiceTable extends JPanel {
         add(table.getTableHeader());
         add(table);
         add(pagination, "align center"); // Sayfalamayı en alta merkeze ekle
-    }
-
-    private void applyTableStyles(JTable table) {
-        table.setRowHeight(40);
-        table.setShowVerticalLines(false);
-        table.setShowHorizontalLines(true);
-        table.setOpaque(false);
-        ((JComponent)table.getDefaultRenderer(Object.class)).setOpaque(false);
-        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
-                "height:40; hoverBackground:null; pressedBackground:null; separatorColor:$TableHeader.background; font:bold -1;");
-        table.putClientProperty(FlatClientProperties.STYLE,
-                "rowHeight:37; showHorizontalLines:true; intercellSpacing:0,1; " +
-                        "cellFocusColor:null; selectionBackground:$TableHeader.hoverBackground; " +
-                        "selectionForeground:$Table.foreground;");
     }
 
     private Icon createIcon(String icon, Color color) {

@@ -3,7 +3,10 @@ package tr.cabro.servicio.application.forms.base;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.dashboard.CardBox;
+import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
+import tr.cabro.servicio.application.component.table.TableStyler;
 import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.SystemForm;
 
@@ -128,12 +131,7 @@ public abstract class AbstractTableForm extends Form {
         table = new JTable();
 
         // Modern Tablo Stili
-        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
-                "height:40; hoverBackground:null; pressedBackground:null; separatorColor:$TableHeader.background; font: $large.font;");
-        table.putClientProperty(FlatClientProperties.STYLE,
-                "rowHeight:52; showHorizontalLines:true; intercellSpacing:0,1; " +
-                        "cellFocusColor:$TableHeader.hoverBackground; selectionBackground:$TableHeader.hoverBackground; " +
-                        "selectionForeground:$Table.foreground; font: $large.font;");
+        TableStyler.applyStandardStyle(table);
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
@@ -159,6 +157,21 @@ public abstract class AbstractTableForm extends Form {
         table.setModel(model);
         initTableFilter(model);
         table.setRowSorter(sorter);
+    }
+
+    /**
+     * Tablo başlığından kolon filtresi (ör. durum/tip enum'u, tarih aralığı) kurmak isteyen alt
+     * sınıflar, {@code setupTable()} içinde kolonları/{@code TableColumnConfigurator}'ı uyguladıktan
+     * SONRA bunu çağırır. Filtre değiştiğinde otomatik olarak {@link #refreshTable()} tetiklenir
+     * (sunucu tarafı filtreleme — bkz. ilgili servis/repository metotları).
+     * <p>
+     * {@link TableHeaderFilterSupport} bilinçli olarak bu sınıfın iç yapısını bilmez; sadece
+     * {@code table} ve {@code columns} ile çalışır, taşınabilir kalır.
+     */
+    protected <T> TableHeaderFilterSupport<T> installHeaderFilters(List<ColumnDef<T>> columns) {
+        TableHeaderFilterSupport<T> support = new TableHeaderFilterSupport<>(table, columns);
+        support.setOnFilterChanged(this::refreshTable);
+        return support;
     }
 
     protected void applyFilter() {

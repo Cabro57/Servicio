@@ -17,7 +17,6 @@ public class DeviceRowMapper implements RowMapper<Device> {
         device.setId(rs.getLong("id"));
         device.setModel(rs.getString("model"));
         device.setSerialNo(rs.getString("serial_no"));
-        device.setPassword(rs.getString("password"));
         device.setAccessory(rs.getString("accessory"));
         device.setDeleted(rs.getBoolean("is_deleted"));
 

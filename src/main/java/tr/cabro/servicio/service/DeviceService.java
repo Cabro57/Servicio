@@ -1,11 +1,14 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.database.repository.DeviceRepository;
 import tr.cabro.servicio.model.Device;
+import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.service.exception.ValidationException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -66,6 +69,12 @@ public class DeviceService {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
         return CompletableFuture.supplyAsync(
                 () -> deviceRepository.search("%" + searchTerm.trim() + "%"));
+    }
+
+    /** Tablo başlığı filtresi (kayıt tarihi) + serbest metin arama — sunucu tarafında, tüm kayıtlar üzerinde. */
+    public CompletableFuture<PageResult<Device>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                     int page, int pageSize) {
+        return CompletableFuture.supplyAsync(() -> deviceRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
     // -------------------------------------------------------------------------

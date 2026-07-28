@@ -40,7 +40,7 @@ public class FormDevice extends Form {
     private JTable table;
 
     private JLabel lblDeviceTitle;
-    private JLabel valType, valBrand, valModel, valSerial, valPassword, valAccessory, valCreatedAt;
+    private JLabel valType, valBrand, valModel, valSerial, valAccessory, valCreatedAt;
 
     public FormDevice(Device device) {
         this.device = device;
@@ -103,7 +103,7 @@ public class FormDevice extends Form {
 
     private JPanel createInfoCard() {
         JPanel card = createRoundedCard();
-        card.setLayout(new MigLayout("insets 20, gapy 15, fillx", "[25!][grow]", "[]15[][][][][][]"));
+        card.setLayout(new MigLayout("insets 20, gapy 15, fillx", "[25!][grow]", "[]15[][][][][]"));
 
         JLabel title = new JLabel("Cihaz Bilgileri");
         title.setIcon(new Ikon("icons/tablet-smartphone.svg", 1f));
@@ -114,7 +114,6 @@ public class FormDevice extends Form {
         valBrand = new JLabel("-");
         valModel = new JLabel("-");
         valSerial = new JLabel("-");
-        valPassword = new JLabel("-");
         valAccessory = new JLabel("-");
         valCreatedAt = new JLabel("-");
 
@@ -122,7 +121,6 @@ public class FormDevice extends Form {
         addInfoRow(card, "icons/tag.svg", "Marka", valBrand);
         addInfoRow(card, "icons/tag.svg", "Model", valModel);
         addInfoRow(card, "icons/barcode.svg", "Seri No", valSerial);
-        addInfoRow(card, "icons/circle-alert.svg", "Ekran Şifresi", valPassword);
         addInfoRow(card, "icons/package-check.svg", "Aksesuar", valAccessory);
         addInfoRow(card, "icons/calendar.svg", "Kayıt Tarihi", valCreatedAt);
 
@@ -238,7 +236,6 @@ public class FormDevice extends Form {
         valBrand.setText(device.getBrand() != null ? device.getBrand().getName() : "-");
         valModel.setText(device.getModel() != null ? device.getModel() : "-");
         valSerial.setText(device.getSerialNo() != null ? device.getSerialNo() : "-");
-        valPassword.setText(device.getPassword() != null && !device.getPassword().isBlank() ? device.getPassword() : "-");
         valAccessory.setText(device.getAccessory() != null && !device.getAccessory().isBlank() ? device.getAccessory() : "-");
         valCreatedAt.setText(device.getCreatedAt() != null ? device.getCreatedAt().format(df) : "-");
 

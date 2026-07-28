@@ -3,15 +3,17 @@ package tr.cabro.servicio.application.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
+import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
-import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
-import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.SystemForm;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.service.DeviceService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -22,12 +24,21 @@ import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @SystemForm(name = "Cihazlar", description = "Sistemde kayıtlı tüm cihazları listeler")
 public class FormDevices extends AbstractTableForm {
 
     private final DeviceService deviceService;
     private GenericTableModel<Device> tableModel;
+    private TableHeaderFilterSupport<Device> headerFilters;
+
+    // --- SAYFALAMA (DB-tabanlı) ---
+    private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
+    private int pageSize = Servicio.getSettings().getDevicePageSize();
+    private int currentPage = 1;
+    private String currentSearchTerm = "";
+    private PaginationBar paginationBar;
 
     public FormDevices() {
         this.deviceService = ServiceManager.getDeviceService();
@@ -49,28 +60,46 @@ public class FormDevices extends AbstractTableForm {
     }
 
     @Override
+    protected JComponent createPaginationComponent() {
+        paginationBar = new PaginationBar(5, PAGE_SIZE_OPTIONS, pageSize,
+                page -> { currentPage = page; refreshTable(); },
+                newSize -> {
+                    pageSize = newSize;
+                    currentPage = 1;
+                    Servicio.getSettings().setDevicePageSize(pageSize);
+                    Servicio.getSettings().save();
+                    refreshTable();
+                });
+        return paginationBar;
+    }
+
+    @Override
+    protected void applyFilter() {
+        currentSearchTerm = searchField.getText().trim();
+        currentPage = 1;
+        refreshTable();
+    }
+
+    @Override
     protected void setupTable() {
         List<ColumnDef<Device>> columns = Arrays.asList(
-                new ColumnDef<>("Tür / Marka", String.class, d ->
+                new ColumnDef<Device>("Tür / Marka", String.class, d ->
                         (d.getDeviceType() != null ? d.getDeviceType().getName() : "-") + " / " +
-                        (d.getBrand() != null ? d.getBrand().getName() : "-")),
-                new ColumnDef<>("Model", String.class, Device::getModel),
-                new ColumnDef<>("Seri No", String.class, d -> d.getSerialNo() != null ? d.getSerialNo() : "-"),
-                new ColumnDef<>("Kayıt Tarihi", String.class, d -> Format.formatDate(d.getCreatedAt())),
-                new ColumnDef<>("İşlem", String.class, d -> "Detay")
+                        (d.getBrand() != null ? d.getBrand().getName() : "-")).alignment(SwingConstants.LEADING),
+                new ColumnDef<Device>("Model", String.class, Device::getModel).alignment(SwingConstants.LEADING),
+                new ColumnDef<Device>("Seri No", String.class, d -> d.getSerialNo() != null ? d.getSerialNo() : "-").alignment(SwingConstants.LEADING),
+                new ColumnDef<Device>("Kayıt Tarihi", String.class, d -> Format.formatDate(d.getCreatedAt()))
+                        .alignment(SwingConstants.LEADING).dateRangeFilter("d.created_at"),
+                ColumnDef.<Device>actionColumn("İşlem")
         );
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
+        TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
+        headerFilters = installHeaderFilters(columns);
     }
 
     private void configureTableColumns() {
-        Integer[] columnAlignments = {
-                SwingConstants.LEADING, SwingConstants.LEADING, SwingConstants.LEADING,
-                SwingConstants.LEADING, SwingConstants.CENTER
-        };
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -80,7 +109,6 @@ public class FormDevices extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onView(int row) {
@@ -103,12 +131,19 @@ public class FormDevices extends AbstractTableForm {
 
     @Override
     protected void refreshTable() {
-        deviceService.getAll().thenAccept(devices -> SwingUtilities.invokeLater(() -> tableModel.setData(devices)))
-                .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Cihazlar yüklenemedi: " + ex.getMessage()));
-                    Servicio.getLogger().error("Cihaz listesi yenileme hatası", ex);
-                    return null;
-                });
+        Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
+
+        deviceService.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize).thenAccept(result ->
+                SwingUtilities.invokeLater(() -> {
+                    tableModel.setData(result.getItems());
+                    if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
+                    refreshLayout();
+                })
+        ).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Cihazlar yüklenemedi: " + ex.getMessage()));
+            Servicio.getLogger().error("Cihaz listesi yenileme hatası", ex);
+            return null;
+        });
     }
 
     @Override

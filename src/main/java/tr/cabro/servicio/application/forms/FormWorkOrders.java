@@ -13,20 +13,22 @@ import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.renderer.*;
+import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
+import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.WorkOrder;
-import tr.cabro.servicio.model.dto.PageResult;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
-import raven.swingpack.JPagination;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -38,7 +40,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @SystemForm(name = "Servis Kayıtları", description = "Tüm servis kayıtlarını oluşturmak için kullanılabilir")
 public class FormWorkOrders extends AbstractTableForm {
@@ -46,14 +47,14 @@ public class FormWorkOrders extends AbstractTableForm {
     private final WorkOrderService service;
     private final ReportManager reportManager;
     private GenericTableModel<WorkOrder> tableModal;
-    private ServiceStatus currentStatusFilter;
+    private TableHeaderFilterSupport<WorkOrder> headerFilters;
 
     // --- SAYFALAMA (DB-tabanlı) ---
     private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
     private int pageSize = Servicio.getSettings().getWorkOrderPageSize();
     private int currentPage = 1;
     private String currentSearchTerm = "";
-    private JPagination pagination;
+    private PaginationBar paginationBar;
 
     public FormWorkOrders() {
         this.service = ServiceManager.getWorkOrderService();
@@ -74,58 +75,17 @@ public class FormWorkOrders extends AbstractTableForm {
     protected String getSearchPlaceholder()  { return "Müşteri, cihaz veya ID ara..."; }
 
     @Override
-    protected boolean hasFilterCombo()       { return true; }
-
-    @Override
-    protected JComboBox<Object> createFilterCombo() {
-        DefaultComboBoxModel<Object> model = new DefaultComboBoxModel<>();
-        model.addElement("Tümü");
-        for (ServiceStatus status : ServiceStatus.values()) model.addElement(status);
-
-        filterCombo = new JComboBox<>(model);
-        filterCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
-        filterCombo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof ServiceStatus) setText(((ServiceStatus) value).getDisplayName());
-                return this;
-            }
-        });
-        filterCombo.addActionListener(e -> {
-            Object selected = filterCombo.getSelectedItem();
-            currentStatusFilter = (selected instanceof ServiceStatus) ? (ServiceStatus) selected : null;
-            currentPage = 1;
-            refreshTable();
-        });
-        return filterCombo;
-    }
-
-    @Override
     protected JComponent createPaginationComponent() {
-        pagination = new JPagination(5, 1, 1);
-        pagination.addChangeListener(e -> {
-            currentPage = pagination.getSelectedPage();
-            refreshTable();
-        });
-
-        JComboBox<Integer> pageSizeCombo = new JComboBox<>(PAGE_SIZE_OPTIONS);
-        pageSizeCombo.setSelectedItem(pageSize);
-        pageSizeCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
-        pageSizeCombo.addActionListener(e -> {
-            pageSize = (Integer) pageSizeCombo.getSelectedItem();
-            currentPage = 1;
-            Servicio.getSettings().setWorkOrderPageSize(pageSize);
-            Servicio.getSettings().save();
-            refreshTable();
-        });
-
-        JPanel panel = new JPanel(new net.miginfocom.swing.MigLayout("insets 0, gapx 10", "[][]", "[]"));
-        panel.setOpaque(false);
-        panel.add(new JLabel("Sayfa başına:"));
-        panel.add(pageSizeCombo);
-        panel.add(pagination);
-        return panel;
+        paginationBar = new PaginationBar(5, PAGE_SIZE_OPTIONS, pageSize,
+                page -> { currentPage = page; refreshTable(); },
+                newSize -> {
+                    pageSize = newSize;
+                    currentPage = 1;
+                    Servicio.getSettings().setWorkOrderPageSize(pageSize);
+                    Servicio.getSettings().save();
+                    refreshTable();
+                });
+        return paginationBar;
     }
 
     @Override
@@ -155,18 +115,20 @@ public class FormWorkOrders extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<WorkOrder>> columns = Arrays.asList(
-                new ColumnDef<>("Kayıt No",        Long.class,          WorkOrder::getId),
-                new ColumnDef<>("Müşteri Bilgisi", Customer.class,      WorkOrder::getCustomer),
-                new ColumnDef<>("Cihaz Bilgisi",   Device.class,        WorkOrder::getDevice),
-                new ColumnDef<>("Şikayet",         String.class,        WorkOrder::getReportedFault),
-                new ColumnDef<>("Tarih",           WorkOrder.class,     s -> s),
-                new ColumnDef<>("Kalan Ücret",     BigDecimal.class,    WorkOrder::getRemainingAmount),
-                new ColumnDef<>("Durum",           ServiceStatus.class, WorkOrder::getServiceStatus),
-                new ColumnDef<>("İşlem",           String.class,        s -> "Detay")
+                new ColumnDef<WorkOrder>("Kayıt No",        Long.class,          WorkOrder::getId).alignment(SwingConstants.CENTER),
+                new ColumnDef<WorkOrder>("Müşteri Bilgisi", Customer.class,      WorkOrder::getCustomer).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrder>("Cihaz Bilgisi",   Device.class,        WorkOrder::getDevice).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrder>("Şikayet",         String.class,        WorkOrder::getReportedFault).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrder>("Tarih",           WorkOrder.class,     s -> s).alignment(SwingConstants.LEADING).dateRangeFilter("s.created_at"),
+                ColumnDef.<WorkOrder>currency("Kalan Ücret", WorkOrder::getRemainingAmount),
+                ColumnDef.<WorkOrder>badge("Durum", ServiceStatus.class, WorkOrder::getServiceStatus).enumFilter("s.service_status", ServiceStatus.class),
+                ColumnDef.<WorkOrder>actionColumn("İşlem")
         );
         tableModal = new GenericTableModel<>(columns);
         setTableModel(tableModal);
+        TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
+        headerFilters = installHeaderFilters(columns);
     }
 
     @Override
@@ -196,19 +158,13 @@ public class FormWorkOrders extends AbstractTableForm {
     protected void refreshTable() {
         if (tableModal == null) return;
 
-        CompletableFuture<PageResult<WorkOrder>> future;
-        if (!currentSearchTerm.isEmpty()) {
-            String statusName = currentStatusFilter != null ? currentStatusFilter.name() : null;
-            future = service.searchPaged(currentSearchTerm, currentPage, pageSize, statusName);
-        } else if (currentStatusFilter != null) {
-            future = service.getAllPaged(currentPage, pageSize, currentStatusFilter.name());
-        } else {
-            future = service.getAllPaged(currentPage, pageSize);
-        }
+        Map<String, ColumnFilterValue> filters =
+                headerFilters != null ? headerFilters.getActiveFilters() : Collections.emptyMap();
 
-        future.thenAccept(result -> SwingUtilities.invokeLater(() -> {
+        service.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize)
+                .thenAccept(result -> SwingUtilities.invokeLater(() -> {
                     tableModal.setData(result.getItems());
-                    if (pagination != null) pagination.setPageRange(result.getPage(), result.getTotalPages());
+                    if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
                     refreshStats();
                     refreshLayout();
                 }))
@@ -302,7 +258,11 @@ public class FormWorkOrders extends AbstractTableForm {
             WorkOrder formData = panel.getData();
             if (formData == null) { controller.consume(); return; }
 
-            service.save(formData, isEdit).thenAccept(saved ->
+            service.save(formData, isEdit).thenCompose(saved ->
+                    ServiceManager.getDeviceAccessCredentialService()
+                            .save(saved.getId(), panel.getDeviceAccessType(), panel.getDeviceAccessSecret())
+                            .thenApply(v -> saved)
+            ).thenAccept(saved ->
                     SwingUtilities.invokeLater(() -> {
                         String msg = isEdit ? "Servis bilgileri güncellendi." : "Servis başarıyla kaydedildi.";
                         Toast.show(this, Toast.Type.SUCCESS, msg);
@@ -326,17 +286,9 @@ public class FormWorkOrders extends AbstractTableForm {
     // -------------------------------------------------------------------------
 
     private void configureTableColumns() {
-        Integer[] columnAlignments = {
-                SwingConstants.CENTER,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.TRAILING,
-                SwingConstants.CENTER,
-                SwingConstants.CENTER
-        };
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
+        // Not: hizalama artık ColumnDef.alignment(...) üzerinden geliyor; para/rozet/işlem
+        // kolonlarının renderer'ı TableColumnConfigurator.applyColumnRenderers(...) ile atandı
+        // (bkz. setupTable()). Burada sadece bu forma özel (bespoke) renderer'lar kalıyor.
 
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
@@ -371,22 +323,45 @@ public class FormWorkOrders extends AbstractTableForm {
                 new MultiLineTableCellRenderer<WorkOrder>(
                         s -> s.getCreatedAt() != null ? s.getCreatedAt().format(formatter) : "Tarih Yok",
                         s -> {
-                            if (s.getServiceStatus() == ServiceStatus.DELIVERED || s.getServiceStatus() == ServiceStatus.RETURN) {
-                                return "Bitiş: " + (s.getDeliveryDate() != null ? s.getDeliveryDate().format(formatter) : "-");
+                            String dateStr = s.getDeliveryDate() != null ? s.getDeliveryDate().format(formatter) : "-";
+                            if (s.getServiceStatus() == ServiceStatus.RETURN) {
+                                return "İade: " + dateStr;
+                            }
+                            if (s.getServiceStatus() == ServiceStatus.DELIVERED) {
+                                return "Teslim: " + dateStr;
                             }
                             LocalDateTime est = s.getCreatedAt() != null ? s.getCreatedAt().plusDays(3) : null;
                             return "Tahmini: " + (est != null ? est.format(formatter) : "-");
                         },
                         s -> null,
-                        s -> (s.getServiceStatus() == ServiceStatus.DELIVERED || s.getServiceStatus() == ServiceStatus.RETURN)
-                                ? new Color(46, 204, 113) : null
+                        s -> {
+                            if (s.getServiceStatus() == ServiceStatus.RETURN) return new Color(220, 53, 69);
+                            if (s.getServiceStatus() == ServiceStatus.DELIVERED) return new Color(46, 204, 113);
+                            return null;
+                        }
                 )
         );
 
-        table.getColumnModel().getColumn(5).setCellRenderer(new CurrencyTableCellRenderer());
+        // Kalan ücret 0 ise para birimi yerine "Borç Yok" yeşil metniyle gösterilir.
+        // NOT: DefaultTableCellRenderer.setForeground(...) çağrılan rengi "unselectedForeground"
+        // alanında kalıcı olarak saklar (JTable render sırasında bu alanı bir dahaki satırda da
+        // kullanır) — bu yüzden yeşili SADECE sıfır satırda değil, her çağrıda (else dalında da)
+        // açıkça sıfırlamak gerekiyor; aksi halde bir kez yeşile boyanan renderer diğer tüm
+        // satırlarda da yeşil kalır.
+        table.getColumnModel().getColumn(5).setCellRenderer(new CurrencyTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (value instanceof BigDecimal && ((BigDecimal) value).compareTo(BigDecimal.ZERO) == 0) {
+                    setText("Borç Yok");
+                    setForeground(new Color(46, 204, 113));
+                } else {
+                    setForeground(isSelected ? table.getSelectionForeground() : table.getForeground());
+                }
+                return c;
+            }
+        });
 
-        table.getColumnModel().getColumn(6).setCellRenderer(new UniversalVisualizableRenderer());
-        table.getColumnModel().getColumn(7).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(7).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onEdit(int row) {

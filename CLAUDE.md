@@ -2,6 +2,30 @@
 
 Bu dosya Claude Code'un projeyi hızlıca anlaması için özet rehberdir. Türkçe yazılmıştır çünkü proje ve iletişim dili Türkçedir.
 
+## Subagent Kullanım Kuralları (Token Tasarrufu)
+
+1. **Varsayılan: subagent kullanma.** Görevi doğrudan kendin yap. Subagent
+   spawn etmeden önce şunu sor: "Bunu ana context'te çözemez miyim?"
+
+2. **Subagent sadece şu durumlarda:**
+    - Görev gerçekten paralelleştirilebilir (birbirinden bağımsız 2+ iş)
+    - Ana context'i şişirecek kadar büyük bir keşif/arama gerekiyor
+    - Aksi halde iş bitmez (örn. çok büyük bir codebase taraması)
+
+3. **Tek subagent > çoklu subagent.** Bir işi 3 subagent'a bölmek yerine
+   tek subagent'a sıralı yaptır, gerekmedikçe paralel açma.
+
+4. **Explore/Plan gibi basit subagent'lar için:** Detaylı analiz değil,
+   kısa özet iste. "Sadece ilgili dosya/fonksiyonları listele" gibi dar
+   kapsamlı görev ver, açık uçlu bırakma.
+
+5. **Her subagent çağrısından önce planı söyle.** Neden gerekli, ne
+   döndürecek, tek cümlede belirt. Sessizce spawn etme.
+
+6. **Context büyüdükçe (>100k) yeni subagent açma.** Önce /compact öner,
+   sonra devam et.
+
+
 ## Proje Nedir?
 
 **Servicio**, teknik servis / tamir atölyesi yönetim masaüstü uygulamasıdır (Java Swing).

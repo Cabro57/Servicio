@@ -31,4 +31,10 @@ public enum PaymentType implements Visualizable {
                 .findFirst()
                 .orElse(OTHER);
     }
+
+
+    @Override
+    public String toString() {
+        return displayName;
+    }
 }

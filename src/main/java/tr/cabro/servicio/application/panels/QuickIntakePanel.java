@@ -6,11 +6,13 @@
     import raven.modal.component.SimpleModalBorder;
     import tr.cabro.servicio.Servicio;
     import tr.cabro.servicio.application.component.CustomerSelectBox;
+    import tr.cabro.servicio.application.component.DeviceAccessField;
     import tr.cabro.servicio.application.panels.edit.AbstractEditPanel;
     import raven.modal.Toast;
     import tr.cabro.servicio.model.Customer;
     import tr.cabro.servicio.model.Device;
     import tr.cabro.servicio.model.WorkOrder;
+    import tr.cabro.servicio.model.enums.DeviceAccessType;
     import tr.cabro.servicio.model.enums.ServiceStatus;
     import tr.cabro.servicio.service.ServiceManager;
 
@@ -48,6 +50,7 @@
 
         private CustomerSelectBox customerCombo;
         private DeviceFormPanel deviceFormPanel;
+        private DeviceAccessField deviceAccessField;
         private JTextArea reportedFaultArea;
 
         // -------------------------------------------------------------------------
@@ -98,6 +101,11 @@
             addSectionTitle("Cihaz Bilgileri");
             deviceFormPanel = new DeviceFormPanel();
             add(deviceFormPanel, "growx");
+
+            // --- Cihaz Erişim Bilgisi (PIN/Şifre/Desen) ---
+            addSectionTitle("Cihaz Erişim Bilgisi (PIN / Şifre / Desen)");
+            deviceAccessField = new DeviceAccessField();
+            add(deviceAccessField, "growx");
 
             customerCombo.setOnSelectionChanged(customer -> {
                 if (customer == null) {
@@ -188,12 +196,25 @@
                     setDevice(data.getDevice());
 
             reportedFaultArea.setText(data.getReportedFault() != null ? data.getReportedFault() : "");
+
+            // Düzenleme modunda, bu servis kaydına ait mevcut erişim kodunu (varsa) getir
+            deviceAccessField.clear();
+            if (data.getId() != null) {
+                ServiceManager.getDeviceAccessCredentialService().getActive(data.getId())
+                        .thenAccept(credentialOpt -> SwingUtilities.invokeLater(() ->
+                                credentialOpt.ifPresent(c -> deviceAccessField.setValue(c.getAccessType(), c.getSecret()))))
+                        .exceptionally(ex -> {
+                            Servicio.getLogger().error("Cihaz erişim kodu yüklenemedi", ex);
+                            return null;
+                        });
+            }
         }
 
         @Override
         protected void clearForm() {
             customerCombo.setSelectedItem(null);
             deviceFormPanel.clear();
+            deviceAccessField.clear();
             reportedFaultArea.setText("");
         }
 
@@ -219,6 +240,16 @@
          */
         public void requestInitialFocus() {
             customerCombo.grabFocus();
+        }
+
+        /** Girilen cihaz erişim türü — WorkOrder kaydedildikten sonra çağıran taraf bunu ayrı kaydeder. */
+        public DeviceAccessType getDeviceAccessType() {
+            return deviceAccessField.getAccessType();
+        }
+
+        /** Girilen cihaz erişim kodu (düz metin) — WorkOrder kaydedildikten sonra çağıran taraf bunu ayrı kaydeder. */
+        public String getDeviceAccessSecret() {
+            return deviceAccessField.getValue();
         }
 
         // -------------------------------------------------------------------------

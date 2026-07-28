@@ -21,6 +21,7 @@ public final class ServiceManager {
     @Getter private static LaborService laborService;
     @Getter private static ReportManager reportManager;
     @Getter private static StockService stockService;
+    @Getter private static DeviceAccessCredentialService deviceAccessCredentialService;
 
     public static void initialize() {
         Jdbi jdbi = DatabaseManager.getJdbi();
@@ -43,6 +44,7 @@ public final class ServiceManager {
         ReportRepository reportRepo = jdbi.onDemand(ReportRepository.class);
         ServiceNoteRepository noteRepo = jdbi.onDemand(ServiceNoteRepository.class);
         StockMovementRepository stockMovementRepo = jdbi.onDemand(StockMovementRepository.class);
+        DeviceAccessCredentialRepository deviceAccessCredentialRepo = jdbi.onDemand(DeviceAccessCredentialRepository.class);
 
         // --- Servislerin Başlatılması ---
         customerService = new CustomerService(customerRepo);
@@ -58,7 +60,11 @@ public final class ServiceManager {
         laborService = new LaborService(laborRepo);
         reportManager = new ReportManager(reportRepo);
         partService = new PartService(partRepo, supplierRepo, stockService, partCategoryRepo);
+        deviceAccessCredentialService = new DeviceAccessCredentialService(deviceAccessCredentialRepo);
 
         workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo, partService, stockService, deviceService);
+
+        // Eski Device.password verisini yeni tabloya bir kerelik taşı (idempotent — bkz. servis içi yorum)
+        deviceAccessCredentialService.migrateLegacyDevicePasswords(deviceRepo, serviceRepo);
     }
 }

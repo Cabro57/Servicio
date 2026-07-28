@@ -4,6 +4,9 @@ import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
+import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
@@ -12,13 +15,12 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.edit.SupplierEditPanel;
-import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
-import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.SupplierService;
@@ -31,15 +33,45 @@ import java.awt.*;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @SystemForm(name = "Tedarikçiler", description = "Tüm tedarikçileri listeler")
 public class FormSuppliers extends AbstractTableForm {
 
     private final SupplierService supplierService;
     private GenericTableModel<Supplier> tableModel;
+    private TableHeaderFilterSupport<Supplier> headerFilters;
+
+    // --- SAYFALAMA (DB-tabanlı) ---
+    private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
+    private int pageSize = Servicio.getSettings().getSupplierPageSize();
+    private int currentPage = 1;
+    private String currentSearchTerm = "";
+    private PaginationBar paginationBar;
 
     public FormSuppliers() {
         this.supplierService = ServiceManager.getSupplierService();
+    }
+
+    @Override
+    protected JComponent createPaginationComponent() {
+        paginationBar = new PaginationBar(5, PAGE_SIZE_OPTIONS, pageSize,
+                page -> { currentPage = page; refreshTable(); },
+                newSize -> {
+                    pageSize = newSize;
+                    currentPage = 1;
+                    Servicio.getSettings().setSupplierPageSize(pageSize);
+                    Servicio.getSettings().save();
+                    refreshTable();
+                });
+        return paginationBar;
+    }
+
+    @Override
+    protected void applyFilter() {
+        currentSearchTerm = searchField.getText().trim();
+        currentPage = 1;
+        refreshTable();
     }
 
     @Override
@@ -82,33 +114,23 @@ public class FormSuppliers extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<Supplier>> columns = Arrays.asList(
-                new ColumnDef<>("ID", String.class, supplier -> "S-" + supplier.getId()),
-                new ColumnDef<>("Firma İsmi", String.class, Supplier::getBusinessName),
-                new ColumnDef<>("İlgili Kişi", String.class, Supplier::getName),
-                new ColumnDef<>("İletişim", String.class, s -> Format.formatPhoneNumber(s.getPhone())),
-                new ColumnDef<>("Adres", String.class, Supplier::getAddress),
-                new ColumnDef<>("Kayıt Tarihi", String.class, s -> Format.formatDate(s.getCreatedAt())),
-                new ColumnDef<>("İşlem", String.class, supplier -> "Detay")
+                new ColumnDef<Supplier>("ID", String.class, supplier -> "S-" + supplier.getId()).alignment(SwingConstants.LEADING),
+                new ColumnDef<Supplier>("Firma İsmi", String.class, Supplier::getBusinessName).alignment(SwingConstants.LEADING),
+                new ColumnDef<Supplier>("İlgili Kişi", String.class, Supplier::getName).alignment(SwingConstants.LEADING),
+                new ColumnDef<Supplier>("İletişim", String.class, s -> Format.formatPhoneNumber(s.getPhone())).alignment(SwingConstants.LEADING),
+                new ColumnDef<Supplier>("Adres", String.class, Supplier::getAddress).alignment(SwingConstants.LEADING),
+                new ColumnDef<Supplier>("Kayıt Tarihi", String.class, s -> Format.formatDate(s.getCreatedAt()))
+                        .alignment(SwingConstants.LEADING).dateRangeFilter("created_at"),
+                ColumnDef.<Supplier>actionColumn("İşlem")
         );
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
-
+        TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
+        headerFilters = installHeaderFilters(columns);
     }
 
     private void configureTableColumns() {
-        Integer[] columnAlignments = {
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.CENTER
-        };
-
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -125,7 +147,6 @@ public class FormSuppliers extends AbstractTableForm {
 
         ));
 
-        table.getColumnModel().getColumn(6).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(6).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onEdit(int row) {
@@ -177,10 +198,14 @@ public class FormSuppliers extends AbstractTableForm {
     // Tabloyu Güncelleme (Asenkron)
     @Override
     protected void refreshTable() {
-        supplierService.getAll().thenAccept(allSuppliers -> {
+        Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
+
+        supplierService.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize).thenAccept(result -> {
             SwingUtilities.invokeLater(() -> {
-                tableModel.setData(allSuppliers);
+                tableModel.setData(result.getItems());
+                if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
                 refreshStats(); // İstatistikleri veriler gelince güncelle
+                refreshLayout();
             });
         }).exceptionally(e -> {
             Servicio.getLogger().error("Tedarikçi listesi alınamadı: ", e);

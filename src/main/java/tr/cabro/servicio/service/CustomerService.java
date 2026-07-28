@@ -1,7 +1,9 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.database.repository.CustomerRepository;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.util.Validator;
@@ -64,6 +66,12 @@ public class CustomerService {
             return getAll();
         }
         return CompletableFuture.supplyAsync(() -> customerRepository.search("%" + searchTerm.trim() + "%")); // Arama sonucunu cihaz sayısıyla doldur
+    }
+
+    /** Tablo başlığı filtresi (tip/kayıt tarihi vb.) + serbest metin arama — sunucu tarafında, tüm kayıtlar üzerinde. */
+    public CompletableFuture<PageResult<Customer>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                       int page, int pageSize) {
+        return CompletableFuture.supplyAsync(() -> customerRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
     private void validateCustomer(Customer customer) {

@@ -10,6 +10,7 @@ public class SettingsMainPanel extends JPanel {
 
     private JSpinner timeoutSpinner;
     private JTextField barcodePrefix;
+    private JSpinner deviceAccessPurgeSpinner;
 
     public SettingsMainPanel() {
         init();
@@ -26,6 +27,7 @@ public class SettingsMainPanel extends JPanel {
             }
         });
 
+        deviceAccessPurgeSpinner.addChangeListener(e -> saveDeviceAccessPurgeHours());
     }
 
     private void loadSettings() {
@@ -35,7 +37,14 @@ public class SettingsMainPanel extends JPanel {
         // Eğer null değilse, mevcut prefix'i TextField içine set ediyoruz
         if (settings != null) {
             barcodePrefix.setText(settings.getBarcodePrefix());
+            deviceAccessPurgeSpinner.setValue(settings.getDeviceAccessPurgeHours());
         }
+    }
+
+    private void saveDeviceAccessPurgeHours() {
+        Settings settings = Servicio.getSettings();
+        settings.setDeviceAccessPurgeHours((Integer) deviceAccessPurgeSpinner.getValue());
+        settings.save();
     }
 
     private void saveBarcodePrefix() {
@@ -63,6 +72,17 @@ public class SettingsMainPanel extends JPanel {
         barcodePanel.add(barcodePrefix, "growx");
 
         add(barcodePanel, "growx, wrap");
+
+        // --- Cihaz Erişim Güvenliği Paneli ---
+        JPanel deviceAccessPanel = new JPanel(new MigLayout("fill, insets 10", "[][100!][grow]", "[]"));
+        deviceAccessPanel.setBorder(BorderFactory.createTitledBorder("Cihaz Erişim Güvenliği"));
+
+        deviceAccessPanel.add(new JLabel("Teslimattan Sonra Erişim Kodunu Sil (Saat):"));
+        deviceAccessPurgeSpinner = new JSpinner(new SpinnerNumberModel(24, 1, 720, 1));
+        deviceAccessPurgeSpinner.setToolTipText("Servis teslim edildikten bu kadar saat sonra, cihazın PIN/şifre/desen bilgisi kalıcı olarak silinir.");
+        deviceAccessPanel.add(deviceAccessPurgeSpinner);
+
+        add(deviceAccessPanel, "growx, wrap");
 
 //        // --- Güvenlik Ayarları Paneli (YENİ EKLENDİ) ---
 //        JPanel security_panel = new JPanel(new MigLayout("fill, insets 10", "[][100!][grow]", "[]"));

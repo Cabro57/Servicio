@@ -24,7 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Cihaz bilgilerini (tür, marka, model, seri no, şifre, aksesuar) yöneten bağımsız panel.
+ * Cihaz bilgilerini (tür, marka, model, seri no, aksesuar) yöneten bağımsız panel.
+ * <p>
+ * NOT: Ekran kilidi (PIN/şifre/desen) bilgisi artık burada değil, servis kaydına (WorkOrder)
+ * bağlı olarak {@code DeviceAccessField} ile ayrıca toplanır — bkz. {@link QuickIntakePanel}.
  * <p>
  * Sorumlulukları:
  * <ul>
@@ -43,7 +46,6 @@ public class DeviceFormPanel extends JPanel {
     private JComboBox<DeviceBrand> brandCombo;
     private JTextField modelField;
     private JTextField serialNoField;
-    private JTextField passwordField;
     private JTextField accessoryField;
 
     private DefaultComboBoxModel<DeviceType> deviceTypeModel;
@@ -96,7 +98,6 @@ public class DeviceFormPanel extends JPanel {
 
         modelField = buildClearableField();
         serialNoField = buildClearableField();
-        passwordField = buildClearableField();
         accessoryField = buildClearableField();
 
         // Seri no alanına arama butonu yerleştir
@@ -116,10 +117,8 @@ public class DeviceFormPanel extends JPanel {
         add(brandCombo,                    "sg col");
         add(modelField,                    "sg col");
 
-        add(new JLabel("Kozmetik Durumu:"), "sg col");
-        add(new JLabel("Ekran Şifresi:"),   "sg col");
-        add(accessoryField,                 "sg col");
-        add(passwordField,                  "sg col");
+        add(new JLabel("Kozmetik Durumu:"), "span 2");
+        add(accessoryField,                 "span 2, growx");
 
         initSuggestionPopup();
     }
@@ -331,7 +330,6 @@ public class DeviceFormPanel extends JPanel {
             currentDeviceId = device.getId();
             serialNoField.setText(nullToEmpty(device.getSerialNo()));
             modelField.setText(nullToEmpty(device.getModel()));
-            passwordField.setText(nullToEmpty(device.getPassword()));
             accessoryField.setText(nullToEmpty(device.getAccessory()));
 
             // ID bazlı tür eşleştir
@@ -375,7 +373,6 @@ public class DeviceFormPanel extends JPanel {
         if (!serialNo.isEmpty()) {
             device.setSerialNo(serialNoField.getText().trim());
         }
-        device.setPassword(passwordField.getText().trim());
         device.setAccessory(accessoryField.getText().trim());
         return device;
     }
@@ -391,7 +388,6 @@ public class DeviceFormPanel extends JPanel {
             brandModel.removeAllElements();
             modelField.setText("");
             serialNoField.setText("");
-            passwordField.setText("");
             accessoryField.setText("");
             suggestedDevices.clear();
         } finally {

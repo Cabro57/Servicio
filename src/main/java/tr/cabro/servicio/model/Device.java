@@ -28,7 +28,6 @@ public class Device {
     @ColumnName("serial_no")
     private String serialNo;
 
-    private String password;
     private String accessory;
 
     @ColumnName("is_deleted")

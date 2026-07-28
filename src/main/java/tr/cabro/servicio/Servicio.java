@@ -101,6 +101,7 @@ public final class Servicio {
         splash.updateMessage("Yedekleme politikaları kontrol ediliyor...");
         runBackupIfNeeded(BackupMode.ON_START, BackupMode.ON_START_AND_EXIT);
         BackupScheduler.start();
+        DeviceAccessPurgeScheduler.start();
 
         EventQueue.invokeLater(() -> {
             // Look & Feel kurulumu
@@ -148,6 +149,7 @@ public final class Servicio {
             if (inactivityMonitor != null) inactivityMonitor.stop();
             if (updateChecker     != null) updateChecker.stop();
             BackupScheduler.stop();
+            DeviceAccessPurgeScheduler.stop();
 
             runBackupIfNeeded(BackupMode.ON_EXIT, BackupMode.ON_START_AND_EXIT);
 

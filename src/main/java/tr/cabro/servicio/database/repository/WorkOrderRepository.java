@@ -1,5 +1,7 @@
 package tr.cabro.servicio.database.repository;
 
+import org.jdbi.v3.core.mapper.reflect.BeanMapper;
+import org.jdbi.v3.sqlobject.SqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
@@ -7,15 +9,20 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
+import tr.cabro.servicio.database.filter.SqlWhereBuilder;
 import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RegisterBeanMapper(WorkOrder.class)
-public interface WorkOrderRepository {
+public interface WorkOrderRepository extends SqlObject {
 
     @SqlUpdate("INSERT INTO work_orders (customer_id, device_id, technician_id, reported_fault, " +
             "urgency_status, service_status, warranty_end_date, delivery_date, created_at, updated_at) " +
@@ -138,4 +145,30 @@ public interface WorkOrderRepository {
             "LEFT JOIN (SELECT service_id, SUM(amount) AS paid FROM work_order_payments GROUP BY service_id) p ON p.service_id = wo.id " +
             "WHERE COALESCE(i.total, 0) - COALESCE(p.paid, 0) > 0")
     long countWithDebt();
+
+    // =========================================================================
+    // TABLO BAŞLIĞI FİLTRESİ — dinamik WHERE (SqlWhereBuilder), JDBI SqlObject default metot.
+    // Kolon adları ColumnDef.enumFilter/dateRangeFilter çağrılarında sabit tanımlı (FormWorkOrders),
+    // kullanıcıdan gelmez; değerler her zaman bind parametresi (bkz. SqlWhereBuilder).
+    // =========================================================================
+
+    default PageResult<WorkOrder> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                       int page, int pageSize) {
+        SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
+        String whereClause = SEARCH_WHERE + where.getWhereFragment();
+
+        Map<String, Object> countParams = new HashMap<>(where.getParams());
+        countParams.put("search", (searchTerm != null && !searchTerm.isBlank()) ? "%" + searchTerm.trim() + "%" : "%");
+
+        Map<String, Object> params = new HashMap<>(countParams);
+        params.put("limit", pageSize);
+        params.put("offset", (page - 1) * pageSize);
+
+        String listSql = SEARCH_SELECT + SEARCH_FROM + whereClause + " ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
+        String countSql = "SELECT COUNT(*) " + SEARCH_FROM + whereClause;
+
+        List<WorkOrder> items = getHandle().createQuery(listSql).bindMap(params).map(BeanMapper.of(WorkOrder.class)).list();
+        long total = getHandle().createQuery(countSql).bindMap(countParams).mapTo(Long.class).one();
+        return new PageResult<>(items, page, pageSize, total);
+    }
 }

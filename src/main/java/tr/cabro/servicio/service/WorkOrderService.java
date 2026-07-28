@@ -1,5 +1,6 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.database.repository.*;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ItemType;
@@ -299,6 +300,16 @@ public class WorkOrderService {
             List<WorkOrder> items = hydrateServices(workOrderRepository.searchPagedByStatuses(likeTerm, statuses, pageSize, offset));
             long total = workOrderRepository.countSearchByStatuses(likeTerm, statuses);
             return new PageResult<>(items, page, pageSize, total);
+        });
+    }
+
+    /** Tablo başlığı filtresi (durum/tarih vb.) + serbest metin arama — sunucu tarafında, tüm kayıtlar üzerinde. */
+    public CompletableFuture<PageResult<WorkOrder>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                        int page, int pageSize) {
+        return CompletableFuture.supplyAsync(() -> {
+            PageResult<WorkOrder> result = workOrderRepository.searchFilteredPaged(searchTerm, filters, page, pageSize);
+            hydrateServices(result.getItems());
+            return result;
         });
     }
 

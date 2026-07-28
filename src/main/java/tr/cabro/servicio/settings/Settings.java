@@ -19,12 +19,19 @@ public class Settings extends OkaeriConfig {
 
     private int autoLockTimeoutMinutes = 5;
 
+    // Cihaz ekran kilidi erişim kodu (PIN/şifre/desen), servis teslim edildikten kaç saat sonra
+    // veritabanından kalıcı olarak silinir (bkz. DeviceAccessCredentialService.purgeExpired)
+    private int deviceAccessPurgeHours = 24;
+
     @Variable("barcode_prefix")
     private String barcodePrefix = "123456";
 
     // Liste ekranlarında sayfa başına gösterilen kayıt sayısı (uygulama yeniden başlatılsa da korunur)
     private int workOrderPageSize = 10;
     private int partPageSize = 10;
+    private int customerPageSize = 10;
+    private int devicePageSize = 10;
+    private int supplierPageSize = 10;
 
     private BackupSettings backup = new BackupSettings();
 

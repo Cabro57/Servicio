@@ -4,6 +4,9 @@ import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.application.renderer.*;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
+import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
@@ -16,7 +19,9 @@ import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -30,15 +35,45 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @SystemForm(name = "Müşteriler", description = "Müşteri veritabanını ve iletişim bilgilerini yönetin.")
 public class FormCustomers extends AbstractTableForm {
 
     private final CustomerService customerService;
     private GenericTableModel<Customer> tableModel;
+    private TableHeaderFilterSupport<Customer> headerFilters;
+
+    // --- SAYFALAMA (DB-tabanlı) ---
+    private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
+    private int pageSize = Servicio.getSettings().getCustomerPageSize();
+    private int currentPage = 1;
+    private String currentSearchTerm = "";
+    private PaginationBar paginationBar;
 
     public FormCustomers() {
         this.customerService = ServiceManager.getCustomerService();
+    }
+
+    @Override
+    protected JComponent createPaginationComponent() {
+        paginationBar = new PaginationBar(5, PAGE_SIZE_OPTIONS, pageSize,
+                page -> { currentPage = page; refreshTable(); },
+                newSize -> {
+                    pageSize = newSize;
+                    currentPage = 1;
+                    Servicio.getSettings().setCustomerPageSize(pageSize);
+                    Servicio.getSettings().save();
+                    refreshTable();
+                });
+        return paginationBar;
+    }
+
+    @Override
+    protected void applyFilter() {
+        currentSearchTerm = searchField.getText().trim();
+        currentPage = 1;
+        refreshTable();
     }
 
     // --- 1. ÜST KISIM VE ARAMA AYARLARI ---
@@ -117,33 +152,34 @@ public class FormCustomers extends AbstractTableForm {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
 
         List<ColumnDef<Customer>> columns = Arrays.asList(
-                new ColumnDef<>("ID", String.class, c -> String.format("C-%03d", c.getId())),
-                new ColumnDef<>("Müşteri Adı", Customer.class, c -> c),
-                new ColumnDef<>("İletişim", Customer.class, c -> c),
-                new ColumnDef<>("Cihaz Sayısı", Integer.class, Customer::getDeviceCount),
-                new ColumnDef<>("Toplam Harcama", BigDecimal.class, Customer::getSpent),
-                new ColumnDef<>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(formatter) : "-"),
-                new ColumnDef<>("İşlem", String.class, c -> "Detay")
+                new ColumnDef<Customer>("ID", String.class, c -> String.format("C-%03d", c.getId())).alignment(SwingConstants.LEADING),
+                new ColumnDef<Customer>("Müşteri Adı", Customer.class, c -> c).alignment(SwingConstants.LEADING),
+                new ColumnDef<Customer>("İletişim", Customer.class, c -> c).alignment(SwingConstants.LEADING),
+                ColumnDef.<Customer>badge("Tip", CustomerType.class, Customer::getType).enumFilter("c.customer_type", CustomerType.class),
+                new ColumnDef<Customer>("Cihaz Sayısı", Integer.class, Customer::getDeviceCount).alignment(SwingConstants.CENTER),
+                ColumnDef.<Customer>currency("Toplam Harcama", Customer::getSpent),
+                new ColumnDef<Customer>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(formatter) : "-")
+                        .alignment(SwingConstants.LEADING).dateRangeFilter("c.created_at"),
+                ColumnDef.<Customer>actionColumn("İşlem")
         );
 
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
-
+        TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
+        headerFilters = installHeaderFilters(columns);
     }
 
     @Override
     protected void refreshTable() {
-        customerService.getAllTable().thenAccept(customers -> {
-            if (customers.isEmpty()) {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.INFO, "Müşteri Listesi Boş!");
-                });
-            }
+        Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
 
+        customerService.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize).thenAccept(result -> {
             SwingUtilities.invokeLater(() -> {
-                tableModel.setData(customers);
+                tableModel.setData(result.getItems());
+                if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
                 refreshStats();
+                refreshLayout();
             });
         }).exceptionally(throwable -> {
             SwingUtilities.invokeLater(() -> {
@@ -156,16 +192,8 @@ public class FormCustomers extends AbstractTableForm {
     }
 
     private void configureTableColumns() {
-        Integer[] columnAlignments = {
-                SwingConstants.LEADING,  // ID
-                SwingConstants.LEADING,  // Müşteri Adı
-                SwingConstants.LEADING,  // İletişim
-                SwingConstants.CENTER,   // Cihaz Sayısı
-                SwingConstants.TRAILING, // Toplam Harcama
-                SwingConstants.LEADING,  // Kayıt Tarihi
-                SwingConstants.CENTER    // İşlem
-        };
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
+        // Not: hizalama ColumnDef.alignment(...) üzerinden geliyor; Tip/Toplam Harcama/İşlem
+        // kolonlarının renderer'ı TableColumnConfigurator.applyColumnRenderers(...) ile atandı.
 
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
@@ -186,7 +214,7 @@ public class FormCustomers extends AbstractTableForm {
                 )
         );
 
-        table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+        table.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
@@ -195,9 +223,7 @@ public class FormCustomers extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(4).setCellRenderer(new CurrencyTableCellRenderer());
-
-        table.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
+        table.getColumnModel().getColumn(6).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
@@ -207,8 +233,7 @@ public class FormCustomers extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(6).setCellRenderer(new ActionButtonRenderer());
-        table.getColumnModel().getColumn(6).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+        table.getColumnModel().getColumn(7).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onView(int row) {
                 int modelRow = table.convertRowIndexToModel(row);
@@ -260,11 +285,12 @@ public class FormCustomers extends AbstractTableForm {
         table.getColumnModel().getColumn(0).setMaxWidth(80);
         table.getColumnModel().getColumn(1).setPreferredWidth(220);
         table.getColumnModel().getColumn(2).setPreferredWidth(180);
-        table.getColumnModel().getColumn(3).setPreferredWidth(100);
-        table.getColumnModel().getColumn(4).setPreferredWidth(130);
-        table.getColumnModel().getColumn(5).setPreferredWidth(150);
-        table.getColumnModel().getColumn(6).setMaxWidth(180);
-        table.getColumnModel().getColumn(6).setMinWidth(120);
+        table.getColumnModel().getColumn(3).setPreferredWidth(110);
+        table.getColumnModel().getColumn(4).setPreferredWidth(100);
+        table.getColumnModel().getColumn(5).setPreferredWidth(130);
+        table.getColumnModel().getColumn(6).setPreferredWidth(150);
+        table.getColumnModel().getColumn(7).setMaxWidth(180);
+        table.getColumnModel().getColumn(7).setMinWidth(120);
     }
 
     // DÜZELTME: Verileri ve istatistikleri aynı anda çeken asenkron yapı

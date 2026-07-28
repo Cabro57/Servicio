@@ -41,8 +41,9 @@ public class DeviceIntakeFormGenerator implements ServiceFormGenerator {
                 {"Telefon", customer != null && customer.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1()) : "-"},
                 {"Cihaz", device != null ? device.getDisplayName() : "-"},
                 {"Seri No", device != null && device.getSerialNo() != null ? device.getSerialNo() : "-"},
-                {"Aksesuar", device != null && device.getAccessory() != null && !device.getAccessory().isBlank() ? device.getAccessory() : "-"},
-                {"Ekran Şifresi", device != null && device.getPassword() != null && !device.getPassword().isBlank() ? device.getPassword() : "-"}
+                {"Aksesuar", device != null && device.getAccessory() != null && !device.getAccessory().isBlank() ? device.getAccessory() : "-"}
+                // NOT: Ekran kilidi (PIN/şifre/desen) artık Device'ta değil, ayrı bir tabloda
+                // (DeviceAccessCredential) tutuluyor — bu PDF formuna eklenmesi ayrı bir işte ele alınacak.
         }));
         pdf.addSpacer();
 
