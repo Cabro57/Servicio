@@ -1,7 +1,5 @@
 package tr.cabro.servicio;
 
-import eu.okaeri.configs.ConfigManager;
-import eu.okaeri.configs.json.gson.JsonGsonConfigurer;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,11 +8,10 @@ import tr.cabro.servicio.application.MainUI;
 import tr.cabro.servicio.application.component.AppSplashScreen;
 import tr.cabro.servicio.application.listeners.InactivityMonitor;
 import tr.cabro.servicio.application.system.FormManager;
-import tr.cabro.servicio.application.utils.DemoPreferences;
 import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.updater.UpdateChecker;
 
 import javax.swing.*;
@@ -39,7 +36,6 @@ public final class Servicio {
 
     @Getter private static Servicio instance;
 
-    @Getter private static Settings settings;
     @Getter private final File dataFolder;
     @Getter private MainUI frame;
     @Getter private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
@@ -59,10 +55,6 @@ public final class Servicio {
     public Servicio(File baseFolder, AppSplashScreen splash) {
         instance = this;
 
-        splash.updateMessage("Güncelleme kontrol ediliyor...");
-        updateChecker = new UpdateChecker();
-        updateChecker.checkOnSplash(splash);
-
         // ── Veri klasörü ──────────────────────────────────────────────────────
         splash.updateMessage("Klasör yapıları kontrol ediliyor...");
         this.dataFolder = new File(baseFolder, ".servicio");
@@ -71,8 +63,15 @@ public final class Servicio {
         }
 
         // ── Ayarlar ───────────────────────────────────────────────────────────
+        // Her şeyden önce yüklenir: güncelleme kontrolü "atlanan sürüm"ü, tema kurulumu Look&Feel'i,
+        // yedekleme politikası da modunu buradan okuyor.
         splash.updateMessage("Ayarlar yükleniyor...");
-        initSettings();
+        AppSettings.init(this.dataFolder);
+
+        // ── Güncelleme kontrolü (bloklamaz) ───────────────────────────────────
+        splash.updateMessage("Güncelleme kontrol ediliyor...");
+        updateChecker = new UpdateChecker();
+        updateChecker.checkOnSplash(splash);
 
         // ── Veritabanı ────────────────────────────────────────────────────────
         splash.updateMessage("Veritabanı bağlantısı kuruluyor...");
@@ -85,8 +84,6 @@ public final class Servicio {
         // ── Aktivite İzleyici ─────────────────────────────────────────────────
         splash.updateMessage("Arka plan işlemleri hazırlanıyor...");
         initInactivityMonitor();
-
-        DemoPreferences.init();
     }
 
     /**
@@ -140,11 +137,11 @@ public final class Servicio {
             logger.info("Kapatma prosedürü başlatıldı...");
 
             if (frame != null) {
-                settings.setFull_size(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
+                AppSettings.get().getUi().setFullSize(frame.getExtendedState() == JFrame.MAXIMIZED_BOTH);
                 frame.dispose();
             }
 
-            settings.save();
+            AppSettings.save();
 
             if (inactivityMonitor != null) inactivityMonitor.stop();
             if (updateChecker     != null) updateChecker.stop();
@@ -165,18 +162,6 @@ public final class Servicio {
     }
 
 
-    private void initSettings() {
-        File configFile = new File(getDataFolder(), "config.json");
-
-        settings = ConfigManager.create(Settings.class, cfg -> {
-            cfg.withConfigurer(new JsonGsonConfigurer())
-                    .withBindFile(configFile)
-                    .withRemoveOrphans(true)
-                    .saveDefaults()
-                    .load(true);
-        });
-    }
-
     private void initInactivityMonitor() {
         Action lockAction = new AbstractAction() {
             @Override
@@ -185,11 +170,11 @@ public final class Servicio {
             }
         };
         inactivityMonitor = new InactivityMonitor(lockAction);
-        inactivityMonitor.setTimeout(settings.getAutoLockTimeoutMinutes());
+        inactivityMonitor.setTimeout(ServiceManager.getAppSettingService().getAutoLockMinutes());
     }
 
     private void runBackupIfNeeded(BackupMode... modes) {
-        BackupMode current = settings.getBackup().getMode();
+        BackupMode current = AppSettings.get().getBackup().getMode();
         for (BackupMode m : modes) {
             if (current == m) {
                 DatabaseManager.backup();

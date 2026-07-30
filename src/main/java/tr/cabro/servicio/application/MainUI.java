@@ -7,6 +7,7 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.model.User;
+import tr.cabro.servicio.settings.AppSettings;
 
 import javax.swing.*;
 import java.awt.*;
@@ -53,7 +54,7 @@ public class MainUI extends JFrame {
         setLocationRelativeTo(null); // Ortala
 
         // Eğer ayarlarda tam ekran kayıtlıysa
-        if (Servicio.getSettings().isFull_size()) {
+        if (AppSettings.get().getUi().isFullSize()) {
             setExtendedState(JFrame.MAXIMIZED_BOTH);
         }
     }
@@ -75,7 +76,7 @@ public class MainUI extends JFrame {
      */
     public void attemptExit() {
         // Eğer "Onay sorma" (skip confirmation) ayarı TRUE ise direkt kapat
-        boolean skipDialog = Servicio.getSettings().isSkipExitConfirmation();
+        boolean skipDialog = AppSettings.get().getUi().isSkipExitConfirmation();
 
         if (skipDialog) {
             Servicio.getInstance().shutdown();
@@ -103,7 +104,7 @@ public class MainUI extends JFrame {
         if (choice == JOptionPane.YES_OPTION) {
             // Ayarı kaydet
             if (chkDontAsk.isSelected()) {
-                Servicio.getSettings().setSkipExitConfirmation(true);
+                AppSettings.get().getUi().setSkipExitConfirmation(true);
                 // Kaydetme işini Servicio.shutdown() yapacak, burada set etmek yeterli
             }
 

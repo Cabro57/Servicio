@@ -42,7 +42,7 @@ public class DeviceAccessPurgeScheduler {
 
     private static void runPurge() {
         try {
-            int purgeHours = Servicio.getSettings().getDeviceAccessPurgeHours();
+            int purgeHours = ServiceManager.getAppSettingService().getDeviceAccessPurgeHours();
             ServiceManager.getDeviceAccessCredentialService().purgeExpired(purgeHours);
         } catch (Exception e) {
             Servicio.getLogger().error("Cihaz erişim kodu temizleme hatası: {}", e.getMessage());

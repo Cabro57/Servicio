@@ -1,15 +1,14 @@
 package tr.cabro.servicio.application.panels;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.util.SystemFileChooser;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
+import tr.cabro.servicio.util.ProfileImageStore;
 
 import javax.swing.*;
 import javax.swing.text.AbstractDocument;
@@ -18,9 +17,6 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 
 public class SetupPanel extends Form {
 
@@ -134,44 +130,15 @@ public class SetupPanel extends Form {
 
         // Olay Dinleyicileri (Event Listeners)
         btnSelectPhoto.addActionListener((ActionEvent e) -> {
-            SystemFileChooser fileChooser = new SystemFileChooser();
-            fileChooser.setDialogTitle("Profil Fotoğrafı Seç");
-
-            // Sadece resim dosyalarının seçilmesine izin ver
-            fileChooser.setFileFilter(
-                    new SystemFileChooser.FileNameExtensionFilter("Resim Dosyaları (*.jpg, *.png)", "jpg", "png", "jpeg")
-            );
-
-            if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                File file = fileChooser.getSelectedFile();
-
-                // Güvenlik Zırhı 1: Dosya gerçekten seçilmiş mi?
-                if (file != null) {
-                    try {
-                        // Güvenlik Zırhı 2: Servicio instance'ı null ise varsayılan klasörü kullan
-                        File baseFolder = (Servicio.getInstance() != null && Servicio.getInstance().getDataFolder() != null)
-                                ? Servicio.getInstance().getDataFolder()
-                                : new File(".servicio");
-
-                        File targetDir = new File(baseFolder, "profiles");
-                        if (!targetDir.exists()) {
-                            targetDir.mkdirs();
-                        }
-
-                        File targetFile = new File(targetDir, file.getName());
-
-                        // Dosyayı güvenli bir şekilde kopyala
-                        Files.copy(file.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
-                        selectedPhotoName = file.getName();
-                        lblPhotoPath.setText(selectedPhotoName);
-
-                    } catch (Exception ex) {
-                        // Konsola hatayı yazdır ki arkada ne patlıyor görebilelim
-                        ex.printStackTrace();
-                        Toast.show(this, Toast.Type.ERROR, "Fotoğraf kopyalanamadı: " + ex.getMessage());
-                    }
+            try {
+                String stored = ProfileImageStore.chooseAndStore(
+                        this, "Profil Fotoğrafı Seç", ProfileImageStore.PROFILES_DIR);
+                if (stored != null) {
+                    selectedPhotoName = stored;
+                    lblPhotoPath.setText(stored);
                 }
+            } catch (Exception ex) {
+                Toast.show(this, Toast.Type.ERROR, "Fotoğraf kopyalanamadı: " + ex.getMessage());
             }
         });
 

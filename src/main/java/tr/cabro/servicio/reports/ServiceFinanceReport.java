@@ -1,6 +1,5 @@
 package tr.cabro.servicio.reports;
 
-import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -8,8 +7,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/** Aylık finans raporunun tamamı — yalnızca bellekte kullanılan bir taşıyıcı. */
 @Getter
-public class ServiceFinanceReport extends OkaeriConfig {
+public class ServiceFinanceReport {
 
     private final List<ServiceFinanceRecord> records = new ArrayList<>();
 

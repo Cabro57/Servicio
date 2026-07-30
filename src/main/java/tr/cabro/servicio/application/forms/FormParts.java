@@ -6,6 +6,7 @@ import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.edit.PartEditPanel;
@@ -45,7 +46,7 @@ public class FormParts extends AbstractTableForm {
 
     // --- SAYFALAMA (DB-tabanlı) ---
     private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
-    private int pageSize = Servicio.getSettings().getPartPageSize();
+    private int pageSize = AppSettings.get().getTables().getPartPageSize();
     private int currentPage = 1;
     private String currentSearchTerm = "";
     private JPagination pagination;
@@ -112,8 +113,8 @@ public class FormParts extends AbstractTableForm {
         pageSizeCombo.addActionListener(e -> {
             pageSize = (Integer) pageSizeCombo.getSelectedItem();
             currentPage = 1;
-            Servicio.getSettings().setPartPageSize(pageSize);
-            Servicio.getSettings().save();
+            AppSettings.get().getTables().setPartPageSize(pageSize);
+            AppSettings.save();
             refreshTable();
         });
 

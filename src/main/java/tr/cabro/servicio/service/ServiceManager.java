@@ -22,6 +22,7 @@ public final class ServiceManager {
     @Getter private static ReportManager reportManager;
     @Getter private static StockService stockService;
     @Getter private static DeviceAccessCredentialService deviceAccessCredentialService;
+    @Getter private static AppSettingService appSettingService;
 
     public static void initialize() {
         Jdbi jdbi = DatabaseManager.getJdbi();
@@ -45,6 +46,7 @@ public final class ServiceManager {
         ServiceNoteRepository noteRepo = jdbi.onDemand(ServiceNoteRepository.class);
         StockMovementRepository stockMovementRepo = jdbi.onDemand(StockMovementRepository.class);
         DeviceAccessCredentialRepository deviceAccessCredentialRepo = jdbi.onDemand(DeviceAccessCredentialRepository.class);
+        AppSettingRepository appSettingRepo = jdbi.onDemand(AppSettingRepository.class);
 
         // --- Servislerin Başlatılması ---
         customerService = new CustomerService(customerRepo);
@@ -64,7 +66,12 @@ public final class ServiceManager {
 
         workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo, partService, stockService, deviceService);
 
+        appSettingService = new AppSettingService(appSettingRepo);
+
         // Eski Device.password verisini yeni tabloya bir kerelik taşı (idempotent — bkz. servis içi yorum)
         deviceAccessCredentialService.migrateLegacyDevicePasswords(deviceRepo, serviceRepo);
+
+        // config.json'da kalmış işletme ayarlarını app_settings tablosuna taşı (idempotent)
+        appSettingService.consumePendingMigration();
     }
 }

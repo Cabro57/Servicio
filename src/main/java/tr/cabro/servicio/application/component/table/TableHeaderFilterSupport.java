@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.component.table;
 
+import lombok.Setter;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.DatePicker;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -38,16 +39,13 @@ public class TableHeaderFilterSupport<T> {
     private final List<ColumnDef<T>> columns;
     private final Map<Integer, ColumnFilterValue> activeFilters = new HashMap<>();
 
+    @Setter
     private Runnable onFilterChanged;
 
     public TableHeaderFilterSupport(JTable table, List<ColumnDef<T>> columns) {
         this.table = table;
         this.columns = columns;
         install();
-    }
-
-    public void setOnFilterChanged(Runnable onFilterChanged) {
-        this.onFilterChanged = onFilterChanged;
     }
 
     /** Sadece SQL kolonu aktif olanları döner — repository katmanına doğrudan geçirilebilir. */

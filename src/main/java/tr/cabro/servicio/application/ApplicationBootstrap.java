@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.AppSplashScreen;
-import tr.cabro.servicio.application.utils.DemoPreferences;
+import tr.cabro.servicio.application.themes.LafService;
 import tr.cabro.servicio.util.AppLock;
 import tr.cabro.servicio.util.DataDirResolver;
 
@@ -89,6 +89,6 @@ public final class ApplicationBootstrap {
         FlatLaf.setPreferredFontFamily(FlatRobotoFont.FAMILY);
         FlatLaf.setPreferredLightFontFamily(FlatRobotoFont.FAMILY_LIGHT);
         FlatLaf.setPreferredSemiboldFontFamily(FlatRobotoFont.FAMILY_SEMIBOLD);
-        DemoPreferences.setupLaf();
+        LafService.setup();
     }
 }

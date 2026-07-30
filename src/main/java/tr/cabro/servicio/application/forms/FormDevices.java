@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
@@ -35,7 +36,7 @@ public class FormDevices extends AbstractTableForm {
 
     // --- SAYFALAMA (DB-tabanlı) ---
     private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
-    private int pageSize = Servicio.getSettings().getDevicePageSize();
+    private int pageSize = AppSettings.get().getTables().getDevicePageSize();
     private int currentPage = 1;
     private String currentSearchTerm = "";
     private PaginationBar paginationBar;
@@ -66,8 +67,8 @@ public class FormDevices extends AbstractTableForm {
                 newSize -> {
                     pageSize = newSize;
                     currentPage = 1;
-                    Servicio.getSettings().setDevicePageSize(pageSize);
-                    Servicio.getSettings().save();
+                    AppSettings.get().getTables().setDevicePageSize(pageSize);
+                    AppSettings.save();
                     refreshTable();
                 });
         return paginationBar;

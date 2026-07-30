@@ -5,7 +5,7 @@ import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.system.FormSearch;
 import tr.cabro.servicio.application.forms.FormCustomer;
-import tr.cabro.servicio.application.utils.DemoPreferences;
+import tr.cabro.servicio.application.utils.RecentSearchStore;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.util.PhoneHelper;
 
@@ -59,7 +59,7 @@ public class CustomerSearchResult implements ISearchableResult {
         // FormManager'a göster komutu ver
         FormManager.showForm(formInstance);
 
-        // DemoPreferences'a bu dinamik sonucu ekle
-        DemoPreferences.addRecentSearch(getUniqueId(), false);
+        // Bu dinamik sonucu "son aramalar"a ekle
+        RecentSearchStore.add(getUniqueId(), false);
     }
 }

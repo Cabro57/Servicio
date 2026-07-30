@@ -126,13 +126,6 @@
         </plugins>
     </build>
 
-    <repositories>
-        <repository>
-            <id>okaeri-repo</id>
-            <url>https://storehouse.okaeri.eu/repository/maven-public/</url>
-        </repository>
-    </repositories>
-
     <dependencies>
 
         <dependency>
@@ -212,15 +205,11 @@
             <artifactId>flatlaf-intellij-themes</artifactId>
             <version>3.7.1</version>
         </dependency>
+        <!-- Ayar dosyası (config.json) okuma/yazma — bkz. tr.cabro.servicio.settings.JsonConfigStore -->
         <dependency>
-            <groupId>eu.okaeri</groupId>
-            <artifactId>okaeri-configs-core</artifactId>
-            <version>5.0.9</version>
-        </dependency>
-        <dependency>
-            <groupId>eu.okaeri</groupId>
-            <artifactId>okaeri-configs-json-gson</artifactId>
-            <version>5.0.9</version>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.11.0</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

@@ -5,12 +5,12 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.system.FormManager;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.database.BackupScheduler;
 import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.model.enums.BackupMode;
-import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.settings.AppConfig;
+import tr.cabro.servicio.settings.AppSettings;
 
 import javax.swing.*;
 import java.awt.*;
@@ -21,10 +21,9 @@ import java.util.Arrays;
 
 public class SettingsDatabasePanel extends JPanel {
 
-    private final Settings settings;
+    private final AppConfig.Backup backup = AppSettings.get().getBackup();
 
     public SettingsDatabasePanel() {
-        this.settings = Servicio.getSettings();
         init();
     }
 
@@ -36,28 +35,28 @@ public class SettingsDatabasePanel extends JPanel {
         chooser_folder_button.addActionListener(e -> onFolderChooser());
 
         folder_path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooser_folder_button);
-        folder_path_field.setText(settings.getBackup().getPath());
+        folder_path_field.setText(AppSettings.getBackupDir().getAbsolutePath());
 
         // === Periyot seçimi ===
         periods_combo.setModel(new DefaultComboBoxModel<>(BackupMode.values()));
-        periods_combo.setSelectedItem(settings.getBackup().getMode());
+        periods_combo.setSelectedItem(backup.getMode());
 
-        interval_spinner.setModel(new SpinnerNumberModel(settings.getBackup().getInterval(), 1, 365, 1));
-        interval_spinner.setEnabled(needsInterval(settings.getBackup().getMode()));
+        interval_spinner.setModel(new SpinnerNumberModel(backup.getInterval(), 1, 365, 1));
+        interval_spinner.setEnabled(needsInterval(backup.getMode()));
 
         periods_combo.addActionListener(e -> {
             BackupMode selected = (BackupMode) periods_combo.getSelectedItem();
-            settings.getBackup().setMode(selected);
+            backup.setMode(selected);
             interval_spinner.setEnabled(needsInterval(selected));
-            settings.save();
+            AppSettings.save();
             BackupScheduler.restart();
             updateNextBackupLabel();
         });
 
         interval_spinner.addChangeListener(e -> {
             int val = (int) interval_spinner.getValue();
-            settings.getBackup().setInterval(val);
-            settings.save();
+            backup.setInterval(val);
+            AppSettings.save();
             BackupScheduler.restart();
             updateNextBackupLabel();
         });
@@ -97,7 +96,7 @@ public class SettingsDatabasePanel extends JPanel {
     }
 
     private void refreshBackupList() {
-        File dir = new File(settings.getBackup().getPath());
+        File dir = AppSettings.getBackupDir();
         if (!dir.exists()) dir.mkdirs();
         String[] files = dir.list((d, name) -> name.endsWith(".db") || name.endsWith(".sql"));
         if (files != null) {
@@ -120,7 +119,7 @@ public class SettingsDatabasePanel extends JPanel {
                 "Onay", JOptionPane.YES_NO_OPTION);
         if (confirm != JOptionPane.YES_OPTION) return;
 
-        File backupFile = new File(settings.getBackup().getPath(), selected);
+        File backupFile = new File(AppSettings.getBackupDir(), selected);
         DatabaseManager.restore(backupFile);
 
         // Tüm formları sıfırla — eski cached data'yı temizle
@@ -133,14 +132,13 @@ public class SettingsDatabasePanel extends JPanel {
     }
 
     private void onFolderChooser() {
-        SystemFileChooser chooser = new SystemFileChooser (settings.getBackup().getPath());
+        SystemFileChooser chooser = new SystemFileChooser(AppSettings.getBackupDir().getAbsolutePath());
         chooser.setFileSelectionMode(SystemFileChooser.DIRECTORIES_ONLY);
         if (chooser.showOpenDialog(this) == SystemFileChooser.APPROVE_OPTION) {
-            String path = chooser.getSelectedFile().getAbsolutePath();
-            folder_path_field.setText(path);
-            settings.getBackup().setPath(path);
+            AppSettings.setBackupDir(chooser.getSelectedFile());
+            folder_path_field.setText(AppSettings.getBackupDir().getAbsolutePath());
             refreshBackupList();
-            settings.save();
+            AppSettings.save();
         }
     }
 
@@ -149,7 +147,7 @@ public class SettingsDatabasePanel extends JPanel {
 
         // --- Klasör seçici ---
         JLabel folder_label = new JLabel("Yedekleme Klasörü:");
-        folder_path_field = new JTextField(settings.getBackup().getPath());
+        folder_path_field = new JTextField(AppSettings.getBackupDir().getAbsolutePath());
         JButton chooser_folder_button = new JButton(new FlatSVGIcon("icons/folder.svg"));
         folder_path_field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, chooser_folder_button);
 

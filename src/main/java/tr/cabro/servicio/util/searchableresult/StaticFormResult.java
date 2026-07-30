@@ -5,7 +5,7 @@ import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.system.FormSearch;
-import tr.cabro.servicio.application.utils.DemoPreferences;
+import tr.cabro.servicio.application.utils.RecentSearchStore;
 import tr.cabro.servicio.application.utils.SystemForm;
 
 // BU SINIF YENİ OLUŞTURULACAK
@@ -39,6 +39,6 @@ public class StaticFormResult implements ISearchableResult {
         // Sonra FormManager ile göster
         FormManager.showForm(formInstance);
 
-        DemoPreferences.addRecentSearch(getUniqueId(), false);
+        RecentSearchStore.add(getUniqueId(), false);
     }
 }

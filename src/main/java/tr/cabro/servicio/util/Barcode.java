@@ -2,7 +2,7 @@ package tr.cabro.servicio.util;
 
 import lombok.Getter;
 import lombok.Setter;
-import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.service.ServiceManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ public class Barcode {
 
     public static synchronized String generate() {
         String code;
-        String companyPrefix = Servicio.getSettings().getBarcodePrefix();
+        String companyPrefix = ServiceManager.getAppSettingService().getBarcodePrefix();
         do {
             String base = companyPrefix + generateRandomBase(5); // 6 + 5 = 11 hane
             int checkDigit = calculateCheckDigit(base);

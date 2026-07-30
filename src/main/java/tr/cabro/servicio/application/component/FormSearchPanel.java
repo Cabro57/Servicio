@@ -6,7 +6,7 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.component.ModalContainer;
 import tr.cabro.servicio.application.menu.MyMenuValidation;
 import tr.cabro.servicio.application.system.Form;
-import tr.cabro.servicio.application.utils.DemoPreferences;
+import tr.cabro.servicio.application.utils.RecentSearchStore;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Ikon;
@@ -316,8 +316,8 @@ public class FormSearchPanel extends JPanel {
     }
 
     private List<Item> getRecentSearch(boolean favorite) {
-        String[] recentSearch = DemoPreferences.getRecentSearch(favorite);
-        if (recentSearch == null) {
+        String[] recentSearch = RecentSearchStore.get(favorite);
+        if (recentSearch.length == 0) {
             return null;
         }
 
@@ -489,12 +489,8 @@ public class FormSearchPanel extends JPanel {
         }
 
         protected void showForm() {
-//            ModalDialog.closeModal(FormSearch.ID);
-//            Drawer.setSelectedItemClass(form);
-//            if (!isFavorite) {
-//                DemoPreferences.addRecentSearch(data.name(), false);
-//            }
-
+            // Modal kapatma, menü seçimi ve "son aramalar"a ekleme artık sonucun kendi
+            // executeAction() gerçeklemesinde yapılıyor (bkz. util/searchableresult/).
             data.executeAction();
         }
 
@@ -544,7 +540,7 @@ public class FormSearchPanel extends JPanel {
         }
 
         protected void removeRecent() {
-            DemoPreferences.removeRecentSearch(data.getUniqueId(), isFavorite);
+            RecentSearchStore.remove(data.getUniqueId(), isFavorite);
             panelResult.remove(this);
             listItems.remove(this);
             if (listItems.isEmpty()) {
@@ -563,7 +559,7 @@ public class FormSearchPanel extends JPanel {
         }
 
         protected void addFavorite() {
-            DemoPreferences.addRecentSearch(data.getUniqueId(), true);
+            RecentSearchStore.add(data.getUniqueId(), true);
             int[] index = getFirstFavoriteIndex();
             panelResult.remove(this);
             listItems.remove(this);

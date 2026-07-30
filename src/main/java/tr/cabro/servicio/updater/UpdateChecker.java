@@ -13,7 +13,7 @@ import java.util.Properties;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.prefs.Preferences;
+import tr.cabro.servicio.settings.AppSettings;
 
 /**
  * Güncelleme kontrol servisi.
@@ -35,8 +35,6 @@ public class UpdateChecker {
 
     private static final long   SPLASH_CHECK_TIMEOUT_SEC = 10;
     private static final long   PERIODIC_INTERVAL_HOURS  = 6;
-    private static final String PREF_NODE                = "tr/cabro/servicio";
-    private static final String PREF_SKIPPED_VERSION     = "update.skipped_version";
 
     // ─── Durum ───────────────────────────────────────────────────────────────
 
@@ -46,7 +44,6 @@ public class UpdateChecker {
      */
     @Getter
     private final UpdateManager             manager;
-    private final Preferences               prefs;
     private       JFrame                    ownerFrame;
 
     /** Splash kontrolünden gelen sonuç — null: henüz bitmedi */
@@ -66,8 +63,23 @@ public class UpdateChecker {
     // ─── Oluşturucu ──────────────────────────────────────────────────────────
 
     public UpdateChecker() {
-        this.prefs   = Preferences.userRoot().node(PREF_NODE);
         this.manager = buildManager();
+    }
+
+    // ─── "Bu sürümü atla" kaydı (config.json) ────────────────────────────────
+
+    private static String skippedVersion() {
+        String value = AppSettings.get().getUpdate().getSkippedVersion();
+        return value != null ? value : "";
+    }
+
+    static void setSkippedVersion(String version) {
+        AppSettings.get().getUpdate().setSkippedVersion(version);
+        AppSettings.save();
+    }
+
+    private static void clearSkippedVersion() {
+        setSkippedVersion(null);
     }
 
     // ─── AŞAMA 1: Splash kontrolü ────────────────────────────────────────────
@@ -87,12 +99,12 @@ public class UpdateChecker {
 
         manager.checkForUpdates(
                 manifest -> {
-                    String  skipped    = prefs.get(PREF_SKIPPED_VERSION, "");
+                    String  skipped    = skippedVersion();
                     boolean wasSkipped = skipped.equals(manifest.getVersion());
                     boolean isHotfix   = UpdateManager.sameVersion(manifest.getVersion(), skipped);
 
                     if (wasSkipped && isHotfix) {
-                        prefs.remove(PREF_SKIPPED_VERSION);
+                        clearSkippedVersion();
                         log.info("Hotfix tespit edildi, atla kaydı sıfırlandı: v{}",
                                 manifest.getVersion());
                     } else if (wasSkipped) {
@@ -184,7 +196,7 @@ public class UpdateChecker {
      * "Bu sürümü atla" filtresini sıfırlar.
      */
     public void checkNow() {
-        prefs.remove(PREF_SKIPPED_VERSION);
+        clearSkippedVersion();
         scheduler.submit(this::performPeriodicCheck);
     }
 
@@ -199,12 +211,12 @@ public class UpdateChecker {
     private void performPeriodicCheck() {
         manager.checkForUpdates(
             manifest -> {
-                String  skipped    = prefs.get(PREF_SKIPPED_VERSION, "");
+                String  skipped    = skippedVersion();
                 boolean wasSkipped = skipped.equals(manifest.getVersion());
                 boolean isHotfix   = UpdateManager.sameVersion(manifest.getVersion(), skipped);
 
                 if (wasSkipped && isHotfix) {
-                    prefs.remove(PREF_SKIPPED_VERSION);
+                    clearSkippedVersion();
                 } else if (wasSkipped) {
                     log.debug("Periyodik: sürüm {} atlandı.", manifest.getVersion());
                     return;
@@ -216,7 +228,7 @@ public class UpdateChecker {
                             manifest.getVersion(), currentVersion());
                     UpdateDialog dialog = new UpdateDialog(
                             ownerFrame, manifest, manager, hotfix);
-                    dialog.setOnSkipVersion(v -> prefs.put(PREF_SKIPPED_VERSION, v));
+                    dialog.setOnSkipVersion(UpdateChecker::setSkippedVersion);
                     dialog.setVisible(true);
                 });
             },

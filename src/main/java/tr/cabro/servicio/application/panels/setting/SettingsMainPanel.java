@@ -1,16 +1,21 @@
 package tr.cabro.servicio.application.panels.setting;
 
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.settings.AppSettings;
 
 import javax.swing.*;
 
+/**
+ * Ayarlar &gt; Uygulama &gt; Genel.
+ * <p>
+ * Barkod öneki bir işletme ayarı olduğu için veritabanında ({@code app_settings}),
+ * çıkış onayı tercihi makineye özel olduğu için {@code config.json} içinde tutulur.
+ */
 public class SettingsMainPanel extends JPanel {
 
-    private JSpinner timeoutSpinner;
     private JTextField barcodePrefix;
-    private JSpinner deviceAccessPurgeSpinner;
+    private JCheckBox skipExitConfirmation;
 
     public SettingsMainPanel() {
         init();
@@ -27,84 +32,44 @@ public class SettingsMainPanel extends JPanel {
             }
         });
 
-        deviceAccessPurgeSpinner.addChangeListener(e -> saveDeviceAccessPurgeHours());
+        skipExitConfirmation.addActionListener(e -> {
+            AppSettings.get().getUi().setSkipExitConfirmation(skipExitConfirmation.isSelected());
+            AppSettings.save();
+        });
     }
 
     private void loadSettings() {
-        // Ayarlar nesnesini alıyoruz
-        Settings settings = Servicio.getSettings();
-
-        // Eğer null değilse, mevcut prefix'i TextField içine set ediyoruz
-        if (settings != null) {
-            barcodePrefix.setText(settings.getBarcodePrefix());
-            deviceAccessPurgeSpinner.setValue(settings.getDeviceAccessPurgeHours());
-        }
-    }
-
-    private void saveDeviceAccessPurgeHours() {
-        Settings settings = Servicio.getSettings();
-        settings.setDeviceAccessPurgeHours((Integer) deviceAccessPurgeSpinner.getValue());
-        settings.save();
+        barcodePrefix.setText(ServiceManager.getAppSettingService().getBarcodePrefix());
+        skipExitConfirmation.setSelected(AppSettings.get().getUi().isSkipExitConfirmation());
     }
 
     private void saveBarcodePrefix() {
-        Settings settings = Servicio.getSettings();
-        String newPrefix = barcodePrefix.getText().trim();
-
-        // Yeni prefix'i set et ve ayarları kaydet
-        settings.setBarcodePrefix(newPrefix);
-
-        // Not: Ayarların kalıcı olması için diske yazan metodunuzu çağırmayı unutmayın.
-        // Örn: settings.save() veya Servicio.saveSettings() gibi.
-        settings.save();
+        ServiceManager.getAppSettingService().setBarcodePrefix(barcodePrefix.getText().trim());
     }
 
-
     private void initComponent() {
-        setLayout(new MigLayout("fillx, insets 10, gapy 15", "[grow]", "[][][][grow][]"));
+        setLayout(new MigLayout("fillx, insets 10, gapy 15", "[grow]", "[][][grow]"));
 
-        // --- Barkod Ayarları Paneli ---
+        // --- Barkod Ayarları ---
         JPanel barcodePanel = new JPanel(new MigLayout("fill, insets 10", "[][grow]", "[]"));
         barcodePanel.setBorder(BorderFactory.createTitledBorder("Barkod Ayarları"));
 
         barcodePanel.add(new JLabel("Barkod Öneki:"));
         barcodePrefix = new JTextField();
+        barcodePrefix.setToolTipText("Üretilen barkod numaralarının başına eklenir.");
         barcodePanel.add(barcodePrefix, "growx");
 
         add(barcodePanel, "growx, wrap");
 
-        // --- Cihaz Erişim Güvenliği Paneli ---
-        JPanel deviceAccessPanel = new JPanel(new MigLayout("fill, insets 10", "[][100!][grow]", "[]"));
-        deviceAccessPanel.setBorder(BorderFactory.createTitledBorder("Cihaz Erişim Güvenliği"));
+        // --- Uygulama Davranışı ---
+        JPanel behaviourPanel = new JPanel(new MigLayout("fill, insets 10", "[grow]", "[]"));
+        behaviourPanel.setBorder(BorderFactory.createTitledBorder("Uygulama Davranışı"));
 
-        deviceAccessPanel.add(new JLabel("Teslimattan Sonra Erişim Kodunu Sil (Saat):"));
-        deviceAccessPurgeSpinner = new JSpinner(new SpinnerNumberModel(24, 1, 720, 1));
-        deviceAccessPurgeSpinner.setToolTipText("Servis teslim edildikten bu kadar saat sonra, cihazın PIN/şifre/desen bilgisi kalıcı olarak silinir.");
-        deviceAccessPanel.add(deviceAccessPurgeSpinner);
+        skipExitConfirmation = new JCheckBox("Çıkarken onay sorma");
+        skipExitConfirmation.setToolTipText("İşaretliyse uygulama kapatılırken \"emin misiniz?\" sorusu gösterilmez.");
+        behaviourPanel.add(skipExitConfirmation, "growx");
 
-        add(deviceAccessPanel, "growx, wrap");
-
-//        // --- Güvenlik Ayarları Paneli (YENİ EKLENDİ) ---
-//        JPanel security_panel = new JPanel(new MigLayout("fill, insets 10", "[][100!][grow]", "[]"));
-//        security_panel.setBorder(BorderFactory.createTitledBorder("Güvenlik Ayarları"));
-//
-//        security_panel.add(new JLabel("Otomatik Kilitleme Süresi (Dakika):"));
-//
-//        // Varsayılan 5, Min 0 (Kapalı), Max 120, 1'er 1'er artan spinner
-//        timeoutSpinner = new JSpinner(new SpinnerNumberModel(5, 0, 120, 1));
-//        timeoutSpinner.setToolTipText("0 yaparsanız otomatik kilitleme devre dışı kalır.");
-//        security_panel.add(timeoutSpinner, "");
-//
-//        JLabel infoLabel = new JLabel("(0 = Devre Dışı)");
-//        infoLabel.putClientProperty(FlatClientProperties.STYLE, "foreground:$text.disabled;");
-//        security_panel.add(infoLabel, "wrap");
-//
-//        add(security_panel, "growx, wrap");
-
-//        // --- Ekstra Ayarlar Paneli ---
-//        JPanel extra_panel = new JPanel(new MigLayout("fill, insets 10"));
-//        extra_panel.setBorder(BorderFactory.createTitledBorder("Diğer Ayarlar"));
-//        add(extra_panel, "growx, wrap");
+        add(behaviourPanel, "growx, wrap");
 
         // Bileşenleri yukarı itmek için boşluk
         add(new JLabel(), "pushy, growy, wrap");

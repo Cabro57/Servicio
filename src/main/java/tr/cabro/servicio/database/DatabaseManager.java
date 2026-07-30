@@ -12,6 +12,7 @@ import tr.cabro.servicio.database.argument.LocalDateTimeArgumentFactory;
 import tr.cabro.servicio.database.mapper.SQLiteDateMapper;
 import tr.cabro.servicio.database.mapper.SQLiteDateTimeMapper;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.settings.AppSettings;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -112,8 +113,8 @@ public class DatabaseManager {
 
     public static void backup(String fileName) {
         try {
-            String backupDir = Servicio.getSettings().getBackup().getPath();
-            new File(backupDir).mkdirs();
+            File backupDir = AppSettings.getBackupDir();
+            backupDir.mkdirs();
 
             if (fileName == null || fileName.trim().isEmpty()) {
                 fileName = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss"));

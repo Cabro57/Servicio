@@ -10,6 +10,7 @@ import tr.cabro.servicio.application.forms.FormDashboard;
 import tr.cabro.servicio.application.panels.PinPanel;
 import tr.cabro.servicio.application.panels.ProfileSettingsPanel;
 import tr.cabro.servicio.application.panels.SetupPanel;
+import tr.cabro.servicio.application.panels.setting.SettingsModal;
 import tr.cabro.servicio.application.utils.UndoRedo;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
@@ -205,6 +206,18 @@ public class FormManager {
                 new SimpleModalBorder(new ProfileSettingsPanel(), "Profil Ayarları"),
                 ModalDialog.createOption(),
                 ProfileSettingsPanel.MODAL_ID
+        );
+    }
+
+    /**
+     * Ayarlar ekranını modal olarak açar. Eskiden menüden bir {@code Form} olarak açılıyordu;
+     * modal olması sayesinde üzerinde çalışılan form kapanmıyor.
+     */
+    public static void showSettings() {
+        AppModal.showModal(frame,
+                new SimpleModalBorder(new SettingsModal(), "Ayarlar"),
+                ModalDialog.createOption(),
+                SettingsModal.MODAL_ID
         );
     }
 

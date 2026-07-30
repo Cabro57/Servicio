@@ -20,7 +20,6 @@ import tr.cabro.servicio.updater.UpdateNotifier;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.HierarchyEvent;
-import java.util.prefs.Preferences;
 
 public class MainForm extends JPanel {
 

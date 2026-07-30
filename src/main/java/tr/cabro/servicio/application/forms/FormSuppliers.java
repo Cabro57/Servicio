@@ -12,6 +12,7 @@ import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.edit.SupplierEditPanel;
@@ -44,7 +45,7 @@ public class FormSuppliers extends AbstractTableForm {
 
     // --- SAYFALAMA (DB-tabanlı) ---
     private static final Integer[] PAGE_SIZE_OPTIONS = {10, 25, 50, 100};
-    private int pageSize = Servicio.getSettings().getSupplierPageSize();
+    private int pageSize = AppSettings.get().getTables().getSupplierPageSize();
     private int currentPage = 1;
     private String currentSearchTerm = "";
     private PaginationBar paginationBar;
@@ -60,8 +61,8 @@ public class FormSuppliers extends AbstractTableForm {
                 newSize -> {
                     pageSize = newSize;
                     currentPage = 1;
-                    Servicio.getSettings().setSupplierPageSize(pageSize);
-                    Servicio.getSettings().save();
+                    AppSettings.get().getTables().setSupplierPageSize(pageSize);
+                    AppSettings.save();
                     refreshTable();
                 });
         return paginationBar;

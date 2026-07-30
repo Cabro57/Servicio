@@ -1,12 +1,12 @@
 package tr.cabro.servicio.reports;
 
-import eu.okaeri.configs.OkaeriConfig;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/** Aylık finans raporunun tek satırı — yalnızca bellekte kullanılan bir taşıyıcı. */
 @Getter @Setter @NoArgsConstructor
-public class ServiceFinanceRecord extends OkaeriConfig {
+public class ServiceFinanceRecord {
 
     private String month;
     private Integer serviceCount;

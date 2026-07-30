@@ -3,7 +3,8 @@ package tr.cabro.servicio.database;
 import lombok.Getter;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.model.enums.BackupMode;
-import tr.cabro.servicio.settings.Settings;
+import tr.cabro.servicio.settings.AppConfig;
+import tr.cabro.servicio.settings.AppSettings;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -21,9 +22,9 @@ public class BackupScheduler {
     public static void start() {
         stop(); // Varsa eskiyi durdur
 
-        Settings.BackupSettings settings = Servicio.getSettings().getBackup();
-        BackupMode mode = settings.getMode();
-        int interval = settings.getInterval();
+        AppConfig.Backup backupSettings = AppSettings.get().getBackup();
+        BackupMode mode = backupSettings.getMode();
+        int interval = backupSettings.getInterval();
 
         // Mod "KAPALI" veya "MANUEL" ise zamanlayıcıyı başlatma
         if (mode == BackupMode.NONE) {
