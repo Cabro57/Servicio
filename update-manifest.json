@@ -1,6 +1,6 @@
 {
-  "version": "2.1.0",
-  "releaseDate": "2026-07-29",
+  "version": "2.2.0",
+  "releaseDate": "2026-08-04",
   "minRequiredVersion": "2.0.0",
   "releasesApiUrl": "https://api.github.com/repos/Cabro57/Servicio/releases/latest",
   "files": [
@@ -8,17 +8,23 @@
       "source": "github",
       "name": "servicio.jar",
       "path": "servicio.jar",
-      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.1.0/servicio.jar",
-      "sha256": "55deda6e015635c41c63c5a3d806b66700dcf342490463109e5609bcfe8961f7",
-      "size": 12373912
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.2.0/servicio.jar",
+      "sha256": "3265d97b1d9d1b77506947584107d6c439d283bbb3ba5b4ef66b24656b68f3c9",
+      "size": 12500812
     },
     {
-      "source": "maven",
+      "source": "url",
+      "name": "error_prone_annotations-2.27.0.jar",
+      "path": "libs/error_prone_annotations-2.27.0.jar",
+      "url": "https://repo1.maven.org/maven2/com/google/errorprone/error_prone_annotations/2.27.0/error_prone_annotations-2.27.0.jar",
+      "sha256": "24c923372c58e35d0b9f16a028929bb9aedc77521867c274f2bd0735df5ba1f5",
+      "size": 19370
+    },
+    {
+      "source": "url",
       "name": "flatlaf-3.7.1.jar",
       "path": "libs/flatlaf-3.7.1.jar",
-      "groupId": "com.formdev",
-      "artifactId": "flatlaf",
-      "libVersion": "3.7.1",
+      "url": "https://repo1.maven.org/maven2/com/formdev/flatlaf/3.7.1/flatlaf-3.7.1.jar",
       "sha256": "11f498f3c89596a782fceaa727c853a665067aeabc09bd682dc53b3ef237d0c7",
       "size": 1010321
     },
@@ -104,13 +110,13 @@
     },
     {
       "source": "maven",
-      "name": "gson-2.9.1.jar",
-      "path": "libs/gson-2.9.1.jar",
+      "name": "gson-2.11.0.jar",
+      "path": "libs/gson-2.11.0.jar",
       "groupId": "com.google.code.gson",
       "artifactId": "gson",
-      "libVersion": "2.9.1",
-      "sha256": "378534e339e6e6d50b1736fb3abb76f1c15d1be3f4c13cec6d536412e23da603",
-      "size": 265030
+      "libVersion": "2.11.0",
+      "sha256": "57928d6e5a6edeb2abd3770a8f95ba44dce45f3b23b7a9dc2b309c581552a78b",
+      "size": 298435
     },
     {
       "source": "maven",
@@ -281,28 +287,6 @@
       "libVersion": "5.3",
       "sha256": "ae384b680242234170de6b939bebf56effa40dd483477e13cd898104ba1e1de1",
       "size": 22576
-    },
-    {
-      "source": "maven",
-      "name": "okaeri-configs-core-5.0.9.jar",
-      "path": "libs/okaeri-configs-core-5.0.9.jar",
-      "groupId": "eu.okaeri",
-      "artifactId": "okaeri-configs-core",
-      "libVersion": "5.0.9",
-      "repository": "https://storehouse.okaeri.eu/repository/maven-public",
-      "sha256": "169078bfcda2c0023a045927b2009a65a8f0cc04b351153f8b717f7febad7478",
-      "size": 128462
-    },
-    {
-      "source": "maven",
-      "name": "okaeri-configs-json-gson-5.0.9.jar",
-      "path": "libs/okaeri-configs-json-gson-5.0.9.jar",
-      "groupId": "eu.okaeri",
-      "artifactId": "okaeri-configs-json-gson",
-      "libVersion": "5.0.9",
-      "repository": "https://storehouse.okaeri.eu/repository/maven-public",
-      "sha256": "8868a2082a503cea8af8862e83ceec5f420e03cba20aebed8e8ded8c3b0de858",
-      "size": 4428
     },
     {
       "source": "maven",
