@@ -18,15 +18,19 @@ public interface PartRepository {
 
     // --- INSERT ---
     @SqlUpdate("INSERT INTO parts (barcode, name, category_id, model_compatibility, supplier_id, warehouse_id, " +
-            "purchase_price, sale_price, stock_quantity, min_stock_level, description, created_at, updated_at) " +
+            "purchase_price, sale_price, purchase_currency, purchase_price_original, sale_currency, sale_price_original, " +
+            "stock_quantity, min_stock_level, description, created_at, updated_at) " +
             "VALUES (:barcode, :name, :categoryId, :modelCompatibility, :supplierId, :warehouseId, " +
-            ":purchasePrice, :salePrice, :stockQuantity, :minStockLevel, :description, :createdAt, :updatedAt)")
+            ":purchasePrice, :salePrice, :purchaseCurrency, :purchasePriceOriginal, :saleCurrency, :salePriceOriginal, " +
+            ":stockQuantity, :minStockLevel, :description, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean Part part);
 
     // --- UPDATE ---
     @SqlUpdate("UPDATE parts SET barcode=:barcode, name=:name, category_id=:categoryId, model_compatibility=:modelCompatibility, " +
             "supplier_id=:supplierId, warehouse_id=:warehouseId, purchase_price=:purchasePrice, sale_price=:salePrice, " +
+            "purchase_currency=:purchaseCurrency, purchase_price_original=:purchasePriceOriginal, " +
+            "sale_currency=:saleCurrency, sale_price_original=:salePriceOriginal, " +
             "stock_quantity=:stockQuantity, min_stock_level=:minStockLevel, " +
             "description=:description, updated_at=:updatedAt WHERE id=:id")
     void update(@BindBean Part part);
@@ -61,22 +65,26 @@ public interface PartRepository {
 
     // --- SELECT ---
     @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
-            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
+            "purchase_price, sale_price, purchase_currency, purchase_price_original, sale_currency, sale_price_original, " +
+            "stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE id = :id AND is_deleted = 0")
     Optional<Part> findById(@Bind("id") Long id);
 
     @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
-            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
+            "purchase_price, sale_price, purchase_currency, purchase_price_original, sale_currency, sale_price_original, " +
+            "stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE barcode = :barcode AND is_deleted = 0")
     Optional<Part> findByBarcode(@Bind("barcode") String barcode);
 
     @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
-            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
+            "purchase_price, sale_price, purchase_currency, purchase_price_original, sale_currency, sale_price_original, " +
+            "stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<Part> findAll();
 
     @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
-            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
+            "purchase_price, sale_price, purchase_currency, purchase_price_original, sale_currency, sale_price_original, " +
+            "stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 AND stock_quantity <= min_stock_level " +
             "ORDER BY stock_quantity ASC")
     List<Part> findLowStockParts();
@@ -88,7 +96,8 @@ public interface PartRepository {
     // Arama alanı tedarikçi ve kategori adını da kapsar; bu yüzden aşağıdaki sorgular
     // parts'ı suppliers ve part_categories ile JOIN eder.
     String SEARCH_SELECT = "SELECT p.id, p.barcode, p.name, p.category_id, p.model_compatibility, p.supplier_id, " +
-            "p.purchase_price, p.sale_price, p.stock_quantity, p.min_stock_level, p.description, " +
+            "p.purchase_price, p.sale_price, p.purchase_currency, p.purchase_price_original, p.sale_currency, p.sale_price_original, " +
+            "p.stock_quantity, p.min_stock_level, p.description, " +
             "p.is_deleted, p.created_at, p.updated_at ";
     String SEARCH_FROM = "FROM parts p " +
             "LEFT JOIN suppliers sup ON sup.id = p.supplier_id " +
@@ -108,7 +117,8 @@ public interface PartRepository {
     // =========================================================================
 
     @SqlQuery("SELECT id, barcode, name, category_id, model_compatibility, supplier_id, " +
-            "purchase_price, sale_price, stock_quantity, min_stock_level, description, " +
+            "purchase_price, sale_price, purchase_currency, purchase_price_original, sale_currency, sale_price_original, " +
+            "stock_quantity, min_stock_level, description, " +
             "is_deleted, created_at, updated_at FROM parts WHERE is_deleted = 0 " +
             "ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
     List<Part> findAllPaged(@Bind("limit") int limit, @Bind("offset") int offset);

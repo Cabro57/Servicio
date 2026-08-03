@@ -50,7 +50,7 @@ public class PdfDocumentBuilder {
 
     public final Document document;
 
-    public PdfDocumentBuilder(File outFile, String footerLabel) throws IOException, DocumentException {
+    public PdfDocumentBuilder(File outFile) throws IOException, DocumentException {
         BaseFont regular = loadEmbeddedFont(FONT_REGULAR);
         BaseFont bold = loadEmbeddedFont(FONT_BOLD);
 
@@ -62,7 +62,7 @@ public class PdfDocumentBuilder {
 
         document = new Document(PageSize.A4, 40, 40, 40, 50);
         PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(outFile));
-        writer.setPageEvent(new FooterPageEvent(footerLabel, mutedFont));
+        writer.setPageEvent(new HeaderDatePageEvent(mutedFont));
         document.open();
     }
 
@@ -201,17 +201,22 @@ public class PdfDocumentBuilder {
         return cell;
     }
 
-    /** İki taraflı imza satırı — etiketler parametrik (form türüne göre taraflar değişebilir). */
-    public PdfPTable buildSignatureLines(String leftLabel, String rightLabel) {
+    /**
+     * İki taraflı imza satırı — etiketler parametrik (form türüne göre taraflar değişebilir),
+     * isimler kullanıcının "Form" popup'ında girdiği metinlerdir (boşsa sadece çizgi/etiket kalır).
+     */
+    public PdfPTable buildSignatureLines(String leftLabel, String leftName, String rightLabel, String rightName) {
         PdfPTable table = new PdfPTable(2);
         table.setWidthPercentage(100);
         table.setSpacingBefore(40);
 
-        PdfPCell left = new PdfPCell(new Paragraph(leftLabel + "\n\n\n_________________________", normalFont));
+        PdfPCell left = new PdfPCell(new Paragraph(leftLabel + "\n\n\n_________________________\n"
+                + (leftName != null && !leftName.isBlank() ? leftName : ""), normalFont));
         left.setBorder(0);
         table.addCell(left);
 
-        PdfPCell right = new PdfPCell(new Paragraph(rightLabel + "\n\n\n_________________________", normalFont));
+        PdfPCell right = new PdfPCell(new Paragraph(rightLabel + "\n\n\n_________________________\n"
+                + (rightName != null && !rightName.isBlank() ? rightName : ""), normalFont));
         right.setBorder(0);
         table.addCell(right);
 
@@ -222,23 +227,22 @@ public class PdfDocumentBuilder {
         document.close();
     }
 
-    private static class FooterPageEvent extends PdfPageEventHelper {
+    /** Sayfanın sağ üst köşesine sadece oluşturma tarihini basar — eski alt bilgi metni tamamen kaldırıldı. */
+    private static class HeaderDatePageEvent extends PdfPageEventHelper {
         private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", new Locale("tr", "TR"));
 
-        private final String label;
         private final Font font;
 
-        FooterPageEvent(String label, Font font) {
-            this.label = label;
+        HeaderDatePageEvent(Font font) {
             this.font = font;
         }
 
         @Override
         public void onEndPage(PdfWriter writer, Document document) {
-            String text = label + "  —  Oluşturulma: " + LocalDateTime.now().format(FORMATTER) + "  —  Sayfa " + writer.getPageNumber();
+            String text = LocalDateTime.now().format(FORMATTER);
             com.lowagie.text.pdf.ColumnText.showTextAligned(
-                    writer.getDirectContent(), Element.ALIGN_CENTER, new Paragraph(text, font),
-                    (document.right() + document.left()) / 2, document.bottom() - 20, 0);
+                    writer.getDirectContent(), Element.ALIGN_RIGHT, new Paragraph(text, font),
+                    document.right(), document.top() + 15, 0);
         }
     }
 }

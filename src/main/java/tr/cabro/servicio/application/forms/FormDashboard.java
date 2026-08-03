@@ -297,14 +297,14 @@ public class FormDashboard extends Form {
     }
 
     private void createOtherTable() {
-        JPanel panel = new JPanel(new MigLayout("", "[fill]", "[fill]"));
-        panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+        JPanel panel = new JPanel(new MigLayout("fillx,gap 14", "[fill, 50%][fill, 50%]", "[300]"));
+        //panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
 
         activeServiceTable = new ActiveServiceTable(ServiceManager.getWorkOrderService());
         pendingPaymentsTable = new PendingPaymentsTable(ServiceManager.getWorkOrderService());
-        panel.add(activeServiceTable, "sgx 1, width 100%");
-        panel.add(new JSeparator(JSeparator.VERTICAL), "width 3!");
-        panel.add(pendingPaymentsTable, "sgx 1, width 100%");
+
+        panel.add(activeServiceTable);
+        panel.add(pendingPaymentsTable);
         panelLayout.add(panel);
     }
 

@@ -24,14 +24,14 @@ public class ServiceDeliveryFormGenerator implements ServiceFormGenerator {
             "saklı kalmak kaydıyla 90 gün garantilidir. Fiziksel darbe, sıvı teması veya yetkisiz müdahale garanti dışıdır.";
 
     @Override
-    public File generate(WorkOrder workOrder, User shop) throws Exception {
+    public File generate(WorkOrder workOrder, User shop, String leftSignerName, String rightSignerName) throws Exception {
         Customer customer = workOrder.getCustomer();
         Device device = workOrder.getDevice();
 
         File outFile = File.createTempFile("servicio-servis-teslim-SRV" + workOrder.getId() + "-", ".pdf");
         outFile.deleteOnExit();
 
-        PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile, "Servis Teslim Formu");
+        PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile);
         pdf.addLetterhead(shop);
         pdf.addTitle("Servis Teslim Formu");
 
@@ -53,9 +53,7 @@ public class ServiceDeliveryFormGenerator implements ServiceFormGenerator {
         pdf.addSpacer();
 
         pdf.document.add(pdf.buildInfoTable(new String[][]{
-                {"Toplam Tutar", Format.formatPrice(workOrder.getTotalServiceAmount())},
-                {"Ödenen", Format.formatPrice(workOrder.getTotalPaid())},
-                {"Kalan Bakiye", Format.formatPrice(workOrder.getRemainingAmount())}
+                {"Toplam Tutar", Format.formatPrice(workOrder.getTotalServiceAmount())}
         }));
         pdf.addSpacer();
 
@@ -63,7 +61,7 @@ public class ServiceDeliveryFormGenerator implements ServiceFormGenerator {
         pdf.addParagraph(WARRANTY_NOTE);
         pdf.addSpacer();
 
-        pdf.document.add(pdf.buildSignatureLines("Teslim Eden (İşletme)", "Teslim Alan (Müşteri)"));
+        pdf.document.add(pdf.buildSignatureLines("Teslim Eden (İşletme)", leftSignerName, "Teslim Alan (Müşteri)", rightSignerName));
         pdf.close();
 
         return outFile;

@@ -5,9 +5,7 @@ import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
-import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
-import tr.cabro.servicio.application.renderer.UniversalVisualizableRenderer;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -15,9 +13,11 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
+import tr.cabro.servicio.model.DeviceTransaction;
 import tr.cabro.servicio.model.WorkOrder;
-import tr.cabro.servicio.model.enums.ServiceStatus;
+import tr.cabro.servicio.model.enums.DeviceTransactionType;
 import tr.cabro.servicio.service.DeviceService;
+import tr.cabro.servicio.service.DeviceTransactionService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.util.Format;
@@ -25,8 +25,11 @@ import tr.cabro.servicio.util.Format;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -35,8 +38,9 @@ public class FormDevice extends Form {
     private Device device;
     private final DeviceService deviceService;
     private final WorkOrderService workOrderService;
+    private final DeviceTransactionService deviceTransactionService;
 
-    private GenericTableModel<WorkOrder> tableModel;
+    private GenericTableModel<HistoryEntry> tableModel;
     private JTable table;
 
     private JLabel lblDeviceTitle;
@@ -46,6 +50,7 @@ public class FormDevice extends Form {
         this.device = device;
         this.deviceService = ServiceManager.getDeviceService();
         this.workOrderService = ServiceManager.getWorkOrderService();
+        this.deviceTransactionService = ServiceManager.getDeviceTransactionService();
         init();
     }
 
@@ -146,7 +151,7 @@ public class FormDevice extends Form {
         JPanel right = createRoundedCard();
         right.setLayout(new MigLayout("insets 20, fill", "[grow]", "[pref]15[grow]"));
 
-        JLabel title = new JLabel("Bu Cihaza Ait Servis Kayıtları");
+        JLabel title = new JLabel("Cihaz Geçmişi (Servis + Alım/Satım)");
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
         right.add(title, "wrap, growx");
 
@@ -158,15 +163,42 @@ public class FormDevice extends Form {
         add(right, "cell 1 1, grow");
     }
 
+    /** Servis ziyareti (WorkOrder) ile alım/satım olayının (DeviceTransaction) birleşik satırı. */
+    private static class HistoryEntry {
+        enum Kind { SERVICE, PURCHASE, SALE }
+
+        final Kind kind;
+        final LocalDateTime date;
+        final String person;
+        final String detail;
+        final WorkOrder workOrder; // yalnızca SERVICE için dolu
+
+        HistoryEntry(Kind kind, LocalDateTime date, String person, String detail, WorkOrder workOrder) {
+            this.kind = kind;
+            this.date = date;
+            this.person = person;
+            this.detail = detail;
+            this.workOrder = workOrder;
+        }
+
+        String kindLabel() {
+            return switch (kind) {
+                case SERVICE -> "Servis";
+                case PURCHASE -> "Alım";
+                case SALE -> "Satım";
+            };
+        }
+    }
+
     private void setupTable() {
         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
 
-        List<ColumnDef<WorkOrder>> columns = Arrays.asList(
-                new ColumnDef<>("Kayıt No", String.class,        s -> "SRV-" + s.getId()),
-                new ColumnDef<>("Müşteri",  Customer.class,      WorkOrder::getCustomer),
-                new ColumnDef<>("Tarih",    String.class,        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(df) : "-"),
-                new ColumnDef<>("Durum",    ServiceStatus.class, WorkOrder::getServiceStatus),
-                new ColumnDef<>("İşlem",    String.class,        s -> "Detay")
+        List<ColumnDef<HistoryEntry>> columns = Arrays.asList(
+                new ColumnDef<>("Tür",     String.class, HistoryEntry::kindLabel),
+                new ColumnDef<>("Kişi",    String.class, h -> h.person),
+                new ColumnDef<>("Tarih",   String.class, h -> h.date != null ? h.date.format(df) : "-"),
+                new ColumnDef<>("Detay",   String.class, h -> h.detail),
+                new ColumnDef<>("İşlem",   String.class, h -> h.kind == HistoryEntry.Kind.SERVICE ? "Detay" : "-")
         );
 
         tableModel = new GenericTableModel<>(columns);
@@ -198,20 +230,13 @@ public class FormDevice extends Form {
             }
         });
 
-        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Customer>(
-                c -> c != null ? c.getFullName() : "Bilinmeyen Müşteri",
-                c -> c != null && c.getPhoneNumber1() != null ? c.getPhoneNumber1() : ""
-        ));
-
-        table.getColumnModel().getColumn(3).setCellRenderer(new UniversalVisualizableRenderer());
-
         table.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());
         table.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onView(int row) {
                 int modelRow = table.convertRowIndexToModel(row);
-                WorkOrder wo = tableModel.getItemAt(modelRow);
-                if (wo != null) FormManager.showForm(new FormWorkOrder(wo));
+                HistoryEntry entry = tableModel.getItemAt(modelRow);
+                if (entry != null && entry.workOrder != null) FormManager.showForm(new FormWorkOrder(entry.workOrder));
             }
 
             @Override
@@ -239,8 +264,27 @@ public class FormDevice extends Form {
         valAccessory.setText(device.getAccessory() != null && !device.getAccessory().isBlank() ? device.getAccessory() : "-");
         valCreatedAt.setText(device.getCreatedAt() != null ? device.getCreatedAt().format(df) : "-");
 
-        workOrderService.getAllByDevice(device.getId()).thenAccept(list ->
-                SwingUtilities.invokeLater(() -> tableModel.setData(list))
+        workOrderService.getAllByDevice(device.getId()).thenAccept(workOrders ->
+                deviceTransactionService.getHistoryByDeviceId(device.getId()).thenAccept(transactions -> {
+                    List<HistoryEntry> entries = new ArrayList<>();
+                    for (WorkOrder wo : workOrders) {
+                        Customer customer = wo.getCustomer();
+                        entries.add(new HistoryEntry(HistoryEntry.Kind.SERVICE, wo.getCreatedAt(),
+                                customer != null ? customer.getFullName() : "Bilinmeyen Müşteri",
+                                "SRV-" + wo.getId(), wo));
+                    }
+                    for (DeviceTransaction t : transactions) {
+                        HistoryEntry.Kind kind = t.getType() == DeviceTransactionType.PURCHASE
+                                ? HistoryEntry.Kind.PURCHASE : HistoryEntry.Kind.SALE;
+                        entries.add(new HistoryEntry(kind, t.getTransactionDate(),
+                                t.getCustomer() != null ? t.getCustomer().getFullName() : "-",
+                                Format.formatPrice(t.getPrice()), null));
+                    }
+                    entries.sort(Comparator.comparing((HistoryEntry h) -> h.date,
+                            Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+
+                    SwingUtilities.invokeLater(() -> tableModel.setData(entries));
+                })
         );
     }
 

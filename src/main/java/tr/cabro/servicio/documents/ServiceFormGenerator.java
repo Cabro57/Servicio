@@ -5,8 +5,11 @@ import tr.cabro.servicio.model.WorkOrder;
 
 import java.io.File;
 
-/** Bir iş emrinden sabit tasarımlı bir PDF belge üreten form tiplerinin ortak arayüzü. */
+/**
+ * Bir iş emrinden sabit tasarımlı bir PDF belge üreten form tiplerinin ortak arayüzü.
+ * İmzasız formlar {@code leftSignerName}/{@code rightSignerName} parametrelerini yok sayar.
+ */
 public interface ServiceFormGenerator {
 
-    File generate(WorkOrder workOrder, User shop) throws Exception;
+    File generate(WorkOrder workOrder, User shop, String leftSignerName, String rightSignerName) throws Exception;
 }

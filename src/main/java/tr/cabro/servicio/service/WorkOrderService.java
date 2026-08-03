@@ -130,6 +130,15 @@ public class WorkOrderService {
         );
     }
 
+    public CompletableFuture<Void> updateDetectedFault(Long id, String detectedFault) {
+        if (id == null) {
+            throw new ValidationException("ID boş olamaz.");
+        }
+        return CompletableFuture.runAsync(() ->
+                workOrderRepository.updateDetectedFault(id, detectedFault, LocalDateTime.now())
+        );
+    }
+
     /**
      * Servis kaydının temel alanlarını doğrular.
      * Bu kontroller async zincire girmeden önce, çağıran thread'de senkron çalışır;

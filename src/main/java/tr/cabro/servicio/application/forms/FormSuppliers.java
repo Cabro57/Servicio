@@ -7,16 +7,16 @@ import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
+import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.AppSettings;
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.edit.SupplierEditPanel;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
+import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
@@ -132,15 +132,8 @@ public class FormSuppliers extends AbstractTableForm {
     }
 
     private void configureTableColumns() {
-        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                ((JLabel) c).setHorizontalAlignment(SwingConstants.LEADING);
-                ((JLabel) c).putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: +1");
-                return c;
-            }
-        });
+        table.getColumnModel().getColumn(0).setCellRenderer(
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: +1"));
 
         table.getColumnModel().getColumn(3).setCellRenderer(new MultiLineTableCellRenderer<Supplier>(
                 supplier -> Format.formatPhoneNumber(supplier.getPhone()),
@@ -148,21 +141,15 @@ public class FormSuppliers extends AbstractTableForm {
 
         ));
 
-        table.getColumnModel().getColumn(6).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+        TableActionColumnSupport.install(table, 6, tableModel, new TableActionColumnSupport.Handlers<Supplier>() {
             @Override
-            public void onEdit(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                System.out.println(tableModel.getItemAt(modelRow).getPhone());
-                openEditModal(tableModel.getItemAt(modelRow));
+            public void onEdit(Supplier supplier) {
+                System.out.println(supplier.getPhone());
+                openEditModal(supplier);
             }
 
             @Override
-            public void onDelete(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                Supplier selectedSupplier = tableModel.getItemAt(modelRow);
-
+            public void onDelete(Supplier selectedSupplier) {
                 ModalDialog.showModal(FormSuppliers.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
                         "Tedarikçiyi silmek istediğinizden emin misiniz?", "Silme Onayı",
                         SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
@@ -182,13 +169,10 @@ public class FormSuppliers extends AbstractTableForm {
             }
 
             @Override
-            public void onView(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                Supplier s = tableModel.getItemAt(modelRow);
+            public void onView(Supplier s) {
                 FormManager.showForm(new FormSupplier(s));
             }
-        }));
+        });
 
         table.getColumnModel().getColumn(0).setMaxWidth(80);
         table.getColumnModel().getColumn(1).setPreferredWidth(150);

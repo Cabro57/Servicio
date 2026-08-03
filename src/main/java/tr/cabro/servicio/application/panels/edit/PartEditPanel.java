@@ -22,12 +22,20 @@ import tr.cabro.servicio.util.Validator;
 import javax.swing.*;
 import java.awt.*;
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
+import java.util.HashMap;
+import java.util.Map;
 
 public class PartEditPanel extends AbstractEditPanel<Part> {
+
+    private static final DecimalFormat TRY_FORMAT = new DecimalFormat("#,##0.00");
 
     private PartService partService;
     private SupplierService supplierService;
     private PartCategoryManager partCategoryService;
+
+    // Seçilebilir para birimlerinin TL karşılığı (ExchangeRateManager'dan yüklenir)
+    private final Map<String, BigDecimal> ratesCache = new HashMap<>();
 
     // Arayüz Bileşenleri
     private JTextField barcode_field;
@@ -35,8 +43,10 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
     private JComboBox<PartCategory> category_combo;
     private JComboBox<DeviceType> device_type_combo;
     private JTextField models_field;
-    private JFormattedTextField purchase_price_field;
-    private JFormattedTextField sale_price_field;
+    private CurrencyField purchase_price_field;
+    private CurrencyField sale_price_field;
+    private JLabel purchase_try_label;
+    private JLabel sale_try_label;
     private JSpinner stock_spinner;
     private JSpinner min_stock_spinner;
     private JSpinner warranty_period_spinner;
@@ -68,6 +78,41 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
                 });
             }
         });
+    }
+
+    private void loadExchangeRates() {
+        ServiceManager.getExchangeRateManager().getAll().thenAccept(rates -> SwingUtilities.invokeLater(() -> {
+            ratesCache.clear();
+            rates.forEach(r -> ratesCache.put(r.getCurrencyCode(), r.getRate()));
+            updatePurchaseTryLabel();
+            updateSaleTryLabel();
+        })).exceptionally(ex -> {
+            Servicio.getLogger().error("Döviz kurları yüklenemedi", ex);
+            return null;
+        });
+    }
+
+    private void updatePurchaseTryLabel() {
+        updateTryLabel(purchase_price_field, purchase_try_label);
+    }
+
+    private void updateSaleTryLabel() {
+        updateTryLabel(sale_price_field, sale_try_label);
+    }
+
+    private void updateTryLabel(CurrencyField field, JLabel label) {
+        String code = field.getSelectedCurrency();
+        if ("TRY".equals(code)) {
+            label.setText(" ");
+            return;
+        }
+        BigDecimal rate = ratesCache.get(code);
+        if (rate == null || rate.signum() <= 0) {
+            label.setText("Bu döviz için kur tanımlı değil (Ayarlar > Döviz Kurları)");
+            return;
+        }
+        BigDecimal tl = toBigDecimal(field.getValue()).multiply(rate);
+        label.setText("≈ " + TRY_FORMAT.format(tl) + " ₺");
     }
 
     // --- KESİN ÇÖZÜM: Tedarikçi Yükleme Metodu ---
@@ -174,7 +219,26 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
             return false;
         }
 
+        // Döviz seçiliyken kur tanımlı olmalı
+        if (!hasUsableRate(purchase_price_field)) {
+            showValidationError("Alış fiyatı için seçilen dövizin kuru tanımlı değil. Önce Ayarlar > Döviz Kurları'ndan kur girin.");
+            purchase_price_field.requestFocus();
+            return false;
+        }
+        if (!hasUsableRate(sale_price_field)) {
+            showValidationError("Satış fiyatı için seçilen dövizin kuru tanımlı değil. Önce Ayarlar > Döviz Kurları'ndan kur girin.");
+            sale_price_field.requestFocus();
+            return false;
+        }
+
         return true;
+    }
+
+    private boolean hasUsableRate(CurrencyField field) {
+        String code = field.getSelectedCurrency();
+        if ("TRY".equals(code)) return true;
+        BigDecimal rate = ratesCache.get(code);
+        return rate != null && rate.signum() > 0;
     }
 
     @Override
@@ -192,15 +256,37 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
 
         data.setModelCompatibility(models_field.getText().trim());
 
-        // BigDecimal dönüşümleri için güvenli yöntem
-        data.setPurchasePrice(toBigDecimal(purchase_price_field.getValue()));
-        data.setSalePrice(toBigDecimal(sale_price_field.getValue()));
+        // BigDecimal dönüşümleri için güvenli yöntem; döviz seçiliyse TL karşılığı hesaplanır
+        applyCurrencyPrice(data, purchase_price_field, Part::setPurchaseCurrency, Part::setPurchasePriceOriginal, Part::setPurchasePrice);
+        applyCurrencyPrice(data, sale_price_field, Part::setSaleCurrency, Part::setSalePriceOriginal, Part::setSalePrice);
 
         data.setStockQuantity((Integer) stock_spinner.getValue());
         data.setMinStockLevel((Integer) min_stock_spinner.getValue());
         data.setDescription(description_area.getText().trim());
 
         return data;
+    }
+
+    /**
+     * TRY seçiliyse alandaki tutar doğrudan TL fiyatı olur; döviz seçiliyse ham tutar
+     * "original" alana, kur ile çarpılmış TL karşılığı ise kanonik fiyat alanına yazılır.
+     */
+    private void applyCurrencyPrice(Part data, CurrencyField field,
+                                     java.util.function.BiConsumer<Part, String> currencySetter,
+                                     java.util.function.BiConsumer<Part, BigDecimal> originalSetter,
+                                     java.util.function.BiConsumer<Part, BigDecimal> tryPriceSetter) {
+        String code = field.getSelectedCurrency();
+        BigDecimal amount = toBigDecimal(field.getValue());
+        currencySetter.accept(data, code);
+
+        if ("TRY".equals(code)) {
+            originalSetter.accept(data, null);
+            tryPriceSetter.accept(data, amount);
+        } else {
+            originalSetter.accept(data, amount);
+            BigDecimal rate = ratesCache.getOrDefault(code, BigDecimal.ZERO);
+            tryPriceSetter.accept(data, amount.multiply(rate));
+        }
     }
 
     /**
@@ -227,13 +313,14 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         models_field.setText(data.getModelCompatibility());
         loadCategories(data.getCategoryId());
 
-        BigDecimal pp = data.getPurchasePrice();
-        BigDecimal sp = data.getSalePrice();
         Integer st = data.getStockQuantity();
         Integer ms = data.getMinStockLevel();
 
-        if (pp != null) purchase_price_field.setValue(data.getPurchasePrice());
-        if (sp != null) sale_price_field.setValue(data.getSalePrice());
+        populateCurrencyField(purchase_price_field, data.getPurchaseCurrency(), data.getPurchasePriceOriginal(), data.getPurchasePrice());
+        populateCurrencyField(sale_price_field, data.getSaleCurrency(), data.getSalePriceOriginal(), data.getSalePrice());
+        updatePurchaseTryLabel();
+        updateSaleTryLabel();
+
         if (st != null) stock_spinner.setValue(data.getStockQuantity());
         if (ms != null) min_stock_spinner.setValue(data.getMinStockLevel());
 
@@ -243,13 +330,28 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         loadSuppliers(data.getSupplierId());
     }
 
+    private void populateCurrencyField(CurrencyField field, String currencyCode, BigDecimal originalAmount, BigDecimal tryPrice) {
+        if (currencyCode != null && !"TRY".equals(currencyCode) && originalAmount != null) {
+            field.setSelectedCurrency(currencyCode);
+            field.setValue(originalAmount);
+        } else {
+            field.setSelectedCurrency("TRY");
+            field.setValue(tryPrice != null ? tryPrice : BigDecimal.ZERO);
+        }
+    }
+
     @Override
     public void clearForm() {
         loadCategories(null);
         supplier_combo.setSelectedIndex(-1);
         name_field.setText("");
         models_field.setText("");
+        purchase_price_field.setSelectedCurrency("TRY");
         purchase_price_field.setValue(0.0);
+        sale_price_field.setSelectedCurrency("TRY");
+        sale_price_field.setValue(0.0);
+        updatePurchaseTryLabel();
+        updateSaleTryLabel();
         stock_spinner.setValue(1);
         min_stock_spinner.setValue(0);
         warranty_period_spinner.getValue();
@@ -335,13 +437,29 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
         models_field = new JTextField();
         add(models_field);
 
-        add(new JLabel("Alış Fiyatı (₺)"));
+        add(new JLabel("Alış Fiyatı"));
         purchase_price_field = new CurrencyField();
-        add(purchase_price_field);
+        purchase_try_label = new JLabel(" ");
+        purchase_try_label.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -2");
+        JPanel purchasePricePanel = new JPanel(new MigLayout("insets 0, wrap 1, fillx", "[grow,fill]"));
+        purchasePricePanel.add(purchase_price_field, "growx");
+        purchasePricePanel.add(purchase_try_label, "growx");
+        add(purchasePricePanel);
 
-        add(new JLabel("Satış Fiyatı (₺)"));
+        add(new JLabel("Satış Fiyatı"));
         sale_price_field = new CurrencyField();
-        add(sale_price_field);
+        sale_try_label = new JLabel(" ");
+        sale_try_label.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -2");
+        JPanel salePricePanel = new JPanel(new MigLayout("insets 0, wrap 1, fillx", "[grow,fill]"));
+        salePricePanel.add(sale_price_field, "growx");
+        salePricePanel.add(sale_try_label, "growx");
+        add(salePricePanel);
+
+        purchase_price_field.addCurrencyChangeListener(this::updatePurchaseTryLabel);
+        sale_price_field.addCurrencyChangeListener(this::updateSaleTryLabel);
+        purchase_price_field.addPropertyChangeListener("value", e -> updatePurchaseTryLabel());
+        sale_price_field.addPropertyChangeListener("value", e -> updateSaleTryLabel());
+        loadExchangeRates();
 
         add(new JLabel("Stok"));
         stock_spinner = new JSpinner(new SpinnerNumberModel(0, 0, 9999, 1));

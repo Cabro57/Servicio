@@ -38,6 +38,20 @@ public class Part {
     @ColumnName("sale_price")
     private BigDecimal salePrice = BigDecimal.ZERO;
 
+    // Fiyat girişte seçilen döviz cinsi ve o cinsten girilen ham tutar.
+    // purchasePrice/salePrice (TL) her zaman kanonik/hesaplanmış değerdir, raporlama vb. bunları kullanır.
+    @ColumnName("purchase_currency")
+    private String purchaseCurrency = "TRY";
+
+    @ColumnName("purchase_price_original")
+    private BigDecimal purchasePriceOriginal;
+
+    @ColumnName("sale_currency")
+    private String saleCurrency = "TRY";
+
+    @ColumnName("sale_price_original")
+    private BigDecimal salePriceOriginal;
+
     @ColumnName("stock_quantity")
     private Integer stockQuantity;
 
@@ -71,6 +85,8 @@ public class Part {
                 ", supplierId=" + supplierId +
                 ", purchasePrice=" + purchasePrice +
                 ", salePrice=" + salePrice +
+                ", purchaseCurrency='" + purchaseCurrency + '\'' +
+                ", saleCurrency='" + saleCurrency + '\'' +
                 ", stockQuantity=" + stockQuantity +
                 ", minStockLevel=" + minStockLevel +
                 ", description='" + description + '\'' +

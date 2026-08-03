@@ -8,13 +8,12 @@ import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.AppSettings;
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.renderer.*;
 import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -363,18 +362,14 @@ public class FormWorkOrders extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(7).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+        TableActionColumnSupport.install(table, 7, tableModal, new TableActionColumnSupport.Handlers<WorkOrder>() {
             @Override
-            public void onEdit(int row) {
-                cancelEditingIfNeeded();
-                WorkOrder wo = getWorkOrderAtRow(row);
+            public void onEdit(WorkOrder wo) {
                 if (wo != null) openEditModal(wo);
             }
 
             @Override
-            public void onDelete(int row) {
-                cancelEditingIfNeeded();
-                WorkOrder wo = getWorkOrderAtRow(row);
+            public void onDelete(WorkOrder wo) {
                 if (wo == null) return;
 
                 int confirm = JOptionPane.showConfirmDialog(
@@ -398,9 +393,7 @@ public class FormWorkOrders extends AbstractTableForm {
             }
 
             @Override
-            public void onView(int row) {
-                cancelEditingIfNeeded();
-                WorkOrder wo = getWorkOrderAtRow(row);
+            public void onView(WorkOrder wo) {
                 if (wo == null) {
                     Toast.show(FormWorkOrders.this, Toast.Type.WARNING, "İstenen servis bulunamadı.");
                     return;
@@ -417,7 +410,7 @@ public class FormWorkOrders extends AbstractTableForm {
                     return null;
                 });
             }
-        }));
+        });
 
         table.getColumnModel().getColumn(0).setMaxWidth(100);
         table.getColumnModel().getColumn(0).setPreferredWidth(90);
@@ -427,18 +420,5 @@ public class FormWorkOrders extends AbstractTableForm {
         table.getColumnModel().getColumn(4).setPreferredWidth(120);
         table.getColumnModel().getColumn(5).setPreferredWidth(100);
         table.getColumnModel().getColumn(6).setPreferredWidth(120);
-    }
-
-    // -------------------------------------------------------------------------
-    // Yardımcı
-    // -------------------------------------------------------------------------
-
-    private void cancelEditingIfNeeded() {
-        if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-    }
-
-    private WorkOrder getWorkOrderAtRow(int viewRow) {
-        int modelRow = table.convertRowIndexToModel(viewRow);
-        return tableModal.getItemAt(modelRow);
     }
 }

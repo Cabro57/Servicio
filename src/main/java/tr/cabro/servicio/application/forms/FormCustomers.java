@@ -7,14 +7,13 @@ import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
+import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.AppSettings;
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -29,7 +28,6 @@ import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
@@ -196,15 +194,8 @@ public class FormCustomers extends AbstractTableForm {
         // Not: hizalama ColumnDef.alignment(...) üzerinden geliyor; Tip/Toplam Harcama/İşlem
         // kolonlarının renderer'ı TableColumnConfigurator.applyColumnRenderers(...) ile atandı.
 
-        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                ((JLabel) c).setHorizontalAlignment(SwingConstants.LEADING);
-                ((JLabel) c).putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: +1");
-                return c;
-            }
-        });
+        table.getColumnModel().getColumn(0).setCellRenderer(
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: +1"));
 
         table.getColumnModel().getColumn(1).setCellRenderer(new CustomerTableCellRenderer());
 
@@ -215,30 +206,14 @@ public class FormCustomers extends AbstractTableForm {
                 )
         );
 
-        table.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
-                return c;
-            }
-        });
+        table.getColumnModel().getColumn(4).setCellRenderer(StyledLabelCellRenderer.of(SwingConstants.CENTER, null));
 
-        table.getColumnModel().getColumn(6).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                label.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
-                label.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
-                return label;
-            }
-        });
+        table.getColumnModel().getColumn(6).setCellRenderer(
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground", 15));
 
-        table.getColumnModel().getColumn(7).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+        TableActionColumnSupport.install(table, 7, tableModel, new TableActionColumnSupport.Handlers<Customer>() {
             @Override
-            public void onView(int row) {
-                int modelRow = table.convertRowIndexToModel(row);
-                Customer c = tableModel.getItemAt(modelRow);
+            public void onView(Customer c) {
                 customerService.get(c.getId()).thenAccept(response -> {
                     response.ifPresent(customer -> SwingUtilities.invokeLater(() -> {
                         Form formInstance = new FormCustomer(customer);
@@ -252,18 +227,12 @@ public class FormCustomers extends AbstractTableForm {
             }
 
             @Override
-            public void onEdit(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                openEditModal(tableModel.getItemAt(modelRow));
+            public void onEdit(Customer c) {
+                openEditModal(c);
             }
 
             @Override
-            public void onDelete(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                Customer selectedCustomer = tableModel.getItemAt(modelRow);
-
+            public void onDelete(Customer selectedCustomer) {
                 int confirm = JOptionPane.showConfirmDialog(
                         FormCustomers.this,
                         selectedCustomer.getFullName() + " adlı müşteriyi silmek istediğinize emin misiniz?",
@@ -281,7 +250,7 @@ public class FormCustomers extends AbstractTableForm {
                     });
                 }
             }
-        }));
+        });
 
         table.getColumnModel().getColumn(0).setMaxWidth(80);
         table.getColumnModel().getColumn(1).setPreferredWidth(220);

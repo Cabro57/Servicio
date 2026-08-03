@@ -23,14 +23,14 @@ public class DeviceIntakeFormGenerator implements ServiceFormGenerator {
             "müşteri kabul eder.";
 
     @Override
-    public File generate(WorkOrder workOrder, User shop) throws Exception {
+    public File generate(WorkOrder workOrder, User shop, String leftSignerName, String rightSignerName) throws Exception {
         Customer customer = workOrder.getCustomer();
         Device device = workOrder.getDevice();
 
         File outFile = File.createTempFile("servicio-cihaz-kabul-SRV" + workOrder.getId() + "-", ".pdf");
         outFile.deleteOnExit();
 
-        PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile, "Cihaz Kabul Formu");
+        PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile);
         pdf.addLetterhead(shop);
         pdf.addTitle("Cihaz Kabul Formu");
 
@@ -56,7 +56,7 @@ public class DeviceIntakeFormGenerator implements ServiceFormGenerator {
         pdf.addParagraph(TERMS);
         pdf.addSpacer();
 
-        pdf.document.add(pdf.buildSignatureLines("Teslim Eden (Müşteri)", "Teslim Alan (İşletme)"));
+        pdf.document.add(pdf.buildSignatureLines("Teslim Eden (Müşteri)", leftSignerName, "Teslim Alan (İşletme)", rightSignerName));
         pdf.close();
 
         return outFile;

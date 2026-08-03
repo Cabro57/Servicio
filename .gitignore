@@ -49,3 +49,6 @@ build/
 ### jpackage native paketleme ###
 packaging/app-input/
 packaging/dist/
+
+### Claude Code ###
+/CLAUDE.md

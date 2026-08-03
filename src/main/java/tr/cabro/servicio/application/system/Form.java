@@ -21,6 +21,13 @@ public class Form extends JPanel {
     public void formRefresh() {
     }
 
+    /**
+     * Form navigasyon geçmişinden (geri/ileri) kalıcı olarak atıldığında çağrılır.
+     * Formun tuttuğu Timer/liste gibi kaynakları burada serbest bırakılabilir.
+     */
+    public void formClose() {
+    }
+
     protected final void formCheck() {
         if (oldTheme != UIManager.getLookAndFeel()) {
             oldTheme = UIManager.getLookAndFeel();

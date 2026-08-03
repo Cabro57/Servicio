@@ -20,7 +20,7 @@ import java.util.List;
 
 public class FormManager {
 
-    protected static final UndoRedo<Form> FORMS = new UndoRedo<>();
+    protected static final UndoRedo<Form> FORMS = new UndoRedo<>(Form::formClose);
     @Getter
     private static JFrame frame;
     private static MainForm mainForm;
@@ -89,7 +89,7 @@ public class FormManager {
         frame.getContentPane().removeAll();
         frame.getContentPane().add(getMainForm());
         Drawer.setSelectedItemClass(FormDashboard.class);
-        FORMS.clear();
+        FORMS.clearAndClose();
         showForm(AllForms.getForm(FormDashboard.class));
         frame.repaint();
         frame.revalidate();
@@ -121,7 +121,7 @@ public class FormManager {
     }
 
     public static void logout() {
-        FORMS.clear();
+        FORMS.clearAndClose();
         Drawer.setVisible(false);
         frame.getContentPane().removeAll();
 
@@ -130,7 +130,7 @@ public class FormManager {
         // 1. Sistemde daha önce kurulum yapılmış mı? (Asenkron sor)
         userService.hasSetupCompleted().thenAccept(hasSetup -> {
             SwingUtilities.invokeLater(() -> {
-                FORMS.clear(); // Geçmiş formları temizle
+                FORMS.clearAndClose(); // Geçmiş formları temizle
                 if (!hasSetup) {
                     // Hiç kullanıcı yok, İLK KURULUM ekranını ekrana bas
                     SetupPanel setup = new SetupPanel();

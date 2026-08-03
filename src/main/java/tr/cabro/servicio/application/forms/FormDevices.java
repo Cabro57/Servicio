@@ -7,9 +7,9 @@ import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
+import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
@@ -101,30 +101,21 @@ public class FormDevices extends AbstractTableForm {
     }
 
     private void configureTableColumns() {
-        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                ((JLabel) c).putClientProperty(FlatClientProperties.STYLE, "font: bold");
-                return c;
-            }
-        });
+        table.getColumnModel().getColumn(0).setCellRenderer(
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "font: bold"));
 
-        table.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+        TableActionColumnSupport.install(table, 4, tableModel, new TableActionColumnSupport.Handlers<Device>() {
             @Override
-            public void onView(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                Device d = tableModel.getItemAt(modelRow);
+            public void onView(Device d) {
                 if (d != null) FormManager.showForm(new FormDevice(d));
             }
 
             @Override
-            public void onEdit(int row) {}
+            public void onEdit(Device d) {}
 
             @Override
-            public void onDelete(int row) {}
-        }));
+            public void onDelete(Device d) {}
+        });
 
         table.getColumnModel().getColumn(4).setMaxWidth(120);
         table.getColumnModel().getColumn(4).setMinWidth(90);

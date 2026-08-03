@@ -2,20 +2,36 @@ package tr.cabro.servicio.application.utils;
 
 import java.util.Iterator;
 import java.util.Stack;
+import java.util.function.Consumer;
 
 public class UndoRedo<E> implements Iterable<E> {
 
+    private static final int MAX_HISTORY = 20;
+
     private final Stack<E> stack1;
     private final Stack<E> stack2;
+    private final Consumer<E> onEvict;
 
     public UndoRedo() {
+        this(null);
+    }
+
+    /** @param onEvict geçmiş sınırı aşıldığında atılan en eski öğe için çağrılır (kaynak temizliği için). */
+    public UndoRedo(Consumer<E> onEvict) {
         stack1 = new Stack<>();
         stack2 = new Stack<>();
+        this.onEvict = onEvict;
     }
 
     public void add(E item) {
         stack1.push(item);
         stack2.clear();
+        if (stack1.size() > MAX_HISTORY) {
+            E evicted = stack1.remove(0);
+            if (onEvict != null) {
+                onEvict.accept(evicted);
+            }
+        }
     }
 
     public E undo() {
@@ -56,6 +72,19 @@ public class UndoRedo<E> implements Iterable<E> {
     public void clear() {
         stack1.clear();
         stack2.clear();
+    }
+
+    /** {@link #clear()} ile aynı, ancak temizlemeden önce geçmişteki tüm öğeler için {@code onEvict} çağrılır. */
+    public void clearAndClose() {
+        if (onEvict != null) {
+            for (E item : stack1) {
+                onEvict.accept(item);
+            }
+            for (E item : stack2) {
+                onEvict.accept(item);
+            }
+        }
+        clear();
     }
 
     public void clearRedo() {

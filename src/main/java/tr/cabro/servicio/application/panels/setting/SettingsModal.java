@@ -50,6 +50,7 @@ public class SettingsModal extends JPanel {
         page("Sözlükler", "Cihazlar", SettingsDevicePanel::new);
         page("Sözlükler", "Tamirler", SettingsRepairPanel::new);
         page("Sözlükler", "Parça Kategorileri", SettingsPartCategoryPanel::new);
+        page("Sözlükler", "Döviz Kurları", SettingsExchangeRatePanel::new);
 
         page("Sistem", "Güvenlik", SettingsSecurityPanel::new);
         page("Sistem", "Yedekleme", SettingsDatabasePanel::new);

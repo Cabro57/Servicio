@@ -7,10 +7,10 @@ import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.AppSettings;
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.panels.edit.PartEditPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
+import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
@@ -165,15 +165,8 @@ public class FormParts extends AbstractTableForm {
 
         table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
 
-        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                ((JLabel) c).setHorizontalAlignment(SwingConstants.LEADING);
-                ((JLabel) c).putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: +1");
-                return c;
-            }
-        });
+        table.getColumnModel().getColumn(0).setCellRenderer(
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: +1"));
 
         table.getColumnModel().getColumn(2).setCellRenderer(new TooltipCellRenderer());
 
@@ -191,21 +184,14 @@ public class FormParts extends AbstractTableForm {
         table.getColumnModel().getColumn(6).setCellRenderer(new CurrencyTableCellRenderer());
 
         table.getColumnModel().getColumn(7).setCellRenderer(new ActionButtonRenderer());
-        table.getColumnModel().getColumn(7).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+        TableActionColumnSupport.install(table, 7, tableModel, new TableActionColumnSupport.Handlers<Part>() {
             @Override
-            public void onEdit(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                Part part = tableModel.getItemAt(modelRow);
+            public void onEdit(Part part) {
                 openEditModal(part);
             }
 
             @Override
-            public void onDelete(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                Part selectedPart = tableModel.getItemAt(modelRow);
-
+            public void onDelete(Part selectedPart) {
                 ModalDialog.showModal(FormParts.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
                         "Bu parçayı silmek istediğinizden emin misiniz?", "Silme Onayı",
                         SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
@@ -227,13 +213,10 @@ public class FormParts extends AbstractTableForm {
             }
 
             @Override
-            public void onView(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                Part part = tableModel.getItemAt(modelRow);
+            public void onView(Part part) {
                 if (part != null) FormManager.showForm(new FormPart(part));
             }
-        }));
+        });
 
         // Genişlik Ayarları
         table.getColumnModel().getColumn(0).setMinWidth(150); // Barkod

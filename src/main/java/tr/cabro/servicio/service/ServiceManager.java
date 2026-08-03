@@ -23,6 +23,8 @@ public final class ServiceManager {
     @Getter private static StockService stockService;
     @Getter private static DeviceAccessCredentialService deviceAccessCredentialService;
     @Getter private static AppSettingService appSettingService;
+    @Getter private static DeviceTransactionService deviceTransactionService;
+    @Getter private static ExchangeRateManager exchangeRateManager;
 
     public static void initialize() {
         Jdbi jdbi = DatabaseManager.getJdbi();
@@ -47,6 +49,8 @@ public final class ServiceManager {
         StockMovementRepository stockMovementRepo = jdbi.onDemand(StockMovementRepository.class);
         DeviceAccessCredentialRepository deviceAccessCredentialRepo = jdbi.onDemand(DeviceAccessCredentialRepository.class);
         AppSettingRepository appSettingRepo = jdbi.onDemand(AppSettingRepository.class);
+        DeviceTransactionRepository deviceTransactionRepo = jdbi.onDemand(DeviceTransactionRepository.class);
+        ExchangeRateRepository exchangeRateRepo = jdbi.onDemand(ExchangeRateRepository.class);
 
         // --- Servislerin Başlatılması ---
         customerService = new CustomerService(customerRepo);
@@ -67,6 +71,8 @@ public final class ServiceManager {
         workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo, partService, stockService, deviceService);
 
         appSettingService = new AppSettingService(appSettingRepo);
+        deviceTransactionService = new DeviceTransactionService(deviceTransactionRepo);
+        exchangeRateManager = new ExchangeRateManager(exchangeRateRepo);
 
         // Eski Device.password verisini yeni tabloya bir kerelik taşı (idempotent — bkz. servis içi yorum)
         deviceAccessCredentialService.migrateLegacyDevicePasswords(deviceRepo, serviceRepo);

@@ -9,12 +9,14 @@ import org.jdbi.v3.sqlite3.SQLitePlugin;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.database.argument.LocalDateTimeArgumentFactory;
+import tr.cabro.servicio.database.mapper.SQLiteBigDecimalMapper;
 import tr.cabro.servicio.database.mapper.SQLiteDateMapper;
 import tr.cabro.servicio.database.mapper.SQLiteDateTimeMapper;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.AppSettings;
 
 import java.io.File;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
@@ -67,6 +69,7 @@ public class DatabaseManager {
             jdbi.registerArgument(new LocalDateTimeArgumentFactory());
             jdbi.registerColumnMapper(LocalDateTime.class, new SQLiteDateTimeMapper());
             jdbi.registerColumnMapper(LocalDate.class, new SQLiteDateMapper());
+            jdbi.registerColumnMapper(BigDecimal.class, new SQLiteBigDecimalMapper());
 
             // 4. Migration (Flyway) ve İlk Yedek
             if (!isFirstRun) {
