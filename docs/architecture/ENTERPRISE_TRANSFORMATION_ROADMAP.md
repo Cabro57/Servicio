@@ -392,7 +392,7 @@ public CompletableFuture<Void> delete(Long id, User actingUser) {
 - **Audit Trail (yeni):** `audit_log` tablosu + `AuditingServiceDecorator` (Decorator Pattern, Bölüm 1.2):
 
 ```sql
--- V18__create_audit_log.sql
+-- V20__create_audit_log.sql  (V18/V19 RBAC tabloları için ayrılmış, bkz. 4.1)
 CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -424,6 +424,118 @@ public final class AuditingWorkOrderService implements WorkOrderService {
 ```
 
 Bu sayede iş kuralı kodu (`WorkOrderServiceImpl`) audit ile hiç kirlenmez; `ApplicationContext` sarmalamayı (wiring) yapar.
+
+### 4.4 Tahsilat ve Cari Hesap Mimarisi (Accounts Receivable)
+
+**Bugünkü durum:** `work_order_payments` tablosu doğrudan `service_id`'ye kilitli (`WorkOrderPayment.serviceId`); bir ödeme yalnızca tek bir iş emrinin borcunu kapatabiliyor ve `ServicePaymentRepository.deletePayment()` kaydı **fiziksel olarak siliyor** (`DELETE FROM work_order_payments`). Küçük ölçekte çalışır, ama iki noktada kurumsal muhasebe standardının (ERP'lerdeki Cari Hesap / Accounts Receivable modeli — Logo, Netsis, SAP FI-AR mantığı) gerisinde kalıyor: müşteri bazlı bakiye görünümü yok, finansal kayıtlar geri döndürülemez şekilde yok edilebiliyor.
+
+```mermaid
+erDiagram
+    CUSTOMER ||--o{ WORK_ORDER : "borçlanır (iş bazlı)"
+    CUSTOMER ||--o{ PAYMENT : "öder (müşteri bazlı)"
+    PAYMENT ||--o{ PAYMENT_ALLOCATION : dağıtılır
+    PAYMENT_ALLOCATION }o--|| WORK_ORDER : "borcu kapatır"
+    PAYMENT }o--|| USER : "tahsil_eden / iptal_eden"
+
+    PAYMENT {
+        long id PK
+        long customer_id FK "ana bağlantı — artık müşteriye ait"
+        decimal amount
+        string payment_type
+        string currency
+        string status "ACTIVE | VOIDED"
+        long voided_by_user_id FK "iptal edildiyse"
+        string void_reason
+        datetime payment_date
+    }
+    PAYMENT_ALLOCATION {
+        long id PK
+        long payment_id FK
+        long work_order_id FK
+        decimal allocated_amount
+    }
+```
+
+| İlke | Bugün | Kurumsal karşılığı |
+|---|---|---|
+| Ödeme kime ait? | `service_id` (iş emrine kilitli) | `customer_id` — ödeme önce **müşteriye** girilir |
+| Bir ödeme birden fazla borcu kapatabilir mi? | Hayır, 1 ödeme = 1 servis | `payment_allocation` ara tablosu — bir ödeme birden çok açık iş emrine bölüştürülebilir |
+| Avans / ön ödeme | Desteklenmiyor (iş emri şart) | Allocation'sız `payment` kaydı → müşteri bakiyesinde kredi/avans olarak durur, sonraki işe düşülür |
+| Ödeme iptali | `DELETE FROM work_order_payments` | **Hard delete yok.** `status=VOIDED` + `void_reason` + `voided_by_user_id` — 4.3'teki audit log ile birebir örtüşür |
+| "Müşterinin toplam borcu ne?" | Tüm `work_order`'lar client-side toplanır | Tek sorgu: `SUM(work_order borcu) - SUM(payment.amount WHERE status='ACTIVE')` |
+| Para birimi | `WorkOrderPayment`'ta yok (V17 kur desteği sadece `Part`/iş kalemlerinde) | `payment.currency` + tahsilat anındaki kur — `ExchangeRateManager` ile tutarlı |
+
+```java
+public interface PaymentService {
+    // Müşteri bazlı — artık iş emrinden bağımsız girilebilir (avans dahil)
+    CompletableFuture<Payment> collect(Long customerId, BigDecimal amount, PaymentType type,
+                                        List<PaymentAllocationRequest> allocations); // boş liste = avans
+
+    // Silme değil, iptal — UnitOfWork içinde allocation'lar geri alınır, status=VOIDED yapılır
+    CompletableFuture<Void> voidPayment(Long paymentId, String reason, User actingUser);
+
+    CompletableFuture<CustomerBalance> getCustomerBalance(Long customerId);
+}
+```
+
+```sql
+-- V21__create_payment_and_allocation.sql
+CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL REFERENCES customers(id),
+    amount DECIMAL NOT NULL,
+    payment_type TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'TRY',
+    status TEXT NOT NULL DEFAULT 'ACTIVE',   -- ACTIVE | VOIDED
+    voided_by_user_id INTEGER REFERENCES users(id),
+    void_reason TEXT,
+    payment_date TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS payment_allocations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    payment_id INTEGER NOT NULL REFERENCES payments(id),
+    work_order_id INTEGER NOT NULL REFERENCES work_orders(id),
+    allocated_amount DECIMAL NOT NULL
+);
+CREATE INDEX idx_payment_customer ON payments(customer_id, status);
+CREATE INDEX idx_allocation_work_order ON payment_allocations(work_order_id);
+```
+
+**Geçiş notu:** `WorkOrderService.addPayment`/`deletePayment` çağrıları kaldırılmaz, `PaymentService`'e delege edilir — iş emri ekranındaki "ödeme ekle" butonu kullanıcı için aynı yerde durur, arkada tek allocation'lı bir `PaymentService.collect(customerId, amount, ..., List.of(new Allocation(workOrderId, amount)))` çağrısına döner. Mevcut `work_order_payments` verisi tek seferlik bir migration script'iyle `payments`+`payment_allocations`'a taşınır (her satır → 1 payment + 1 allocation).
+
+### 4.5 Parça / İşçilik Ekleme — Stok Rezervasyonu ve Onay Akışı
+
+**Bugünkü durum, güçlü yönleriyle:** `WorkOrderItem` zaten iyi tasarlanmış bir **snapshot modeli** kullanıyor (`itemName`, `purchasePrice`, `unitPrice` o anki değerleriyle donuyor — sonradan `Part` fiyatı değişse bile geçmiş iş emri etkilenmiyor); `StockMovement` de `referenceType` (WORK_ORDER, WORK_ORDER_CANCEL, PURCHASE, RETURN…) ile hareket sebebini izliyor. Bunlar korunmalı. Ancak üç gerçek eksik var:
+
+1. **Anlık düşüm, rezervasyon yok:** `WorkOrderService.addItem()` parçayı iş emrine eklerken stoktan **hemen ve kalıcı olarak** düşüyor (`reduceStockForItem`), müşteri teklifi onaylamadan önce bile. Sistemde zaten bir `RepairQuoteApprovalFormGenerator` (teklif onay belgesi) var — yani "teklif" kavramı belgesel düzeyde mevcut ama stok akışına hiç bağlanmamış.
+2. **Transaction sınırı yok:** `addItem()` iki ayrı adımda çalışıyor — kalem insert edilir, *sonra* ayrı bir `CompletableFuture` zincirinde stok düşülür (Bölüm 1'deki `WorkOrder`+`Device` sorunuyla birebir aynı desen).
+3. **Depo sabit kodlanmış:** `StockService.addStock/removeStock` içinde `movement.setWarehouseId(1L)` — `Warehouse` modeli/repository'si var olmasına rağmen fiilen tek depo destekleniyor.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: Teknisyen parçayı işe ekler\n(stok REZERVE edilir, StockMovement OLUŞMAZ)
+    PENDING --> APPROVED: Müşteri teklifi onaylar\n(RepairQuoteApprovalFormGenerator)
+    PENDING --> REJECTED: Müşteri reddeder\n(rezervasyon serbest kalır)
+    APPROVED --> CONSUMED: Teknisyen parçayı fiilen takar\n(StockMovement OUT yazılır, referenceType=WORK_ORDER)
+    CONSUMED --> RETURNED: İptal/iade\n(StockMovement OUT ile aynı miktarda ters kayıt, referenceType=WORK_ORDER_CANCEL)
+    REJECTED --> [*]
+    RETURNED --> [*]
+```
+
+- **Rezervasyon:** `stock_reservations` tablosu (`part_id`, `work_order_item_id`, `quantity`) — "kullanılabilir stok" artık `part.stock_quantity - Σaçık rezervasyonlar` olarak hesaplanır. Teklif onaylanmadan fiziksel `stock_movements`'a hiç dokunulmaz; bugünkü "ekle → sil → geri yükle" (restoreStockForItem) akışına göre daha temiz bir audit izi bırakır (hiç çıkmamış, çıkıp-geri-girmiş değil).
+- **Atomiklik:** kalem insert + rezervasyon/düşüm, Bölüm 1.4'teki `UnitOfWork` ile tek transaction'a alınır.
+- **Yetki entegrasyonu:** `SourceType.MANUAL` (elle fiyat girişi/iskonto) yalnızca `PermissionService.require(user, Permission.PART_PRICE_OVERRIDE)` geçen roller (4.1'deki `MALI_ISLER`/`YONETICI`) için açık olmalı — bir teknisyenin serbestçe fiyat kırabilmesi kurumsal iç kontrol açığıdır.
+- **Çoklu depo:** `StockService` imzasına `warehouseId` parametresi eklenir (varsayılan: iş emrinin bağlı olduğu şube/depo ayarı); `1L` hardcode kaldırılır.
+
+```java
+public interface InventoryReservationService {
+    CompletableFuture<Integer> getAvailable(Long partId, Long warehouseId); // stok - açık rezervasyonlar
+    CompletableFuture<Void> reserve(Long workOrderItemId, Long partId, int quantity);
+    CompletableFuture<Void> release(Long workOrderItemId);                  // red/iptal
+    CompletableFuture<Void> consume(Long workOrderItemId);                  // onay sonrası fiili düşüm → StockMovement
+}
+```
 
 ---
 
@@ -462,11 +574,18 @@ Bu sayede iş kuralı kodu (`WorkOrderServiceImpl`) audit ile hiç kirlenmez; `A
 - MDC bazlı log zenginleştirme, log rotasyonu.
 - `audit_log` tablosu + `AuditingServiceDecorator`'lar kritik servislere (WorkOrder, Payment, User, Stock) uygulanır.
 
-### Faz 6 — Performans & Ölçeklenebilirlik (1-2 sprint, opsiyonel/uzun vade)
+### Faz 6 — Cari Hesap (Tahsilat) ve Stok Rezervasyonu (2-3 sprint)
+- `payments`/`payment_allocations` tabloları (Bölüm 4.4, `V21`); mevcut `work_order_payments` verisi tek seferlik script ile taşınır.
+- `PaymentService` yazılır; `WorkOrderService.addPayment/deletePayment` bu servise delege eder — UI akışı değişmez.
+- `stock_reservations` tablosu + `InventoryReservationService` (Bölüm 4.5); `WorkOrderService.addItem` PENDING/APPROVED/CONSUMED akışına geçirilir, fiziksel stok düşümü yalnızca `CONSUMED` adımında olur.
+- `StockService`'teki `warehouseId=1L` hardcode'u kaldırılır, parametrik hale getirilir.
+- Bu fazın tamamı Faz 2'deki `UnitOfWork` ve Faz 4'teki `PermissionService`'e (fiyat override yetkisi) bağımlıdır — o yüzden onlardan sonra planlanmıştır.
+
+### Faz 7 — Performans & Ölçeklenebilirlik (1-2 sprint, opsiyonel/uzun vade)
 - FTS5 tabanlı arama (`work_order_search_fts`), mevcut `LIKE` sorgularının yerini alır.
 - İhtiyaç halinde çok-modüllü Maven'a geçiş (`servicio-domain`, `servicio-application`, `servicio-infrastructure`, `servicio-ui`) — paket sınırları Faz 1-3'te zaten netleştiği için bu adım mekanik bir taşıma olur.
 
-### Faz 7 — Sürdürülebilirlik
+### Faz 8 — Sürdürülebilirlik
 - Test kapsamı servis katmanında %70+ hedeflenir.
 - ArchUnit ile katman bağımlılık kurallarının (Bölüm 1.1) statik olarak CI'da doğrulanması (`Domain katmanı Swing import edemez` gibi kurallar otomatik denetlenir).
 
