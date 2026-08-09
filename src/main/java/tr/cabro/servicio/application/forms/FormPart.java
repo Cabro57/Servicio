@@ -10,6 +10,7 @@ import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ServiceStatus;
@@ -360,13 +361,7 @@ public class FormPart extends Form {
                     });
                     Toast.show(this, Toast.Type.SUCCESS, finalAmount + " adet stok eklendi.");
                 }))
-                .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        String cause = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                        Toast.show(this, Toast.Type.ERROR, "Stok eklenemedi: " + cause);
-                    });
-                    return null;
-                });
+                .exceptionally(ex -> ErrorHandler.handle(this, "Stok eklenemedi", ex));
     }
 
     private JPanel createRoundedCard() {

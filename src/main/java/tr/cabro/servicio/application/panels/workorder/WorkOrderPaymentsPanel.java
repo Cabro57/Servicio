@@ -8,6 +8,7 @@ import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.component.table.DynamicActionColumnSupport;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.documents.PaymentReceiptFormGenerator;
 import tr.cabro.servicio.model.User;
@@ -174,11 +175,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
                 refresh();
                 Toast.show(this, Toast.Type.SUCCESS, "Tahsilat eklendi.");
-            })).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() ->
-                        Toast.show(this, Toast.Type.ERROR, "Tahsilat eklenemedi: " + ex.getMessage()));
-                return null;
-            });
+            })).exceptionally(ex -> ErrorHandler.handle(this, "Tahsilat eklenemedi", ex));
         });
 
         inputRow.add(cmbMethod, "growx");
@@ -205,11 +202,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
             refresh();
             Toast.show(this, Toast.Type.SUCCESS, "Ödeme silindi.");
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.ERROR, "Silinemedi: " + ex.getMessage()));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Ödeme silinemedi", ex));
     }
 
     private void printPaymentReceipt(WorkOrderPayment payment) {
@@ -228,10 +221,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
                 SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Fiş oluşturulamadı: " + ex.getMessage()));
                 Servicio.getLogger().error("Tahsilat fişi oluşturma hatası", ex);
             }
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, ex.getMessage()));
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Tahsilat fişi oluşturulamadı", ex));
     }
 
     private JPanel buildPaymentSummaryBox() {

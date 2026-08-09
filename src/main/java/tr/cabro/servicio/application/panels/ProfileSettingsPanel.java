@@ -5,6 +5,7 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
@@ -137,11 +138,7 @@ public class ProfileSettingsPanel extends JPanel {
             if (selectedPhotoName != null && !selectedPhotoName.trim().isEmpty()) {
                 lblPhotoName.setText(selectedPhotoName);
             }
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.ERROR, "Kullanıcı bilgileri yüklenemedi!"));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Kullanıcı bilgileri yüklenemedi", ex));
     }
 
     private void save(JButton btnSave) {
@@ -185,12 +182,8 @@ public class ProfileSettingsPanel extends JPanel {
             Toast.show(this, Toast.Type.SUCCESS, "Profil güncellendi!");
             AppModal.closeModal(MODAL_ID);
         })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                Toast.show(this, Toast.Type.ERROR, "Hata: " + cause.getMessage());
-                btnSave.setEnabled(true);
-            });
-            return null;
+            SwingUtilities.invokeLater(() -> btnSave.setEnabled(true));
+            return ErrorHandler.handle(this, "Profil güncellenemedi", ex);
         });
     }
 

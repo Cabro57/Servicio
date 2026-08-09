@@ -2,7 +2,10 @@ package tr.cabro.servicio.service;
 
 import tr.cabro.servicio.database.repository.LaborRepository;
 import tr.cabro.servicio.model.Labor;
+import tr.cabro.servicio.service.exception.ValidationException;
+import tr.cabro.servicio.util.Validator;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -16,6 +19,8 @@ public class LaborService {
     }
 
     public CompletableFuture<Labor> save(Labor labor, boolean updated) {
+        validateLabor(labor);
+
         return CompletableFuture.supplyAsync(() -> {
             if (updated) {
                 repository.update(labor);
@@ -47,5 +52,14 @@ public class LaborService {
 
     public CompletableFuture<List<Labor>> search(String searchStr) {
         return CompletableFuture.supplyAsync(() -> repository.search("%" + searchStr + "%"));
+    }
+
+    private void validateLabor(Labor labor) {
+        if (Validator.isEmpty(labor.getName())) {
+            throw new ValidationException("İşçilik adı boş bırakılamaz.");
+        }
+        if (labor.getDefaultPrice() != null && labor.getDefaultPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidationException("İşçilik fiyatı negatif olamaz.");
+        }
     }
 }

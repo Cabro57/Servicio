@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
@@ -100,11 +101,7 @@ public class SettingsBusinessPanel extends JPanel {
             if (selectedLogoName != null && !selectedLogoName.trim().isEmpty()) {
                 lblLogoName.setText(selectedLogoName);
             }
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.ERROR, "İşletme bilgileri yüklenemedi!"));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "İşletme bilgileri yüklenemedi", ex));
     }
 
     private void selectLogo() {
@@ -136,12 +133,8 @@ public class SettingsBusinessPanel extends JPanel {
                     btnSave.setEnabled(true);
                     Toast.show(this, Toast.Type.SUCCESS, "İşletme bilgileri güncellendi!");
                 })).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                        Toast.show(this, Toast.Type.ERROR, "Hata: " + cause.getMessage());
-                        btnSave.setEnabled(true);
-                    });
-                    return null;
+                    SwingUtilities.invokeLater(() -> btnSave.setEnabled(true));
+                    return ErrorHandler.handle(this, "İşletme bilgileri kaydedilemedi", ex);
                 });
     }
 

@@ -17,6 +17,7 @@ import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
@@ -234,13 +235,8 @@ public class FormSecondHandStock extends AbstractTableForm {
                 Toast.show(this, Toast.Type.SUCCESS, "Alım kaydı oluşturuldu.");
                 refreshTable();
             })).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    controller.consume();
-                    String cause = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                    Toast.show(this, Toast.Type.ERROR, "Hata: " + cause);
-                });
-                Servicio.getLogger().error("2.el alım kaydı oluşturma hatası", ex);
-                return null;
+                SwingUtilities.invokeLater(controller::consume);
+                return ErrorHandler.handle(this, "2.el alım kaydı oluşturulamadı", ex);
             });
         }), MODAL_ID);
     }
@@ -295,13 +291,8 @@ public class FormSecondHandStock extends AbstractTableForm {
                 Toast.show(this, Toast.Type.SUCCESS, "Satış kaydedildi.");
                 refreshTable();
             })).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    controller.consume();
-                    String cause = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                    Toast.show(this, Toast.Type.ERROR, "Hata: " + cause);
-                });
-                Servicio.getLogger().error("2.el satış kaydı oluşturma hatası", ex);
-                return null;
+                SwingUtilities.invokeLater(controller::consume);
+                return ErrorHandler.handle(this, "2.el satış kaydı oluşturulamadı", ex);
             });
         }), MODAL_ID);
     }
@@ -348,10 +339,7 @@ public class FormSecondHandStock extends AbstractTableForm {
                 if (action != SimpleModalBorder.YES_OPTION) return;
                 generateAndOpenDocument(type, transaction, txtLeft.getText(), txtRight.getText());
             }), "secondhand_generate_document_modal");
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, ex.getMessage()));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "İmza modalı açılamadı", ex));
     }
 
     private void generateAndOpenDocument(DeviceTransactionFormType type, DeviceTransaction transaction, String leftSignerName, String rightSignerName) {
@@ -370,10 +358,7 @@ public class FormSecondHandStock extends AbstractTableForm {
                 SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Belge oluşturulamadı: " + ex.getMessage()));
                 Servicio.getLogger().error("2.el belge oluşturma hatası", ex);
             }
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, ex.getMessage()));
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "2.el belgesi oluşturulamadı", ex));
     }
 
     // =========================================================================
@@ -388,10 +373,7 @@ public class FormSecondHandStock extends AbstractTableForm {
                 transactionService.delete(transaction.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
                     Toast.show(this, Toast.Type.SUCCESS, "Kayıt silindi.");
                     refreshTable();
-                })).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Silinemedi: " + ex.getCause().getMessage()));
-                    return null;
-                });
+                })).exceptionally(ex -> ErrorHandler.handle(this, "2.el kaydı silinemedi", ex));
             }
         }));
     }

@@ -2,7 +2,6 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.Toast;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
@@ -13,6 +12,7 @@ import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.model.Device;
@@ -131,11 +131,7 @@ public class FormDevices extends AbstractTableForm {
                     if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
                     refreshLayout();
                 })
-        ).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Cihazlar yüklenemedi: " + ex.getMessage()));
-            Servicio.getLogger().error("Cihaz listesi yenileme hatası", ex);
-            return null;
-        });
+        ).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz listesi yenilenemedi", ex));
     }
 
     @Override

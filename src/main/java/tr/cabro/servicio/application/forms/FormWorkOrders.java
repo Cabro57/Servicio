@@ -18,6 +18,7 @@ import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
@@ -168,12 +169,7 @@ public class FormWorkOrders extends AbstractTableForm {
                     refreshStats();
                     refreshLayout();
                 }))
-                .exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() ->
-                            Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + ex.getMessage()));
-                    Servicio.getLogger().error("Tablo yenileme hatası", ex);
-                    return null;
-                });
+                .exceptionally(ex -> ErrorHandler.handle(this, "Servis tablosu yenilenemedi", ex));
     }
 
     @Override
@@ -270,13 +266,8 @@ public class FormWorkOrders extends AbstractTableForm {
                         if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
                     })
             ).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    controller.consume();
-                    String cause = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                    Toast.show(this, Toast.Type.ERROR, "Hata: " + cause);
-                });
-                Servicio.getLogger().error("Kayıt hatası", ex);
-                return null;
+                SwingUtilities.invokeLater(controller::consume);
+                return ErrorHandler.handle(this, "Servis kaydı kaydedilemedi", ex);
             });
         }), MODAL_ID);
     }
@@ -385,11 +376,7 @@ public class FormWorkOrders extends AbstractTableForm {
                             Toast.show(FormWorkOrders.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
                             refreshTable();
                         }))
-                        .exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() ->
-                                    Toast.show(FormWorkOrders.this, Toast.Type.ERROR, "Silme başarısız: " + ex.getCause().getMessage()));
-                            return null;
-                        });
+                        .exceptionally(ex -> ErrorHandler.handle(FormWorkOrders.this, "Servis kaydı silinemedi", ex));
             }
 
             @Override
@@ -403,12 +390,7 @@ public class FormWorkOrders extends AbstractTableForm {
                             if (opt.isPresent()) FormManager.showForm(new FormWorkOrder(opt.get()));
                             else Toast.show(FormWorkOrders.this, Toast.Type.WARNING, "Böyle bir servis bulunamadı.");
                         })
-                ).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() ->
-                            Toast.show(FormWorkOrders.this, Toast.Type.ERROR, ex.getMessage()));
-                    Servicio.getLogger().error("Servis detay hatası", ex);
-                    return null;
-                });
+                ).exceptionally(ex -> ErrorHandler.handle(FormWorkOrders.this, "Servis detayı açılamadı", ex));
             }
         });
 

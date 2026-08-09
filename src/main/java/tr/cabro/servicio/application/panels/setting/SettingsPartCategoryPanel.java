@@ -3,8 +3,8 @@ package tr.cabro.servicio.application.panels.setting;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.renderer.list.PartCategoryListCellRenderer;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.dictionary.PartCategory;
 import tr.cabro.servicio.service.PartCategoryManager;
@@ -35,11 +35,7 @@ public class SettingsPartCategoryPanel extends JPanel {
         partCategoryService.getAll().thenAccept(categories -> SwingUtilities.invokeLater(() -> {
             categoryModel.clear();
             categories.forEach(categoryModel::addElement);
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.WARNING, ex.getMessage()));
-            Servicio.getLogger().error(ex.getMessage(), ex);
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Parça kategorileri yüklenemedi", ex));
     }
 
     private void onAdd() {
@@ -51,11 +47,7 @@ public class SettingsPartCategoryPanel extends JPanel {
         partCategoryService.add(name).thenAccept(id -> SwingUtilities.invokeLater(() -> {
             Toast.show(this, Toast.Type.SUCCESS, "Kategori eklendi: " + name);
             refreshList();
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori eklenemedi", ex));
 
         categoryField.setText("");
     }
@@ -70,11 +62,7 @@ public class SettingsPartCategoryPanel extends JPanel {
         partCategoryService.rename(category.getId(), newName.trim()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
             Toast.show(this, Toast.Type.SUCCESS, "Kategori güncellendi: " + newName.trim());
             refreshList();
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori güncellenemedi", ex));
     }
 
     private void onDelete(PartCategory category) {
@@ -90,10 +78,7 @@ public class SettingsPartCategoryPanel extends JPanel {
         partCategoryService.delete(category.getId()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
             Toast.show(this, Toast.Type.SUCCESS, "Kategori silindi: " + category.getName());
             refreshList();
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.WARNING, ex.getMessage()));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori silinemedi", ex));
     }
 
     private void initComponent() {

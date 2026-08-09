@@ -5,6 +5,7 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
@@ -168,11 +169,8 @@ public class SetupPanel extends Form {
                     FormManager.login();
                 });
             }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.ERROR, "Kayıt Hatası: " + ex.getCause().getMessage());
-                    btnSave.setEnabled(true);
-                });
-                return null;
+                SwingUtilities.invokeLater(() -> btnSave.setEnabled(true));
+                return ErrorHandler.handle(this, "Kurulum kaydı oluşturulamadı", ex);
             });
         });
     }

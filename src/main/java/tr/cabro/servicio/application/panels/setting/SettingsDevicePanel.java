@@ -3,11 +3,11 @@ package tr.cabro.servicio.application.panels.setting;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.handlers.BrandExportHandler;
 import tr.cabro.servicio.application.handlers.TypeImportHandler;
 import tr.cabro.servicio.application.renderer.list.BrandListCellRenderer;
 import tr.cabro.servicio.application.renderer.list.TypeListCellRenderer;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;
 import tr.cabro.servicio.model.dictionary.DeviceType;
@@ -69,13 +69,7 @@ public class SettingsDevicePanel extends JPanel {
                 typeModel.addElement(new DeviceType((long) id, typeName, 0));
                 Toast.show(this, Toast.Type.SUCCESS, "Cihaz türü eklendi: " + typeName);
             });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
-            });
-
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz türü eklenemedi", ex));
 
         typeField.setText("");
     }
@@ -93,13 +87,7 @@ public class SettingsDevicePanel extends JPanel {
                 brandModel.clear();
                 Toast.show(this, Toast.Type.SUCCESS, "Cihaz türü silindi: " + selectedType);
             });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
-            });
-            Servicio.getLogger().error(ex.getMessage(), ex);
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz türü silinemedi", ex));
 
     }
 
@@ -112,13 +100,7 @@ public class SettingsDevicePanel extends JPanel {
                     Toast.show(this, Toast.Type.SUCCESS, "Marka oluşturuldu: " + brandName);
                     loadBrands(selectedType);
                 });
-            }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
-                });
-
-                return null;
-            });
+            }).exceptionally(ex -> ErrorHandler.handle(this, "Marka eklenemedi", ex));
         } else {
             Toast.show(this, Toast.Type.WARNING, "Önce bir cihaz türü seçin.");
         }
@@ -134,12 +116,7 @@ public class SettingsDevicePanel extends JPanel {
                     brandModel.removeElement(selectedBrand);
                     Toast.show(this, Toast.Type.INFO, String.format("%s türüne ait %s markası silindi.", selectedType.getName(), selectedBrand.getName()));
                 });
-            }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
-                });
-                return null;
-            });
+            }).exceptionally(ex -> ErrorHandler.handle(this, "Marka bağlantısı kaldırılamadı", ex));
         }
     }
 
@@ -157,12 +134,7 @@ public class SettingsDevicePanel extends JPanel {
                 deviceBrands.forEach(brandModel::addElement);
                 brandTitle.setText(deviceType.getName() + " Markaları");
             });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
-            });
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Markalar yüklenemedi", ex));
     }
 
     private void initComponent() {

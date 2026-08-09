@@ -7,6 +7,7 @@ import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
@@ -171,11 +172,8 @@ public class PinPanel extends Form {
                     }
                 });
             }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> {
-                    txtPin.setText("");
-                    Toast.show(this, Toast.Type.ERROR, "Doğrulama hatası!");
-                });
-                return null;
+                SwingUtilities.invokeLater(() -> txtPin.setText(""));
+                return ErrorHandler.handle(this, "PIN doğrulanamadı", ex);
             });
         } else if (forceError) {
             JOptionPane.showMessageDialog(this, "PIN " + MAX_PIN_LENGTH + " haneli olmalıdır!", "Hata", JOptionPane.WARNING_MESSAGE);

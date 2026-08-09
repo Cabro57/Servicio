@@ -20,6 +20,7 @@ import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.model.Supplier;
@@ -159,11 +160,7 @@ public class FormSuppliers extends AbstractTableForm {
                                 Toast.show(FormSuppliers.this, Toast.Type.SUCCESS, "Tedarikçi silindi.");
                                 refreshTable();
                             });
-                        }).exceptionally(ex -> {
-                            Servicio.getLogger().error("Silme hatası ID: {}", selectedSupplier.getId(), ex);
-                            SwingUtilities.invokeLater(() -> Toast.show(FormSuppliers.this, Toast.Type.ERROR, "Silinemedi: " + ex.getCause().getMessage()));
-                            return null;
-                        });
+                        }).exceptionally(ex -> ErrorHandler.handle(FormSuppliers.this, "Tedarikçi silinemedi", ex));
                     }
                 }));
             }
@@ -231,11 +228,7 @@ public class FormSuppliers extends AbstractTableForm {
                                     Toast.show(this, Toast.Type.SUCCESS, saved.getName() + " başarıyla eklendi.");
                                     refreshTable();
                                 });
-                            }).exceptionally(ex -> {
-                                Servicio.getLogger().error("Tedarikçi DB ekleme hatası", ex);
-                                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Kayıt Hatası: " + ex.getCause().getMessage()));
-                                return null;
-                            });
+                            }).exceptionally(ex -> ErrorHandler.handle(this, "Tedarikçi eklenemedi", ex));
 
                         } catch (ValidationException e) {
                             controller.consume(); // Form doğrulama hatası, modalı açık tut.
@@ -276,10 +269,7 @@ public class FormSuppliers extends AbstractTableForm {
                                     Toast.show(this, Toast.Type.SUCCESS, saved.getName() + " başarıyla güncellendi.");
                                     refreshTable();
                                 });
-                            }).exceptionally(ex -> {
-                                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getCause().getMessage()));
-                                return null;
-                            });
+                            }).exceptionally(ex -> ErrorHandler.handle(this, "Tedarikçi güncellenemedi", ex));
 
                         } catch (ValidationException e) {
                             controller.consume(); // Form doğrulama hatası

@@ -5,7 +5,6 @@ import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.panels.edit.PartEditPanel;
@@ -19,6 +18,7 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.model.Part;
@@ -90,13 +90,7 @@ public class FormParts extends AbstractTableForm {
             cardBox.setValueAt(1, String.valueOf(stats.getTotalStock()), "Toplam Stok", "", true);
             cardBox.setValueAt(2, String.valueOf(stats.getCriticalStockCount()), "Kritik Stok", "", true);
             cardBox.setValueAt(3, Format.formatPrice(stats.getTotalInventoryValue()), "Envanter Değeri", "", true);
-        })).exceptionally(ex -> {
-            Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
-            });
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Parça istatistikleri yüklenemedi", ex));
     }
 
     @Override
@@ -202,12 +196,7 @@ public class FormParts extends AbstractTableForm {
                                 Toast.show(FormParts.this, Toast.Type.SUCCESS," Parça silindi.");
                                 refreshTable();
                             });
-                        }).exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormParts.this, Toast.Type.ERROR, "Silme işlemi başarısız oldu.");
-                            });
-                            return null;
-                        });
+                        }).exceptionally(ex -> ErrorHandler.handle(FormParts.this, "Parça silinemedi", ex));
                     }
                 }));
             }
@@ -240,12 +229,8 @@ public class FormParts extends AbstractTableForm {
                 refreshLayout();
             });
         }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.ERROR, "Veriler yüklenirken hata oluştu: " + ex.getMessage());
-                Servicio.getLogger().error("Parts refresh error", ex);
-                resetKeyboardActions();
-            });
-            return  null;
+            SwingUtilities.invokeLater(this::resetKeyboardActions);
+            return ErrorHandler.handle(this, "Parça tablosu yenilenemedi", ex);
         });
 
     }
@@ -276,12 +261,8 @@ public class FormParts extends AbstractTableForm {
                             refreshTable();
                         });
                     }).exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> {
-                            controller.consume();
-                            Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
-                        });
-                        Servicio.getLogger().error("Parça ekleme hatası", ex);
-                        return  null;
+                        SwingUtilities.invokeLater(controller::consume);
+                        return ErrorHandler.handle(this, "Parça eklenemedi", ex);
                     });
                 }
             })
@@ -312,13 +293,8 @@ public class FormParts extends AbstractTableForm {
                             refreshTable();
                         });
                     }).exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> {
-                            controller.consume();
-                            Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
-
-                        });
-                        Servicio.getLogger().error("Parça güncelleme hatası", ex);
-                        return  null;
+                        SwingUtilities.invokeLater(controller::consume);
+                        return ErrorHandler.handle(this, "Parça güncellenemedi", ex);
                     });
                 }
             })

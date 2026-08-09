@@ -15,6 +15,7 @@ import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.CustomerType;
@@ -425,11 +426,7 @@ public class FormCustomer extends Form {
                             Toast.show(FormCustomer.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
                             refreshData();
                         }))
-                        .exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() ->
-                                    Toast.show(FormCustomer.this, Toast.Type.ERROR, "Silme başarısız: " + ex.getCause().getMessage()));
-                            return null;
-                        });
+                        .exceptionally(ex -> ErrorHandler.handle(FormCustomer.this, "Servis kaydı silinemedi", ex));
             }
         }));
 

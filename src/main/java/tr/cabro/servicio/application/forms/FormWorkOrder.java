@@ -15,6 +15,7 @@ import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.Badge;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.documents.ServiceFormType;
 import tr.cabro.servicio.model.*;
@@ -92,12 +93,7 @@ public class FormWorkOrder extends Form {
                 infoPanel.refresh(workOrder);
                 buildRightColumn();
             });
-        }).exceptionally(throwable -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.ERROR, throwable.getMessage()));
-            Servicio.getLogger().error("HATA:", throwable);
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Servis kaydı yenilenemedi", ex));
     }
 
     // =========================================================================
@@ -180,9 +176,8 @@ public class FormWorkOrder extends Form {
                             for (ActionListener l : ls) statusComboBox.removeActionListener(l);
                             statusComboBox.setSelectedItem(oldStatus);
                             for (ActionListener l : ls) statusComboBox.addActionListener(l);
-                            Toast.show(this, Toast.Type.ERROR, "Durum güncellenemedi.");
                         });
-                        return null;
+                        return ErrorHandler.handle(this, "Servis durumu güncellenemedi", ex);
                     });
         });
 
@@ -262,10 +257,7 @@ public class FormWorkOrder extends Form {
                 if (action != SimpleModalBorder.YES_OPTION) return;
                 generateAndOpenDocument(type, txtLeft.getText(), txtRight.getText());
             }), "generate_document_modal");
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, ex.getMessage()));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "İmza modalı açılamadı", ex));
     }
 
     /**
@@ -299,10 +291,7 @@ public class FormWorkOrder extends Form {
                 SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Belge oluşturulamadı: " + ex.getMessage()));
                 Servicio.getLogger().error("PDF belge oluşturma hatası", ex);
             }
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, ex.getMessage()));
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Belge oluşturulamadı", ex));
     }
 
     // =========================================================================
@@ -366,10 +355,7 @@ public class FormWorkOrder extends Form {
                     }
                 }), "whatsapp_message_modal");
             });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Şablonlar yüklenemedi: " + ex.getMessage()));
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "WhatsApp şablonları yüklenemedi", ex));
     }
 
     // =========================================================================

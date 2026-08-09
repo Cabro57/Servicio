@@ -12,12 +12,12 @@ import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.model.Customer;
@@ -133,15 +133,7 @@ public class FormCustomers extends AbstractTableForm {
                 cardBox.setValueAt(2, String.valueOf(totalProblematic), " ", "", true);
                 cardBox.setValueAt(3, String.valueOf(totalCiro), " ", "", true);
             });
-        }).exceptionally(throwable -> {
-
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.ERROR, throwable.getMessage());
-            });
-
-            Servicio.getLogger().error(throwable.getMessage(), throwable);
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Müşteri istatistikleri yüklenemedi", ex));
     }
 
     // --- 3. TABLO YAPILANDIRMASI ---
@@ -180,14 +172,7 @@ public class FormCustomers extends AbstractTableForm {
                 refreshStats();
                 refreshLayout();
             });
-        }).exceptionally(throwable -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.ERROR, throwable.getMessage());
-            });
-            Servicio.getLogger().error(throwable.getMessage(), throwable);
-
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Müşteri tablosu yenilenemedi", ex));
     }
 
     private void configureTableColumns() {
@@ -220,10 +205,7 @@ public class FormCustomers extends AbstractTableForm {
                         Toast.show(FormCustomers.this, Toast.Type.INFO, customer.getFirstName() + " detaylarına bakılıyor...");
                         FormManager.showForm(formInstance);
                     }));
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> Toast.show(FormCustomers.this, Toast.Type.ERROR, ex.getMessage()));
-                    return null;
-                });
+                }).exceptionally(ex -> ErrorHandler.handle(FormCustomers.this, "Müşteri detayı açılamadı", ex));
             }
 
             @Override
@@ -349,12 +331,8 @@ public class FormCustomers extends AbstractTableForm {
                         refreshTable();
                     });
                 }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.ERROR, "Hata: " + ex.getMessage());
-                        controller.consume();
-                    });
-                    Servicio.getLogger().error(ex.getMessage(), ex);
-                    return null;
+                    SwingUtilities.invokeLater(controller::consume);
+                    return ErrorHandler.handle(this, "Müşteri eklenemedi", ex);
                 });
             }
         }), id);
@@ -386,11 +364,8 @@ public class FormCustomers extends AbstractTableForm {
                         refreshTable();
                     });
                 }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        controller.consume();
-                        Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
-                    });
-                    return null;
+                    SwingUtilities.invokeLater(controller::consume);
+                    return ErrorHandler.handle(this, "Müşteri güncellenemedi", ex);
                 });
             }
         }), id);

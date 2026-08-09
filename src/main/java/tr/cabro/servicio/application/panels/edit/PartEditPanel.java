@@ -7,6 +7,7 @@ import raven.datetime.DatePicker;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
@@ -170,11 +171,7 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
 
         partCategoryService.add(name.trim()).thenAccept(id ->
                 loadCategories((long) id)
-        ).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    showValidationError(Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
-            return null;
-        });
+        ).exceptionally(ex -> ErrorHandler.handle(this, "Kategori eklenemedi", ex));
     }
 
     @Override

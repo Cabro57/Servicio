@@ -3,11 +3,11 @@ package tr.cabro.servicio.application.panels.setting;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.TemplateEditPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
@@ -83,11 +83,8 @@ public class SettingsTemplatesPanel extends JPanel {
                                         Toast.show(this, Toast.Type.SUCCESS, saved.getName() + " adlı şablon kaydedildi.");
                                     });
                                 }).exceptionally(ex -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        controller.consume();
-                                        Toast.show(this, Toast.Type.ERROR, ex.getMessage());
-                                    });
-                                    return null;
+                                    SwingUtilities.invokeLater(controller::consume);
+                                    return ErrorHandler.handle(this, "Şablon kaydedilemedi", ex);
                                 });
                     }
                 })
@@ -99,13 +96,7 @@ public class SettingsTemplatesPanel extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 tableModal.setData(templates);
             });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + ex.getMessage());
-                Servicio.getLogger().error("Şablon tablosu yenileme hatası", ex);
-            });
-            return null;
-        });
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Şablon tablosu yenilenemedi", ex));
     }
 
     private void configureTableColumns() {
@@ -139,7 +130,7 @@ public class SettingsTemplatesPanel extends JPanel {
                             Toast.show(SettingsTemplatesPanel.this, Toast.Type.SUCCESS, "Şablon silindi.");
                             refreshTable();
                         });
-                    });
+                    }).exceptionally(ex -> ErrorHandler.handle(SettingsTemplatesPanel.this, "Şablon silinemedi", ex));
                 }
             }
 

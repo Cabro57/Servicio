@@ -3,8 +3,8 @@ package tr.cabro.servicio.application.panels.setting;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.renderer.list.ExchangeRateListCellRenderer;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.dictionary.ExchangeRate;
 import tr.cabro.servicio.service.ExchangeRateManager;
@@ -38,11 +38,7 @@ public class SettingsExchangeRatePanel extends JPanel {
         exchangeRateManager.getAll().thenAccept(rates -> SwingUtilities.invokeLater(() -> {
             rateModel.clear();
             rates.forEach(rateModel::addElement);
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.WARNING, ex.getMessage()));
-            Servicio.getLogger().error(ex.getMessage(), ex);
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Döviz kurları yüklenemedi", ex));
     }
 
     private void onRefreshFromTcmb() {
@@ -53,11 +49,8 @@ public class SettingsExchangeRatePanel extends JPanel {
             rateModel.clear();
             rates.forEach(rateModel::addElement);
         })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                refreshButton.setEnabled(true);
-                Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage());
-            });
-            return null;
+            SwingUtilities.invokeLater(() -> refreshButton.setEnabled(true));
+            return ErrorHandler.handle(this, "TCMB'den kur güncellenemedi", ex);
         });
     }
 
@@ -79,11 +72,7 @@ public class SettingsExchangeRatePanel extends JPanel {
         exchangeRateManager.setManualRate(rate.getCurrencyCode(), rateValue).thenAccept(v -> SwingUtilities.invokeLater(() -> {
             Toast.show(this, Toast.Type.SUCCESS, rate.getCurrencyCode() + " kuru güncellendi.");
             refreshList();
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.WARNING, ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage()));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Kur güncellenemedi", ex));
     }
 
     private void initComponent() {

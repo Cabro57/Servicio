@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.WorkOrder;
@@ -178,11 +179,7 @@ public class WorkOrderInfoPanel extends JPanel {
                     workOrder.setDetectedFault(text);
                     Toast.show(this, Toast.Type.SUCCESS, "Arıza tespiti kaydedildi.");
                 })
-        ).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.ERROR, "Kaydedilemedi: " + ex.getMessage()));
-            return null;
-        });
+        ).exceptionally(ex -> ErrorHandler.handle(this, "Arıza tespiti kaydedilemedi", ex));
     }
 
     /** Bu servis kaydına ait cihaz erişim kodunu (varsa) yükler; süresi dolup silindiyse "-" gösterir. */

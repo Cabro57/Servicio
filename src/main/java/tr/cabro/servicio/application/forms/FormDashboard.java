@@ -7,7 +7,6 @@ import net.miginfocom.swing.MigLayout;
 import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.time.*;
 import raven.modal.Toast;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.ToolBarSelection;
 import tr.cabro.servicio.application.component.chart.PieChart;
 import tr.cabro.servicio.application.component.chart.TimeSeriesChart;
@@ -17,6 +16,7 @@ import tr.cabro.servicio.application.component.dashboard.CardBox;
 import tr.cabro.servicio.application.panels.ActiveServiceTable;
 import tr.cabro.servicio.application.panels.PendingPaymentsTable;
 import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.model.dto.ChartDataDto;
 import tr.cabro.servicio.model.dto.SummaryCardDto;
@@ -151,23 +151,11 @@ public class FormDashboard extends Form {
         // PASTA GRAFİKLER (Küçük dilimler %3'ün altındaysa "Diğer" grubuna alınır)
         reportManager.getDeviceTypePieChart(startCurrent, endCurrent).thenAccept(data ->
                 SwingUtilities.invokeLater(() -> deviceTypePieChart.setDataset(createGroupedPieDataset(data, 3.0)))
-        ).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
-            });
-            Servicio.getLogger().error("Hata", ex);
-            return null;
-        });
+        ).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz türü grafiği yüklenemedi", ex));
 
         reportManager.getBrandPieChart(startCurrent, endCurrent).thenAccept(data ->
                 SwingUtilities.invokeLater(() -> brandPieChart.setDataset(createGroupedPieDataset(data, 3.0)))
-        ).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.WARNING, ex.getMessage());
-            });
-            Servicio.getLogger().error("Hata", ex);
-            return null;
-        });;
+        ).exceptionally(ex -> ErrorHandler.handle(this, "Marka grafiği yüklenemedi", ex));;
 
         // ALT TABLOLAR (kendi içlerinde DB-tabanlı sayfalama ile çekiyor, sayfa 1'e dönülür)
         activeServiceTable.loadPage(1);

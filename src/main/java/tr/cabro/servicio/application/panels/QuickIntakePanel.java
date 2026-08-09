@@ -8,6 +8,7 @@
     import tr.cabro.servicio.application.component.CustomerSelectBox;
     import tr.cabro.servicio.application.component.DeviceAccessField;
     import tr.cabro.servicio.application.panels.edit.AbstractEditPanel;
+    import tr.cabro.servicio.application.utils.ErrorHandler;
     import raven.modal.Toast;
     import tr.cabro.servicio.model.Customer;
     import tr.cabro.servicio.model.Device;
@@ -270,11 +271,7 @@
                                 .ifPresent(customerCombo::setSelectedItem);
                     }
                 });
-            }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() ->
-                        Toast.show(this, Toast.Type.ERROR, "Müşteri listesi yüklenemedi."));
-                return null;
-            });
+            }).exceptionally(ex -> ErrorHandler.handle(this, "Müşteri listesi yüklenemedi", ex));
         }
 
         // -------------------------------------------------------------------------

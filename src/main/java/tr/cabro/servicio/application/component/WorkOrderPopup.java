@@ -2,8 +2,8 @@ package tr.cabro.servicio.application.component;
 
 import raven.modal.Toast;
 import tr.cabro.servicio.application.system.FormManager;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.forms.FormWorkOrder;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -35,11 +35,7 @@ public class WorkOrderPopup extends JPopupMenu {
             WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
             workOrderService.setDelivered(workOrder.getId()).thenAccept(repair -> {
                 Toast.show(FormManager.getFrame(), Toast.Type.SUCCESS, "Başarılı şekilde teslim edildi.");
-            }).exceptionally(ex -> {
-                Toast.show(this, Toast.Type.ERROR, "Güncelleme Hatası: " + ex.getMessage());
-                Servicio.getLogger().error("Servis güncelleme hatası", ex);
-                return null;
-            });
+            }).exceptionally(ex -> ErrorHandler.handle(this, "Servis teslim güncellemesi başarısız", ex));
 
         }));
     }

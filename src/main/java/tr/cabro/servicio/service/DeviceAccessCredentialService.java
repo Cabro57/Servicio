@@ -7,6 +7,7 @@ import tr.cabro.servicio.database.repository.WorkOrderRepository;
 import tr.cabro.servicio.model.DeviceAccessCredential;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.enums.DeviceAccessType;
+import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.CryptoUtil;
 
 import java.time.LocalDateTime;
@@ -31,12 +32,17 @@ public class DeviceAccessCredentialService {
 
     /**
      * Verilen servis kaydı için erişim bilgisini kaydeder (varsa günceller, yoksa oluşturur).
-     * {@code accessType} {@link DeviceAccessType#NONE} veya {@code secret} boşsa hiçbir şey yazılmaz.
+     * {@code accessType} {@link DeviceAccessType#NONE} ise (kullanıcı erişim bilgisi girmek
+     * istemiyorsa) hiçbir şey yazılmaz. Ancak bir tür seçilmişse {@code secret} boş
+     * bırakılamaz — bu, kullanıcının PIN/şifre girmeyi unuttuğu bir hata durumudur ve
+     * sessizce yutulmak yerine bildirilmelidir.
      */
     public CompletableFuture<Void> save(Long workOrderId, DeviceAccessType accessType, String secret) {
-        if (workOrderId == null || accessType == null || accessType == DeviceAccessType.NONE
-                || secret == null || secret.trim().isEmpty()) {
+        if (workOrderId == null || accessType == null || accessType == DeviceAccessType.NONE) {
             return CompletableFuture.completedFuture(null);
+        }
+        if (secret == null || secret.trim().isEmpty()) {
+            throw new ValidationException("Erişim türü seçildiyse PIN/şifre/desen boş bırakılamaz.");
         }
 
         return CompletableFuture.runAsync(() -> {

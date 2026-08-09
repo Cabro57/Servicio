@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.panels.workorder;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderNote;
@@ -78,11 +79,7 @@ public class WorkOrderNotesPanel extends JPanel {
                 txtNewNote.setText("");
                 appendNoteRow(saved);
                 Toast.show(this, Toast.Type.SUCCESS, "Not eklendi.");
-            })).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() ->
-                        Toast.show(this, Toast.Type.ERROR, "Not eklenemedi: " + ex.getMessage()));
-                return null;
-            });
+            })).exceptionally(ex -> ErrorHandler.handle(this, "Not eklenemedi", ex));
         });
 
         add(btnAddNote, "align right");
@@ -164,10 +161,6 @@ public class WorkOrderNotesPanel extends JPanel {
             notesListPanel.revalidate();
             notesListPanel.repaint();
             Toast.show(this, Toast.Type.SUCCESS, "Not silindi.");
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.ERROR, "Not silinemedi: " + ex.getMessage()));
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Not silinemedi", ex));
     }
 }

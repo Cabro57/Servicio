@@ -4,7 +4,6 @@ import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.WorkOrderItemAddPanel;
@@ -14,6 +13,7 @@ import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderItem;
@@ -180,13 +180,7 @@ public class WorkOrderItemsPanel extends JPanel {
                         onItemsChanged.run();
                         Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
                     });
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.ERROR, ex.getMessage());
-                    });
-                    Servicio.getLogger().error("ERROR", ex);
-                    return null;
-                });
+                }).exceptionally(ex -> ErrorHandler.handle(this, "Kalem eklenemedi", ex));
 
             }
             else if (action == WorkOrderItemAddPanel.SELECTED_ITEM) {
@@ -215,13 +209,7 @@ public class WorkOrderItemsPanel extends JPanel {
                                 onItemsChanged.run();
                                 Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
                             });
-                        }).exceptionally(ex -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toast.show(this, Toast.Type.ERROR, ex.getMessage());
-                            });
-                            Servicio.getLogger().error("ERROR", ex);
-                            return null;
-                        });
+                        }).exceptionally(ex -> ErrorHandler.handle(this, "Kalem eklenemedi", ex));
                     });
                 }, "itemAddModal");
             }
@@ -259,11 +247,7 @@ public class WorkOrderItemsPanel extends JPanel {
 
                 onItemsChanged.run();
                 Toast.show(this, Toast.Type.SUCCESS, "Kalem güncellendi.");
-            })).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() ->
-                        Toast.show(this, Toast.Type.ERROR, "Güncelleme başarısız: " + ex.getMessage()));
-                return null;
-            });
+            })).exceptionally(ex -> ErrorHandler.handle(this, "Kalem güncellenemedi", ex));
         }), "itemEditModal");
     }
 
@@ -303,13 +287,7 @@ public class WorkOrderItemsPanel extends JPanel {
             onItemsChanged.run();
 
             Toast.show(this, Toast.Type.SUCCESS, "Kalem silindi.");
-        })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.ERROR, ex.getMessage()));
-
-            Servicio.getLogger().error("HATA", ex);
-            return null;
-        });
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Kalem silinemedi", ex));
     }
 
     private static class ItemTypeBadgeRenderer extends DefaultTableCellRenderer {
