@@ -4,6 +4,7 @@ import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.application.component.AppSplashScreen;
+import tr.cabro.servicio.i18n.Messages;
 
 import javax.swing.*;
 import java.io.File;
@@ -95,7 +96,7 @@ public class UpdateChecker {
      * @param splash Mesaj güncellemesi için splash ekranı referansı.
      */
     public void checkOnSplash(final AppSplashScreen splash) {
-        splash.updateMessage("Güncelleme kontrol ediliyor...");
+        splash.updateMessage(Messages.get("updater.checking"));
 
         manager.checkForUpdates(
                 manifest -> {
@@ -116,17 +117,17 @@ public class UpdateChecker {
                     log.info("Splash kontrolü: güncelleme mevcut v{}", manifest.getVersion());
                     pendingUpdate.set(manifest);
                     splashCheckDone.set(true);
-                    splash.updateMessage("Güncelleme mevcut: v" + manifest.getVersion());
+                    splash.updateMessage(Messages.get("updater.available", manifest.getVersion()));
                 },
                 () -> {
                     log.info("Splash kontrolü: güncel.");
                     splashCheckDone.set(true);
-                    splash.updateMessage("Başlatılıyor...");
+                    splash.updateMessage(Messages.get("updater.starting"));
                 },
                 e -> {
                     log.warn("Splash güncelleme kontrolü başarısız: {}", e.getMessage());
                     splashCheckDone.set(true);
-                    splash.updateMessage("Başlatılıyor...");
+                    splash.updateMessage(Messages.get("updater.starting"));
                 }
         );
     }

@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.component;
 import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.updater.UpdateChecker;
 import tr.cabro.servicio.updater.UpdateDialog;
 import tr.cabro.servicio.updater.UpdateManifest;
@@ -101,7 +102,7 @@ public class HelperPopup {
         content.add(vspace(8));
 
         // ── "Güncellemeleri Kontrol Et" linki ──
-        JLabel checkLink = styledLabel("Güncellemeleri kontrol et", 11, Font.PLAIN);
+        JLabel checkLink = styledLabel(Messages.get("updater.helper.checkbutton"), 11, Font.PLAIN);
         checkLink.setForeground(accent());
         checkLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         checkLink.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -114,11 +115,11 @@ public class HelperPopup {
             }
             @Override
             public void mouseEntered(MouseEvent e) {
-                checkLink.setText("<html><u>Güncellemeleri kontrol et</u></html>");
+                checkLink.setText("<html><u>" + Messages.get("updater.helper.checkbutton") + "</u></html>");
             }
             @Override
             public void mouseExited(MouseEvent e) {
-                checkLink.setText("Güncellemeleri kontrol et");
+                checkLink.setText(Messages.get("updater.helper.checkbutton"));
             }
         });
 
@@ -145,7 +146,7 @@ public class HelperPopup {
 
         if (!checker.isSplashCheckDone()) {
             // Hâlâ kontrol ediliyor
-            JLabel spinner = styledLabel("Güncelleme kontrol ediliyor…", 12, Font.PLAIN);
+            JLabel spinner = styledLabel(Messages.get("updater.checking"), 12, Font.PLAIN);
             spinner.setForeground(fgDim());
             spinner.setIcon(new Ikon("icons/loader.svg", 0.75f, "Label.disabledForeground"));
             row.add(spinner);
@@ -160,7 +161,7 @@ public class HelperPopup {
                     isHotfix ? "icons/wrench.svg" : "icons/arrow-up-circle.svg",
                     0.85f, "Component.accentColor"));
             JLabel text = styledLabel(
-                    isHotfix ? "Yama mevcut" : "Güncelleme mevcut",
+                    isHotfix ? Messages.get("updater.helper.patchAvailable") : Messages.get("updater.helper.updateAvailableShort"),
                     12, Font.PLAIN);
             text.setForeground(fg());
 
@@ -171,7 +172,7 @@ public class HelperPopup {
             verBadge.setBorder(new EmptyBorder(1, 6, 1, 6));
             verBadge.putClientProperty(FlatClientProperties.STYLE, "arc:8;");
 
-            JButton updateBtn = new JButton(isHotfix ? "Yamayı Uygula" : "Güncelle");
+            JButton updateBtn = new JButton(isHotfix ? Messages.get("updater.helper.applyPatch") : Messages.get("updater.helper.update"));
             updateBtn.putClientProperty(FlatClientProperties.STYLE,
                     "arc:8; font: bold 11;");
             updateBtn.putClientProperty("JButton.buttonType", "default");
@@ -201,7 +202,7 @@ public class HelperPopup {
             // Güncel
             JLabel icon = new JLabel(new Ikon("icons/check-circle.svg", 0.85f));
             icon.setForeground(green());
-            JLabel text = styledLabel("Güncel", 12, Font.PLAIN);
+            JLabel text = styledLabel(Messages.get("updater.helper.uptodate"), 12, Font.PLAIN);
             text.setForeground(green());
 
             row.add(icon);

@@ -13,6 +13,7 @@ import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
@@ -187,13 +188,13 @@ public class FormParts extends AbstractTableForm {
             @Override
             public void onDelete(Part selectedPart) {
                 ModalDialog.showModal(FormParts.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                        "Bu parçayı silmek istediğinizden emin misiniz?", "Silme Onayı",
+                        Messages.get("confirm.delete.part"), Messages.get("confirm.delete.title"),
                         SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
 
                     if (action == SimpleModalBorder.YES_OPTION) {
                         partService.delete(selectedPart.getId()).thenAccept(v -> {
                             SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormParts.this, Toast.Type.SUCCESS," Parça silindi.");
+                                Toast.show(FormParts.this, Toast.Type.SUCCESS, Messages.get("toast.part.deleted"));
                                 refreshTable();
                             });
                         }).exceptionally(ex -> ErrorHandler.handle(FormParts.this, "Parça silinemedi", ex));
@@ -257,7 +258,7 @@ public class FormParts extends AbstractTableForm {
                     updated.setCreatedAt(LocalDateTime.now());
                     partService.save(updated, false).thenAccept(part -> {
                         SwingUtilities.invokeLater(() -> {
-                            Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla eklendi.");
+                            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.added", updated.getName()));
                             refreshTable();
                         });
                     }).exceptionally(ex -> {
@@ -289,7 +290,7 @@ public class FormParts extends AbstractTableForm {
 
                     partService.save(updated, true).thenAccept(upgrade -> {
                         SwingUtilities.invokeLater(() -> {
-                            Toast.show(this, Toast.Type.SUCCESS, updated.getName() + " başarıyla güncellendi.");
+                            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getName()));
                             refreshTable();
                         });
                     }).exceptionally(ex -> {

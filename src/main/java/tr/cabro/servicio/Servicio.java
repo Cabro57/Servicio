@@ -11,6 +11,7 @@ import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.database.*;
 import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.i18n.AppLocale;
 import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.updater.UpdateChecker;
 
@@ -67,6 +68,7 @@ public final class Servicio {
         // yedekleme politikası da modunu buradan okuyor.
         splash.updateMessage("Ayarlar yükleniyor...");
         AppSettings.init(this.dataFolder);
+        AppLocale.init();
 
         // ── Güncelleme kontrolü (bloklamaz) ───────────────────────────────────
         splash.updateMessage("Güncelleme kontrol ediliyor...");

@@ -11,10 +11,12 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Labor;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.service.LaborService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
 import java.math.BigDecimal;
@@ -94,7 +96,7 @@ public class SettingsRepairPanel extends JPanel {
                                 .thenAccept(labor1 -> {
                                    SwingUtilities.invokeLater(() -> {
                                        refreshTable();
-                                       Toast.show(this, Toast.Type.SUCCESS, labor1.getName() + " adlı işçilik eklendi.");
+                                       Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.labor.savedNamed", labor1.getName()));
                                    });
                                 }).exceptionally(ex -> {
                                     SwingUtilities.invokeLater(controller::consume);
@@ -137,23 +139,14 @@ public class SettingsRepairPanel extends JPanel {
                 int modelRow = table.convertRowIndexToModel(row);
                 Labor l = tableModal.getItemAt(modelRow);
 
-                int confirm = JOptionPane.showConfirmDialog(
-                        SettingsRepairPanel.this,
-                        l.getName() + " adlı işçiliği silmek istediğinize emin misiniz?",
-                        "İşçilik Sil",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE
-                );
-
-                if (confirm == JOptionPane.YES_OPTION) {
-                    laborService.delete(l.getId()).thenAccept(response -> {
-                        SwingUtilities.invokeLater(() -> {
-                            Toast.show(SettingsRepairPanel.this, Toast.Type.SUCCESS, "İşçilik silindi.");
-                            refreshTable();
-                        });
-                    }).exceptionally(ex -> ErrorHandler.handle(SettingsRepairPanel.this, "İşçilik silinemedi", ex));
-                }
-
+                DialogHelper.confirmDelete(SettingsRepairPanel.this, "confirm.delete.labor", () ->
+                        laborService.delete(l.getId()).thenAccept(response -> {
+                            SwingUtilities.invokeLater(() -> {
+                                Toast.show(SettingsRepairPanel.this, Toast.Type.SUCCESS, Messages.get("toast.labor.deleted"));
+                                refreshTable();
+                            });
+                        }).exceptionally(ex -> ErrorHandler.handle(SettingsRepairPanel.this, "İşçilik silinemedi", ex)),
+                        l.getName());
             }
 
             @Override

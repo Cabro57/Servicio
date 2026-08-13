@@ -17,7 +17,10 @@ import tr.cabro.servicio.model.WorkOrderPayment;
 import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.WorkOrderService;
+import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.util.DesktopHelper;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
@@ -156,7 +159,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
         btnAddPayment.addActionListener(e -> {
             BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
             if (amt.compareTo(BigDecimal.ZERO) <= 0) {
-                Toast.show(this, Toast.Type.WARNING, "Geçerli bir tutar girin.");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.payment.invalidAmount"));
                 return;
             }
 
@@ -174,7 +177,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
                 txtAmount.setValue(workOrder.getRemainingAmount());
 
                 refresh();
-                Toast.show(this, Toast.Type.SUCCESS, "Tahsilat eklendi.");
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.payment.added"));
             })).exceptionally(ex -> ErrorHandler.handle(this, "Tahsilat eklenemedi", ex));
         });
 
@@ -186,23 +189,16 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
     private void confirmDeletePayment(WorkOrderPayment payment) {
         if (payment == null) return;
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                Format.formatPrice(payment.getAmount()) + " tutarlı ödeme silinecek. Emin misiniz?",
-                "Silme Onayı",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE
-        );
-        if (confirm != JOptionPane.YES_OPTION) return;
+        DialogHelper.confirmDelete(this, "confirm.delete.payment", () ->
+                workOrderService.deletePayment(payment.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
+                    workOrder.getPayments().remove(payment);
 
-        workOrderService.deletePayment(payment.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
-            workOrder.getPayments().remove(payment);
+                    populatePaymentsTable();
 
-            populatePaymentsTable();
-
-            refresh();
-            Toast.show(this, Toast.Type.SUCCESS, "Ödeme silindi.");
-        })).exceptionally(ex -> ErrorHandler.handle(this, "Ödeme silinemedi", ex));
+                    refresh();
+                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.payment.deleted"));
+                })).exceptionally(ex -> ErrorHandler.handle(this, "Ödeme silinemedi", ex)),
+                Format.formatPrice(payment.getAmount()));
     }
 
     private void printPaymentReceipt(WorkOrderPayment payment) {
@@ -212,13 +208,13 @@ public class WorkOrderPaymentsPanel extends JPanel {
                 File pdf = new PaymentReceiptFormGenerator().generate(workOrder, payment, shop);
                 SwingUtilities.invokeLater(() -> {
                     if (DesktopHelper.openFile(pdf)) {
-                        Toast.show(this, Toast.Type.SUCCESS, "Fiş oluşturuldu.");
+                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.receipt.created"));
                     } else {
-                        Toast.show(this, Toast.Type.WARNING, "Fiş oluşturuldu ama açılamadı: " + pdf.getAbsolutePath());
+                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.receipt.created.openFailed", pdf.getAbsolutePath()));
                     }
                 });
             } catch (Exception ex) {
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Fiş oluşturulamadı: " + ex.getMessage()));
+                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, Messages.get("toast.receipt.failed", ex.getMessage())));
                 Servicio.getLogger().error("Tahsilat fişi oluşturma hatası", ex);
             }
         }).exceptionally(ex -> ErrorHandler.handle(this, "Tahsilat fişi oluşturulamadı", ex));
@@ -310,12 +306,11 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
     /** "Tarih" kolonu ham {@code LocalDateTime.toString()} (ISO-8601) yerine okunur formatta gösterir. */
     private static class DateTimeCellRenderer extends DefaultTableCellRenderer {
-        private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
 
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
                                                        boolean isSelected, boolean hasFocus, int row, int column) {
-            String text = value instanceof LocalDateTime ? ((LocalDateTime) value).format(FORMATTER) : "-";
+            String text = value instanceof LocalDateTime ? ((LocalDateTime) value).format(DateFormats.dateTime()) : "-";
             return super.getTableCellRendererComponent(table, text, isSelected, hasFocus, row, column);
         }
     }

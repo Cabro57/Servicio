@@ -11,6 +11,7 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
+import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -168,7 +169,7 @@ public class PinPanel extends Form {
                         FormManager.unlock();
                     } else {
                         txtPin.setText("");
-                        JOptionPane.showMessageDialog(this, "Hatalı PIN!", "Hata", JOptionPane.ERROR_MESSAGE);
+                        DialogHelper.error(this, "pin.invalid");
                     }
                 });
             }).exceptionally(ex -> {
@@ -176,7 +177,7 @@ public class PinPanel extends Form {
                 return ErrorHandler.handle(this, "PIN doğrulanamadı", ex);
             });
         } else if (forceError) {
-            JOptionPane.showMessageDialog(this, "PIN " + MAX_PIN_LENGTH + " haneli olmalıdır!", "Hata", JOptionPane.WARNING_MESSAGE);
+            DialogHelper.error(this, "pin.length.required", MAX_PIN_LENGTH);
             txtPin.setText("");
         }
     }

@@ -2,8 +2,10 @@ package tr.cabro.servicio.application.panels.workorder;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
+import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.panels.WorkOrderItemAddPanel;
@@ -15,6 +17,7 @@ import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderItem;
 import tr.cabro.servicio.model.enums.ItemType;
@@ -166,7 +169,7 @@ public class WorkOrderItemsPanel extends JPanel {
             if (action == WorkOrderItemAddPanel.CREAT_ITEM) {
                 WorkOrderItem newItem = addPanel.getItem();
                 if (newItem == null) {
-                    Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bilgiler girin.");
+                    Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.invalidInput"));
                     controller.consume();
                     return;
                 }
@@ -178,7 +181,7 @@ public class WorkOrderItemsPanel extends JPanel {
                         populateItemsTable();
 
                         onItemsChanged.run();
-                        Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.added"));
                     });
                 }).exceptionally(ex -> ErrorHandler.handle(this, "Kalem eklenemedi", ex));
 
@@ -186,7 +189,7 @@ public class WorkOrderItemsPanel extends JPanel {
             else if (action == WorkOrderItemAddPanel.SELECTED_ITEM) {
                 WorkOrderItem newItem = addPanel.getItem();
                 if (newItem == null) {
-                    Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bilgiler girin.");
+                    Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.invalidInput"));
                     controller.consume();
                     return;
                 }
@@ -207,7 +210,7 @@ public class WorkOrderItemsPanel extends JPanel {
                                 populateItemsTable();
 
                                 onItemsChanged.run();
-                                Toast.show(this, Toast.Type.SUCCESS, "Kalem eklendi.");
+                                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.added"));
                             });
                         }).exceptionally(ex -> ErrorHandler.handle(this, "Kalem eklenemedi", ex));
                     });
@@ -228,7 +231,7 @@ public class WorkOrderItemsPanel extends JPanel {
 
             WorkOrderItem updated = editPanel.getUpdatedItem();
             if (updated == null) {
-                Toast.show(this, Toast.Type.WARNING, "Lütfen geçerli bir isim girin.");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.nameInvalid"));
                 controller.consume();
                 return;
             }
@@ -246,7 +249,7 @@ public class WorkOrderItemsPanel extends JPanel {
                 populateItemsTable();
 
                 onItemsChanged.run();
-                Toast.show(this, Toast.Type.SUCCESS, "Kalem güncellendi.");
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.updated"));
             })).exceptionally(ex -> ErrorHandler.handle(this, "Kalem güncellenemedi", ex));
         }), "itemEditModal");
     }
@@ -256,7 +259,7 @@ public class WorkOrderItemsPanel extends JPanel {
 
         JPanel panel = new JPanel(new BorderLayout(0, 10));
 
-        JLabel messageLabel = new JLabel("\"" + item.getItemName() + "\" kalemi silinecek. Emin misiniz?");
+        JLabel messageLabel = new JLabel(Messages.get("confirm.delete.item.named", item.getItemName()));
         JCheckBox stockCheckBox = new JCheckBox("Silinen parça stoğa eklensin mi?");
 
         stockCheckBox.setSelected(false);
@@ -268,26 +271,26 @@ public class WorkOrderItemsPanel extends JPanel {
             panel.add(stockCheckBox, BorderLayout.SOUTH);
         }
 
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                panel,
-                "Silme Onayı",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE
-        );
+        SimpleModalBorder.Option[] options = {
+                new SimpleModalBorder.Option(Messages.get("dialog.button.yes"), SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option(Messages.get("dialog.button.no"), SimpleModalBorder.NO_OPTION)
+        };
 
-        if (confirm != JOptionPane.YES_OPTION) return;
+        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.WARNING,
+                panel, Messages.get("confirm.delete.title"), options, (controller, action) -> {
+            if (action != SimpleModalBorder.YES_OPTION) return;
 
-        boolean updateStock = stockCheckBox.isSelected();
+            boolean updateStock = stockCheckBox.isSelected();
 
-        workOrderService.deleteItem(item.getId(), updateStock).thenRun(() -> SwingUtilities.invokeLater(() -> {
-            workOrder.getItems().remove(item);
+            workOrderService.deleteItem(item.getId(), updateStock).thenRun(() -> SwingUtilities.invokeLater(() -> {
+                workOrder.getItems().remove(item);
 
-            populateItemsTable();
-            onItemsChanged.run();
+                populateItemsTable();
+                onItemsChanged.run();
 
-            Toast.show(this, Toast.Type.SUCCESS, "Kalem silindi.");
-        })).exceptionally(ex -> ErrorHandler.handle(this, "Kalem silinemedi", ex));
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.deleted"));
+            })).exceptionally(ex -> ErrorHandler.handle(this, "Kalem silinemedi", ex));
+        }));
     }
 
     private static class ItemTypeBadgeRenderer extends DefaultTableCellRenderer {

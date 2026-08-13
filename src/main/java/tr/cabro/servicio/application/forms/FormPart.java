@@ -17,6 +17,9 @@ import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.WorkOrderService;
+import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
@@ -220,12 +223,10 @@ public class FormPart extends Form {
     }
 
     private void setupTable() {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
-
         List<ColumnDef<WorkOrder>> columns = Arrays.asList(
                 new ColumnDef<>("Kayıt No", String.class,        s -> "SRV-" + s.getId()),
                 new ColumnDef<>("Cihaz",    Device.class,        WorkOrder::getDevice),
-                new ColumnDef<>("Tarih",    String.class,        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(df) : "-"),
+                new ColumnDef<>("Tarih",    String.class,        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(DateFormats.dateTime()) : "-"),
                 new ColumnDef<>("Durum",    ServiceStatus.class, WorkOrder::getServiceStatus),
                 new ColumnDef<>("İşlem",    String.class,        s -> "Detay")
         );
@@ -292,7 +293,7 @@ public class FormPart extends Form {
     }
 
     private void refreshData() {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        DateTimeFormatter df = DateFormats.dateTime();
 
         lblPartName.setText(part.getName());
         valSku.setText(nvl(part.getBarcode()));
@@ -334,34 +335,34 @@ public class FormPart extends Form {
     }
 
     private void openAddStockDialog() {
-        String input = JOptionPane.showInputDialog(this,
-                "Eklenecek stok miktarını girin:", "Stok Girişi", JOptionPane.QUESTION_MESSAGE);
-        if (input == null || input.trim().isEmpty()) return;
+        DialogHelper.prompt(this, "stock.add.title", "stock.add.label", "", input -> {
+            if (input == null || input.trim().isEmpty()) return;
 
-        int amount;
-        try {
-            amount = Integer.parseInt(input.trim());
-        } catch (NumberFormatException ex) {
-            Toast.show(this, Toast.Type.ERROR, "Geçerli bir sayı girin!");
-            return;
-        }
+            int amount;
+            try {
+                amount = Integer.parseInt(input.trim());
+            } catch (NumberFormatException ex) {
+                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.stock.invalidNumber"));
+                return;
+            }
 
-        if (amount <= 0) {
-            Toast.show(this, Toast.Type.WARNING, "Miktar 0'dan büyük olmalıdır!");
-            return;
-        }
+            if (amount <= 0) {
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.stock.mustBePositive"));
+                return;
+            }
 
-        final int finalAmount = amount;
-        partService.addStock(part.getId(), finalAmount, part.getWarehouseId())
-                .thenCompose(v -> partService.getById(part.getId()))
-                .thenAccept(opt -> SwingUtilities.invokeLater(() -> {
-                    opt.ifPresent(updated -> {
-                        this.part = updated;
-                        refreshData();
-                    });
-                    Toast.show(this, Toast.Type.SUCCESS, finalAmount + " adet stok eklendi.");
-                }))
-                .exceptionally(ex -> ErrorHandler.handle(this, "Stok eklenemedi", ex));
+            final int finalAmount = amount;
+            partService.addStock(part.getId(), finalAmount, part.getWarehouseId())
+                    .thenCompose(v -> partService.getById(part.getId()))
+                    .thenAccept(opt -> SwingUtilities.invokeLater(() -> {
+                        opt.ifPresent(updated -> {
+                            this.part = updated;
+                            refreshData();
+                        });
+                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.stock.added", finalAmount));
+                    }))
+                    .exceptionally(ex -> ErrorHandler.handle(this, "Stok eklenemedi", ex));
+        });
     }
 
     private JPanel createRoundedCard() {

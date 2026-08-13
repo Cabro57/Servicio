@@ -66,6 +66,15 @@ public class AppConfig {
         private List<String> recentSearch = new ArrayList<>();
         private List<String> recentSearchFavorite = new ArrayList<>();
 
+        /** Arayüz mesajlarının dili. {@code "auto" | "tr" | "en"}. */
+        private String language = "auto";
+
+        /** Tarih sırası ve sayı ayırıcıları için bölge. {@code "auto" | "tr-TR" | "en-US" | "en-GB" | "de-DE"}. */
+        private String formatRegion = "auto";
+
+        /** Sadece gösterim sembolü; iş her zaman TL bazlı hesaplanır. {@code "TRY" | "USD" | "EUR" | "GBP"}. */
+        private String currencyCode = "TRY";
+
         void normalize() {
             if (recentSearch == null) recentSearch = new ArrayList<>();
             if (recentSearchFavorite == null) recentSearchFavorite = new ArrayList<>();

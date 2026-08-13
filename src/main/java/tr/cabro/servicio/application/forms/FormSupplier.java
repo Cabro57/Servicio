@@ -16,6 +16,7 @@ import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.SupplierService;
+import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
@@ -202,7 +203,7 @@ public class FormSupplier extends Form {
     }
 
     private void refreshData() {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        DateTimeFormatter df = DateFormats.dateTime();
 
         lblSupplierName.setText(supplier.toString());
         valPhone.setText(nvl(Format.formatPhoneNumber(supplier.getPhone())));

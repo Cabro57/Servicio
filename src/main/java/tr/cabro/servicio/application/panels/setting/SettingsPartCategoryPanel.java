@@ -6,9 +6,11 @@ import raven.modal.Toast;
 import tr.cabro.servicio.application.renderer.list.PartCategoryListCellRenderer;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.dictionary.PartCategory;
 import tr.cabro.servicio.service.PartCategoryManager;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
 
@@ -45,7 +47,7 @@ public class SettingsPartCategoryPanel extends JPanel {
         }
 
         partCategoryService.add(name).thenAccept(id -> SwingUtilities.invokeLater(() -> {
-            Toast.show(this, Toast.Type.SUCCESS, "Kategori eklendi: " + name);
+            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.added", name));
             refreshList();
         })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori eklenemedi", ex));
 
@@ -53,32 +55,29 @@ public class SettingsPartCategoryPanel extends JPanel {
     }
 
     private void onEdit(PartCategory category) {
-        String newName = (String) JOptionPane.showInputDialog(this, "Yeni kategori adı:",
-                "Kategori Düzenle", JOptionPane.PLAIN_MESSAGE, null, null, category.getName());
-        if (newName == null || newName.trim().isEmpty() || newName.trim().equals(category.getName())) {
-            return;
-        }
+        DialogHelper.prompt(this, "category.edit.title", "category.edit.label", category.getName(), newName -> {
+            if (newName == null || newName.trim().isEmpty() || newName.trim().equals(category.getName())) {
+                return;
+            }
 
-        partCategoryService.rename(category.getId(), newName.trim()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
-            Toast.show(this, Toast.Type.SUCCESS, "Kategori güncellendi: " + newName.trim());
-            refreshList();
-        })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori güncellenemedi", ex));
+            partCategoryService.rename(category.getId(), newName.trim()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.updated", newName.trim()));
+                refreshList();
+            })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori güncellenemedi", ex));
+        });
     }
 
     private void onDelete(PartCategory category) {
-        int confirm = JOptionPane.showConfirmDialog(this,
-                (category.getPartCount() != null && category.getPartCount() > 0)
-                        ? category.getName() + " kategorisini silmek istediğinize emin misiniz?\n" +
-                          "Bu kategorideki " + category.getPartCount() + " parça \"kategorisiz\" olarak kalacak."
-                        : category.getName() + " kategorisini silmek istediğinize emin misiniz?",
-                "Kategori Sil", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-
-        if (confirm != JOptionPane.YES_OPTION) return;
-
-        partCategoryService.delete(category.getId()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
-            Toast.show(this, Toast.Type.SUCCESS, "Kategori silindi: " + category.getName());
+        Runnable doDelete = () -> partCategoryService.delete(category.getId()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
+            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.deleted", category.getName()));
             refreshList();
         })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori silinemedi", ex));
+
+        if (category.getPartCount() != null && category.getPartCount() > 0) {
+            DialogHelper.confirmDelete(this, "confirm.delete.category.withParts", doDelete, category.getName(), category.getPartCount());
+        } else {
+            DialogHelper.confirmDelete(this, "confirm.delete.category", doDelete, category.getName());
+        }
     }
 
     private void initComponent() {

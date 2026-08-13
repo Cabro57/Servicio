@@ -5,6 +5,7 @@ import com.formdev.flatlaf.IntelliJTheme;
 import com.formdev.flatlaf.extras.FlatAnimatedLafChange;
 import com.formdev.flatlaf.util.LoggingFacade;
 import net.miginfocom.swing.MigLayout;
+import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -183,7 +184,7 @@ public class PanelThemes extends JPanel {
                 UIManager.setLookAndFeel(themesInfo.lafClassName);
             } catch (Exception e) {
                 LoggingFacade.INSTANCE.logSevere(null, e);
-                showInformationDialog("Failed to create '" + themesInfo.lafClassName + "'.", e);
+                DialogHelper.error(this, "theme.load.failed", themesInfo.lafClassName, e.getMessage());
             }
         } else {
             String theme = LafService.getActiveThemeResource();
@@ -199,12 +200,6 @@ public class PanelThemes extends JPanel {
         FlatAnimatedLafChange.hideSnapshotWithAnimation();
     }
 
-    private void showInformationDialog(String message, Exception e) {
-        JOptionPane.showMessageDialog(SwingUtilities.windowForComponent(this),
-                message + "\n\n" + e.getMessage(),
-                "Message",
-                JOptionPane.INFORMATION_MESSAGE);
-    }
 
     private JList<ThemesInfo> themesList;
 }

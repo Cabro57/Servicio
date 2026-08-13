@@ -9,6 +9,7 @@ import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
@@ -106,7 +107,7 @@ public class FormSuppliers extends AbstractTableForm {
         }).exceptionally(ex -> {
             Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
             SwingUtilities.invokeLater(() -> {
-                Toast.show(FormSuppliers.this, Toast.Type.ERROR, "İstatistikler çekilirken hata oluştu!");
+                Toast.show(FormSuppliers.this, Toast.Type.ERROR, Messages.get("toast.stats.loadFailed"));
             });
             return null;
         });
@@ -152,12 +153,12 @@ public class FormSuppliers extends AbstractTableForm {
             @Override
             public void onDelete(Supplier selectedSupplier) {
                 ModalDialog.showModal(FormSuppliers.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                        "Tedarikçiyi silmek istediğinizden emin misiniz?", "Silme Onayı",
+                        Messages.get("confirm.delete.supplier"), Messages.get("confirm.delete.title"),
                         SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
                     if (action == SimpleModalBorder.YES_OPTION) {
                         supplierService.delete(selectedSupplier.getId()).thenRun(() -> {
                             SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormSuppliers.this, Toast.Type.SUCCESS, "Tedarikçi silindi.");
+                                Toast.show(FormSuppliers.this, Toast.Type.SUCCESS, Messages.get("toast.supplier.deleted"));
                                 refreshTable();
                             });
                         }).exceptionally(ex -> ErrorHandler.handle(FormSuppliers.this, "Tedarikçi silinemedi", ex));
@@ -192,7 +193,7 @@ public class FormSuppliers extends AbstractTableForm {
         }).exceptionally(e -> {
             Servicio.getLogger().error("Tedarikçi listesi alınamadı: ", e);
             SwingUtilities.invokeLater(() -> {
-                Toast.show(FormSuppliers.this, Toast.Type.ERROR, "Tedarikçi listesi alınamadı!");
+                Toast.show(FormSuppliers.this, Toast.Type.ERROR, Messages.get("toast.supplier.listLoadFailed"));
             });
             return null;
         });
@@ -225,7 +226,7 @@ public class FormSuppliers extends AbstractTableForm {
                             // 2. Doğrulama başarılıysa modal kapanır, arka planda veritabanına yazılır.
                             supplierService.save(updated, false).thenAccept(saved -> {
                                 SwingUtilities.invokeLater(() -> {
-                                    Toast.show(this, Toast.Type.SUCCESS, saved.getName() + " başarıyla eklendi.");
+                                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.added", saved.getName()));
                                     refreshTable();
                                 });
                             }).exceptionally(ex -> ErrorHandler.handle(this, "Tedarikçi eklenemedi", ex));
@@ -266,7 +267,7 @@ public class FormSuppliers extends AbstractTableForm {
 
                             supplierService.save(updated, true).thenAccept(saved -> {
                                 SwingUtilities.invokeLater(() -> {
-                                    Toast.show(this, Toast.Type.SUCCESS, saved.getName() + " başarıyla güncellendi.");
+                                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", saved.getName()));
                                     refreshTable();
                                 });
                             }).exceptionally(ex -> ErrorHandler.handle(this, "Tedarikçi güncellenemedi", ex));

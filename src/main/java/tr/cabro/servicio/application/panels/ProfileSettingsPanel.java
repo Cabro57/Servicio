@@ -6,6 +6,7 @@ import raven.modal.Toast;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
 import tr.cabro.servicio.application.utils.ErrorHandler;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
@@ -151,21 +152,21 @@ public class ProfileSettingsPanel extends JPanel {
 
         if (changingPin) {
             if (!PasswordUtil.verify(curPin, currentUser.getPassword())) {
-                Toast.show(this, Toast.Type.ERROR, "Mevcut PIN yanlış!");
+                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.pin.currentInvalid"));
                 return;
             }
             if (newPin.length() != 6 || !newPin.matches("\\d+")) {
-                Toast.show(this, Toast.Type.WARNING, "Yeni PIN 6 haneli rakam olmalıdır!");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.pin.newMustBe6Digits"));
                 return;
             }
             if (!newPin.equals(newPin2)) {
-                Toast.show(this, Toast.Type.ERROR, "Yeni PIN'ler uyuşmuyor!");
+                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.pin.newMismatch"));
                 return;
             }
         }
 
         if (txtEmail.getText().trim().isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, "E-posta adresi boş olamaz!");
+            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.email.required"));
             return;
         }
 
@@ -179,7 +180,7 @@ public class ProfileSettingsPanel extends JPanel {
         UserService us = ServiceManager.getUserService();
         us.save(currentUser, true).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
             MyDrawerBuilder.getInstance().setUser(saved);
-            Toast.show(this, Toast.Type.SUCCESS, "Profil güncellendi!");
+            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.profile.updated"));
             AppModal.closeModal(MODAL_ID);
         })).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> btnSave.setEnabled(true));
@@ -196,7 +197,7 @@ public class ProfileSettingsPanel extends JPanel {
                 lblPhotoName.setText(stored);
             }
         } catch (Exception ex) {
-            Toast.show(this, Toast.Type.ERROR, "Fotoğraf kopyalanamadı: " + ex.getMessage());
+            Toast.show(this, Toast.Type.ERROR, Messages.get("toast.photo.copyFailed", ex.getMessage()));
         }
     }
 

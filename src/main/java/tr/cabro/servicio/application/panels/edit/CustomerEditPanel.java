@@ -9,13 +9,9 @@ import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
-import java.awt.CardLayout;
 import java.awt.event.ActionListener;
 
 public class CustomerEditPanel extends AbstractEditPanel<Customer> {
-
-    private static final String CARD_BIREYSEL = "BIREYSEL";
-    private static final String CARD_KURUMSAL = "KURUMSAL";
 
     public CustomerEditPanel(Customer data) {
         super(data);
@@ -154,11 +150,14 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         return new Customer();
     }
 
-    /** Bireysel/Kurumsal toggle ile CardLayout'un senkron kalmasını garantileyen tek nokta. */
+    /** Bireysel/Kurumsal toggle ile alan görünürlüğünün senkron kalmasını garantileyen tek nokta. */
     private void syncCard(boolean kurumsal) {
         btnKurumsal.setSelected(kurumsal);
         btnBireysel.setSelected(!kurumsal);
-        cardLayout.show(typeCardPanel, kurumsal ? CARD_KURUMSAL : CARD_BIREYSEL);
+        bireyselCard.setVisible(!kurumsal);
+        kurumsalCard.setVisible(kurumsal);
+        revalidate();
+        repaint();
     }
 
     @Override
@@ -190,15 +189,18 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         formPanel.add(togglePanel, "growx");
 
         // --- Bireysel/Kurumsal'a göre değişen alanlar ---
-        cardLayout = new CardLayout();
-        typeCardPanel = new JPanel(cardLayout);
+        // CardLayout KULLANILMIYOR: gösterilmeyen kart için bile en büyük kartın (Kurumsal,
+        // 3 alan) boyutunu ayırıp Bireysel seçiliyken altında boş alan bırakıyordu. Bunun yerine
+        // DeviceAccessField'daki pattern: hidemode 3 + setVisible — gizlenen bileşen düzende
+        // hiç yer kaplamaz.
+        JPanel typeFieldsPanel = new JPanel(new MigLayout("insets 0, fillx, wrap 1, hidemode 3", "[fill,grow]"));
 
-        JPanel bireyselCard = new JPanel(new MigLayout("wrap 1, insets 0", "[grow,fill]"));
+        bireyselCard = new JPanel(new MigLayout("wrap 1, insets 0", "[grow,fill]"));
         idNoField = new JTextField();
         bireyselCard.add(label.apply("TC Kimlik No:"));
         bireyselCard.add(idNoField, "growx");
 
-        JPanel kurumsalCard = new JPanel(new MigLayout("wrap 1, insets 0", "[grow,fill]"));
+        kurumsalCard = new JPanel(new MigLayout("wrap 1, insets 0", "[grow,fill]"));
         businessNameField = new JTextField();
         taxNumberField = new JTextField();
         taxOfficeField = new JTextField();
@@ -209,9 +211,9 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         kurumsalCard.add(label.apply("Vergi Dairesi:"));
         kurumsalCard.add(taxOfficeField, "growx");
 
-        typeCardPanel.add(bireyselCard, CARD_BIREYSEL);
-        typeCardPanel.add(kurumsalCard, CARD_KURUMSAL);
-        formPanel.add(typeCardPanel, "growx");
+        typeFieldsPanel.add(bireyselCard, "growx");
+        typeFieldsPanel.add(kurumsalCard, "growx");
+        formPanel.add(typeFieldsPanel, "growx");
 
         ActionListener toggleListener = e -> syncCard(btnKurumsal.isSelected());
         btnBireysel.addActionListener(toggleListener);
@@ -256,8 +258,8 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
 
     private JToggleButton btnBireysel;
     private JToggleButton btnKurumsal;
-    private CardLayout cardLayout;
-    private JPanel typeCardPanel;
+    private JPanel bireyselCard;
+    private JPanel kurumsalCard;
     private JTextField businessNameField;
     private JTextField taxNumberField;
     private JTextField taxOfficeField;

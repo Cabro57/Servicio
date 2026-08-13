@@ -3,7 +3,11 @@ package tr.cabro.servicio.updater;
 import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import raven.modal.ModalDialog;
+import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.simple.SimpleMessageModal;
+import tr.cabro.servicio.i18n.Messages;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -78,8 +82,8 @@ public class UpdateDialog extends JDialog {
     public UpdateDialog(JFrame owner, UpdateManifest manifest,
                         UpdateManager manager, boolean isHotfix) {
         super(owner,
-                isHotfix ? "Kritik Güncelleme (Yama) — v" + manifest.getVersion()
-                        : "Güncelleme Mevcut — v" + manifest.getVersion(),
+                isHotfix ? Messages.get("updater.dialog.title.critical", manifest.getVersion())
+                        : Messages.get("updater.dialog.title.normal", manifest.getVersion()),
                 true);
         this.manifest = manifest;
         this.manager  = manager;
@@ -135,7 +139,7 @@ public class UpdateDialog extends JDialog {
         notesWrapper.setLayout(new BoxLayout(notesWrapper, BoxLayout.Y_AXIS));
         notesWrapper.setBorder(new EmptyBorder(10, 22, 10, 22));
         notesWrapper.setOpaque(false);
-        JLabel loadingLbl = styledLabel("  Sürüm notları yükleniyor…", 12, Font.PLAIN);
+        JLabel loadingLbl = styledLabel("  " + Messages.get("updater.notes.loading"), 12, Font.PLAIN);
         loadingLbl.setForeground(fgDim());
         notesWrapper.add(loadingLbl);
 
@@ -156,9 +160,9 @@ public class UpdateDialog extends JDialog {
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
         btnRow.setOpaque(false);
 
-        JButton skipBtn   = ghostButton("Bu Sürümü Atla");
-        JButton laterBtn  = ghostButton("Sonra");
-        JButton updateBtn = accentButton("İndir ve Kur  ▶");
+        JButton skipBtn   = ghostButton(Messages.get("updater.button.skip"));
+        JButton laterBtn  = ghostButton(Messages.get("updater.button.later"));
+        JButton updateBtn = accentButton(Messages.get("updater.button.install"));
 
         skipBtn.setVisible(!isHotfix);
         skipBtn.addActionListener(e -> {
@@ -258,7 +262,7 @@ public class UpdateDialog extends JDialog {
         JPanel root = new JPanel(new BorderLayout(0, 12));
         root.setBorder(new EmptyBorder(22, 26, 14, 26));
 
-        JLabel title = styledLabel("Güncelleme İndiriliyor…", 16, Font.BOLD);
+        JLabel title = styledLabel(Messages.get("updater.downloading.title"), 16, Font.BOLD);
 
         currentFileLabel = styledLabel("Hazırlanıyor…", 11, Font.PLAIN);
         currentFileLabel.setForeground(fgDim());
@@ -287,7 +291,7 @@ public class UpdateDialog extends JDialog {
         listScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         listScroll.getVerticalScrollBar().setUnitIncrement(8);
 
-        JButton cancelBtn = ghostButton("İptal");
+        JButton cancelBtn = ghostButton(Messages.get("updater.button.cancel"));
         cancelBtn.addActionListener(e -> { manager.cancel(); dispose(); });
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 6));
@@ -317,15 +321,15 @@ public class UpdateDialog extends JDialog {
         JLabel icon = styledLabel("✘", 52, Font.BOLD);
         icon.setForeground(red());
 
-        JLabel msg = styledLabel("İndirme Başarısız", 20, Font.BOLD);
+        JLabel msg = styledLabel(Messages.get("updater.download.failed"), 20, Font.BOLD);
         JLabel sub = styledLabel(
                 "<html><center>Lütfen internet bağlantınızı kontrol edip<br>tekrar deneyin.</center></html>",
                 13, Font.PLAIN);
         sub.setForeground(fgDim());
         sub.setHorizontalAlignment(SwingConstants.CENTER);
 
-        JButton retryBtn = accentButton("Tekrar Dene");
-        JButton closeBtn = ghostButton("Kapat");
+        JButton retryBtn = accentButton(Messages.get("updater.button.retry"));
+        JButton closeBtn = ghostButton(Messages.get("updater.button.close"));
         retryBtn.addActionListener(e -> startDownload());
         closeBtn.addActionListener(e -> dispose());
 
@@ -382,7 +386,7 @@ public class UpdateDialog extends JDialog {
      */
     private void onDownloadComplete() {
         totalBar.setValue(100);
-        statusLabel.setText("İndirme tamamlandı!");
+        statusLabel.setText(Messages.get("updater.download.complete"));
 
         // IntelliJ IDEA tarzı mesaj paneli
         JPanel msg = new JPanel(new BorderLayout(12, 0));
@@ -397,14 +401,10 @@ public class UpdateDialog extends JDialog {
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
         text.setOpaque(false);
 
-        JLabel titleLbl = new JLabel("Güncelleme indirildi!");
+        JLabel titleLbl = new JLabel(Messages.get("updater.update.downloaded"));
         titleLbl.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
 
-        JLabel subLbl = new JLabel(
-                "<html>v" + manifest.getVersion() + " kurulmaya hazır.<br>"
-                        + "<font color='#888888'>Uygulamayı şimdi yeniden başlatmak ister misiniz?<br>"
-                        + "<i>\"Daha Sonra\" seçerseniz bir sonraki açılışta otomatik uygulanır.</i>"
-                        + "</font></html>");
+        JLabel subLbl = new JLabel(Messages.get("updater.restart.body", manifest.getVersion()));
         subLbl.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
 
         text.add(titleLbl);
@@ -414,25 +414,21 @@ public class UpdateDialog extends JDialog {
         msg.add(iconLbl, BorderLayout.WEST);
         msg.add(text,    BorderLayout.CENTER);
 
-        String[] options = {"Şimdi Yeniden Başlat", "Daha Sonra"};
+        SimpleModalBorder.Option[] options = {
+                new SimpleModalBorder.Option(Messages.get("updater.restart.now"), SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option(Messages.get("updater.button.later"), SimpleModalBorder.NO_OPTION)
+        };
 
-        int choice = JOptionPane.showOptionDialog(
-                this, msg,
-                "Güncelleme Hazır",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.PLAIN_MESSAGE,
-                null,
-                options,
-                options[0]   // Varsayılan: yeniden başlat
-        );
-
-        if (choice == JOptionPane.YES_OPTION) {
-            applyAndRestart();
-        } else {
-            // Daha sonra — launcher script yaz, .update-tmp koru
-            scheduleLauncherForNextStart();
-            dispose();
-        }
+        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.DEFAULT,
+                msg, Messages.get("updater.restart.title"), options, (controller, action) -> {
+            if (action == SimpleModalBorder.YES_OPTION) {
+                applyAndRestart();
+            } else {
+                // Daha sonra — launcher script yaz, .update-tmp koru
+                scheduleLauncherForNextStart();
+                dispose();
+            }
+        }));
     }
 
     /**

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.AppSplashScreen;
 import tr.cabro.servicio.application.themes.LafService;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.util.AppLock;
 import tr.cabro.servicio.util.DataDirResolver;
 
@@ -37,11 +38,14 @@ public final class ApplicationBootstrap {
      */
     public static void launch() {
         // 1. Tek örnek kontrolü
+        // NOT: Burada ve aşağıdaki hata durumunda JOptionPane kasıtlı olarak kullanılıyor —
+        // raven.modal.ModalDialog bir RootPaneContainer (görünür pencere) gerektirir, ama bu iki
+        // hata henüz hiçbir pencere kurulmadan (null parent ile) oluşuyor. Projenin geri kalanı
+        // raven.modal kullanıyor, bu ikisi tek istisna.
         if (!AppLock.acquireLock()) {
             JOptionPane.showMessageDialog(null,
-                    "Servicio uygulaması şu anda zaten çalışıyor!\n" +
-                            "Lütfen açık olan pencereyi kontrol edin.",
-                    "Sistem Uyarısı", JOptionPane.WARNING_MESSAGE);
+                    Messages.get("app.already.running"),
+                    Messages.get("app.already.running.title"), JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -57,8 +61,8 @@ public final class ApplicationBootstrap {
             } catch (Exception e) {
                 log.error("Başlatma sırasında kritik hata!", e);
                 JOptionPane.showMessageDialog(null,
-                        "Uygulama başlatılamadı:\n" + e.getMessage(),
-                        "Başlatma Hatası", JOptionPane.ERROR_MESSAGE);
+                        Messages.get("app.startup.failed", e.getMessage()),
+                        Messages.get("app.startup.failed.title"), JOptionPane.ERROR_MESSAGE);
                 System.exit(1);
             }
         }, "servicio-startup");

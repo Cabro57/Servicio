@@ -5,6 +5,7 @@ import net.miginfocom.swing.MigLayout;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.Messages;
 import raven.modal.Toast;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;
@@ -283,7 +284,7 @@ public class DeviceFormPanel extends JPanel {
     private void searchBySerialNo() {
         String serial = serialNoField.getText().trim();
         if (serial.isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, "Lütfen sorgulamak için bir seri numarası girin.");
+            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.device.serialRequired"));
             return;
         }
 
@@ -291,14 +292,14 @@ public class DeviceFormPanel extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 if (deviceOpt.isPresent()) {
                     setDevice(deviceOpt.get());
-                    Toast.show(this, Toast.Type.SUCCESS, "Cihaz sistemde bulundu. Bilgiler getirildi.");
+                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.device.foundInSystem"));
                 } else {
-                    Toast.show(this, Toast.Type.INFO, "Bu seri numarasına sahip cihaz bulunamadı. Yeni cihaz olarak kaydedilecek.");
+                    Toast.show(this, Toast.Type.INFO, Messages.get("toast.device.notFoundWillCreate"));
                 }
             });
         }).exceptionally(ex -> {
             SwingUtilities.invokeLater(() ->
-                    Toast.show(this, Toast.Type.WARNING, "Seri numarası ile arama sırasında bir hata oluştu."));
+                    Toast.show(this, Toast.Type.WARNING, Messages.get("toast.device.serialSearchFailed")));
             Servicio.getLogger().error("Seri no araması başarısız", ex);
             return null;
         });

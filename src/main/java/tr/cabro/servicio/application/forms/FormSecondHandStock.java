@@ -14,6 +14,7 @@ import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.panels.secondhand.PurchasePanel;
 import tr.cabro.servicio.application.panels.secondhand.SalePanel;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
@@ -176,7 +177,7 @@ public class FormSecondHandStock extends AbstractTableForm {
             });
         }).exceptionally(e -> {
             Servicio.getLogger().error("2.el alım-satım listesi alınamadı: ", e);
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Liste alınamadı!"));
+            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, Messages.get("toast.list.loadFailed")));
             return null;
         });
     }
@@ -221,8 +222,8 @@ public class FormSecondHandStock extends AbstractTableForm {
 
             Customer seller = panel.getSeller();
             Device device = panel.getDevice();
-            if (seller == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, "Lütfen satıcı müşteri seçin."); return; }
-            if (device == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, "Cihaz türü ve marka bilgileri zorunludur."); return; }
+            if (seller == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.sellerRequired")); return; }
+            if (device == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.deviceRequired")); return; }
 
             java.util.concurrent.CompletableFuture<Device> deviceFuture = device.getId() != null
                     ? java.util.concurrent.CompletableFuture.completedFuture(device)
@@ -232,7 +233,7 @@ public class FormSecondHandStock extends AbstractTableForm {
                     savedDevice.getId(), seller.getId(), panel.getPrice(), panel.getTransactionDate(),
                     panel.getExpertiseNotes(), null)
             ).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.SUCCESS, "Alım kaydı oluşturuldu.");
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.secondhand.purchaseCreated"));
                 refreshTable();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);
@@ -247,7 +248,7 @@ public class FormSecondHandStock extends AbstractTableForm {
 
     private void openSaleModal(DeviceTransaction purchase) {
         if (purchase.getType() != DeviceTransactionType.PURCHASE) {
-            Toast.show(this, Toast.Type.WARNING, "Yalnızca stoktaki (alım) kayıtları satılabilir.");
+            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.onlyPurchaseCanSell"));
             return;
         }
         final String MODAL_ID = "secondhand_sale_modal";
@@ -283,12 +284,12 @@ public class FormSecondHandStock extends AbstractTableForm {
             if (action != SimpleModalBorder.OK_OPTION) return;
 
             Customer buyer = panel.getBuyer();
-            if (buyer == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, "Lütfen alıcı müşteri seçin."); return; }
+            if (buyer == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.buyerRequired")); return; }
 
             transactionService.recordSale(purchase.getDeviceId(), buyer.getId(), panel.getPrice(),
                     panel.getTransactionDate(), panel.getWarrantyMonths(), panel.getNote()
             ).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.SUCCESS, "Satış kaydedildi.");
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.secondhand.saleRecorded"));
                 refreshTable();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);
@@ -349,13 +350,13 @@ public class FormSecondHandStock extends AbstractTableForm {
                 File pdf = type.generate(transaction, shop, leftSignerName, rightSignerName);
                 SwingUtilities.invokeLater(() -> {
                     if (DesktopHelper.openFile(pdf)) {
-                        Toast.show(this, Toast.Type.SUCCESS, "Belge oluşturuldu.");
+                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.document.created"));
                     } else {
-                        Toast.show(this, Toast.Type.WARNING, "Belge oluşturuldu ama açılamadı: " + pdf.getAbsolutePath());
+                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.document.created.openFailed", pdf.getAbsolutePath()));
                     }
                 });
             } catch (Exception ex) {
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Belge oluşturulamadı: " + ex.getMessage()));
+                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, Messages.get("toast.document.failed", ex.getMessage())));
                 Servicio.getLogger().error("2.el belge oluşturma hatası", ex);
             }
         }).exceptionally(ex -> ErrorHandler.handle(this, "2.el belgesi oluşturulamadı", ex));
@@ -367,11 +368,11 @@ public class FormSecondHandStock extends AbstractTableForm {
 
     private void deleteTransaction(DeviceTransaction transaction) {
         ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                "Bu kaydı silmek istediğinizden emin misiniz?", "Silme Onayı",
+                Messages.get("confirm.delete.generic"), Messages.get("confirm.delete.title"),
                 SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
             if (action == SimpleModalBorder.YES_OPTION) {
                 transactionService.delete(transaction.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.SUCCESS, "Kayıt silindi.");
+                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.record.deletedShort"));
                     refreshTable();
                 })).exceptionally(ex -> ErrorHandler.handle(this, "2.el kaydı silinemedi", ex));
             }

@@ -3,9 +3,13 @@ package tr.cabro.servicio.application;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
+import raven.modal.ModalDialog;
+import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
+import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.application.system.FormManager;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.settings.AppSettings;
 
@@ -84,24 +88,22 @@ public class MainUI extends JFrame {
         }
 
         // DIYALOG OLUŞTURMA
-        JPanel panel = new JPanel(new MigLayout("wrap, insets 0, gapy 10"));
-        panel.add(new JLabel("Uygulamadan çıkmak istediğinize emin misiniz?"));
+        JPanel panel = new JPanel(new MigLayout("wrap, insets 20 30 10 30, gapy 10"));
+        panel.setOpaque(false);
+        panel.add(new JLabel(Messages.get("confirm.exit.app")));
 
-        JCheckBox chkDontAsk = new JCheckBox("Bunu bir daha sorma");
+        JCheckBox chkDontAsk = new JCheckBox(Messages.get("exit.dontAskAgain"));
         panel.add(chkDontAsk);
 
-        int choice = JOptionPane.showOptionDialog(
-                this,
-                panel,
-                "Çıkışı Onayla",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                new Object[]{"Evet, Çık", "İptal"},
-                "Evet, Çık"
-        );
+        SimpleModalBorder.Option[] options = {
+                new SimpleModalBorder.Option(Messages.get("exit.button.yes"), SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option(Messages.get("exit.button.cancel"), SimpleModalBorder.CANCEL_OPTION)
+        };
 
-        if (choice == JOptionPane.YES_OPTION) {
+        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.WARNING,
+                panel, Messages.get("confirm.exit.title"), options, (controller, action) -> {
+            if (action != SimpleModalBorder.YES_OPTION) return;
+
             // Ayarı kaydet
             if (chkDontAsk.isSelected()) {
                 AppSettings.get().getUi().setSkipExitConfirmation(true);
@@ -110,7 +112,7 @@ public class MainUI extends JFrame {
 
             // Uygulamayı kapat
             Servicio.getInstance().shutdown();
-        }
+        }));
         // "Hayır" veya pencere kapatılırsa hiçbir şey yapma, uygulama açık kalır.
     }
 }

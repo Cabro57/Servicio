@@ -20,6 +20,7 @@ import tr.cabro.servicio.service.DeviceService;
 import tr.cabro.servicio.service.DeviceTransactionService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.WorkOrderService;
+import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
@@ -191,12 +192,10 @@ public class FormDevice extends Form {
     }
 
     private void setupTable() {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
-
         List<ColumnDef<HistoryEntry>> columns = Arrays.asList(
                 new ColumnDef<>("Tür",     String.class, HistoryEntry::kindLabel),
                 new ColumnDef<>("Kişi",    String.class, h -> h.person),
-                new ColumnDef<>("Tarih",   String.class, h -> h.date != null ? h.date.format(df) : "-"),
+                new ColumnDef<>("Tarih",   String.class, h -> h.date != null ? h.date.format(DateFormats.dateTime()) : "-"),
                 new ColumnDef<>("Detay",   String.class, h -> h.detail),
                 new ColumnDef<>("İşlem",   String.class, h -> h.kind == HistoryEntry.Kind.SERVICE ? "Detay" : "-")
         );
@@ -254,7 +253,7 @@ public class FormDevice extends Form {
     }
 
     private void refreshData() {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        DateTimeFormatter df = DateFormats.dateTime();
 
         lblDeviceTitle.setText(device.getDisplayName());
         valType.setText(device.getDeviceType() != null ? device.getDeviceType().getName() : "-");

@@ -11,10 +11,12 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.DocumentTemplate;
 import tr.cabro.servicio.model.enums.TemplateType;
 import tr.cabro.servicio.service.DocumentTemplateService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
 import java.util.Arrays;
@@ -80,7 +82,7 @@ public class SettingsTemplatesPanel extends JPanel {
                                 .thenAccept(saved -> {
                                     SwingUtilities.invokeLater(() -> {
                                         refreshTable();
-                                        Toast.show(this, Toast.Type.SUCCESS, saved.getName() + " adlı şablon kaydedildi.");
+                                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.template.saved", saved.getName()));
                                     });
                                 }).exceptionally(ex -> {
                                     SwingUtilities.invokeLater(controller::consume);
@@ -116,22 +118,14 @@ public class SettingsTemplatesPanel extends JPanel {
                 int modelRow = table.convertRowIndexToModel(row);
                 DocumentTemplate t = tableModal.getItemAt(modelRow);
 
-                int confirm = JOptionPane.showConfirmDialog(
-                        SettingsTemplatesPanel.this,
-                        t.getName() + " adlı şablonu silmek istediğinize emin misiniz?",
-                        "Şablon Sil",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE
-                );
-
-                if (confirm == JOptionPane.YES_OPTION) {
-                    templateService.delete(t.getId()).thenAccept(response -> {
-                        SwingUtilities.invokeLater(() -> {
-                            Toast.show(SettingsTemplatesPanel.this, Toast.Type.SUCCESS, "Şablon silindi.");
-                            refreshTable();
-                        });
-                    }).exceptionally(ex -> ErrorHandler.handle(SettingsTemplatesPanel.this, "Şablon silinemedi", ex));
-                }
+                DialogHelper.confirmDelete(SettingsTemplatesPanel.this, "confirm.delete.template", () ->
+                        templateService.delete(t.getId()).thenAccept(response -> {
+                            SwingUtilities.invokeLater(() -> {
+                                Toast.show(SettingsTemplatesPanel.this, Toast.Type.SUCCESS, Messages.get("toast.template.deleted"));
+                                refreshTable();
+                            });
+                        }).exceptionally(ex -> ErrorHandler.handle(SettingsTemplatesPanel.this, "Şablon silinemedi", ex)),
+                        t.getName());
             }
 
             @Override

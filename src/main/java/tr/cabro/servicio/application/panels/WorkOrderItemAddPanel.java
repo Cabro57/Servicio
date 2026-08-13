@@ -12,6 +12,7 @@ import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.model.enums.ItemType;
@@ -273,7 +274,7 @@ public class WorkOrderItemAddPanel extends JPanel {
             Part selectedPart = partTableModel.getItemAt(modelRow);
 
             if (selectedPart.getStockQuantity() <= 0) {
-                Toast.show(WorkOrderItemAddPanel.this, Toast.Type.WARNING, "Bu ürünün stoğu kalmamıştır!");
+                Toast.show(WorkOrderItemAddPanel.this, Toast.Type.WARNING, Messages.get("toast.part.outOfStock"));
                 return;
             }
 
@@ -364,7 +365,7 @@ public class WorkOrderItemAddPanel extends JPanel {
 
             ServiceManager.getWorkOrderService().addItem(item).thenAccept(i -> {
                 SwingUtilities.invokeLater(() -> {
-                    Toast.show(WorkOrderItemAddPanel.this, Toast.Type.SUCCESS, "İşçilik başarıyla eklendi.");
+                    Toast.show(WorkOrderItemAddPanel.this, Toast.Type.SUCCESS, Messages.get("toast.labor.added"));
                 });
             });
         }));
@@ -409,12 +410,12 @@ public class WorkOrderItemAddPanel extends JPanel {
             // Ad zorunlu ve max 255 karakter
             String itemName = txtName.getText().trim();
             if (itemName.isEmpty()) {
-                Toast.show(this, Toast.Type.WARNING, "Lütfen kalem için bir ad girin.");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.nameRequired"));
                 txtName.requestFocus();
                 return;
             }
             if (itemName.length() > 255) {
-                Toast.show(this, Toast.Type.WARNING, "Kalem adı en fazla 255 karakter olabilir.");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.nameTooLong"));
                 txtName.requestFocus();
                 return;
             }
@@ -423,7 +424,7 @@ public class WorkOrderItemAddPanel extends JPanel {
             double purchaseVal = txtPurchasePrice.getValue() instanceof Number
                     ? ((Number) txtPurchasePrice.getValue()).doubleValue() : 0.0;
             if (purchaseVal < 0) {
-                Toast.show(this, Toast.Type.WARNING, "Alış fiyatı negatif olamaz.");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.purchasePriceNegative"));
                 txtPurchasePrice.requestFocus();
                 return;
             }
@@ -432,7 +433,7 @@ public class WorkOrderItemAddPanel extends JPanel {
             double saleVal = txtSalePrice.getValue() instanceof Number
                     ? ((Number) txtSalePrice.getValue()).doubleValue() : 0.0;
             if (saleVal < 0) {
-                Toast.show(this, Toast.Type.WARNING, "Satış fiyatı negatif olamaz.");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.salePriceNegative"));
                 txtSalePrice.requestFocus();
                 return;
             }

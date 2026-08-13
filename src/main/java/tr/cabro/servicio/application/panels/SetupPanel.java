@@ -9,6 +9,7 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.util.ProfileImageStore;
 
 import javax.swing.*;
@@ -139,7 +140,7 @@ public class SetupPanel extends Form {
                     lblPhotoPath.setText(stored);
                 }
             } catch (Exception ex) {
-                Toast.show(this, Toast.Type.ERROR, "Fotoğraf kopyalanamadı: " + ex.getMessage());
+                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.photo.copyFailed", ex.getMessage()));
             }
         });
 
@@ -148,11 +149,11 @@ public class SetupPanel extends Form {
             String pinConfirm = new String(txtPinCodeConfirm.getPassword());
 
             if (pin.length() != 6 || !pin.matches("\\d+")) {
-                Toast.show(this, Toast.Type.WARNING, "PIN 6 haneli rakam olmalıdır!");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.pin.mustBe6Digits"));
                 return;
             }
             if (!pin.equals(pinConfirm)) {
-                Toast.show(this, Toast.Type.ERROR, "PIN kodları uyuşmuyor!");
+                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.pin.mismatch"));
                 return;
             }
 
@@ -164,7 +165,7 @@ public class SetupPanel extends Form {
 
             userService.save(newUser, false).thenAccept(savedUser -> {
                 SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.SUCCESS, "Kurulum Tamamlandı!");
+                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.setup.completed"));
                     // Doğrudan sisteme al ve inaktif monitörü başlat
                     FormManager.login();
                 });

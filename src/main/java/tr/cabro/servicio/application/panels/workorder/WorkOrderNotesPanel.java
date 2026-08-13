@@ -10,6 +10,10 @@ import tr.cabro.servicio.model.WorkOrderNote;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.WorkOrderService;
 
+import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
+
 import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDateTime;
@@ -66,7 +70,7 @@ public class WorkOrderNotesPanel extends JPanel {
         btnAddNote.addActionListener(e -> {
             String text = txtNewNote.getText().trim();
             if (text.isEmpty()) {
-                Toast.show(this, Toast.Type.WARNING, "Not boş olamaz.");
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.note.empty"));
                 return;
             }
             WorkOrderNote n = new WorkOrderNote();
@@ -78,7 +82,7 @@ public class WorkOrderNotesPanel extends JPanel {
                 workOrder.getTechnicianNotes().add(saved);
                 txtNewNote.setText("");
                 appendNoteRow(saved);
-                Toast.show(this, Toast.Type.SUCCESS, "Not eklendi.");
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.note.added"));
             })).exceptionally(ex -> ErrorHandler.handle(this, "Not eklenemedi", ex));
         });
 
@@ -110,7 +114,7 @@ public class WorkOrderNotesPanel extends JPanel {
     }
 
     private void addNoteRowToPanel(WorkOrderNote note) {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        DateTimeFormatter df = DateFormats.dateTime();
 
         JPanel noteRow = new JPanel(new MigLayout("insets 10 12 10 12, fillx", "[grow][]", "[]6[]"));
         noteRow.putClientProperty(FlatClientProperties.STYLE,
@@ -142,25 +146,17 @@ public class WorkOrderNotesPanel extends JPanel {
     }
 
     private void confirmDeleteNote(WorkOrderNote note, JPanel noteRow) {
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Bu not silinecek. Emin misiniz?",
-                "Silme Onayı",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE
-        );
-        if (confirm != JOptionPane.YES_OPTION) return;
-
-        workOrderService.deleteNote(note.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
-            workOrder.getTechnicianNotes().remove(note);
-            notesListPanel.remove(noteRow);
-            if (workOrder.getTechnicianNotes().isEmpty()) {
-                notesListPanel.removeAll();
-                notesListPanel.add(WorkOrderPanelSupport.createMutedLabel("Henüz teknisyen notu eklenmedi."), "wrap");
-            }
-            notesListPanel.revalidate();
-            notesListPanel.repaint();
-            Toast.show(this, Toast.Type.SUCCESS, "Not silindi.");
-        })).exceptionally(ex -> ErrorHandler.handle(this, "Not silinemedi", ex));
+        DialogHelper.confirmDelete(this, "confirm.delete.note", () ->
+                workOrderService.deleteNote(note.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
+                    workOrder.getTechnicianNotes().remove(note);
+                    notesListPanel.remove(noteRow);
+                    if (workOrder.getTechnicianNotes().isEmpty()) {
+                        notesListPanel.removeAll();
+                        notesListPanel.add(WorkOrderPanelSupport.createMutedLabel("Henüz teknisyen notu eklenmedi."), "wrap");
+                    }
+                    notesListPanel.revalidate();
+                    notesListPanel.repaint();
+                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.note.deleted"));
+                })).exceptionally(ex -> ErrorHandler.handle(this, "Not silinemedi", ex)));
     }
 }

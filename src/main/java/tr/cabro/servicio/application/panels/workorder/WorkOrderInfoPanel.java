@@ -6,6 +6,8 @@ import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.service.ServiceManager;
@@ -59,7 +61,7 @@ public class WorkOrderInfoPanel extends JPanel {
     public void refresh(WorkOrder updatedWorkOrder) {
         this.workOrder = updatedWorkOrder;
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        DateTimeFormatter formatter = DateFormats.dateTime();
         String dateStr = workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().format(formatter) : "-";
 
         if (workOrder.getCustomer() != null) {
@@ -177,7 +179,7 @@ public class WorkOrderInfoPanel extends JPanel {
         workOrderService.updateDetectedFault(workOrder.getId(), text).thenRun(() ->
                 SwingUtilities.invokeLater(() -> {
                     workOrder.setDetectedFault(text);
-                    Toast.show(this, Toast.Type.SUCCESS, "Arıza tespiti kaydedildi.");
+                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.detectedFault.saved"));
                 })
         ).exceptionally(ex -> ErrorHandler.handle(this, "Arıza tespiti kaydedilemedi", ex));
     }

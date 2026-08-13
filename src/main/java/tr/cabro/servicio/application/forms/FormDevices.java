@@ -15,6 +15,7 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.service.DeviceService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -136,6 +137,6 @@ public class FormDevices extends AbstractTableForm {
 
     @Override
     protected void onNew() {
-        Toast.show(this, Toast.Type.INFO, "Cihazlar servis kaydı üzerinden eklenir.");
+        Toast.show(this, Toast.Type.INFO, Messages.get("toast.device.addedViaWorkOrder"));
     }
 }

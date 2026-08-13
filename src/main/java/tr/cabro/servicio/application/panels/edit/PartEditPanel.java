@@ -18,6 +18,7 @@ import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.SupplierService;
 import tr.cabro.servicio.util.Barcode;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.Validator;
 
 import javax.swing.*;
@@ -166,12 +167,13 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
     }
 
     private void onAddCategory() {
-        String name = JOptionPane.showInputDialog(this, "Yeni kategori adı:", "Kategori Ekle", JOptionPane.PLAIN_MESSAGE);
-        if (name == null || name.trim().isEmpty()) return;
+        DialogHelper.prompt(this, "category.add.title", "category.add.label", "", name -> {
+            if (name == null || name.trim().isEmpty()) return;
 
-        partCategoryService.add(name.trim()).thenAccept(id ->
-                loadCategories((long) id)
-        ).exceptionally(ex -> ErrorHandler.handle(this, "Kategori eklenemedi", ex));
+            partCategoryService.add(name.trim()).thenAccept(id ->
+                    loadCategories((long) id)
+            ).exceptionally(ex -> ErrorHandler.handle(this, "Kategori eklenemedi", ex));
+        });
     }
 
     @Override

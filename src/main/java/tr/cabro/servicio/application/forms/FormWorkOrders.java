@@ -19,6 +19,9 @@ import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
+import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
@@ -260,7 +263,7 @@ public class FormWorkOrders extends AbstractTableForm {
                             .thenApply(v -> saved)
             ).thenAccept(saved ->
                     SwingUtilities.invokeLater(() -> {
-                        String msg = isEdit ? "Servis bilgileri güncellendi." : "Servis başarıyla kaydedildi.";
+                        String msg = isEdit ? Messages.get("toast.workorder.updated") : Messages.get("toast.workorder.created");
                         Toast.show(this, Toast.Type.SUCCESS, msg);
                         refreshTable();
                         if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
@@ -309,12 +312,11 @@ public class FormWorkOrders extends AbstractTableForm {
         );
         table.getColumnModel().getColumn(3).setCellRenderer(new TooltipCellRenderer());
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy HH:mm", new Locale("tr", "TR"));
         table.getColumnModel().getColumn(4).setCellRenderer(
                 new MultiLineTableCellRenderer<WorkOrder>(
-                        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(formatter) : "Tarih Yok",
+                        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(DateFormats.dateTime()) : "Tarih Yok",
                         s -> {
-                            String dateStr = s.getDeliveryDate() != null ? s.getDeliveryDate().format(formatter) : "-";
+                            String dateStr = s.getDeliveryDate() != null ? s.getDeliveryDate().format(DateFormats.dateTime()) : "-";
                             if (s.getServiceStatus() == ServiceStatus.RETURN) {
                                 return "İade: " + dateStr;
                             }
@@ -322,7 +324,7 @@ public class FormWorkOrders extends AbstractTableForm {
                                 return "Teslim: " + dateStr;
                             }
                             LocalDateTime est = s.getCreatedAt() != null ? s.getCreatedAt().plusDays(3) : null;
-                            return "Tahmini: " + (est != null ? est.format(formatter) : "-");
+                            return "Tahmini: " + (est != null ? est.format(DateFormats.dateTime()) : "-");
                         },
                         s -> null,
                         s -> {
@@ -363,32 +365,26 @@ public class FormWorkOrders extends AbstractTableForm {
             public void onDelete(WorkOrder wo) {
                 if (wo == null) return;
 
-                int confirm = JOptionPane.showConfirmDialog(
-                        FormWorkOrders.this,
-                        "SRV-" + wo.getId() + " numaralı servis kaydını silmek istediğinize emin misiniz?\nBu işlem geri alınamaz.",
-                        "Silme Onayı",
-                        JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE
-                );
-                if (confirm != JOptionPane.YES_OPTION) return;
-
-                service.delete(wo.getId())
-                        .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                            Toast.show(FormWorkOrders.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
-                            refreshTable();
-                        }))
-                        .exceptionally(ex -> ErrorHandler.handle(FormWorkOrders.this, "Servis kaydı silinemedi", ex));
+                DialogHelper.confirmDelete(FormWorkOrders.this, "confirm.delete.workorder", () ->
+                        service.delete(wo.getId())
+                                .thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                                    Toast.show(FormWorkOrders.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
+                                    refreshTable();
+                                }))
+                                .exceptionally(ex -> ErrorHandler.handle(FormWorkOrders.this, "Servis kaydı silinemedi", ex)),
+                        wo.getId());
             }
 
             @Override
             public void onView(WorkOrder wo) {
                 if (wo == null) {
-                    Toast.show(FormWorkOrders.this, Toast.Type.WARNING, "İstenen servis bulunamadı.");
+                    Toast.show(FormWorkOrders.this, Toast.Type.WARNING, Messages.get("toast.workorder.notFound"));
                     return;
                 }
                 service.get(wo.getId()).thenAccept(opt ->
                         SwingUtilities.invokeLater(() -> {
                             if (opt.isPresent()) FormManager.showForm(new FormWorkOrder(opt.get()));
-                            else Toast.show(FormWorkOrders.this, Toast.Type.WARNING, "Böyle bir servis bulunamadı.");
+                            else Toast.show(FormWorkOrders.this, Toast.Type.WARNING, Messages.get("toast.workorder.notFound"));
                         })
                 ).exceptionally(ex -> ErrorHandler.handle(FormWorkOrders.this, "Servis detayı açılamadı", ex));
             }

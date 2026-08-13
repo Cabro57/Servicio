@@ -11,6 +11,7 @@ import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.settings.AppConfig;
 import tr.cabro.servicio.settings.AppSettings;
+import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
 import java.awt.*;
@@ -110,24 +111,19 @@ public class SettingsDatabasePanel extends JPanel {
     private void restoreSelectedBackup() {
         String selected = backups_list.getSelectedValue();
         if (selected == null) {
-            JOptionPane.showMessageDialog(this, "Lütfen bir yedek seçin.", "Hata", JOptionPane.ERROR_MESSAGE);
+            DialogHelper.error(this, "backup.select.required");
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Seçilen yedeği geri yüklemek istediğinize emin misiniz?\nBu işlem geri alınamaz.",
-                "Onay", JOptionPane.YES_NO_OPTION);
-        if (confirm != JOptionPane.YES_OPTION) return;
+        DialogHelper.confirmDelete(this, "confirm.restore.backup", () -> {
+            File backupFile = new File(AppSettings.getBackupDir(), selected);
+            DatabaseManager.restore(backupFile);
 
-        File backupFile = new File(AppSettings.getBackupDir(), selected);
-        DatabaseManager.restore(backupFile);
-
-        // Tüm formları sıfırla — eski cached data'yı temizle
-        SwingUtilities.invokeLater(() -> {
-            FormManager.lock(); // Kilit ekranına at, stack temizlensin
-            JOptionPane.showMessageDialog(this,
-                    "Yedek geri yüklendi. Lütfen tekrar giriş yapın.",
-                    "Bilgi", JOptionPane.INFORMATION_MESSAGE);
+            // Tüm formları sıfırla — eski cached data'yı temizle
+            SwingUtilities.invokeLater(() -> {
+                FormManager.lock(); // Kilit ekranına at, stack temizlensin
+                DialogHelper.info(this, "backup.restore.done");
+            });
         });
     }
 

@@ -17,6 +17,8 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.Badge;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.documents.ServiceFormType;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ServiceStatus;
@@ -84,7 +86,7 @@ public class FormWorkOrder extends Form {
         workOrderService.get(workOrder.getId()).thenAccept(woOpt -> {
             if (!woOpt.isPresent()) {
                 SwingUtilities.invokeLater(() ->
-                        Toast.show(this, Toast.Type.WARNING, "Servis bulunamadığı için yenilenemedi."));
+                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.workorder.refreshFailedNotFound")));
                 return;
             }
             workOrder = woOpt.get();
@@ -202,7 +204,7 @@ public class FormWorkOrder extends Form {
     private void hydrateHeader() {
         lblHeaderTitle.setText("SRV-" + workOrder.getId());
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        DateTimeFormatter formatter = DateFormats.dateTime();
         String dateStr = workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().format(formatter) : "-";
         lblHeaderSubtitle.setText("Kayıt Tarihi: " + dateStr);
 
@@ -282,13 +284,13 @@ public class FormWorkOrder extends Form {
                 File pdf = formType.generate(workOrder, shop, leftSignerName, rightSignerName);
                 SwingUtilities.invokeLater(() -> {
                     if (DesktopHelper.openFile(pdf)) {
-                        Toast.show(this, Toast.Type.SUCCESS, "Belge oluşturuldu.");
+                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.document.created"));
                     } else {
-                        Toast.show(this, Toast.Type.WARNING, "Belge oluşturuldu ama açılamadı: " + pdf.getAbsolutePath());
+                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.document.created.openFailed", pdf.getAbsolutePath()));
                     }
                 });
             } catch (Exception ex) {
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Belge oluşturulamadı: " + ex.getMessage()));
+                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, Messages.get("toast.document.failed", ex.getMessage())));
                 Servicio.getLogger().error("PDF belge oluşturma hatası", ex);
             }
         }).exceptionally(ex -> ErrorHandler.handle(this, "Belge oluşturulamadı", ex));
@@ -312,7 +314,7 @@ public class FormWorkOrder extends Form {
 
             SwingUtilities.invokeLater(() -> {
                 if (templates.isEmpty()) {
-                    Toast.show(this, Toast.Type.WARNING, "Önce Ayarlar > WhatsApp Şablonları'ndan bir mesaj şablonu ekleyin.");
+                    Toast.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noTemplate"));
                     return;
                 }
 
@@ -345,13 +347,13 @@ public class FormWorkOrder extends Form {
                     String digits = PhoneHelper.toWhatsAppDigits(workOrder.getCustomer().getPhoneNumber1());
                     if (digits == null) {
                         controller.consume();
-                        Toast.show(this, Toast.Type.WARNING, "Müşterinin telefon numarası yok.");
+                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noPhone"));
                         return;
                     }
 
                     String url = "https://wa.me/" + digits + "?text=" + URLEncoder.encode(txtMessage.getText(), StandardCharsets.UTF_8);
                     if (!DesktopHelper.browseUrl(url)) {
-                        Toast.show(this, Toast.Type.ERROR, "WhatsApp açılamadı.");
+                        Toast.show(this, Toast.Type.ERROR, Messages.get("toast.whatsapp.openFailed"));
                     }
                 }), "whatsapp_message_modal");
             });

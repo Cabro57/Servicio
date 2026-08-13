@@ -5,6 +5,7 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
 import tr.cabro.servicio.application.utils.ErrorHandler;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
@@ -113,7 +114,7 @@ public class SettingsBusinessPanel extends JPanel {
                 lblLogoName.setText(stored);
             }
         } catch (Exception ex) {
-            Toast.show(this, Toast.Type.ERROR, "Logo kopyalanamadı: " + ex.getMessage());
+            Toast.show(this, Toast.Type.ERROR, Messages.get("toast.logo.copyFailed", ex.getMessage()));
         }
     }
 
@@ -131,7 +132,7 @@ public class SettingsBusinessPanel extends JPanel {
                     MyDrawerBuilder.getInstance().setUser(saved);
                     currentUser = saved;
                     btnSave.setEnabled(true);
-                    Toast.show(this, Toast.Type.SUCCESS, "İşletme bilgileri güncellendi!");
+                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.business.updated"));
                 })).exceptionally(ex -> {
                     SwingUtilities.invokeLater(() -> btnSave.setEnabled(true));
                     return ErrorHandler.handle(this, "İşletme bilgileri kaydedilemedi", ex);

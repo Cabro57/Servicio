@@ -23,6 +23,9 @@ import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
 
@@ -153,7 +156,7 @@ public class FormCustomer extends Form {
 
             workOrderService.save(formData, isEdit).thenAccept(saved ->
                     SwingUtilities.invokeLater(() -> {
-                        String msg = isEdit ? "Servis bilgileri güncellendi." : "Servis başarıyla kaydedildi.";
+                        String msg = isEdit ? Messages.get("toast.workorder.updated") : Messages.get("toast.workorder.created");
                         Toast.show(this, Toast.Type.SUCCESS, msg);
                         refreshData();
                         if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
@@ -162,7 +165,7 @@ public class FormCustomer extends Form {
                 SwingUtilities.invokeLater(() -> {
                     controller.consume();
                     String cause = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                    Toast.show(this, Toast.Type.ERROR, "Hata: " + cause);
+                    Toast.show(this, Toast.Type.ERROR, Messages.get("toast.generic.error", cause));
                 });
                 Servicio.getLogger().error("Servis kayıt hatası", ex);
                 return null;
@@ -237,7 +240,7 @@ public class FormCustomer extends Form {
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2; iconTextGap: 10");
         card.add(title, "span 2, wrap");
 
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
+        DateTimeFormatter df = DateFormats.dateTime();
         addContactRow(card, "icons/phone.svg",    "Telefon",      customer.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1()) : "-");
         addContactRow(card, "icons/mail.svg",     "E-posta",      customer.getEmail()        != null ? customer.getEmail()        : "-");
         addContactRow(card, "icons/map-pin.svg",  "Adres",        customer.getAddress()      != null ? customer.getAddress()      : "-");
@@ -340,12 +343,10 @@ public class FormCustomer extends Form {
     // -------------------------------------------------------------------------
 
     private void setupTable() {
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
-
         List<ColumnDef<WorkOrder>> columns = Arrays.asList(
                 new ColumnDef<>("Kayıt No", String.class,        s -> "SRV-" + s.getId()),
                 new ColumnDef<>("Cihaz",    Device.class,        WorkOrder::getDevice),
-                new ColumnDef<>("Tarih",    String.class,        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(df) : "-"),
+                new ColumnDef<>("Tarih",    String.class,        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(DateFormats.dateTime()) : "-"),
                 new ColumnDef<>("Durum",    ServiceStatus.class, WorkOrder::getServiceStatus),
                 new ColumnDef<>("Ücret",    BigDecimal.class, WorkOrder::getTotalServiceAmount),
                 new ColumnDef<>("İşlem",    String.class,        s -> "Detay")
@@ -413,20 +414,14 @@ public class FormCustomer extends Form {
                 WorkOrder s = tableModel.getItemAt(modelRow);
                 if (s == null) return;
 
-                int confirm = JOptionPane.showConfirmDialog(
-                        FormCustomer.this,
-                        "SRV-" + s.getId() + " numaralı servis kaydını silmek istediğinize emin misiniz?\nBu işlem geri alınamaz.",
-                        "Silme Onayı",
-                        JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE
-                );
-                if (confirm != JOptionPane.YES_OPTION) return;
-
-                workOrderService.delete(s.getId())
-                        .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                            Toast.show(FormCustomer.this, Toast.Type.SUCCESS, "Kayıt başarıyla silindi.");
-                            refreshData();
-                        }))
-                        .exceptionally(ex -> ErrorHandler.handle(FormCustomer.this, "Servis kaydı silinemedi", ex));
+                DialogHelper.confirmDelete(FormCustomer.this, "confirm.delete.workorder", () ->
+                        workOrderService.delete(s.getId())
+                                .thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                                    Toast.show(FormCustomer.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
+                                    refreshData();
+                                }))
+                                .exceptionally(ex -> ErrorHandler.handle(FormCustomer.this, "Servis kaydı silinemedi", ex)),
+                        s.getId());
             }
         }));
 

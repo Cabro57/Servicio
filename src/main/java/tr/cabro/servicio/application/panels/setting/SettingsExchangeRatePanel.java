@@ -6,9 +6,11 @@ import raven.modal.Toast;
 import tr.cabro.servicio.application.renderer.list.ExchangeRateListCellRenderer;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.dictionary.ExchangeRate;
 import tr.cabro.servicio.service.ExchangeRateManager;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
 import java.math.BigDecimal;
@@ -45,7 +47,7 @@ public class SettingsExchangeRatePanel extends JPanel {
         refreshButton.setEnabled(false);
         exchangeRateManager.refreshFromTcmb().thenAccept(rates -> SwingUtilities.invokeLater(() -> {
             refreshButton.setEnabled(true);
-            Toast.show(this, Toast.Type.SUCCESS, "Kurlar TCMB'den güncellendi.");
+            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.exchangeRate.refreshed"));
             rateModel.clear();
             rates.forEach(rateModel::addElement);
         })).exceptionally(ex -> {
@@ -56,23 +58,22 @@ public class SettingsExchangeRatePanel extends JPanel {
 
     private void onEdit(ExchangeRate rate) {
         String currentValue = rate.getRate() != null && rate.getRate().signum() > 0 ? rate.getRate().toPlainString() : "";
-        String input = (String) JOptionPane.showInputDialog(this,
-                rate.getCurrencyCode() + " için 1 birim karşılığı TL kuru:",
-                "Kur Girişi", JOptionPane.PLAIN_MESSAGE, null, null, currentValue);
-        if (input == null || input.trim().isEmpty()) return;
+        DialogHelper.prompt(this, "exchangeRate.edit.title", "exchangeRate.edit.label", currentValue, input -> {
+            if (input == null || input.trim().isEmpty()) return;
 
-        BigDecimal rateValue;
-        try {
-            rateValue = new BigDecimal(input.trim().replace(',', '.'));
-        } catch (NumberFormatException ex) {
-            Toast.show(this, Toast.Type.WARNING, "Geçerli bir sayı girin.");
-            return;
-        }
+            BigDecimal rateValue;
+            try {
+                rateValue = new BigDecimal(input.trim().replace(',', '.'));
+            } catch (NumberFormatException ex) {
+                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.exchangeRate.invalidNumber"));
+                return;
+            }
 
-        exchangeRateManager.setManualRate(rate.getCurrencyCode(), rateValue).thenAccept(v -> SwingUtilities.invokeLater(() -> {
-            Toast.show(this, Toast.Type.SUCCESS, rate.getCurrencyCode() + " kuru güncellendi.");
-            refreshList();
-        })).exceptionally(ex -> ErrorHandler.handle(this, "Kur güncellenemedi", ex));
+            exchangeRateManager.setManualRate(rate.getCurrencyCode(), rateValue).thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.exchangeRate.updated", rate.getCurrencyCode()));
+                refreshList();
+            })).exceptionally(ex -> ErrorHandler.handle(this, "Kur güncellenemedi", ex));
+        }, rate.getCurrencyCode());
     }
 
     private void initComponent() {

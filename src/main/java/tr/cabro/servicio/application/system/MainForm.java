@@ -12,6 +12,7 @@ import tr.cabro.servicio.application.component.MemoryBar;
 import tr.cabro.servicio.application.component.RefreshLine;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.updater.UpdateChecker;
 import tr.cabro.servicio.updater.UpdateManager;
 import tr.cabro.servicio.updater.UpdateManifest;
@@ -306,12 +307,9 @@ public class MainForm extends JPanel {
                 .getLayoutOption()
                 .setLocation(ToastLocation.TOP_TRAILING);
 
-        String msg = (isHotfix ? "<html>🔧 <b>Kritik Güncelleme</b>" : "🚀 <b>Güncelleme Hazır</b>")
-                + " — v" + manifest.getVersion()
-                + "<br><font color='#888888' size='-1'>"
-                + "Güncellemek için sağ alttaki "
-                + "<b>❕</b> butonuna tıklayın.</font>" +
-                "</html>";
+        String msg = isHotfix
+                ? Messages.get("toast.update.critical", manifest.getVersion())
+                : Messages.get("toast.update.ready", manifest.getVersion());
 
         Toast.show(this, isHotfix ? Toast.Type.WARNING : Toast.Type.INFO, msg, option);
     }
@@ -325,7 +323,7 @@ public class MainForm extends JPanel {
     private void applyUpdateBadge(String version) {
         if (helperButton == null) return;
         helperButton.setIcon(new Ikon("icons/circle-alert.svg", 0.7f, "Component.accentColor"));
-        helperButton.setToolTipText("Güncelleme mevcut: v" + version + " — tıklayın");
+        helperButton.setToolTipText(Messages.get("toast.update.available.tooltip", version));
 
         // Kısa yanıp sönme animasyonu (3 kez)
         Timer pulse = new Timer(450, null);

@@ -25,6 +25,9 @@ import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
@@ -140,8 +143,6 @@ public class FormCustomers extends AbstractTableForm {
 
     @Override
     protected void setupTable() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", new Locale("tr", "TR"));
-
         List<ColumnDef<Customer>> columns = Arrays.asList(
                 new ColumnDef<Customer>("ID", String.class, c -> String.format("C-%03d", c.getId())).alignment(SwingConstants.LEADING),
                 new ColumnDef<Customer>("Müşteri Adı", Customer.class, c -> c).alignment(SwingConstants.LEADING),
@@ -149,7 +150,7 @@ public class FormCustomers extends AbstractTableForm {
                 ColumnDef.<Customer>badge("Tip", CustomerType.class, Customer::getType).enumFilter("c.customer_type", CustomerType.class),
                 new ColumnDef<Customer>("Cihaz Sayısı", Integer.class, Customer::getDeviceCount).alignment(SwingConstants.CENTER),
                 ColumnDef.<Customer>currency("Toplam Harcama", Customer::getSpent),
-                new ColumnDef<Customer>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(formatter) : "-")
+                new ColumnDef<Customer>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(DateFormats.dateTime()) : "-")
                         .alignment(SwingConstants.LEADING).dateRangeFilter("c.created_at"),
                 ColumnDef.<Customer>actionColumn("İşlem")
         );
@@ -202,7 +203,7 @@ public class FormCustomers extends AbstractTableForm {
                 customerService.get(c.getId()).thenAccept(response -> {
                     response.ifPresent(customer -> SwingUtilities.invokeLater(() -> {
                         Form formInstance = new FormCustomer(customer);
-                        Toast.show(FormCustomers.this, Toast.Type.INFO, customer.getFirstName() + " detaylarına bakılıyor...");
+                        Toast.show(FormCustomers.this, Toast.Type.INFO, Messages.get("toast.customer.viewingDetails", customer.getFirstName()));
                         FormManager.showForm(formInstance);
                     }));
                 }).exceptionally(ex -> ErrorHandler.handle(FormCustomers.this, "Müşteri detayı açılamadı", ex));
@@ -215,22 +216,14 @@ public class FormCustomers extends AbstractTableForm {
 
             @Override
             public void onDelete(Customer selectedCustomer) {
-                int confirm = JOptionPane.showConfirmDialog(
-                        FormCustomers.this,
-                        selectedCustomer.getFullName() + " adlı müşteriyi silmek istediğinize emin misiniz?",
-                        "Müşteri Sil",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE
-                );
-
-                if (confirm == JOptionPane.YES_OPTION) {
-                    customerService.delete(selectedCustomer.getId()).thenAccept(v -> {
-                        SwingUtilities.invokeLater(() -> {
-                            Toast.show(FormCustomers.this, Toast.Type.SUCCESS, "Müşteri silindi.");
-                            refreshTable();
-                        });
-                    });
-                }
+                DialogHelper.confirmDelete(FormCustomers.this, "confirm.delete.customer", () ->
+                        customerService.delete(selectedCustomer.getId()).thenAccept(v -> {
+                            SwingUtilities.invokeLater(() -> {
+                                Toast.show(FormCustomers.this, Toast.Type.SUCCESS, Messages.get("toast.customer.deleted"));
+                                refreshTable();
+                            });
+                        }),
+                        selectedCustomer.getFullName());
             }
         });
 
@@ -327,7 +320,7 @@ public class FormCustomers extends AbstractTableForm {
 
                 customerService.save(updated, false).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, updated.getFullName() + " başarıyla eklendi.");
+                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.added", updated.getFullName()));
                         refreshTable();
                     });
                 }).exceptionally(ex -> {
@@ -360,7 +353,7 @@ public class FormCustomers extends AbstractTableForm {
 
                 customerService.save(updated, true).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, updated.getFullName() + " başarıyla güncellendi.");
+                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getFullName()));
                         refreshTable();
                     });
                 }).exceptionally(ex -> {

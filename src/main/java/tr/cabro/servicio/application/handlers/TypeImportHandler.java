@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.handlers;
 
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.application.panels.setting.SettingsDevicePanel;
 import tr.cabro.servicio.model.dictionary.DeviceBrand;
 import tr.cabro.servicio.model.dictionary.DeviceType;
@@ -53,7 +54,7 @@ public class TypeImportHandler extends TransferHandler {
 
                     if (alreadyInTarget) {
                         SwingUtilities.invokeLater(() -> Toast.show(panel, Toast.Type.WARNING,
-                                brand.getName() + " markası zaten '" + targetType.getName() + "' türünde kayıtlı."));
+                                Messages.get("toast.brand.alreadyInType", brand.getName(), targetType.getName())));
                         return;
                     }
 
@@ -64,7 +65,7 @@ public class TypeImportHandler extends TransferHandler {
                                 panel.loadBrands(targetType);
 
                                 Toast.show(panel, Toast.Type.INFO,
-                                        "↔️ " + brand.getName() + " markası '" + sourceType.getName() + "' türünden '" + targetType.getName() + "' türüne taşındı.");
+                                        "↔️ " + Messages.get("toast.brand.moved", brand.getName(), sourceType.getName(), targetType.getName()));
                             }));
                 });
             }
