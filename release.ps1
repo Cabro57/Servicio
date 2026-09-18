@@ -47,7 +47,10 @@ function Fail($m)  { Write-Host "HATA $m" -ForegroundColor Red; exit 1 }
 # geçici olarak Continue yapılır, stderr satırları düz metin olarak basılır; başarı
 # yalnızca $LASTEXITCODE ile değerlendirilir (çağıran kontrol eder).
 function Invoke-Native {
-    $command, $rest = $args
+    # Dizi olarak alınmalı: tek argümanda (`git push`) çoklu atama $rest'i düz string
+    # yapar ve @rest onu karakterlerine böler ("git p u s h").
+    $command = $args[0]
+    [object[]]$rest = @($args | Select-Object -Skip 1)
     $previous = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     try {
