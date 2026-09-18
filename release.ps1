@@ -1,4 +1,4 @@
-<#
+﻿<#
 =====================================================================
  Servicio — Tek komutlu derleme + yayınlama script'i
 =====================================================================
@@ -38,6 +38,27 @@ function Info($m)  { Write-Host "==> $m" -ForegroundColor Cyan }
 function Ok($m)    { Write-Host "OK  $m"  -ForegroundColor Green }
 function Warn($m)  { Write-Host "!!  $m"  -ForegroundColor Yellow }
 function Fail($m)  { Write-Host "HATA $m" -ForegroundColor Red; exit 1 }
+
+# Native komut (git/gh/mvn) çalıştırıcı. Windows PowerShell 5.1'de
+# $ErrorActionPreference = "Stop" altında native bir komutun stderr'e yazdığı HER satır
+# NativeCommandError olarak yükselip script'i durdurur — komut başarılı olsa bile. git
+# CRLF uyarısını ve `git push` ilerleme satırlarını ("To https://...") stderr'e yazdığı
+# için v2.4.0 yayınında script manifest commit adımında kesilmişti. Burada tercih
+# geçici olarak Continue yapılır, stderr satırları düz metin olarak basılır; başarı
+# yalnızca $LASTEXITCODE ile değerlendirilir (çağıran kontrol eder).
+function Invoke-Native {
+    $command, $rest = $args
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $command @rest 2>&1 | ForEach-Object {
+            if ($_ -is [System.Management.Automation.ErrorRecord]) { Write-Host $_.Exception.Message }
+            else { Write-Host $_ }
+        }
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
 
 # ── 1) Sürümü pom.xml'den oku ──────────────────────────────────────────
 [xml]$pom = Get-Content "$root\pom.xml" -Encoding UTF8
@@ -120,7 +141,7 @@ if ($jdk) {
 
 # ── 3) Derle ───────────────────────────────────────────────────────────
 Info "Derleniyor: mvn clean package ..."
-& $mvn -f "$root\pom.xml" clean package
+Invoke-Native $mvn -f "$root\pom.xml" clean package
 if ($LASTEXITCODE -ne 0) { Fail "Maven derlemesi başarısız (exit $LASTEXITCODE)." }
 
 $jar = "$root\target\servicio.jar"
@@ -161,12 +182,12 @@ if (-not $Yes) {
 
 # ── 5) Yayınla ─────────────────────────────────────────────────────────
 if ($releaseExists) {
-    & gh release upload $tag $jar --clobber
+    Invoke-Native gh release upload $tag $jar --clobber
     if ($LASTEXITCODE -ne 0) { Fail "gh release upload başarısız." }
     Ok "servicio.jar '$tag' release'inde güncellendi."
 } else {
     if (-not $Notes) { $Notes = "Servicio $version" }
-    & gh release create $tag $jar --title $tag --notes $Notes
+    Invoke-Native gh release create $tag $jar --title $tag --notes $Notes
     if ($LASTEXITCODE -ne 0) { Fail "gh release create başarısız." }
     Ok "Yeni release '$tag' oluşturuldu ve JAR yüklendi."
 }
@@ -174,14 +195,14 @@ if ($releaseExists) {
 # ── 6) Manifest'i push et ──────────────────────────────────────────────
 if ($NoPush) { Info "-NoPush verildi, manifest push atlandı."; exit 0 }
 
-& git add "$manifest"
-& git diff --cached --quiet
+Invoke-Native git add "$manifest"
+Invoke-Native git diff --cached --quiet
 if ($LASTEXITCODE -eq 0) {
     Info "update-manifest.json değişmedi, commit gerekmiyor."
 } else {
-    & git commit -m "release: update-manifest.json guncellendi ($tag)"
+    Invoke-Native git commit -m "release: update-manifest.json guncellendi ($tag)"
     if ($LASTEXITCODE -ne 0) { Fail "git commit başarısız." }
-    & git push
+    Invoke-Native git push
     if ($LASTEXITCODE -ne 0) { Fail "git push başarısız." }
     Ok "update-manifest.json master'a push edildi."
 }

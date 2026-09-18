@@ -45,7 +45,18 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         return instance;
     }
 
+    /**
+     * Oturum kullanıcısını menüye işler ve menüyü yeniden kurar. EDT dışından çağrılırsa
+     * (ör. {@code UserService.authenticate} kilit ekranında arka plan thread'inden çağırıyor)
+     * iş EDT'ye aktarılır: {@link #rebuildMenu()} önce tüm öğeleri söküp sonra yeniden
+     * ekliyor; bu EDT'deki çizim/yerleşimle yarışınca menü öğeleri ve başlık yazıları çift
+     * görünebiliyordu.
+     */
     public void setUser(User user) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> setUser(user));
+            return;
+        }
         this.user = user;
 
         // set user to menu validation
@@ -90,6 +101,16 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         header.setSimpleHeaderData(data);
 
         rebuildMenu();
+    }
+
+    /** Menü bileşen ağacını değiştirdiği için yalnızca EDT'de çalışır (bkz. {@link #setUser}). */
+    @Override
+    public void rebuildMenu() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(this::rebuildMenu);
+            return;
+        }
+        super.rebuildMenu();
     }
 
     private final int SHADOW_SIZE = 12;
