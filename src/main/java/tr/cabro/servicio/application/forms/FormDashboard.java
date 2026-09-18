@@ -15,7 +15,9 @@ import tr.cabro.servicio.application.component.chart.utils.ToolBarTimeSeriesChar
 import tr.cabro.servicio.application.component.dashboard.CardBox;
 import tr.cabro.servicio.application.panels.ActiveServiceTable;
 import tr.cabro.servicio.application.panels.PendingPaymentsTable;
+import tr.cabro.servicio.application.system.AllForms;
 import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.model.dto.ChartDataDto;
@@ -23,6 +25,7 @@ import tr.cabro.servicio.model.dto.SummaryCardDto;
 import tr.cabro.servicio.model.enums.TimeFilter;
 import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.*;
@@ -44,6 +47,7 @@ public class FormDashboard extends Form {
     private PieChart brandPieChart;
     private ActiveServiceTable activeServiceTable;
     private PendingPaymentsTable pendingPaymentsTable;
+    private JLabel lblTodaySalesCount, lblTodayReturnCount, lblTodayNetCash;
 
     // Varsayılan zaman filtresi (1 Ay)
     private TimeFilter selectedTimeFilter = TimeFilter.ALL_TIME;
@@ -57,6 +61,7 @@ public class FormDashboard extends Form {
         createTitle();
         createPanelLayout();
         createCard();
+        createDailyCashCard();
         createChart();
         createPieCharts();
         createOtherTable();
@@ -160,6 +165,9 @@ public class FormDashboard extends Form {
         // ALT TABLOLAR (kendi içlerinde DB-tabanlı sayfalama ile çekiyor, sayfa 1'e dönülür)
         activeServiceTable.loadPage(1);
         pendingPaymentsTable.loadPage(1);
+
+        // "Bugünkü Kasa" seçili zaman filtresinden bağımsız, her zaman gerçek bugünü gösterir.
+        loadDailyCashCard();
     }
 
     /**
@@ -259,6 +267,54 @@ public class FormDashboard extends Form {
         cardBox.addCardItem(createIcon("icons/turkish-lira.svg", DefaultChartTheme.getColor(3)), "Toplam Net Kâr");
         panel.add(cardBox);
         panelLayout.add(panel);
+    }
+
+    /**
+     * Seçili zaman filtresinden BAĞIMSIZ, her zaman BUGÜNÜ gösteren küçük kasa özeti —
+     * {@code payments} tablosundan (bkz. SaleService.getDailyCashReport / FormCashReport).
+     */
+    private void createDailyCashCard() {
+        // Kart arka planı sarmalayıcıda DEĞİL, iç panelde durur — diğer dashboard
+        // bölümleriyle aynı yapı. DashboardLayout her sarmalayıcıya tam genişlik verdiği
+        // için, stili sarmalayıcıya koymak kartı kenarlara dayıyor; kardeş kartlar ise
+        // MigLayout'un varsayılan panel insets'i kadar (Windows'ta 7 px) içeride duruyor
+        // ve bu kart tek başına iki yana taşmış görünüyordu.
+        JPanel panel = new JPanel(new MigLayout("fillx", "[fill]"));
+
+        JPanel card = new JPanel(new MigLayout("fillx, insets 15", "[][grow][][grow][][grow][pref!]", "[]"));
+        card.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+
+        JLabel title = new JLabel("Bugünkü Kasa");
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +1");
+        card.add(title);
+
+        card.add(new JLabel("Satış:"), "gapleft 20");
+        lblTodaySalesCount = new JLabel("0");
+        card.add(lblTodaySalesCount);
+
+        card.add(new JLabel("İade:"), "gapleft 10");
+        lblTodayReturnCount = new JLabel("0");
+        card.add(lblTodayReturnCount);
+
+        card.add(new JLabel("Net Kasa:"), "gapleft 10");
+        lblTodayNetCash = new JLabel("0,00 ₺");
+        lblTodayNetCash.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        card.add(lblTodayNetCash);
+
+        JButton btnDetail = new JButton("Kasa Raporu");
+        btnDetail.addActionListener(e -> FormManager.showForm(AllForms.getForm(FormCashReport.class)));
+        card.add(btnDetail, "align right");
+
+        panel.add(card);
+        panelLayout.add(panel);
+    }
+
+    private void loadDailyCashCard() {
+        ServiceManager.getSaleService().getDailyCashReport(LocalDate.now()).thenAccept(report -> SwingUtilities.invokeLater(() -> {
+            lblTodaySalesCount.setText(String.valueOf(report.getSaleCount()));
+            lblTodayReturnCount.setText(String.valueOf(report.getReturnCount()));
+            lblTodayNetCash.setText(Format.formatPrice(report.getTotal()));
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Günlük kasa özeti yüklenemedi", ex));
     }
 
     private void createChart() {

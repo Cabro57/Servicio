@@ -18,5 +18,11 @@ public final class SettingKeys {
     /** Hareketsizlik sonrası ekranın kaç dakikada kilitleneceği. */
     public static final String AUTO_LOCK_MINUTES = "security.auto_lock_minutes";
 
+    /** Ana menüde "Parçalar" öğesi görünsün mü (sadece perakende satış yapan dükkanlar kapatabilir). */
+    public static final String MENU_SHOW_PARTS = "menu.show_parts";
+
+    /** Ana menüde "Ürünler" öğesi görünsün mü (sadece servis yapan dükkanlar kapatabilir). */
+    public static final String MENU_SHOW_PRODUCTS = "menu.show_products";
+
     private SettingKeys() {}
 }

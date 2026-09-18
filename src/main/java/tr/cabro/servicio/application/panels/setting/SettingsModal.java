@@ -47,6 +47,7 @@ public class SettingsModal extends JPanel {
 
         page("İşletme", "İşletme Bilgileri", SettingsBusinessPanel::new);
         page("İşletme", "WhatsApp Şablonları", SettingsTemplatesPanel::new);
+        page("İşletme", "Ürün Görünürlüğü", SettingsPosPanel::new);
 
         page("Sözlükler", "Cihazlar", SettingsDevicePanel::new);
         page("Sözlükler", "Tamirler", SettingsRepairPanel::new);

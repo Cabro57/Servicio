@@ -16,7 +16,9 @@ import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
+import tr.cabro.servicio.application.themes.BadgePalette;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderItem;
@@ -301,12 +303,15 @@ public class WorkOrderItemsPanel extends JPanel {
             if (value instanceof ItemType) {
                 if ((ItemType) value == ItemType.LABOR) {
                     label.setText("İşçilik");
+                    // Kalem türü rozetleri de tema token'ından; sabit hex açık temada soluk kalıyordu.
+                    String laborHex = BadgePalette.foregroundHex(BadgeColor.PURPLE);
                     label.putClientProperty(FlatClientProperties.STYLE,
-                            "border: 1,8,1,8,#9b59b6; foreground: #9b59b6; arc: 15; font: -1");
+                            "border: 1,8,1,8," + laborHex + "; foreground: " + laborHex + "; arc: 15; font: -1");
                 } else {
                     label.setText("Parça");
+                    String partHex = BadgePalette.foregroundHex(BadgeColor.BLUE);
                     label.putClientProperty(FlatClientProperties.STYLE,
-                            "border: 1,8,1,8,#3498db; foreground: #3498db; arc: 15; font: -1");
+                            "border: 1,8,1,8," + partHex + "; foreground: " + partHex + "; arc: 15; font: -1");
                 }
             }
             label.setHorizontalAlignment(SwingConstants.CENTER);

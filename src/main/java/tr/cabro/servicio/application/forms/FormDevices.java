@@ -123,7 +123,13 @@ public class FormDevices extends AbstractTableForm {
     }
 
     @Override
-    protected void refreshTable() {
+    protected String getEmptyStateTitle() { return "Henüz cihaz yok"; }
+
+    @Override
+    protected String getEmptyStateDescription() { return "Servise gelen cihazlar kaydedildikçe burada toplanır."; }
+
+    @Override
+    protected void loadTableData() {
         Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
 
         deviceService.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize).thenAccept(result ->

@@ -163,7 +163,13 @@ public class FormCustomers extends AbstractTableForm {
     }
 
     @Override
-    protected void refreshTable() {
+    protected String getEmptyStateTitle() { return "Henüz müşteri yok"; }
+
+    @Override
+    protected String getEmptyStateDescription() { return "Servis kaydı açabilmek için önce müşteri eklemelisiniz."; }
+
+    @Override
+    protected void loadTableData() {
         Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
 
         customerService.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize).thenAccept(result -> {

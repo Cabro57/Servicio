@@ -3,32 +3,23 @@ package tr.cabro.servicio.application.panels;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.extras.AvatarIcon;
-import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.component.OtpField;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.ErrorHandler;
-import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.UserService;
 import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
-import java.awt.*;
 import java.net.URL;
 
 public class PinPanel extends Form {
 
     private static final int MAX_PIN_LENGTH = 6;
 
-    private JPasswordField txtPin;
-    private JButton btnLogin;
+    private OtpField otpPin;
 
     public PinPanel() {
         setLayout(new MigLayout("al center center"));
@@ -41,7 +32,6 @@ public class PinPanel extends Form {
         add(panelLogin);
 
         setupListeners();
-        setupDocumentFilter();
     }
 
     private JPanel createLoginPanel() {
@@ -60,16 +50,13 @@ public class PinPanel extends Form {
 
         JLabel lblSub = new JLabel("Devam etmek için PIN kodunuzu girin");
 
-        txtPin = new JPasswordField(10);
-        btnLogin = new JButton(new Ikon("icons/chevron-right.svg"));
-
-        applyInputStyles();
+        otpPin = new OtpField(MAX_PIN_LENGTH);
 
         // Panele ekle
         loginContent.add(lblIcon);
         loginContent.add(lblTitle);
         loginContent.add(lblSub, "grow 0");
-        loginContent.add(txtPin, "gapy 10");
+        loginContent.add(otpPin, "gapy 10, al center");
 
         panelLogin.add(loginContent);
         return panelLogin;
@@ -83,80 +70,30 @@ public class PinPanel extends Form {
                 "[dark]background:tint($Panel.background,2%);");
     }
 
-    private void applyInputStyles() {
-        txtPin.setHorizontalAlignment(SwingConstants.CENTER);
-        txtPin.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, btnLogin);
-        txtPin.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "• • • •");
-        txtPin.putClientProperty(FlatClientProperties.STYLE, "" +
-                "margin:4,10,4,10;" +
-                "arc:12;" +
-                "font:bold +3;");
-
-        btnLogin.setFont(new Font("SansSerif", Font.BOLD, 14));
-    }
-
-    // --- EVENT LİSTENER'LAR VE FİLTRELER ---
+    // --- EVENT LİSTENER'LAR ---
 
     private void setupListeners() {
-        // Hem butona basıldığında hem de Enter'a basıldığında aynı mantık çalışır (forceError = true)
-        btnLogin.addActionListener(e -> verifyPin(true));
-        txtPin.addActionListener(e -> verifyPin(true));
-
-        // Otomatik 4 ve 6 hane kontrolü
-        txtPin.getDocument().addDocumentListener(new DocumentListener() {
-            private void checkLength() {
-                SwingUtilities.invokeLater(() -> {
-                    int len = txtPin.getPassword().length;
-                    if (len == 4 || len == MAX_PIN_LENGTH) {
-                        verifyPin(false);
-                    }
-                });
-            }
-
-            @Override
-            public void insertUpdate(DocumentEvent e) { checkLength(); }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {}
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {}
-        });
+        // Son hane girilince otomatik doğrula (hata gösterme yok, kullanıcı hâlâ yazıyor olabilir)
+        otpPin.setOnComplete(() -> verifyPin(false));
+        // Enter'a basılırsa eksik hane varsa uyar
+        otpPin.setOnSubmit(() -> verifyPin(true));
     }
 
-    private void setupDocumentFilter() {
-        ((AbstractDocument) txtPin.getDocument()).setDocumentFilter(new DocumentFilter() {
-            @Override
-            public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
-                if (string == null) return;
-
-                if (string.matches("\\d+") && (fb.getDocument().getLength() + string.length() <= MAX_PIN_LENGTH)) {
-                    super.insertString(fb, offset, string, attr);
-                }
-            }
-
-            @Override
-            public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
-                // Eğer text null veya boş ise, bu bir silme/temizleme (setText(null) veya setText("")) işlemidir.
-                // Koşulsuz olarak işleme izin ver.
-                if (text == null || text.isEmpty()) {
-                    super.replace(fb, offset, length, text, attrs);
-                    return;
-                }
-
-                // Sadece yeni eklenen metinler için rakam ve uzunluk kısıtlamasını uygula.
-                if (text.matches("\\d+") && (fb.getDocument().getLength() - length + text.length() <= MAX_PIN_LENGTH)) {
-                    super.replace(fb, offset, length, text, attrs);
-                }
-            }
-        });
+    /**
+     * Kilit ekranı her gösterildiğinde (panel yeniden eklendiğinde)
+     * alanı temizleyip ilk haneye odaklanır.
+     */
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        SwingUtilities.invokeLater(() -> otpPin.clear());
     }
 
     /**
      * PIN doğrulama işlemini yapan metod.
      */
     private void verifyPin(boolean forceError) {
-        String enteredPin = new String(txtPin.getPassword());
+        String enteredPin = otpPin.getValue();
 
         if (enteredPin.length() == MAX_PIN_LENGTH) {
             UserService userService = ServiceManager.getUserService();
@@ -165,20 +102,20 @@ public class PinPanel extends Form {
             userService.authenticate(enteredPin).thenAccept(isValid -> {
                 SwingUtilities.invokeLater(() -> {
                     if (isValid) {
-                        txtPin.setText("");
+                        otpPin.clear();
                         FormManager.unlock();
                     } else {
-                        txtPin.setText("");
+                        otpPin.clear();
                         DialogHelper.error(this, "pin.invalid");
                     }
                 });
             }).exceptionally(ex -> {
-                SwingUtilities.invokeLater(() -> txtPin.setText(""));
+                SwingUtilities.invokeLater(() -> otpPin.clear());
                 return ErrorHandler.handle(this, "PIN doğrulanamadı", ex);
             });
         } else if (forceError) {
             DialogHelper.error(this, "pin.length.required", MAX_PIN_LENGTH);
-            txtPin.setText("");
+            otpPin.clear();
         }
     }
 }

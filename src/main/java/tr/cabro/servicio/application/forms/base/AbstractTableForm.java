@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.dashboard.CardBox;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
+import tr.cabro.servicio.application.component.table.TableStatePanel;
 import tr.cabro.servicio.application.component.table.TableStyler;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -15,6 +16,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -28,6 +30,13 @@ public abstract class AbstractTableForm extends Form {
     protected CardBox cardBox;
     protected JComboBox<Object> filterCombo;
     protected TableRowSorter<? extends TableModel> sorter;
+
+    private static final String CARD_DATA = "data";
+    private static final String CARD_STATE = "state";
+
+    private JPanel tableArea;
+    private TableStatePanel statePanel;
+    private TableHeaderFilterSupport<?> headerFilterSupport;
 
     public AbstractTableForm() {
         // init formInit() üzerinden çağrılır.
@@ -115,7 +124,7 @@ public abstract class AbstractTableForm extends Form {
             public void changedUpdate(DocumentEvent e) { applyFilter(); }
         });
 
-        JPanel toolbar = new JPanel(new MigLayout("insets 0, gapx 10", "[][grow][][]"));
+        JPanel toolbar = new JPanel(new MigLayout("insets 0, gapx 10", "[][grow][][][]"));
         toolbar.setOpaque(false);
         toolbar.add(tableTitle);
         toolbar.add(searchField, "cell 2 0");
@@ -128,6 +137,11 @@ public abstract class AbstractTableForm extends Form {
             }
         }
 
+        JComponent extraToolbarComponent = createExtraToolbarComponent();
+        if (extraToolbarComponent != null) {
+            toolbar.add(extraToolbarComponent, "cell 4 0");
+        }
+
         table = new JTable();
 
         // Modern Tablo Stili
@@ -136,8 +150,16 @@ public abstract class AbstractTableForm extends Form {
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
 
+        // Tablo ile durum paneli aynı yeri paylaşır: veri varken tablo, yokken
+        // "yükleniyor / eşleşme yok / hiç kayıt yok" paneli görünür.
+        statePanel = new TableStatePanel();
+        tableArea = new JPanel(new CardLayout());
+        tableArea.setOpaque(false);
+        tableArea.add(scrollPane, CARD_DATA);
+        tableArea.add(statePanel, CARD_STATE);
+
         tableContainer.add(toolbar, "wrap, growx, pushx");
-        tableContainer.add(scrollPane, "grow, push, wrap");
+        tableContainer.add(tableArea, "grow, push, wrap");
 
         // Alt sınıflar DB-tabanlı sayfalama bileşeni (örn. JPagination) döndürebilir.
         JComponent paginationComponent = createPaginationComponent();
@@ -157,6 +179,74 @@ public abstract class AbstractTableForm extends Form {
         table.setModel(model);
         initTableFilter(model);
         table.setRowSorter(sorter);
+
+        // Görünür satır sayısı hem model değişiminden hem de istemci tarafı filtreden
+        // etkilenir; ikisini de dinleyip duruma karar veriyoruz.
+        model.addTableModelListener(e -> updateTableState());
+        if (sorter != null) sorter.addRowSorterListener(e -> updateTableState());
+        updateTableState();
+    }
+
+    /**
+     * Veri yüklemenin girişi. {@code final}: her çağrı önce "yükleniyor" durumunu gösterir,
+     * asıl yükleme {@link #loadTableData()} içinde yapılır. Böylece alt sınıfların onlarca
+     * {@code refreshTable()} çağrısının tamamı tek yerden durum bildirimi kazanır.
+     */
+    protected final void refreshTable() {
+        if (statePanel != null) {
+            statePanel.showLoading();
+            showCard(CARD_STATE);
+        }
+        loadTableData();
+    }
+
+    /**
+     * Görünür satır yoksa nedenine uygun paneli, varsa tabloyu gösterir.
+     * Filtreli boşluk ile gerçekten boş liste farklı sorulardır ve farklı cevap ister.
+     */
+    private void updateTableState() {
+        if (tableArea == null || statePanel == null) return;
+
+        if (table.getRowCount() > 0) {
+            showCard(CARD_DATA);
+            return;
+        }
+
+        if (isFilterActive()) {
+            statePanel.showNoResults(searchField.getText().trim(), this::clearFilters);
+        } else {
+            statePanel.showEmpty(getEmptyStateTitle(), getEmptyStateDescription(),
+                    getNewButtonText(), this::onNew);
+        }
+        showCard(CARD_STATE);
+    }
+
+    private void showCard(String card) {
+        ((CardLayout) tableArea.getLayout()).show(tableArea, card);
+    }
+
+    /** Arama kutusu veya filtre combo'su bir ölçüt taşıyor mu? */
+    protected boolean isFilterActive() {
+        boolean hasSearch = searchField != null && !searchField.getText().trim().isEmpty();
+        boolean hasCombo = filterCombo != null && filterCombo.getSelectedIndex() > 0;
+        boolean hasHeaderFilter = headerFilterSupport != null && headerFilterSupport.hasActiveFilters();
+        return hasSearch || hasCombo || hasHeaderFilter;
+    }
+
+    /** "Filtreyi temizle" eylemi — arama metnini ve varsa combo seçimini sıfırlar. */
+    protected void clearFilters() {
+        if (searchField != null) searchField.setText("");
+        if (filterCombo != null && filterCombo.getItemCount() > 0) filterCombo.setSelectedIndex(0);
+        if (headerFilterSupport != null) headerFilterSupport.clearAll();
+        applyFilter();
+    }
+
+    protected String getEmptyStateTitle() {
+        return "Henüz kayıt yok";
+    }
+
+    protected String getEmptyStateDescription() {
+        return "İlk kaydı oluşturduğunuzda bu liste dolmaya başlar.";
     }
 
     /**
@@ -171,6 +261,9 @@ public abstract class AbstractTableForm extends Form {
     protected <T> TableHeaderFilterSupport<T> installHeaderFilters(List<ColumnDef<T>> columns) {
         TableHeaderFilterSupport<T> support = new TableHeaderFilterSupport<>(table, columns);
         support.setOnFilterChanged(this::refreshTable);
+        // Boş sonuç panelinin doğru soruyu sorabilmesi ve "Filtreyi temizle"nin başlık
+        // filtrelerini de kaldırabilmesi için referans burada tutulur.
+        this.headerFilterSupport = support;
         return support;
     }
 
@@ -232,6 +325,11 @@ public abstract class AbstractTableForm extends Form {
         return null; // Eğer combobox tabanlı özel filtre lazımsa ezilir
     }
 
+    /** Alt sınıflar toolbar'a filtreCombo'nun yanına ek bir bileşen (ör. toplu işlem butonu) koymak için ezer. */
+    protected JComponent createExtraToolbarComponent() {
+        return null;
+    }
+
     // --- İstatistik (CardBox) Ayarları ---
 
     protected void initCards() {
@@ -261,6 +359,12 @@ public abstract class AbstractTableForm extends Form {
     // --- Mevcut Abstract Metodlar ---
 
     protected abstract void setupTable();
-    protected abstract void refreshTable();
+
+    /**
+     * Asıl veri yükleme. Alt sınıflar bunu ezer; çağrı her zaman {@link #refreshTable()}
+     * üzerinden gelir, böylece "yükleniyor" durumu tek yerde yönetilir.
+     */
+    protected abstract void loadTableData();
+
     protected abstract void onNew();
 }

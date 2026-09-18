@@ -2,8 +2,6 @@
 
     import com.formdev.flatlaf.FlatClientProperties;
     import net.miginfocom.swing.MigLayout;
-    import raven.modal.component.ModalBorderAction;
-    import raven.modal.component.SimpleModalBorder;
     import tr.cabro.servicio.Servicio;
     import tr.cabro.servicio.application.component.CustomerSelectBox;
     import tr.cabro.servicio.application.component.DeviceAccessField;
@@ -18,8 +16,6 @@
     import tr.cabro.servicio.service.ServiceManager;
 
     import javax.swing.*;
-    import java.awt.event.KeyAdapter;
-    import java.awt.event.KeyEvent;
     import java.time.LocalDateTime;
     import java.util.Objects;
 
@@ -126,16 +122,8 @@
             reportedFaultArea = new JTextArea();
             reportedFaultArea.setWrapStyleWord(true);
             reportedFaultArea.setLineWrap(true);
-            reportedFaultArea.addKeyListener(new KeyAdapter() {
-                @Override
-                public void keyTyped(KeyEvent e) {
-                    // Ctrl+Enter → formu kaydet
-                    if (e.isControlDown() && e.getKeyChar() == 10) {
-                        ModalBorderAction action = ModalBorderAction.getModalBorderAction(QuickIntakePanel.this);
-                        if (action != null) action.doAction(SimpleModalBorder.YES_OPTION);
-                    }
-                }
-            });
+            // Ctrl+Enter ile kaydetme AbstractEditPanel'de kurulur — modalin her alanında
+            // çalışır ve modalin birincil seçeneğini (YES/OK) çağırandan öğrenir.
             add(new JLabel("Şikayet / Arıza:"), "gapy 5 0");
             add(new JScrollPane(reportedFaultArea), "height 150,grow,pushy");
         }

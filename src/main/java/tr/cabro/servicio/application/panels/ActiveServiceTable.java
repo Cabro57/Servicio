@@ -19,6 +19,7 @@ import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.component.table.AppPagination;
 import raven.swingpack.JPagination;
 
 import javax.swing.*;
@@ -75,7 +76,6 @@ public class ActiveServiceTable extends JPanel {
         // MigLayout satırlarına pagination için "15[pref!]" alanı eklendi
         setLayout(new MigLayout("wrap, fill, insets 15, gapy 0", "[fill]", "[pref!]15[pref!][pref!]15[pref!]"));
         putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-        putClientProperty(FlatClientProperties.STYLE, "background: null");
 
         // --- 1. BAŞLIK BÖLÜMÜ ---
         JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "center"));
@@ -162,8 +162,7 @@ public class ActiveServiceTable extends JPanel {
         });
 
         // --- 3. SAYFALAMA (PAGINATION) BİLEŞENİ ---
-        pagination = new JPagination(10, 1, 1);
-        pagination.setBackground(null);
+        pagination = new AppPagination(10, 1, 1);
         pagination.addChangeListener(e -> loadPage(pagination.getSelectedPage()));
 
         // Bileşenleri ana panele ekle

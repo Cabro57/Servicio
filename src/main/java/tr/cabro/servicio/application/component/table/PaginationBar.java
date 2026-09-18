@@ -24,8 +24,8 @@ public class PaginationBar extends JPanel {
         setLayout(new MigLayout("insets 0, gapx 10", "[][]", "[]"));
         setOpaque(false);
 
-        pagination = new JPagination(visibleButtons, 1, 1);
-        pagination.setBackground(null);
+        // AppPagination: saydam zemin + model büyüyünce yeniden yerleşim (bkz. o sınıfın javadoc'u).
+        pagination = new AppPagination(visibleButtons, 1, 1);
         pagination.addChangeListener(e -> onPageChanged.accept(pagination.getSelectedPage()));
 
         pageSizeCombo = new JComboBox<>(pageSizeOptions);

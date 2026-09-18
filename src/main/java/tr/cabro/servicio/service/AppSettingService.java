@@ -82,6 +82,22 @@ public class AppSettingService {
         setInt(SettingKeys.AUTO_LOCK_MINUTES, minutes);
     }
 
+    public boolean isMenuShowParts() {
+        return getBoolean(SettingKeys.MENU_SHOW_PARTS, true);
+    }
+
+    public void setMenuShowParts(boolean value) {
+        setBoolean(SettingKeys.MENU_SHOW_PARTS, value);
+    }
+
+    public boolean isMenuShowProducts() {
+        return getBoolean(SettingKeys.MENU_SHOW_PRODUCTS, true);
+    }
+
+    public void setMenuShowProducts(boolean value) {
+        setBoolean(SettingKeys.MENU_SHOW_PRODUCTS, value);
+    }
+
     // ── Genel erişim ──────────────────────────────────────────────────────────
 
     public String getString(String key, String defaultValue) {
@@ -106,6 +122,16 @@ public class AppSettingService {
     }
 
     public void setInt(String key, int value) {
+        setString(key, String.valueOf(value));
+    }
+
+    public boolean getBoolean(String key, boolean defaultValue) {
+        String value = cache.get(key);
+        if (value == null || value.isBlank()) return defaultValue;
+        return Boolean.parseBoolean(value.trim());
+    }
+
+    public void setBoolean(String key, boolean value) {
         setString(key, String.valueOf(value));
     }
 }

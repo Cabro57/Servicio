@@ -4,6 +4,8 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.jdbi.v3.core.HandleCallback;
+import org.jdbi.v3.core.HandleConsumer;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlite3.SQLitePlugin;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -110,6 +112,30 @@ public class DatabaseManager {
     public static Jdbi getJdbi() {
         if (jdbi == null) initialize();
         return jdbi;
+    }
+
+    /**
+     * Birden fazla repository'nin tek atomik işlemde yazması gerektiğinde kullanılır
+     * (örn. POS satışı: sales + sale_items + stock_movements + payments).
+     * <p>
+     * {@code jdbi.onDemand(...)} ile alınan repository'ler HER ÇAĞRIDA kendi handle'ını
+     * açar ve ortak transaction'a GİRMEZ. Bu yüzden transaction içinde kullanılacak
+     * repository'ler {@code handle.attach(XRepository.class)} ile alınmalıdır:
+     * <pre>{@code
+     * DatabaseManager.inTransaction(handle -> {
+     *     SaleRepository saleRepo = handle.attach(SaleRepository.class);
+     *     ...
+     *     return sale;
+     * });
+     * }</pre>
+     */
+    public static <R, X extends Exception> R inTransaction(HandleCallback<R, X> callback) throws X {
+        return getJdbi().inTransaction(callback);
+    }
+
+    /** {@link #inTransaction} ile aynı, dönüş değeri olmayan işlemler için. */
+    public static <X extends Exception> void useTransaction(HandleConsumer<X> consumer) throws X {
+        getJdbi().useTransaction(consumer);
     }
 
     // --- YEDEKLEME VE GERİ YÜKLEME İŞLEMLERİ ---

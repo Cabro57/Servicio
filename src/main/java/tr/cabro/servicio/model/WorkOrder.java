@@ -56,7 +56,7 @@ public class WorkOrder {
     private Device device;
 
     private List<WorkOrderItem> items = new ArrayList<>();
-    private List<WorkOrderPayment> payments = new ArrayList<>();
+    private List<Payment> payments = new ArrayList<>();
     private List<WorkOrderNote> technicianNotes = new ArrayList<>();
 
     // =======================================================================
@@ -73,7 +73,7 @@ public class WorkOrder {
     public BigDecimal getTotalPaid() {
         if (payments == null || payments.isEmpty()) return BigDecimal.ZERO;
         return payments.stream()
-                .map(WorkOrderPayment::getAmount)
+                .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 

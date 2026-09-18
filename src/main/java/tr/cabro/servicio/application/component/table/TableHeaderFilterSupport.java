@@ -60,6 +60,19 @@ public class TableHeaderFilterSupport<T> {
         return result;
     }
 
+    /** Başlıktan uygulanmış bir filtre var mı? "Sonuç yok" ile "hiç kayıt yok" ayrımı için. */
+    public boolean hasActiveFilters() {
+        return activeFilters.values().stream().anyMatch(ColumnFilterValue::isActive);
+    }
+
+    /** Tüm başlık filtrelerini kaldırır ve tabloyu yeniler. */
+    public void clearAll() {
+        if (activeFilters.isEmpty()) return;
+        activeFilters.clear();
+        table.getTableHeader().repaint();
+        if (onFilterChanged != null) onFilterChanged.run();
+    }
+
     // -------------------------------------------------------------------------
     // Kurulum
     // -------------------------------------------------------------------------

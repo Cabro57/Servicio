@@ -4,7 +4,9 @@ import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.utils.ErrorHandler;
+import tr.cabro.servicio.application.themes.BadgePalette;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderNote;
 import tr.cabro.servicio.service.ServiceManager;
@@ -66,7 +68,7 @@ public class WorkOrderNotesPanel extends JPanel {
 
         JButton btnAddNote = new JButton("+ Not Ekle");
         btnAddNote.putClientProperty(FlatClientProperties.STYLE,
-                "background: #1e3a8a; foreground: #3498db; arc: 10; font: bold; borderWidth: 0");
+                BadgePalette.style(BadgeColor.BLUE, "arc: 10; borderWidth: 0"));
         btnAddNote.addActionListener(e -> {
             String text = txtNewNote.getText().trim();
             if (text.isEmpty()) {

@@ -18,11 +18,7 @@ public class ServiceStatusTableCellRenderer implements TableCellRenderer {
         JPanel panel = new JPanel(new MigLayout("insets 0, fill, alignx center, aligny center"));
         panel.setOpaque(true);
 
-        if (isSelected) {
-            panel.setBackground(table.getSelectionBackground());
-        } else {
-            panel.setBackground(table.getBackground());
-        }
+        panel.setBackground(TableRendererSupport.rowBackground(table, row, isSelected));
 
         if (value instanceof ServiceStatus) {
             ServiceStatus status = (ServiceStatus) value;

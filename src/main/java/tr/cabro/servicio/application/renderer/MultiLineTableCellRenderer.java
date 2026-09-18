@@ -65,6 +65,9 @@ public class MultiLineTableCellRenderer<T> extends JPanel implements TableCellRe
 
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+        // Arka plan her durumda (değer null olsa da) ayarlanmalı, yoksa önceki satırın rengi kalır
+        setBackground(TableRendererSupport.rowBackground(table, row, isSelected));
+
         if (value != null) {
             try {
                 @SuppressWarnings("unchecked")
@@ -82,12 +85,10 @@ public class MultiLineTableCellRenderer<T> extends JPanel implements TableCellRe
 
                 // Renk atamaları ve Seçili olma durumu
                 if (isSelected) {
-                    setBackground(table.getSelectionBackground());
                     // Seçiliyken eğer özel renk varsa onu kullan, yoksa tablonun varsayılan seçili rengini (genelde beyaz) kullan
                     topLabel.setForeground(topCustomColor != null ? topCustomColor : table.getSelectionForeground());
                     bottomLabel.setForeground(bottomCustomColor != null ? bottomCustomColor : table.getSelectionForeground());
                 } else {
-                    setBackground(table.getBackground());
                     topLabel.setForeground(topCustomColor != null ? topCustomColor : table.getForeground());
                     // Özel renk yoksa varsayılan pasif griyi kullan
                     bottomLabel.setForeground(bottomCustomColor != null ? bottomCustomColor : UIManager.getColor("Label.disabledForeground"));

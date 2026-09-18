@@ -170,16 +170,25 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
         MenuItem[] items = new MenuItem[]{
                 new Item("Ana Sayfa", "layout-dashboard.svg", FormDashboard.class),
+                new Item("Satış (POS)", "credit-card.svg", FormPos.class),
+                new Item("Satışlar", "file-text.svg", FormSales.class),
                 new Item("Servis Kayıtları", "wrench.svg", FormWorkOrders.class),
                 new Item("Müşteriler", "user-search.svg", FormCustomers.class),
+                new Item("Cari Hesaplar", "hand-coins.svg", FormAccounts.class),
+                new Item("Kasa Raporu", "banknote.svg", FormCashReport.class),
                 new Item("Cihazlar", "tablet-smartphone.svg", FormDevices.class),
                 new Item("Parçalar", "circuit-board.svg", FormParts.class),
+                new Item("Ürünler", "shopping-bag.svg", FormProducts.class),
                 new Item("Tedarikçiler", "store.svg", FormSuppliers.class),
                 new Item("2.el Alım-Satım", "tag.svg", FormSecondHandStock.class),
                 // Ayarlar ve Hakkında bir Form açmaz, modal olarak gösterilir (aşağıdaki menü olayına bkz.)
                 new Item("Ayarlar", "settings.svg"),
                 new Item("Hakkında", "info.svg")
         };
+
+        // MyMenuValidation.getInstance() ÜZERİNDEN DEĞİL doğrudan bu dizi üzerinden çalışır —
+        // bkz. MyMenuValidation'daki sonsuz özyineleme notu (constructor içinde çağrılıyor, henüz singleton yok).
+        MyMenuValidation.setMenuItems(items);
 
         simpleMenuOption.setMenuStyle(new MenuStyle() {
 
@@ -203,20 +212,21 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         simpleMenuOption.setMenuValidation(new MyMenuValidation());
 
         simpleMenuOption.addMenuEvent((action, index) -> {
-//                System.out.println("Drawer menu selected " + Arrays.toString(index));
-            Class<?> itemClass = action.getItem().getItemClass();
-            int i = index[0];
-            if (i == 7) {
+            // Ayarlar/Hakkında bir Form açmaz — index pozisyonuna göre değil isme göre yakalanır,
+            // aksi halde menüye yeni öğe eklendiğinde (ör. Ürünler) pozisyon kayar ve yanlış öğe tetiklenir.
+            String itemName = action.getItem().getName();
+            if ("Ayarlar".equals(itemName)) {
                 action.consume();
                 FormManager.showSettings();
                 return;
             }
-            if (i == 8) {
+            if ("Hakkında".equals(itemName)) {
                 action.consume();
                 FormManager.showAbout();
                 return;
             }
 
+            Class<?> itemClass = action.getItem().getItemClass();
             if (itemClass == null || !Form.class.isAssignableFrom(itemClass)) {
                 action.consume();
                 return;

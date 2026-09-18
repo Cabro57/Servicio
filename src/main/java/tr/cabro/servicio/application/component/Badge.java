@@ -2,8 +2,8 @@ package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
+import tr.cabro.servicio.application.themes.BadgePalette;
 import tr.cabro.servicio.model.contract.Visualizable;
-import tr.cabro.servicio.model.enums.BadgeColor;
 
 import javax.swing.*;
 import java.awt.*;
@@ -62,36 +62,44 @@ public class Badge extends JLabel {
         updateStyle();
     }
 
-    // --- MOTOR (Görünümü Uygulayan Metot) ---
+    /**
+     * Tema değişiminde Swing tüm bileşenlerde {@code updateUI()} çağırır; rozet renkleri
+     * temaya bağlı olduğu için stili burada yeniden uygularız, aksi halde rozet eski
+     * temanın renkleriyle kalır.
+     */
+    @Override
+    public void updateUI() {
+        super.updateUI();
+        updateStyle();
+    }
+
+    /**
+     * Görünümü uygular.
+     * <p>
+     * {@code bg}/{@code fg} burada {@code null} olabilir ve bu normaldir: {@link #updateUI()}
+     * Swing tarafından {@code JLabel} yapıcısının içinden, yani bu sınıfın alanları
+     * ({@code visualizable}, {@code customBgColor}...) atanmadan ÖNCE çağrılır. O ilk
+     * çağrıda renk bilgisi henüz yoktur; yapıcı alanları doldurduktan sonra
+     * {@code updateStyle()} yeniden çalışır. {@code setForeground(null)}/
+     * {@code setBackground(null)} geçerlidir (renk ebeveynden/LaF'tan gelir), bu yüzden
+     * erken çağrı zararsızdır — yeter ki renk üzerinde metot çağrılmasın.
+     */
     private void updateStyle() {
-        Color bg = visualizable != null ? Color.decode(visualizable.getBadgeColor().getBackgroundHex()) : customBgColor;
-        Color fg = visualizable != null ? Color.decode(visualizable.getBadgeColor().getForegroundHex()) : customFgColor;
+        Color bg = visualizable != null ? BadgePalette.background(visualizable.getBadgeColor()) : customBgColor;
+        Color fg = visualizable != null ? BadgePalette.foreground(visualizable.getBadgeColor()) : customFgColor;
         String iconPath = visualizable != null ? visualizable.getIconPath() : customIconPath;
 
         // 1. İkon Ayarı (Renk filtresi ile birlikte)
         if (showIcon && iconPath != null && !iconPath.isEmpty()) {
             FlatSVGIcon icon = new FlatSVGIcon(iconPath, 0.75f);
-            icon.setColorFilter(new FlatSVGIcon.ColorFilter(c -> fg)); // İkonu yazı rengine boya
+            if (fg != null) {
+                icon.setColorFilter(new FlatSVGIcon.ColorFilter(c -> fg)); // İkonu yazı rengine boya
+            }
             setIcon(icon);
             setIconTextGap(6);
         } else {
             setIcon(null);
         }
-
-        // 2. Renkleri Hex formatına çevir
-        String hexBg = String.format("#%02x%02x%02x", bg.getRed(), bg.getGreen(), bg.getBlue());
-        String hexFg = String.format("#%02x%02x%02x", fg.getRed(), fg.getGreen(), fg.getBlue());
-
-//        // 3. FlatLaf Stil Tanımı
-//        String style = "arc: 999; insetes: 3,10,3,10; font: bold -1; ";
-//
-//        if (showBorder) {
-//            // Çizgili (Border) Mod: İçi boş, sadece kenarlık ve yazı renkli
-//            style += "border: 1,1,1,1," + hexFg + ";";
-//        } else {
-//            // Dolgulu Mod (Varsayılan)
-//            style += "border: null; background: " + hexBg + ";";
-//        }
 
         setForeground(fg);
         setBackground(bg);

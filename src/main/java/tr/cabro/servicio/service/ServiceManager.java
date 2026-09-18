@@ -8,6 +8,7 @@ import tr.cabro.servicio.database.repository.*;
 public final class ServiceManager {
 
     @Getter private static PartService partService;
+    @Getter private static ProductService productService;
     @Getter private static WorkOrderService workOrderService;
     @Getter private static CustomerService customerService;
     @Getter private static SupplierService supplierService;
@@ -25,6 +26,8 @@ public final class ServiceManager {
     @Getter private static AppSettingService appSettingService;
     @Getter private static DeviceTransactionService deviceTransactionService;
     @Getter private static ExchangeRateManager exchangeRateManager;
+    @Getter private static PaymentService paymentService;
+    @Getter private static SaleService saleService;
 
     public static void initialize() {
         Jdbi jdbi = DatabaseManager.getJdbi();
@@ -36,7 +39,6 @@ public final class ServiceManager {
         SupplierRepository supplierRepo = jdbi.onDemand(SupplierRepository.class);
         UserRepository userRepo = jdbi.onDemand(UserRepository.class);
         ServiceItemRepository itemRepo = jdbi.onDemand(ServiceItemRepository.class);
-        ServicePaymentRepository paymentRepo = jdbi.onDemand(ServicePaymentRepository.class);
         DeviceRepository deviceRepo = jdbi.onDemand(DeviceRepository.class);
 
         // --- Yeni Kurumsal Repository'ler ---
@@ -47,10 +49,15 @@ public final class ServiceManager {
         ReportRepository reportRepo = jdbi.onDemand(ReportRepository.class);
         ServiceNoteRepository noteRepo = jdbi.onDemand(ServiceNoteRepository.class);
         StockMovementRepository stockMovementRepo = jdbi.onDemand(StockMovementRepository.class);
+        ProductRepository productRepo = jdbi.onDemand(ProductRepository.class);
+        ProductStockMovementRepository productStockMovementRepo = jdbi.onDemand(ProductStockMovementRepository.class);
         DeviceAccessCredentialRepository deviceAccessCredentialRepo = jdbi.onDemand(DeviceAccessCredentialRepository.class);
         AppSettingRepository appSettingRepo = jdbi.onDemand(AppSettingRepository.class);
         DeviceTransactionRepository deviceTransactionRepo = jdbi.onDemand(DeviceTransactionRepository.class);
         ExchangeRateRepository exchangeRateRepo = jdbi.onDemand(ExchangeRateRepository.class);
+        PaymentRepository paymentRepo = jdbi.onDemand(PaymentRepository.class);
+        PaymentAllocationRepository paymentAllocationRepo = jdbi.onDemand(PaymentAllocationRepository.class);
+        AccountRepository accountRepo = jdbi.onDemand(AccountRepository.class);
 
         // --- Servislerin Başlatılması ---
         customerService = new CustomerService(customerRepo);
@@ -66,9 +73,15 @@ public final class ServiceManager {
         laborService = new LaborService(laborRepo);
         reportManager = new ReportManager(reportRepo);
         partService = new PartService(partRepo, supplierRepo, stockService, partCategoryRepo);
+        productService = new ProductService(productRepo, productStockMovementRepo, partCategoryRepo);
         deviceAccessCredentialService = new DeviceAccessCredentialService(deviceAccessCredentialRepo);
+        paymentService = new PaymentService(paymentRepo, paymentAllocationRepo, accountRepo);
 
-        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentRepo, noteRepo, partService, stockService, deviceService);
+        SaleRepository saleRepo = jdbi.onDemand(SaleRepository.class);
+        SaleItemRepository saleItemRepo = jdbi.onDemand(SaleItemRepository.class);
+        saleService = new SaleService(saleRepo, saleItemRepo, customerRepo, paymentService);
+
+        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentService, noteRepo, partService, stockService, deviceService);
 
         appSettingService = new AppSettingService(appSettingRepo);
         deviceTransactionService = new DeviceTransactionService(deviceTransactionRepo);

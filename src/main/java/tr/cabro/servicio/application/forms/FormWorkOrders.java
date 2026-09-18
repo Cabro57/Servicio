@@ -159,7 +159,13 @@ public class FormWorkOrders extends AbstractTableForm {
     }
 
     @Override
-    protected void refreshTable() {
+    protected String getEmptyStateTitle() { return "Henüz servis kaydı yok"; }
+
+    @Override
+    protected String getEmptyStateDescription() { return "Cihaz kabul ettiğinizde kayıtlar burada listelenir."; }
+
+    @Override
+    protected void loadTableData() {
         if (tableModal == null) return;
 
         Map<String, ColumnFilterValue> filters =
@@ -243,6 +249,10 @@ public class FormWorkOrders extends AbstractTableForm {
                 new SimpleModalBorder.Option("Servisi Başlat",  SimpleModalBorder.NO_OPTION),
                 new SimpleModalBorder.Option("İptal",           SimpleModalBorder.CANCEL_OPTION)
         };
+
+        // Ctrl+Enter'ın hangi butona karşılık geldiği moda göre değişir; panele bildirilmezse
+        // yeni kayıt modunda seçeneklerde olmayan YES_OPTION gönderilir ve kısayol ölü kalır.
+        panel.setPrimaryModalAction(isEdit ? SimpleModalBorder.YES_OPTION : SimpleModalBorder.OK_OPTION);
 
         AppModal.showModal(this, new SimpleModalBorder(panel, title, options, (controller, action) -> {
             if (action == SimpleModalBorder.OPENED) {

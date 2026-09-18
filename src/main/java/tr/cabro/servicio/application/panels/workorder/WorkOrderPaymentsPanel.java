@@ -7,13 +7,16 @@ import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
 import tr.cabro.servicio.application.component.table.DynamicActionColumnSupport;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.themes.BadgePalette;
+import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.documents.PaymentReceiptFormGenerator;
+import tr.cabro.servicio.model.Payment;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrder;
-import tr.cabro.servicio.model.WorkOrderPayment;
+import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.WorkOrderService;
@@ -47,7 +50,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
     private final WorkOrder workOrder;
     private final WorkOrderService workOrderService;
 
-    private GenericTableModel<WorkOrderPayment> paymentsTableModel;
+    private GenericTableModel<Payment> paymentsTableModel;
     private JPanel paymentsTableContainer;
     private JPanel paymentsEmptyLabel;
 
@@ -71,11 +74,11 @@ public class WorkOrderPaymentsPanel extends JPanel {
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
         add(title, "wrap");
 
-        List<ColumnDef<WorkOrderPayment>> columnDefs = Arrays.asList(
-                new ColumnDef<>("Tarih", LocalDateTime.class, WorkOrderPayment::getPaymentDate),
-                new ColumnDef<>("Yöntem", PaymentType.class, WorkOrderPayment::getPaymentType),
-                new ColumnDef<>("Tutar", BigDecimal.class, WorkOrderPayment::getAmount),
-                new ColumnDef<>("İşlem", WorkOrderPayment.class, workOrderPayment -> "Detay")
+        List<ColumnDef<Payment>> columnDefs = Arrays.asList(
+                new ColumnDef<>("Tarih", LocalDateTime.class, Payment::getPaymentDate),
+                new ColumnDef<>("Yöntem", PaymentType.class, Payment::getPaymentType),
+                new ColumnDef<>("Tutar", BigDecimal.class, Payment::getAmount),
+                new ColumnDef<>("İşlem", Payment.class, payment -> "Detay")
         );
 
         paymentsTableModel = new GenericTableModel<>(columnDefs);
@@ -91,9 +94,9 @@ public class WorkOrderPaymentsPanel extends JPanel {
         paymentsTable.getColumnModel().getColumn(2).setCellRenderer(new GreenAmountRenderer());
 
         DynamicActionColumnSupport.install(paymentsTable, 3, paymentsTableModel, List.of(
-                DynamicActionColumnSupport.button("icons/file-text.svg", new Color(13, 110, 253), "Tahsilat fişi yazdır",
+                DynamicActionColumnSupport.button("icons/file-text.svg", SemanticColor.info(), "Tahsilat fişi yazdır",
                         this::printPaymentReceipt),
-                DynamicActionColumnSupport.button("icons/trash-2.svg", new Color(220, 53, 69), "Ödemeyi sil",
+                DynamicActionColumnSupport.button("icons/trash-2.svg", SemanticColor.danger(), "Ödemeyi sil",
                         this::confirmDeletePayment)
 
         ));
@@ -115,7 +118,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
     }
 
     private void populatePaymentsTable() {
-        List<WorkOrderPayment> payments = workOrder.getPayments();
+        List<Payment> payments = workOrder.getPayments();
         if (payments == null || payments.isEmpty()) {
             paymentsEmptyLabel.setVisible(true);
             paymentsTableContainer.setVisible(false);
@@ -154,7 +157,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
         JButton btnAddPayment = new JButton("+ Tahsilat Ekle");
         btnAddPayment.putClientProperty(FlatClientProperties.STYLE,
-                "background: #0b4a3a; foreground: #2ecc71; arc: 8; font: bold; borderWidth: 0");
+                BadgePalette.style(BadgeColor.GREEN, "arc: 8; borderWidth: 0"));
 
         btnAddPayment.addActionListener(e -> {
             BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
@@ -163,13 +166,10 @@ public class WorkOrderPaymentsPanel extends JPanel {
                 return;
             }
 
-            WorkOrderPayment sp = new WorkOrderPayment();
-            sp.setServiceId(workOrder.getId());
-            sp.setAmount(amt);
-            sp.setPaymentType((PaymentType) cmbMethod.getSelectedItem());
-            sp.setPaymentDate(LocalDateTime.now());
-
-            workOrderService.addPayment(sp).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+            Long customerId = workOrder.getCustomer() != null ? workOrder.getCustomer().getId() : null;
+            workOrderService.addPayment(workOrder.getId(), customerId, amt,
+                    (PaymentType) cmbMethod.getSelectedItem(), null, LocalDateTime.now())
+                    .thenAccept(saved -> SwingUtilities.invokeLater(() -> {
                 workOrder.getPayments().add(saved);
 
                 populatePaymentsTable();
@@ -187,7 +187,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
         return inputRow;
     }
 
-    private void confirmDeletePayment(WorkOrderPayment payment) {
+    private void confirmDeletePayment(Payment payment) {
         if (payment == null) return;
         DialogHelper.confirmDelete(this, "confirm.delete.payment", () ->
                 workOrderService.deletePayment(payment.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
@@ -201,7 +201,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
                 Format.formatPrice(payment.getAmount()));
     }
 
-    private void printPaymentReceipt(WorkOrderPayment payment) {
+    private void printPaymentReceipt(Payment payment) {
         ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
             User shop = shopOpt.orElse(null);
             try {
@@ -230,7 +230,8 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
         summaryBox.add(WorkOrderPanelSupport.createMutedLabel("Alınan Ödeme:"));
         lblTotalPaid = new JLabel("- " + Format.formatPrice(workOrder.getTotalPaid()));
-        lblTotalPaid.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71");
+        lblTotalPaid.putClientProperty(FlatClientProperties.STYLE,
+                "foreground: " + SemanticColor.hex(SemanticColor.success()));
         summaryBox.add(lblTotalPaid, "align right, wrap");
 
         summaryBox.add(new JSeparator(), "span 2, growx, wrap");
@@ -241,7 +242,8 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
         BigDecimal remain = workOrder.getRemainingAmount();
         lblRemainVal = new JLabel(Format.formatPrice(remain));
-        String remainColor = remain.compareTo(BigDecimal.ZERO) > 0 ? "#e74c3c" : "#2ecc71";
+        String remainColor = SemanticColor.hex(remain.compareTo(BigDecimal.ZERO) > 0
+                ? SemanticColor.danger() : SemanticColor.success());
         lblRemainVal.putClientProperty(FlatClientProperties.STYLE, "font: bold +4; foreground: " + remainColor);
         summaryBox.add(lblRemainVal, "align right, wrap");
 
@@ -259,7 +261,8 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
         BigDecimal remain = workOrder.getRemainingAmount();
         lblRemainVal.setText(Format.formatPrice(remain));
-        String remainColor = remain.compareTo(BigDecimal.ZERO) > 0 ? "#e74c3c" : "#2ecc71";
+        String remainColor = SemanticColor.hex(remain.compareTo(BigDecimal.ZERO) > 0
+                ? SemanticColor.danger() : SemanticColor.success());
         lblRemainVal.putClientProperty(FlatClientProperties.STYLE, "font: bold +4; foreground: " + remainColor);
 
         refreshPaymentBadge(lblPaymentBadge);
@@ -268,28 +271,29 @@ public class WorkOrderPaymentsPanel extends JPanel {
         lblPaymentBadge.repaint();
     }
 
+    /**
+     * Ödeme rozeti. Renkler {@link BadgePalette} üzerinden çözülür — eskiden sabit koyu
+     * zemin/parlak yazı hex'leri yazılıydı ve açık temada kara blok gibi duruyordu.
+     */
     private void refreshPaymentBadge(JLabel badge) {
         BigDecimal totalCost = workOrder.getTotalServiceAmount();
         BigDecimal totalPaid = workOrder.getTotalPaid();
         BigDecimal remain = workOrder.getRemainingAmount();
 
         if (totalCost.compareTo(BigDecimal.ZERO) == 0) {
-            badge.setText("Ücretsiz İşlem");
-            badge.putClientProperty(FlatClientProperties.STYLE,
-                    "background: #1e3a8a; foreground: #3498db; arc: 15; border: 4,10,4,10; font: bold -1");
+            applyBadge(badge, "Ücretsiz İşlem", BadgeColor.BLUE);
         } else if (totalPaid.compareTo(BigDecimal.ZERO) == 0) {
-            badge.setText("Ödenmedi");
-            badge.putClientProperty(FlatClientProperties.STYLE,
-                    "background: #4a1919; foreground: #e74c3c; arc: 15; border: 4,10,4,10; font: bold -1");
+            applyBadge(badge, "Ödenmedi", BadgeColor.RED);
         } else if (remain.compareTo(BigDecimal.ZERO) > 0) {
-            badge.setText("Kısmi Ödeme");
-            badge.putClientProperty(FlatClientProperties.STYLE,
-                    "background: #7a5c13; foreground: #f1c40f; arc: 15; border: 4,10,4,10; font: bold -1");
+            applyBadge(badge, "Kısmi Ödeme", BadgeColor.YELLOW);
         } else {
-            badge.setText("Ödendi");
-            badge.putClientProperty(FlatClientProperties.STYLE,
-                    "background: #0b4a3a; foreground: #2ecc71; arc: 15; border: 4,10,4,10; font: bold -1");
+            applyBadge(badge, "Ödendi", BadgeColor.GREEN);
         }
+    }
+
+    private void applyBadge(JLabel badge, String text, BadgeColor color) {
+        badge.setText(text);
+        badge.putClientProperty(FlatClientProperties.STYLE, BadgePalette.style(color, null));
         badge.setOpaque(true);
     }
 
@@ -299,7 +303,8 @@ public class WorkOrderPaymentsPanel extends JPanel {
         public Component getTableCellRendererComponent(JTable table, Object value,
                                                        boolean isSelected, boolean hasFocus, int row, int column) {
             JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            label.putClientProperty(FlatClientProperties.STYLE, "foreground: #2ecc71; font: bold");
+            label.putClientProperty(FlatClientProperties.STYLE,
+                    "foreground: " + SemanticColor.hex(SemanticColor.success()) + "; font: bold");
             return label;
         }
     }

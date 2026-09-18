@@ -165,7 +165,13 @@ public class FormSecondHandStock extends AbstractTableForm {
     }
 
     @Override
-    protected void refreshTable() {
+    protected String getEmptyStateTitle() { return "Henüz 2.el işlemi yok"; }
+
+    @Override
+    protected String getEmptyStateDescription() { return "Cihaz alım/satımı kaydettikçe stok burada birikir."; }
+
+    @Override
+    protected void loadTableData() {
         Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
 
         transactionService.searchFilteredPaged(currentSearchTerm, filters, onlyInStock, currentPage, pageSize).thenAccept(result -> {
@@ -333,7 +339,7 @@ public class FormSecondHandStock extends AbstractTableForm {
 
             SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                     new SimpleModalBorder.Option("Oluştur", SimpleModalBorder.YES_OPTION),
-                    new SimpleModalBorder.Option("Çık", SimpleModalBorder.CANCEL_OPTION)
+                    new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
             };
 
             AppModal.showModal(this, new SimpleModalBorder(panel, type.getDisplayName(), options, (controller, action) -> {

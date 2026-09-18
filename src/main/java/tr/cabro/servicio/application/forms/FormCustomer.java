@@ -7,10 +7,14 @@ import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.themes.BadgePalette;
+import tr.cabro.servicio.application.themes.SemanticColor;
+import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.editors.ActionButtonEditor;
 import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.panels.CollectionPanel;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -18,9 +22,13 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.*;
+import tr.cabro.servicio.model.dto.CustomerBalanceDto;
+import tr.cabro.servicio.model.dto.OpenDocumentDto;
+import tr.cabro.servicio.model.enums.AllocationTargetType;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.CustomerService;
+import tr.cabro.servicio.service.PaymentService;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.i18n.DateFormats;
@@ -44,17 +52,21 @@ public class FormCustomer extends Form {
     private Customer customer;
     private final WorkOrderService workOrderService;
     private final CustomerService customerService;
+    private final PaymentService paymentService;
 
     private GenericTableModel<WorkOrder> tableModel;
     private JTable table;
 
     private JLabel lblNameBadge;
     private JLabel valTotalDevices, valActiveServices, valCompletedServices, valTotalSpent;
+    private JLabel valTotalDebt, valTotalPaid, valBalance;
+    private GenericTableModel<OpenDocumentDto> openDocsTableModel;
 
     public FormCustomer(Customer customer) {
         this.customer = customer;
         this.workOrderService = ServiceManager.getWorkOrderService();
         this.customerService = ServiceManager.getCustomerService();
+        this.paymentService = ServiceManager.getPaymentService();
         init();
     }
 
@@ -143,6 +155,9 @@ public class FormCustomer extends Form {
                 new SimpleModalBorder.Option("İptal",           SimpleModalBorder.CANCEL_OPTION)
         };
 
+        // Ctrl+Enter'ın karşılığı moda göre değişir; bildirilmezse kısayol ölü kalır.
+        panel.setPrimaryModalAction(isEdit ? SimpleModalBorder.YES_OPTION : SimpleModalBorder.OK_OPTION);
+
         AppModal.showModal(this, new SimpleModalBorder(panel, title, options, (controller, action) -> {
             if (action == SimpleModalBorder.OPENED) {
                 panel.requestInitialFocus();
@@ -210,13 +225,19 @@ public class FormCustomer extends Form {
                 : customer.getFullName();
         String badge = customer.getType() != null ? customer.getType().getDisplayName() : "Bireysel";
 
+        // HTML rozetlerin renkleri de tema token'ından gelir; eskiden sabit koyu hex'lerdi
+        // ve açık temada isim satırında kara blok gibi duruyorlardı.
         StringBuilder html = new StringBuilder("<html><span>").append(isim).append("</span>&nbsp;&nbsp;")
-                .append("<span style='background-color:#2a2d36; color:#a0a0a0; font-size:11px; ")
-                .append("padding:3px 8px; border-radius:6px; font-weight:normal;'> ").append(badge).append(" </span>");
+                .append("<span style='background-color:").append(BadgePalette.backgroundHex(BadgeColor.GRAY))
+                .append("; color:").append(BadgePalette.foregroundHex(BadgeColor.GRAY))
+                .append("; font-size:11px; padding:3px 8px; border-radius:6px; font-weight:normal;'> ")
+                .append(badge).append(" </span>");
 
         if (customer.isProblematic()) {
-            html.append("&nbsp;<span style='background-color:#4a1919; color:#e74c3c; font-size:11px; ")
-                    .append("padding:3px 8px; border-radius:6px; font-weight:bold;'>&#9888; Sorunlu Müşteri</span>");
+            html.append("&nbsp;<span style='background-color:").append(BadgePalette.backgroundHex(BadgeColor.RED))
+                    .append("; color:").append(BadgePalette.foregroundHex(BadgeColor.RED))
+                    .append("; font-size:11px; padding:3px 8px; border-radius:6px; font-weight:bold;'>")
+                    .append("&#9888; Sorunlu Müşteri</span>");
         }
 
         html.append("</html>");
@@ -224,11 +245,82 @@ public class FormCustomer extends Form {
     }
 
     private void createLeftColumn() {
-        JPanel leftPanel = new JPanel(new MigLayout("insets 0, gapy 20, fillx", "[grow]", "[pref][pref]"));
+        JPanel leftPanel = new JPanel(new MigLayout("insets 0, gapy 20, fillx", "[grow]", "[pref][pref][pref]"));
         leftPanel.setOpaque(false);
         leftPanel.add(createContactCard(), "growx, wrap");
-        leftPanel.add(createSummaryCard(), "growx");
+        leftPanel.add(createSummaryCard(), "growx, wrap");
+        leftPanel.add(createAccountCard(), "growx");
         add(leftPanel, "cell 0 1, aligny top");
+    }
+
+    /**
+     * Cari hesap kartı — servis + satış (POS) borçlarını birlikte gösterir (bkz. v_customer_balances).
+     * Mevcut "Müşteri Özeti"ndeki "Harcama" istatistiğinden farklı: o sadece iş emri ödemelerini
+     * toplar, bu kart {@code v_customer_balances} üzerinden satışları da dahil eder.
+     */
+    private JPanel createAccountCard() {
+        JPanel card = createRoundedCard();
+        card.setLayout(new MigLayout("insets 20, gapy 10, fillx", "[grow]", "[]10[grow][]10[pref!]"));
+
+        JLabel title = new JLabel("Cari Hesap");
+        title.setIcon(new Ikon("icons/hand-coins.svg", 1f));
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2; iconTextGap: 10");
+        card.add(title, "wrap");
+
+        JPanel grid = new JPanel(new MigLayout("insets 0, gap 10, fill", "[grow][grow][grow]", "[grow]"));
+        grid.setOpaque(false);
+
+        valTotalDebt = createStatValueLabel();
+        valTotalPaid = createStatValueLabel();
+        valBalance = createStatValueLabel();
+        // Bakiyenin rengi değerden sürülür (bkz. refreshAccountCard): borç yokken kırmızı
+        // sıfır gösteren bir kart, cihazı teslim etmeden önce bakılan sayıyı yanlış anlatıyordu.
+        valBalance.putClientProperty(FlatClientProperties.STYLE, "font: bold +10");
+
+        grid.add(createMiniStatBox(valTotalDebt, "Toplam Borç"), "grow");
+        grid.add(createMiniStatBox(valTotalPaid, "Toplam Tahsilat"), "grow");
+        grid.add(createMiniStatBox(valBalance, "Bakiye"), "grow");
+        card.add(grid, "growx, wrap");
+
+        List<ColumnDef<OpenDocumentDto>> columns = Arrays.asList(
+                new ColumnDef<>("Belge", String.class, OpenDocumentDto::getDocumentLabel),
+                new ColumnDef<>("Kalan", BigDecimal.class, OpenDocumentDto::getRemainingAmount)
+        );
+        openDocsTableModel = new GenericTableModel<>(columns);
+        JTable openDocsTable = new JTable(openDocsTableModel);
+        openDocsTable.setRowHeight(26);
+        openDocsTable.getColumnModel().getColumn(1).setCellRenderer(new CurrencyTableCellRenderer());
+        JScrollPane scroll = new JScrollPane(openDocsTable);
+        scroll.setPreferredSize(new Dimension(100, 120));
+        card.add(scroll, "grow, wrap");
+
+        JButton btnCollect = new JButton("Tahsilat Al");
+        btnCollect.putClientProperty(FlatClientProperties.STYLE,
+                "background: $Component.accentColor; foreground: #ffffff; arc: 10; margin: 6,12,6,12; font: bold");
+        btnCollect.addActionListener(e -> CollectionPanel.open(this, customer, this::refreshAccountCard));
+        card.add(btnCollect, "align right");
+
+        return card;
+    }
+
+    private void refreshAccountCard() {
+        paymentService.getCustomerBalance(customer.getId()).thenAccept(opt -> SwingUtilities.invokeLater(() -> {
+            CustomerBalanceDto balance = opt.orElse(null);
+            valTotalDebt.setText(Format.formatPrice(balance != null ? balance.getTotalDebt() : BigDecimal.ZERO));
+            valTotalPaid.setText(Format.formatPrice(balance != null ? balance.getTotalPaid() : BigDecimal.ZERO));
+
+            BigDecimal balanceValue = balance != null ? balance.getBalance() : BigDecimal.ZERO;
+            valBalance.setText(Format.formatPrice(balanceValue));
+            // Kırmızı yalnızca gerçekten borç varken: sıfır bakiye nötr okunur.
+            String balanceColor = balanceValue.compareTo(BigDecimal.ZERO) > 0
+                    ? SemanticColor.hex(SemanticColor.danger())
+                    : "$Label.foreground";
+            valBalance.putClientProperty(FlatClientProperties.STYLE, "font: bold +10; foreground: " + balanceColor);
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Cari bakiye yüklenemedi", ex));
+
+        paymentService.getOpenDocuments(customer.getId()).thenAccept(docs -> SwingUtilities.invokeLater(() ->
+                openDocsTableModel.setData(docs)
+        )).exceptionally(ex -> ErrorHandler.handle(this, "Açık belgeler yüklenemedi", ex));
     }
 
     private JPanel createContactCard() {
@@ -279,7 +371,8 @@ public class FormCustomer extends Form {
         valActiveServices = createStatValueLabel();
         valActiveServices.putClientProperty(FlatClientProperties.STYLE, "font: bold +10; foreground: $Component.accentColor");
         valCompletedServices = createStatValueLabel();
-        valCompletedServices.putClientProperty(FlatClientProperties.STYLE, "font: bold +10; foreground: #2ecc71");
+        valCompletedServices.putClientProperty(FlatClientProperties.STYLE,
+                "font: bold +10; foreground: " + SemanticColor.hex(SemanticColor.success()));
         valTotalSpent = createStatValueLabel();
 
         grid.add(createMiniStatBox(valTotalDevices,      "Toplam Cihaz"), "grow");
@@ -445,6 +538,7 @@ public class FormCustomer extends Form {
                     calculateStats(services);
                 })
         );
+        refreshAccountCard();
     }
 
     private void calculateStats(List<WorkOrder> workOrders) {
@@ -453,7 +547,7 @@ public class FormCustomer extends Form {
 
         for (WorkOrder s : workOrders) {
             if (s.getPayments() != null) {
-                for (WorkOrderPayment payment : s.getPayments()) {
+                for (Payment payment : s.getPayments()) {
                     totalSpent = totalSpent.add(payment.getAmount());
                 }
             }

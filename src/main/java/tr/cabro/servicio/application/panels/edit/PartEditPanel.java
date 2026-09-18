@@ -178,11 +178,10 @@ public class PartEditPanel extends AbstractEditPanel<Part> {
 
     @Override
     protected boolean validateForm() {
-        // Barkod zorunlu
+        // Barkodu olmayan ürünler için (market ürünü, elle fiyat etiketi vb.) dice butonundakiyle
+        // aynı üretici kullanılarak otomatik barkod atanır — kullanıcı barkodu boş bırakabilir.
         if (Validator.isEmpty(barcode_field.getText())) {
-            showValidationError("Barkod alanı boş olamaz.");
-            barcode_field.requestFocus();
-            return false;
+            barcode_field.setText(Barcode.generate());
         }
         if (Validator.exceedsMaxLength(barcode_field.getText(), 50)) {
             showValidationError("Barkod en fazla 50 karakter olabilir.");

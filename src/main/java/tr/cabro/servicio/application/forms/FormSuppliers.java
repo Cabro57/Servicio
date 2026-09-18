@@ -180,7 +180,13 @@ public class FormSuppliers extends AbstractTableForm {
 
     // Tabloyu Güncelleme (Asenkron)
     @Override
-    protected void refreshTable() {
+    protected String getEmptyStateTitle() { return "Henüz tedarikçi yok"; }
+
+    @Override
+    protected String getEmptyStateDescription() { return "Parça aldığınız firmaları ekleyin, alımları onlara bağlayabilirsiniz."; }
+
+    @Override
+    protected void loadTableData() {
         Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
 
         supplierService.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize).thenAccept(result -> {

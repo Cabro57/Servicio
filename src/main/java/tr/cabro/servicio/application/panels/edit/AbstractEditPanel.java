@@ -2,12 +2,25 @@ package tr.cabro.servicio.application.panels.edit;
 
 import lombok.NonNull;
 import raven.modal.Toast;
+import raven.modal.component.ModalBorderAction;
+import raven.modal.component.SimpleModalBorder;
 
 import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 
 public abstract class AbstractEditPanel<T> extends JPanel {
 
     private T data;
+
+    /**
+     * Ctrl+Enter'ın tetikleyeceği modal eylemi. Varsayılan {@code YES_OPTION}; modalini
+     * farklı bir birincil seçenekle açan çağıran ({@code OK_OPTION} gibi) bunu
+     * {@link #setPrimaryModalAction(int)} ile bildirmelidir — aksi halde kısayol,
+     * seçenek listesinde bulunmayan bir eylem gönderir ve sessizce hiçbir şey yapmaz.
+     */
+    private int primaryModalAction = SimpleModalBorder.YES_OPTION;
 
     public AbstractEditPanel(T data) {
         init();
@@ -16,6 +29,29 @@ public abstract class AbstractEditPanel<T> extends JPanel {
 
     private void init() {
         initComponent();
+        installSubmitShortcut();
+    }
+
+    /**
+     * Ctrl+Enter ile formu kaydeder. Kapsam {@code WHEN_ANCESTOR_OF_FOCUSED_COMPONENT}:
+     * modaldeki hangi alanda olursanız olun çalışır, modal dışına taşmaz.
+     */
+    private void installSubmitShortcut() {
+        KeyStroke ctrlEnter = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.CTRL_DOWN_MASK);
+        String actionKey = "servicio.submitModal";
+        getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(ctrlEnter, actionKey);
+        getActionMap().put(actionKey, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ModalBorderAction action = ModalBorderAction.getModalBorderAction(AbstractEditPanel.this);
+                if (action != null) action.doAction(primaryModalAction);
+            }
+        });
+    }
+
+    /** Modalin birincil ("kaydet") seçeneğinin {@link SimpleModalBorder} eylem kodunu bildirir. */
+    public void setPrimaryModalAction(int primaryModalAction) {
+        this.primaryModalAction = primaryModalAction;
     }
 
     /**

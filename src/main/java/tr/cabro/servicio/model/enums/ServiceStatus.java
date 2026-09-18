@@ -9,12 +9,20 @@ import java.util.Arrays;
 @Getter
 @EnumByName
 public enum ServiceStatus implements Visualizable {
-    UNDER_REPAIR("Tamirde", "icons/wrench.svg", BadgeColor.YELLOW),
-    READY("Hazır", "icons/thumbs-up.svg", BadgeColor.DARK_GREEN),
-    ANOTHER_SERVICE("Başka Serviste", "icons/users.svg", BadgeColor.BLUE),
+    // Renkler durumun ANLAMINI taşır: altı durumun altısı da ayrı renk alır.
+    // Eskiden READY, DELIVERED ve WAITING_FOR_PART yeşilin üç tonuydu — bloke bir cihaz
+    // ile teslim edilmiş bir cihaz listede aynı görünüyordu ve renk kanalı bilgi taşımıyordu.
+    /** Üzerinde çalışılıyor — süregelen iş. */
+    UNDER_REPAIR("Tamirde", "icons/wrench.svg", BadgeColor.BLUE),
+    /** Bitti, müşteri aranacak — kullanıcıdan hamle bekleyen tek durum. */
+    READY("Hazır", "icons/thumbs-up.svg", BadgeColor.PURPLE),
+    /** Bizde değil — nötr. */
+    ANOTHER_SERVICE("Başka Serviste", "icons/users.svg", BadgeColor.GRAY),
+    /** Kapanmış iş. */
     DELIVERED("Teslim Edildi", "icons/package-check.svg", BadgeColor.GREEN),
     RETURN("İade", "icons/undo-2.svg", BadgeColor.RED),
-    WAITING_FOR_PART("Parça Bekliyor", "icons/hourglass.svg", BadgeColor.GREEN),;
+    /** Bloke: elimizde ama ilerleyemiyoruz. */
+    WAITING_FOR_PART("Parça Bekliyor", "icons/hourglass.svg", BadgeColor.YELLOW),;
 
     private final String displayName;
     private final String iconPath;

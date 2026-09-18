@@ -252,7 +252,7 @@ public class FormWorkOrder extends Form {
 
             SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                     new SimpleModalBorder.Option("Oluştur", SimpleModalBorder.YES_OPTION),
-                    new SimpleModalBorder.Option("Çık", SimpleModalBorder.CANCEL_OPTION)
+                    new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
             };
 
             AppModal.showModal(this, new SimpleModalBorder(panel, type.getDisplayName(), options, (controller, action) -> {
@@ -338,7 +338,7 @@ public class FormWorkOrder extends Form {
 
                 SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                         new SimpleModalBorder.Option("Gönder", SimpleModalBorder.YES_OPTION),
-                        new SimpleModalBorder.Option("Çık", SimpleModalBorder.CANCEL_OPTION)
+                        new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
                 };
 
                 AppModal.showModal(this, new SimpleModalBorder(panel, "WhatsApp Mesaj Gönder", options, (controller, action) -> {

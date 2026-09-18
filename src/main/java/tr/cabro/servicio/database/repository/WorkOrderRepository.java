@@ -136,19 +136,17 @@ public interface WorkOrderRepository extends SqlObject {
     @SqlQuery("SELECT COUNT(*) FROM work_orders WHERE service_status NOT IN (<statuses>)")
     long countByStatusesExcluded(@BindList("statuses") List<ServiceStatus> statuses);
 
-    // "Bekleyen Tahsilatlar": kalan tutar (kalem toplamı - ödeme toplamı) > 0 olan iş emirleri.
-    // Kalan tutar bir DB kolonu değil; iki alt sorguyla (item toplamı, ödeme toplamı) hesaplanır.
+    // "Bekleyen Tahsilatlar": kalan tutar > 0 olan iş emirleri. Kalan tutar v_document_balances
+    // view'ından gelir (bkz. V19 migration) — belge toplamı - o belgeye tahsis edilmiş ödeme toplamı.
     @SqlQuery("SELECT wo.* FROM work_orders wo " +
-            "LEFT JOIN (SELECT service_id, SUM(unit_price * quantity) AS total FROM work_order_items GROUP BY service_id) i ON i.service_id = wo.id " +
-            "LEFT JOIN (SELECT service_id, SUM(amount) AS paid FROM work_order_payments GROUP BY service_id) p ON p.service_id = wo.id " +
-            "WHERE COALESCE(i.total, 0) - COALESCE(p.paid, 0) > 0 " +
+            "JOIN v_document_balances vb ON vb.document_type = 'WORK_ORDER' AND vb.document_id = wo.id " +
+            "WHERE vb.remaining_amount > 0 " +
             "ORDER BY wo.created_at DESC LIMIT :limit OFFSET :offset")
     List<WorkOrder> findWithDebtPaged(@Bind("limit") int limit, @Bind("offset") int offset);
 
     @SqlQuery("SELECT COUNT(*) FROM work_orders wo " +
-            "LEFT JOIN (SELECT service_id, SUM(unit_price * quantity) AS total FROM work_order_items GROUP BY service_id) i ON i.service_id = wo.id " +
-            "LEFT JOIN (SELECT service_id, SUM(amount) AS paid FROM work_order_payments GROUP BY service_id) p ON p.service_id = wo.id " +
-            "WHERE COALESCE(i.total, 0) - COALESCE(p.paid, 0) > 0")
+            "JOIN v_document_balances vb ON vb.document_type = 'WORK_ORDER' AND vb.document_id = wo.id " +
+            "WHERE vb.remaining_amount > 0")
     long countWithDebt();
 
     // =========================================================================

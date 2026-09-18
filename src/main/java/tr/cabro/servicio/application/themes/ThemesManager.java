@@ -29,6 +29,7 @@ public class ThemesManager {
         coreThemes.add(new ThemesInfo("FlatLaf Dark", null, true, null, null, null, null, FlatDarkLaf.class.getName()));
         coreThemes.add(new ThemesInfo("FlatLaf IntelliJ", null, false, null, null, null, null, FlatIntelliJLaf.class.getName()));
         coreThemes.add(new ThemesInfo("FlatLaf Darcula", null, true, null, null, null, null, FlatDarculaLaf.class.getName()));
+        coreThemes.add(new ThemesInfo(FlatOledDarkLaf.NAME, null, true, null, null, null, null, FlatOledDarkLaf.class.getName()));
         coreThemes.add(new ThemesInfo("FlatLaf macOS Light", null, false, null, null, null, null, FlatMacLightLaf.class.getName()));
         coreThemes.add(new ThemesInfo("FlatLaf macOS Dark", null, true, null, null, null, null, FlatMacDarkLaf.class.getName()));
 

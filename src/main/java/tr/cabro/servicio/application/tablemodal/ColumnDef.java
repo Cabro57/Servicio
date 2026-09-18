@@ -86,6 +86,18 @@ public class ColumnDef<T> {
         return this;
     }
 
+    /**
+     * Kolonu düzenlenebilir işaretler — {@code DynamicActionColumnSupport} gibi kendi buton
+     * setini kuran, {@link #actionColumn}'ın sabit "İşlem" adı/3-buton düzenine bağlı olmak
+     * istemeyen çağrılar için. {@code GenericTableModel.isCellEditable()} bu bayrağı (ya da
+     * kolon adının tam olarak "İşlem" olmasını) kontrol eder — ikisi de yoksa JTable hücre
+     * editörünü hiç tetiklemez, tablodaki butonlar tıklansa bile hiçbir şey olmaz.
+     */
+    public ColumnDef<T> editable(boolean editable) {
+        this.editable = editable;
+        return this;
+    }
+
     /** Sadece hizalama belirtir, renderer'a dokunmaz — kolon kendi bespoke renderer'ını forma özel kodda alacaksa kullanılır. */
     public ColumnDef<T> alignment(int alignment) {
         this.alignment = alignment;

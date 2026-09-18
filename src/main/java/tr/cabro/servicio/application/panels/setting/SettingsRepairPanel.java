@@ -79,7 +79,7 @@ public class SettingsRepairPanel extends JPanel {
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
                 new SimpleModalBorder.Option("Kaydet", 0),
-                new SimpleModalBorder.Option("Çık", 2)
+                new SimpleModalBorder.Option("İptal", 2)
         };
 
         AppModal.showModal(this, new SimpleModalBorder(

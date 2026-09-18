@@ -36,12 +36,19 @@ public final class DynamicActionColumnSupport {
         private final Color hoverColor;
         private final String tooltip;
         private final Consumer<T> onClick;
+        private float iconScale = 0.7f;
 
         private ButtonSpec(String iconPath, Color hoverColor, String tooltip, Consumer<T> onClick) {
             this.iconPath = iconPath;
             this.hoverColor = hoverColor;
             this.tooltip = tooltip;
             this.onClick = onClick;
+        }
+
+        /** İkon ölçeği (varsayılan 0.7) — dar sütunlarda düğmeyi küçültmek için. */
+        public ButtonSpec<T> iconScale(float scale) {
+            this.iconScale = scale;
+            return this;
         }
     }
 
@@ -50,7 +57,7 @@ public final class DynamicActionColumnSupport {
     }
 
     private static <T> ActionButton createButton(ButtonSpec<T> spec) {
-        ActionButton btn = new ActionButton(new Ikon(spec.iconPath, 0.7f), spec.hoverColor);
+        ActionButton btn = new ActionButton(new Ikon(spec.iconPath, spec.iconScale), spec.hoverColor);
         if (spec.tooltip != null) btn.setToolTipText(spec.tooltip);
         return btn;
     }

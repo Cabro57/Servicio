@@ -1,9 +1,9 @@
 package tr.cabro.servicio.documents;
 
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.Payment;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrder;
-import tr.cabro.servicio.model.WorkOrderPayment;
 import tr.cabro.servicio.util.Format;
 
 import java.io.File;
@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
 /**
- * Tahsilat Fişi — tek bir {@link WorkOrderPayment} kaydı için makbuz. Bir {@code WorkOrder}'a
+ * Tahsilat Fişi — tek bir {@link Payment} kaydı için makbuz. Bir {@code WorkOrder}'a
  * değil tek bir ödemeye bağlı olduğu için {@link ServiceFormGenerator}'ı uygulamıyor, "Form"
  * popup menüsünde de listelenmiyor — ödeme tablosundaki "Fiş" butonundan üretiliyor
  * (bkz. {@code application.panels.workorder.WorkOrderPaymentsPanel}). İmza içermez.
@@ -20,7 +20,7 @@ public class PaymentReceiptFormGenerator {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", new Locale("tr", "TR"));
 
-    public File generate(WorkOrder workOrder, WorkOrderPayment payment, User shop) throws Exception {
+    public File generate(WorkOrder workOrder, Payment payment, User shop) throws Exception {
         Customer customer = workOrder.getCustomer();
 
         File outFile = File.createTempFile("servicio-tahsilat-fis-SRV" + workOrder.getId() + "-", ".pdf");

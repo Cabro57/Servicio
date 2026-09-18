@@ -1,9 +1,12 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.database.repository.*;
 import tr.cabro.servicio.model.*;
+import tr.cabro.servicio.model.enums.AllocationTargetType;
 import tr.cabro.servicio.model.enums.ItemType;
+import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.model.enums.ReferenceType;
 import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.enums.ServiceStatus;
@@ -19,7 +22,7 @@ public class WorkOrderService {
 
     private final WorkOrderRepository workOrderRepository;
     private final ServiceItemRepository itemRepository;
-    private final ServicePaymentRepository paymentRepository;
+    private final PaymentService paymentService;
     private final ServiceNoteRepository noteRepository;
     private final PartService partService;
     private final StockService stockService;
@@ -27,14 +30,14 @@ public class WorkOrderService {
 
     public WorkOrderService(WorkOrderRepository workOrderRepository,
                             ServiceItemRepository itemRepository,
-                            ServicePaymentRepository paymentRepo,
+                            PaymentService paymentService,
                             ServiceNoteRepository noteRepository,
                             PartService partService,
                             StockService stockService,
                             DeviceService deviceService) {
         this.workOrderRepository = workOrderRepository;
         this.itemRepository = itemRepository;
-        this.paymentRepository = paymentRepo;
+        this.paymentService = paymentService;
         this.noteRepository = noteRepository;
         this.partService = partService;
         this.stockService = stockService;
@@ -163,7 +166,13 @@ public class WorkOrderService {
     // =========================================================================
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> workOrderRepository.delete(id));
+        // İş emri hard-delete edildiği için ödeme tahsislerini önce elle temizlemek gerekir
+        // (payment_allocations polimorfik olduğundan ON DELETE CASCADE ile bağlanamıyor) —
+        // aksi halde yetim tahsis satırları kalır ve cari bakiye şişer.
+        return CompletableFuture.runAsync(() -> DatabaseManager.useTransaction(handle -> {
+            paymentService.releaseAllocationsForTarget(handle, AllocationTargetType.WORK_ORDER, id);
+            handle.attach(WorkOrderRepository.class).delete(id);
+        }));
     }
 
     public CompletableFuture<Optional<WorkOrder>> get(Long id) {
@@ -356,7 +365,7 @@ public class WorkOrderService {
             s.setCustomer(customerMap.get(s.getCustomerId()));
             s.setDevice(deviceMap.get(s.getDeviceId()));
             s.setItems(itemRepository.findByServiceId(s.getId()));
-            s.setPayments(paymentRepository.findPaymentsByServiceId(s.getId()));
+            s.setPayments(paymentService.getPaymentsForTarget(AllocationTargetType.WORK_ORDER, s.getId()).join());
             s.setTechnicianNotes(noteRepository.findByServiceId(s.getId()));
         }
 
@@ -442,20 +451,20 @@ public class WorkOrderService {
     // PAYMENT
     // =========================================================================
 
-    public CompletableFuture<WorkOrderPayment> addPayment(WorkOrderPayment payment) {
-        return CompletableFuture.supplyAsync(() -> {
-            Long id = paymentRepository.insertPayment(payment);
-            payment.setId(id);
-            return payment;
-        });
+    /** İş emrinin tamamına (bölünmeden) tahsis edilen basit ödeme — WorkOrderPaymentsPanel akışı. */
+    public CompletableFuture<Payment> addPayment(Long workOrderId, Long customerId, java.math.BigDecimal amount,
+                                                  PaymentType paymentType, String note, java.time.LocalDateTime paymentDate) {
+        return paymentService.recordPaymentForTarget(AllocationTargetType.WORK_ORDER, workOrderId, customerId,
+                amount, paymentType, note, paymentDate);
     }
 
-    public CompletableFuture<Void> deletePayment(Long serviceId) {
-        return CompletableFuture.runAsync(() -> paymentRepository.deletePayment(serviceId));
+    /** Dikkat: parametre {@code paymentId}'dir, {@code serviceId} DEĞİL (eski WorkOrderPayment API'sinden farkı). */
+    public CompletableFuture<Void> deletePayment(Long paymentId) {
+        return paymentService.deletePayment(paymentId);
     }
 
-    public CompletableFuture<List<WorkOrderPayment>> getPayments(Long serviceId) {
-        return CompletableFuture.supplyAsync(() -> paymentRepository.findPaymentsByServiceId(serviceId));
+    public CompletableFuture<List<Payment>> getPayments(Long serviceId) {
+        return paymentService.getPaymentsForTarget(AllocationTargetType.WORK_ORDER, serviceId);
     }
 
     // =========================================================================

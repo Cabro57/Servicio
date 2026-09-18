@@ -22,13 +22,14 @@ import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.SystemForm;
+import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.model.dto.PageResult;
-import tr.cabro.servicio.model.dto.PartStatsDto;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
+import tr.cabro.servicio.application.component.table.AppPagination;
 import raven.swingpack.JPagination;
 
 import javax.swing.*;
@@ -39,6 +40,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+/** Servis parçaları listesi — bkz. {@link FormProducts} (POS satış kataloğu, bağımsız tablo/model). */
 @SystemForm(name = "Parçalar", description = "Yeni parçalar eklemek ve düzenlemek için kullanılabilir")
 public class FormParts extends AbstractTableForm {
 
@@ -96,7 +98,7 @@ public class FormParts extends AbstractTableForm {
 
     @Override
     protected JComponent createPaginationComponent() {
-        pagination = new JPagination(5, 1, 1);
+        pagination = new AppPagination(5, 1, 1);
         pagination.addChangeListener(e -> {
             currentPage = pagination.getSelectedPage();
             refreshTable();
@@ -146,6 +148,18 @@ public class FormParts extends AbstractTableForm {
         configureTableColumns();
     }
 
+    /**
+     * "Kritik Stok" kartıyla aynı ölçüt: {@code stock_quantity < min_stock_level}
+     * (bkz. {@code PartRepository.getStats()}). Ölçüt ayrışırsa kart bir sayı, tablo
+     * başka bir sayı gösterir.
+     */
+    private boolean isCriticalStock(Part part) {
+        return part != null
+                && part.getStockQuantity() != null
+                && part.getMinStockLevel() != null
+                && part.getStockQuantity() < part.getMinStockLevel();
+    }
+
     private void configureTableColumns() {
         Integer[] columnAlignments = {
                 SwingConstants.LEADING,
@@ -165,6 +179,9 @@ public class FormParts extends AbstractTableForm {
 
         table.getColumnModel().getColumn(2).setCellRenderer(new TooltipCellRenderer());
 
+        // Stok kolonu kritik seviyeyi satırda işaretler: üstteki "Kritik Stok" kartı bir sayı
+        // veriyordu ama hangi satırların kritik olduğunu göz taramasına bırakıyordu.
+        // Uyarı metinle de yazılır, yalnızca renge bırakılmaz.
         table.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -172,6 +189,18 @@ public class FormParts extends AbstractTableForm {
                 label.setHorizontalAlignment(SwingConstants.CENTER);
                 label.setFont(label.getFont().deriveFont(Font.BOLD));
                 label.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
+
+                Part part = tableModel.getItemAt(table.convertRowIndexToModel(row));
+                boolean critical = isCriticalStock(part);
+                label.setText(critical ? part.getStockQuantity() + " · kritik" : String.valueOf(value));
+                // else dalı şart: DefaultTableCellRenderer son rengi saklar, sıfırlanmazsa
+                // kritik bir satırdan sonraki tüm satırlar da kırmızı boyanır.
+                if (!isSelected) {
+                    label.setForeground(critical ? SemanticColor.danger() : table.getForeground());
+                }
+                label.setToolTipText(critical
+                        ? "Stok, belirlenen minimum seviyenin altında."
+                        : null);
                 return label;
             }
         });
@@ -217,7 +246,13 @@ public class FormParts extends AbstractTableForm {
     }
 
     @Override
-    protected void refreshTable() {
+    protected String getEmptyStateTitle() { return "Henüz parça yok"; }
+
+    @Override
+    protected String getEmptyStateDescription() { return "Stokunuzdaki yedek parçaları eklediğinizde burada görünür."; }
+
+    @Override
+    protected void loadTableData() {
         java.util.concurrent.CompletableFuture<PageResult<Part>> future = currentSearchTerm.isEmpty()
                 ? partService.getAllPaged(currentPage, pageSize)
                 : partService.searchPaged(currentSearchTerm, currentPage, pageSize);

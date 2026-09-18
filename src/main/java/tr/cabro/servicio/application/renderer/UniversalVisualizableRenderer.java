@@ -5,6 +5,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.model.contract.Visualizable;
 import tr.cabro.servicio.application.ui.IconManager;
+import tr.cabro.servicio.application.themes.BadgePalette;
 import tr.cabro.servicio.model.enums.BadgeColor;
 
 import javax.swing.*;
@@ -53,11 +54,8 @@ public class UniversalVisualizableRenderer extends DefaultTableCellRenderer {
         JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
 
-        if (isSelected) {
-            content.setBackground(table.getSelectionBackground());
-        } else {
-            content.setBackground(table.getBackground());
-        }
+        // Zebra satır rengini koru: seçili değilse tek satırlarda alternateRowColor gelir
+        content.setBackground(TableRendererSupport.rowBackground(table, row, isSelected));
 
         if (value instanceof Visualizable) {
             Visualizable item = (Visualizable) value;
@@ -65,20 +63,23 @@ public class UniversalVisualizableRenderer extends DefaultTableCellRenderer {
 
             BadgeColor colorObj = item.getBadgeColor();
             if (colorObj != null) {
-                Color bgColor = Color.decode(colorObj.getBackgroundHex());
-                Color fgColor = Color.decode(colorObj.getForegroundHex());
+                // Tema-duyarlı çözüm: açık temada pastel, koyu temada derin zemin.
+                Color bgColor = BadgePalette.background(colorObj);
+                Color fgColor = BadgePalette.foreground(colorObj);
 
                 badgeLabel.setBackground(bgColor);
                 badgeLabel.setForeground(fgColor);
 
-                // Dinamik İkon Renklendirme (İkonu Foreground rengine boyar)
-                FlatSVGIcon cachedIcon = IconManager.getIcon(item.getIconPath(), iconSize);
-                if (cachedIcon != null) {
-                    FlatSVGIcon coloredIcon = cachedIcon.setColorFilter(new FlatSVGIcon.ColorFilter(color -> fgColor));
-                    badgeLabel.setIcon(coloredIcon);
-                } else {
-                    badgeLabel.setIcon(null);
+                // Dinamik İkon Renklendirme (İkonu Foreground rengine boyar).
+                // setColorFilter nesneyi değiştirip kendisini döndürür, kopya üretmez —
+                // bu yüzden ikon bu renderer'a özel olmalı. IconManager artık her çağrıda
+                // yeni örnek veriyor; paylaşılan örnek döndürseydi buradaki filtre, aynı
+                // ikonu kullanan diğer bileşenlerin rengini de kalıcı olarak değiştirirdi.
+                FlatSVGIcon icon = IconManager.getIcon(item.getIconPath(), iconSize);
+                if (icon != null) {
+                    icon.setColorFilter(new FlatSVGIcon.ColorFilter(color -> fgColor));
                 }
+                badgeLabel.setIcon(icon);
             } else {
                 badgeLabel.setIcon(null);
             }

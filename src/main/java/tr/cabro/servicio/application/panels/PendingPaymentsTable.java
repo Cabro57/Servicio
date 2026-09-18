@@ -16,6 +16,7 @@ import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.util.Format;
+import tr.cabro.servicio.application.component.table.AppPagination;
 import raven.swingpack.JPagination;
 
 import javax.swing.*;
@@ -72,7 +73,6 @@ public class PendingPaymentsTable extends JPanel {
         // MigLayout'un altına pagination için ekstra satır eklendi
         setLayout(new MigLayout("wrap, fill, insets 15, gapy 0", "[fill]", "[pref!]15[pref!][pref!]15[pref!]"));
         putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-        putClientProperty(FlatClientProperties.STYLE, "background: null");
 
         // --- 1. BAŞLIK BÖLÜMÜ ---
         JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "center"));
@@ -170,8 +170,7 @@ public class PendingPaymentsTable extends JPanel {
 
         // --- 3. SAYFALAMA (PAGINATION) BİLEŞENİ ---
         // (Maksimum 5 görünür buton, başlangıç sayfası 1, toplam sayfa 1)
-        pagination = new JPagination(5, 1, 1);
-        pagination.setBackground(null);
+        pagination = new AppPagination(5, 1, 1);
         pagination.addChangeListener(e -> loadPage(pagination.getSelectedPage()));
 
         // Bileşenleri ana panele ekle

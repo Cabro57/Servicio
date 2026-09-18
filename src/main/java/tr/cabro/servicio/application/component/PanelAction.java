@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.component;
 
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.application.utils.Ikon;
 
 import javax.swing.*;
@@ -56,17 +57,25 @@ public class PanelAction extends JPanel {
         setLayout(new MigLayout("insets 0, fill", "[grow, center][grow, center][grow, center]", "[center]"));
         setFocusable(false);
 
-        Color editColor = new Color(253, 126, 20);   // Şık bir Turuncu
-        Color deleteColor = new Color(220, 53, 69); // Şık bir Kırmızı
-        Color viewColor = new Color(13, 110, 253);  // Şık bir Mavi
+        cmdEdit = new ActionButton(new Ikon("icons/pencil.svg", 0.8f), SemanticColor.warning());
+        cmdDelete = new ActionButton(new Ikon("icons/trash-2.svg", 0.8f), SemanticColor.danger());
+        cmdView = new ActionButton(new Ikon("icons/eye.svg", 0.8f), SemanticColor.info());
 
-        cmdEdit = new ActionButton(new Ikon("icons/pencil.svg", 0.7f), editColor);
-        cmdDelete = new ActionButton(new Ikon("icons/trash-2.svg", 0.7f), deleteColor);
-        cmdView = new ActionButton(new Ikon("icons/eye.svg", 0.7f), viewColor);
+        // İkonlar tek başına ne yaptıklarını söylemiyor: tooltip görene, erişilebilir ad
+        // ekran okuyucuya anlatır. Satırı açmanın klavye yolu da burada duyurulur.
+        describe(cmdView, "Detayı aç", "Detayı aç (satırda Enter veya çift tık)");
+        describe(cmdEdit, "Düzenle", "Düzenle");
+        describe(cmdDelete, "Sil", "Sil");
 
         add(cmdView);
         add(cmdEdit);
         add(cmdDelete);
+    }
+
+    private void describe(ActionButton button, String accessibleName, String tooltip) {
+        button.setToolTipText(tooltip);
+        button.getAccessibleContext().setAccessibleName(accessibleName);
+        button.getAccessibleContext().setAccessibleDescription(tooltip);
     }
 
     private ActionButton cmdDelete;

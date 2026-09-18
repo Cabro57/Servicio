@@ -8,6 +8,17 @@ import lombok.Setter;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * Tema-duyarlı SVG ikon. {@code colorKey} ile verilen UIManager anahtarını okuyup ikonu
+ * o renge boyar, böylece tema değiştiğinde ikon da döner.
+ * <p>
+ * <b>Örnek paylaşmayın.</b> Bu sınıf değiştirilebilir: {@code setColorKey}/{@code setAlpha}
+ * ve miras alınan {@code setColorFilter} nesneyi yerinde değiştirir (FlatLaf'ta
+ * {@code setColorFilter} kopya üretmez, {@code this} döndürür). Aynı örneği iki bileşene
+ * vermek, birinin rengini diğerinin ezmesi demektir. Ayrıştırma maliyetini düşünmeyin:
+ * {@code FlatSVGIcon} ayrıştırılmış SVG belgelerini kendi statik cache'inde tutar, her
+ * çağrıda yeni {@code Ikon} kurmak ucuzdur (bkz. {@code IconManager}).
+ */
 @Getter
 @Setter
 public class Ikon extends FlatSVGIcon {

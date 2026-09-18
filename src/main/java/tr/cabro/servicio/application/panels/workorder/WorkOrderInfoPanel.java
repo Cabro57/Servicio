@@ -5,7 +5,9 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.ErrorHandler;
+import tr.cabro.servicio.application.themes.BadgePalette;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Device;
@@ -107,7 +109,7 @@ public class WorkOrderInfoPanel extends JPanel {
 
         btnWhatsapp = new JButton("WhatsApp Mesaj Gönder", new Ikon("icons/message-circle.svg", 1f));
         btnWhatsapp.putClientProperty(FlatClientProperties.STYLE,
-                "background: #0b4a3a; foreground: #2ecc71; arc: 10; font: bold; borderWidth: 0");
+                BadgePalette.style(BadgeColor.GREEN, "arc: 10; borderWidth: 0"));
         btnWhatsapp.addActionListener(e -> onWhatsAppRequested.run());
         btnWhatsapp.setVisible(false);
 

@@ -17,13 +17,8 @@ public class DeviceTableCellRenderer extends DefaultTableCellRenderer {
         JPanel panel = new JPanel(new MigLayout("wrap 1, insets 5, aligny 50%", "[left]", "[]0[]"));
         panel.setOpaque(true);
 
-        if (isSelected) {
-            panel.setBackground(table.getSelectionBackground());
-            panel.setForeground(table.getSelectionForeground());
-        } else {
-            panel.setBackground(table.getBackground());
-            panel.setForeground(table.getForeground());
-        }
+        panel.setBackground(TableRendererSupport.rowBackground(table, row, isSelected));
+        panel.setForeground(isSelected ? table.getSelectionForeground() : table.getForeground());
 
         if (value instanceof Device) {
             Device device = (Device) value;
