@@ -13,6 +13,7 @@ import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.panels.customer.CustomerActivity;
 import tr.cabro.servicio.application.panels.customer.CustomerHeaderPanel;
 import tr.cabro.servicio.application.panels.customer.CustomerListSection;
+import tr.cabro.servicio.application.panels.customer.CustomerNotePanel;
 import tr.cabro.servicio.application.panels.customer.CustomerOverviewPanel;
 import tr.cabro.servicio.application.panels.customer.CustomerSectionNav;
 import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
@@ -77,6 +78,7 @@ public class FormCustomer extends Form {
 
     private CustomerHeaderPanel header;
     private CustomerSectionNav nav;
+    private CustomerNotePanel notePanel;
     private final JPanel sections = new JPanel(new CardLayout());
 
     private CustomerOverviewPanel overview;
@@ -114,7 +116,13 @@ public class FormCustomer extends Form {
         nav.addSection(SECTION_DEVICES, "Cihazlar", "icons/tablet-smartphone.svg", "Ctrl+5");
         nav.addSection(SECTION_SECONDHAND, "2.El Alım-Satım", "icons/handshake.svg", "Ctrl+6");
         nav.setCount(SECTION_OVERVIEW, null);
-        add(nav, "aligny top, growx");
+        // Sol kolon: bölüm menüsü ve altında müşteri notu.
+        notePanel = new CustomerNotePanel(this::openEditModal);
+        JPanel left = new JPanel(new MigLayout("insets 0, wrap, fillx, gapy 16", "[grow, fill]", "[][]"));
+        left.setOpaque(false);
+        left.add(nav);
+        left.add(notePanel, "wmin 0");
+        add(left, "aligny top, growx, wmin 0");
 
         sections.setOpaque(false);
         overview = new CustomerOverviewPanel(this::openWorkOrder, this::openDocument, this::openActivity,
@@ -309,6 +317,7 @@ public class FormCustomer extends Form {
 
     private void refreshData() {
         header.setCustomer(customer);
+        notePanel.setNote(customer.getNote());
         Long id = customer.getId();
 
         CompletableFuture<List<WorkOrder>> workOrdersF = workOrderService.getAll(id);

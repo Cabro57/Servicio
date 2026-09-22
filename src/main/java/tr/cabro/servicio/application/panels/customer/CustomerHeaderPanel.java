@@ -2,11 +2,12 @@ package tr.cabro.servicio.application.panels.customer;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.themes.BadgePalette;
+import tr.cabro.servicio.application.component.Badge;
 import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.contract.Visualizable;
 import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.model.enums.CustomerType;
 import tr.cabro.servicio.util.Format;
@@ -24,14 +25,24 @@ import java.util.List;
  */
 public class CustomerHeaderPanel extends JPanel {
 
+    /** Sorunlu müşteri uyarısı; Visualizable olarak tanımlı ki rozet tema değişiminde rengini yenilesin. */
+    private static final Visualizable PROBLEMATIC = new Visualizable() {
+        @Override public String getDisplayName() { return "Sorunlu Müşteri"; }
+        @Override public String getIconPath() { return "icons/triangle-alert.svg"; }
+        @Override public BadgeColor getBadgeColor() { return BadgeColor.RED; }
+    };
+
     private final JLabel lblName = new JLabel();
+    private final Badge typeBadge = new Badge(CustomerType.BIREYSEL).setShowIcon(true);
+    private final Badge problemBadge = new Badge(PROBLEMATIC).setShowIcon(true);
     private final JLabel lblMeta = new JLabel();
+    private final JLabel lblWarning = new JLabel();
     private final JLabel lblBalance = new JLabel("—");
     private final JButton btnWhatsApp;
 
     public CustomerHeaderPanel(Runnable onBack, Runnable onWhatsApp, Runnable onEdit,
                                Runnable onCollect, Runnable onNewService) {
-        setLayout(new MigLayout("insets 14 16 14 20, fillx, gapx 14", "[][grow, fill][][]", "[center]"));
+        setLayout(new MigLayout("insets 14 16 14 20, fillx, gapx 14", "[][grow, fill][][]", "[center][]"));
         putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");
 
         JButton btnBack = new JButton(new Ikon("icons/arrow-left.svg", 1.1f));
@@ -45,7 +56,14 @@ public class CustomerHeaderPanel extends JPanel {
         lblMeta.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
         JPanel identity = new JPanel(new MigLayout("insets 0, gap 0, wrap, fillx", "[grow, fill]", "[]4[]"));
         identity.setOpaque(false);
-        identity.add(lblName, "wmin 0");
+        // Tip ve sorunlu rozetleri tablolardaki durum rozetleriyle aynı bileşen (ikonlu, tema renkli);
+        // eskiden isim etiketinin içinde HTML span olarak çiziliyordu.
+        JPanel nameRow = new JPanel(new MigLayout("insets 0, gap 10", "[][][]", "[center]"));
+        nameRow.setOpaque(false);
+        nameRow.add(lblName, "wmin 0");
+        nameRow.add(typeBadge);
+        nameRow.add(problemBadge);
+        identity.add(nameRow, "wmin 0");
         identity.add(lblMeta, "wmin 0");
         add(identity, "wmin 0");
 
@@ -75,7 +93,16 @@ public class CustomerHeaderPanel extends JPanel {
         actions.add(btnEdit);
         actions.add(btnCollect);
         actions.add(btnNewService);
-        add(actions);
+        add(actions, "wrap");
+
+        // Sorunlu müşteri yalnızca küçük bir rozetle gözden kaçabiliyordu; işlem yapmadan önce
+        // okunsun diye tam genişlikte, kırmızı bir uyarı satırı.
+        lblWarning.setIcon(new Ikon("icons/triangle-alert.svg", 0.9f, "Servicio.dangerColor"));
+        lblWarning.setIconTextGap(8);
+        lblWarning.putClientProperty(FlatClientProperties.STYLE,
+                "font: bold; foreground: " + SemanticColor.hex(SemanticColor.danger()));
+        lblWarning.setVisible(false);
+        add(lblWarning, "skip 1, span 3, wmin 0, gaptop 6, hidemode 3");
     }
 
     private static JButton secondaryButton(String text, String iconPath, Runnable action) {
@@ -91,16 +118,18 @@ public class CustomerHeaderPanel extends JPanel {
         String name = (customer.getType() == CustomerType.KURUMSAL && hasBusinessName)
                 ? customer.getBusinessName()
                 : customer.getFullName();
-        String typeName = customer.getType() != null ? customer.getType().getDisplayName() : "Bireysel";
-
-        // Rozet renkleri tema token'ından gelir; sabit hex açık temada kara blok gibi duruyordu.
-        StringBuilder html = new StringBuilder("<html><span>").append(escape(name)).append("</span>&nbsp;&nbsp;")
-                .append(badge(BadgeColor.GRAY, escape(typeName), false));
-        if (customer.isProblematic()) {
-            html.append("&nbsp;").append(badge(BadgeColor.RED, "&#9888; Sorunlu Müşteri", true));
-        }
-        lblName.setText(html.append("</html>").toString());
+        lblName.setText(name);
         lblName.setToolTipText(name);
+        typeBadge.setVisualizable(customer.getType() != null ? customer.getType() : CustomerType.BIREYSEL);
+        problemBadge.setVisible(customer.isProblematic());
+
+        boolean hasNote = customer.getNote() != null && !customer.getNote().isBlank();
+        // Notun tamamı soldaki Notlar kartında; burada tekrarlanmaz, oraya yönlendirilir.
+        String warning = "Bu müşteri sorunlu olarak işaretli." + (hasNote ? "  İşlem yapmadan önce müşteri notunu okuyun." : "");
+        lblWarning.setText(warning);
+        lblWarning.setToolTipText(hasNote ? customer.getNote().trim() : null);
+        lblWarning.setVisible(customer.isProblematic());
+        problemBadge.setToolTipText(hasNote ? customer.getNote().trim() : null);
 
         // İletişim bilgileri tek satırda; boş alanlar yazılmaz, satır dar ekranda kesilir, tamamı ipucunda.
         List<String> parts = new ArrayList<>();
@@ -139,13 +168,4 @@ public class CustomerHeaderPanel extends JPanel {
         if (value != null && !value.isBlank()) parts.add(value.trim());
     }
 
-    private static String badge(BadgeColor color, String text, boolean bold) {
-        return "<span style='background-color:" + BadgePalette.backgroundHex(color)
-                + "; color:" + BadgePalette.foregroundHex(color)
-                + "; font-size:11px; font-weight:" + (bold ? "bold" : "normal") + ";'>&nbsp;" + text + "&nbsp;</span>";
-    }
-
-    private static String escape(String text) {
-        return text == null ? "" : text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-    }
 }
