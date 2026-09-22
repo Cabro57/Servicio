@@ -20,6 +20,9 @@ public class Badge extends JLabel {
 
     // --- CONSTRUCTORS ---
     public Badge(Visualizable visualizable) {
+        // Metin yalnızca setVisualizable'da atanıyordu; bu yapıcıyla kurulan ve sonra
+        // setVisualizable çağrılmayan rozet yazısız, sadece ikonla çiziliyordu.
+        super(visualizable != null ? visualizable.getDisplayName() : "");
         this.visualizable = visualizable;
         updateStyle();
     }

@@ -41,14 +41,18 @@ public interface CustomerRepository extends SqlObject {
     void deleteByIds(@BindList("ids") List<Long> ids);
 
     // --- SEÇME (SELECT) İŞLEMLERİ ---
-    // DÜZELTME: customer_type kolonu Java'daki "type" değişkeniyle eşleşmesi için "AS type" olarak seçildi
-    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at FROM customers WHERE id = :id AND is_deleted = 0")
+    // DÜZELTME: customer_type kolonu Java'daki "type" değişkeniyle eşleşmesi için "AS type" olarak seçildi.
+    // is_problematic de aynı sebeple "AS problematic": Customer alanındaki @ColumnName Lombok'un ürettiği
+    // getter/setter'a kopyalanmıyor, BeanMapper onu görmüyordu ve bayrak her sorguda false geliyordu
+    // (müşteri detayında "Sorunlu Müşteri" hiç görünmüyordu). CustomerTableMapper kolonu elle okuduğu için
+    // liste ekranı etkilenmiyordu.
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic AS problematic, created_at, updated_at FROM customers WHERE id = :id AND is_deleted = 0")
     Optional<Customer> findById(@Bind("id") Long id);
 
-    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at FROM customers WHERE id IN (<ids>) AND is_deleted = 0")
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic AS problematic, created_at, updated_at FROM customers WHERE id IN (<ids>) AND is_deleted = 0")
     List<Customer> findByIds(@BindList("ids") List<Long> ids);
 
-    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC")
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic AS problematic, created_at, updated_at FROM customers WHERE is_deleted = 0 ORDER BY created_at DESC")
     List<Customer> findAll();
 
     @SqlQuery("SELECT " +
@@ -70,7 +74,7 @@ public interface CustomerRepository extends SqlObject {
     @UseRowMapper(CustomerTableMapper.class)
     List<Customer> findAllTable();
 
-    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic, created_at, updated_at FROM customers WHERE is_deleted = 0 AND " +
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic AS problematic, created_at, updated_at FROM customers WHERE is_deleted = 0 AND " +
             "(first_name LIKE :search OR last_name LIKE :search OR business_name LIKE :search OR " +
             "phone_number_1 LIKE :search OR identity_no LIKE :search) " +
             "ORDER BY created_at DESC")

@@ -41,6 +41,7 @@ public class FormSale extends Form {
     private JLabel lblTitle;
     private JLabel valDate, valCustomer, valStatus;
     private JLabel lblSubtotal, lblTotal, lblPaid, lblRemaining;
+    private JLabel capTotal, capPaid, capRemaining;
     private GenericTableModel<SaleItem> itemsTableModel;
     private JButton btnReturn;
     private JButton btnPrint;
@@ -110,16 +111,19 @@ public class FormSale extends Form {
         lblSubtotal = new JLabel("-");
         box.add(lblSubtotal, "align right");
 
-        box.add(new JLabel("Toplam:"));
+        capTotal = new JLabel("Toplam:");
+        box.add(capTotal);
         lblTotal = new JLabel("-");
         lblTotal.putClientProperty(FlatClientProperties.STYLE, "font: bold");
         box.add(lblTotal, "align right, wrap");
 
-        box.add(new JLabel("Alınan Ödeme:"));
+        capPaid = new JLabel("Alınan Ödeme:");
+        box.add(capPaid);
         lblPaid = new JLabel("-");
         box.add(lblPaid, "align right");
 
-        box.add(new JLabel("Kalan:"));
+        capRemaining = new JLabel("Kalan:");
+        box.add(capRemaining);
         lblRemaining = new JLabel("-");
         box.add(lblRemaining, "align right");
 
@@ -155,9 +159,22 @@ public class FormSale extends Form {
             itemsTableModel.setData(full.getItems());
 
             lblSubtotal.setText(Format.formatPrice(full.getSubtotal()));
-            lblTotal.setText(Format.formatPrice(full.getTotalAmount()));
-            lblPaid.setText(Format.formatPrice(full.getTotalPaid()));
-            lblRemaining.setText(Format.formatPrice(full.getRemainingAmount()));
+            if (full.getType() == SaleType.RETURN) {
+                // İadede tutarlar eksi saklanıyor; ekranda "Alınan Ödeme: -150" okunmuyordu.
+                // Yön etiketten okunur, tutarlar pozitif gösterilir.
+                BigDecimal paid = full.getTotalPaid() != null ? full.getTotalPaid() : BigDecimal.ZERO;
+                lblTitle.setText("İade Detayı — İADE-" + full.getId() + " (SAT-" + full.getParentSaleId() + ")");
+                capTotal.setText("İade Tutarı:");
+                capPaid.setText("Müşteriye Ödenen:");
+                capRemaining.setText("Hesaptan Düşülen:");
+                lblTotal.setText(Format.formatPrice(full.getTotalAmount().negate()));
+                lblPaid.setText(Format.formatPrice(paid.negate()));
+                lblRemaining.setText(Format.formatPrice(full.getRemainingAmount().negate()));
+            } else {
+                lblTotal.setText(Format.formatPrice(full.getTotalAmount()));
+                lblPaid.setText(Format.formatPrice(full.getTotalPaid()));
+                lblRemaining.setText(Format.formatPrice(full.getRemainingAmount()));
+            }
 
             btnReturn.setVisible(full.getType() == SaleType.SALE);
         })).exceptionally(ex -> ErrorHandler.handle(this, "Satış detayı yüklenemedi", ex));

@@ -195,6 +195,17 @@ public class PaymentService {
     public static PaymentStatus resolveStatus(BigDecimal totalAmount, BigDecimal allocatedAmount) {
         BigDecimal total = totalAmount == null ? BigDecimal.ZERO : totalAmount;
         BigDecimal allocated = allocatedAmount == null ? BigDecimal.ZERO : allocatedAmount;
+
+        // İade: toplam eksi, müşteriye verilen para da eksi tahsis olarak bağlı (bkz. SaleService.recordReturn).
+        // Pozitif belgelerin kuralı burada her iadeyi "Ödenmedi" yapıyordu; işaretler çevrilip karşılaştırılır.
+        if (total.signum() < 0) {
+            BigDecimal refundDue = total.negate();
+            BigDecimal refunded = allocated.negate();
+            if (refunded.signum() <= 0) return PaymentStatus.CREDITED;
+            if (refunded.compareTo(refundDue) >= 0) return PaymentStatus.REFUNDED;
+            return PaymentStatus.PARTIAL_REFUND;
+        }
+
         if (allocated.compareTo(BigDecimal.ZERO) <= 0) return PaymentStatus.UNPAID;
         if (allocated.compareTo(total) >= 0) return PaymentStatus.PAID;
         return PaymentStatus.PARTIAL;
