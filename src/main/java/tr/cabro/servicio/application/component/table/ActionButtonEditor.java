@@ -1,7 +1,6 @@
-package tr.cabro.servicio.application.editors;
+package tr.cabro.servicio.application.component.table;
 
 import tr.cabro.servicio.application.component.PanelAction;
-import tr.cabro.servicio.application.events.TableActionEvent;
 
 import javax.swing.*;
 import java.awt.*;

@@ -148,6 +148,11 @@ public class PaymentService {
         return CompletableFuture.supplyAsync(() -> accountRepository.findOpenDocumentsByCustomer(customerId));
     }
 
+    /** Müşteri detayındaki Ödemeler bölümü için — müşterinin tüm tahsilatları, en yeni önce. */
+    public CompletableFuture<List<Payment>> getByCustomer(Long customerId) {
+        return CompletableFuture.supplyAsync(() -> paymentRepository.findByCustomerId(customerId));
+    }
+
     public CompletableFuture<Optional<CustomerBalanceDto>> getCustomerBalance(Long customerId) {
         return CompletableFuture.supplyAsync(() -> accountRepository.findBalanceByCustomer(customerId));
     }

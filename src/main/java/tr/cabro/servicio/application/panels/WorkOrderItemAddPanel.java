@@ -6,7 +6,7 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import raven.modal.component.ModalBorderAction;
 import tr.cabro.servicio.application.component.CurrencyField;
-import tr.cabro.servicio.application.editors.AddButtonEditor;
+import tr.cabro.servicio.application.component.table.AddButtonEditor;
 import tr.cabro.servicio.application.renderer.AddButtonRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;

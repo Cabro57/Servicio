@@ -1,4 +1,4 @@
-package tr.cabro.servicio.application.events;
+package tr.cabro.servicio.application.component.table;
 
 public interface TableActionEvent {
 

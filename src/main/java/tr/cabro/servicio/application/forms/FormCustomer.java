@@ -2,79 +2,133 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.renderer.*;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.component.table.ActionButtonEditor;
+import tr.cabro.servicio.application.component.table.DynamicActionColumnSupport;
+import tr.cabro.servicio.application.component.table.TableActionEvent;
+import tr.cabro.servicio.application.panels.CollectionPanel;
+import tr.cabro.servicio.application.panels.QuickIntakePanel;
+import tr.cabro.servicio.application.panels.customer.CustomerActivity;
+import tr.cabro.servicio.application.panels.customer.CustomerHeaderPanel;
+import tr.cabro.servicio.application.panels.customer.CustomerListSection;
+import tr.cabro.servicio.application.panels.customer.CustomerOverviewPanel;
+import tr.cabro.servicio.application.panels.customer.CustomerSectionNav;
+import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
+import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
+import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.Form;
-import tr.cabro.servicio.application.themes.BadgePalette;
-import tr.cabro.servicio.application.themes.SemanticColor;
-import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.application.system.FormManager;
-import tr.cabro.servicio.Servicio;
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.events.TableActionEvent;
-import tr.cabro.servicio.application.panels.CollectionPanel;
-import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
-import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
-import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
-import tr.cabro.servicio.application.utils.Ikon;
-import tr.cabro.servicio.model.*;
-import tr.cabro.servicio.model.dto.CustomerBalanceDto;
-import tr.cabro.servicio.model.dto.OpenDocumentDto;
-import tr.cabro.servicio.model.enums.AllocationTargetType;
-import tr.cabro.servicio.model.enums.CustomerType;
-import tr.cabro.servicio.model.enums.ServiceStatus;
-import tr.cabro.servicio.service.CustomerService;
-import tr.cabro.servicio.service.PaymentService;
-import tr.cabro.servicio.service.WorkOrderService;
-import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.model.*;
+import tr.cabro.servicio.model.dto.OpenDocumentDto;
+import tr.cabro.servicio.model.enums.AllocationTargetType;
+import tr.cabro.servicio.model.enums.DeviceTransactionType;
+import tr.cabro.servicio.model.enums.PaymentStatus;
+import tr.cabro.servicio.model.enums.PaymentType;
+import tr.cabro.servicio.model.enums.SaleType;
+import tr.cabro.servicio.model.enums.ServiceStatus;
+import tr.cabro.servicio.service.*;
+import tr.cabro.servicio.util.DesktopHelper;
 import tr.cabro.servicio.util.DialogHelper;
-import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 
+/**
+ * Müşteri detayı: üstte kimlik şeridi (bakiye + sık işlemler), solda bölüm menüsü, sağda
+ * seçili bölüm tam genişlikte. Eski düzende üç kart 320px'lik bir kolona üst üste diziliyor,
+ * sağdaki tek tablo sıkışıyor ve satış/ödeme/2.el geçmişi hiç görünmüyordu.
+ */
 public class FormCustomer extends Form {
+
+    private static final String SECTION_OVERVIEW = "overview";
+    private static final String SECTION_SERVICES = "services";
+    private static final String SECTION_SALES = "sales";
+    private static final String SECTION_PAYMENTS = "payments";
+    private static final String SECTION_DEVICES = "devices";
+    private static final String SECTION_SECONDHAND = "secondhand";
+
+    /** Son hareketler listesinde gösterilen en fazla satır; tamamı ilgili bölümde. */
+    private static final int RECENT_ACTIVITY_LIMIT = 15;
 
     private Customer customer;
     private final WorkOrderService workOrderService;
     private final CustomerService customerService;
     private final PaymentService paymentService;
+    private final SaleService saleService;
+    private final DeviceService deviceService;
+    private final DeviceTransactionService deviceTransactionService;
 
-    private GenericTableModel<WorkOrder> tableModel;
-    private JTable table;
+    private CustomerHeaderPanel header;
+    private CustomerSectionNav nav;
+    private final JPanel sections = new JPanel(new CardLayout());
 
-    private JLabel lblNameBadge;
-    private JLabel valTotalDevices, valActiveServices, valCompletedServices, valTotalSpent;
-    private JLabel valTotalDebt, valTotalPaid, valBalance;
-    private GenericTableModel<OpenDocumentDto> openDocsTableModel;
+    private CustomerOverviewPanel overview;
+    private CustomerListSection<WorkOrder> servicesSection;
+    private CustomerListSection<Sale> salesSection;
+    private CustomerListSection<Payment> paymentsSection;
+    private CustomerListSection<Device> devicesSection;
+    private CustomerListSection<DeviceTransaction> secondHandSection;
+
+    private List<WorkOrder> workOrders = List.of();
 
     public FormCustomer(Customer customer) {
         this.customer = customer;
         this.workOrderService = ServiceManager.getWorkOrderService();
         this.customerService = ServiceManager.getCustomerService();
         this.paymentService = ServiceManager.getPaymentService();
+        this.saleService = ServiceManager.getSaleService();
+        this.deviceService = ServiceManager.getDeviceService();
+        this.deviceTransactionService = ServiceManager.getDeviceTransactionService();
         init();
     }
 
     private void init() {
-        setLayout(new MigLayout("fill, insets 20, gap 20", "[::320][grow]", "[pref][grow]"));
-        createHeader();
-        createLeftColumn();
-        createRightColumn();
+        setLayout(new MigLayout("fill, insets 20, gap 16", "[200!][grow, fill]", "[pref][grow, fill]"));
+
+        header = new CustomerHeaderPanel(FormManager::undo, this::openWhatsApp, this::openEditModal,
+                this::openCollection, this::openQuickIntakeModal);
+        add(header, "span 2, growx, wmin 0, wrap");
+
+        nav = new CustomerSectionNav(this::showSection);
+        nav.addSection(SECTION_OVERVIEW, "Genel Bakış", "icons/layout-dashboard.svg", "Ctrl+1");
+        nav.addSection(SECTION_SERVICES, "Servisler", "icons/wrench.svg", "Ctrl+2");
+        nav.addSection(SECTION_SALES, "Satışlar", "icons/shopping-bag.svg", "Ctrl+3");
+        nav.addSection(SECTION_PAYMENTS, "Ödemeler", "icons/hand-coins.svg", "Ctrl+4");
+        nav.addSection(SECTION_DEVICES, "Cihazlar", "icons/tablet-smartphone.svg", "Ctrl+5");
+        nav.addSection(SECTION_SECONDHAND, "2.El Alım-Satım", "icons/handshake.svg", "Ctrl+6");
+        nav.setCount(SECTION_OVERVIEW, null);
+        add(nav, "aligny top, growx");
+
+        sections.setOpaque(false);
+        overview = new CustomerOverviewPanel(this::openWorkOrder, this::openDocument, this::openActivity,
+                this::openQuickIntakeModal);
+        sections.add(overview, SECTION_OVERVIEW);
+        sections.add(createServicesSection(), SECTION_SERVICES);
+        sections.add(createSalesSection(), SECTION_SALES);
+        sections.add(createPaymentsSection(), SECTION_PAYMENTS);
+        sections.add(createDevicesSection(), SECTION_DEVICES);
+        sections.add(createSecondHandSection(), SECTION_SECONDHAND);
+        add(sections, "grow, wmin 0, hmin 0");
+
+        installSectionShortcuts();
+        nav.select(SECTION_OVERVIEW);
         refreshData();
     }
 
@@ -86,6 +140,363 @@ public class FormCustomer extends Form {
                     SwingUtilities.invokeLater(this::refreshData);
                 })
         );
+    }
+
+    private void showSection(String id) {
+        ((CardLayout) sections.getLayout()).show(sections, id);
+    }
+
+    /** Ctrl+1..6 bölümler arasında geçer; menüdeki ipuçları aynı sırayı gösterir. */
+    private void installSectionShortcuts() {
+        InputMap inputMap = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        for (int i = 0; i < 6; i++) {
+            String sectionId = nav.idAt(i);
+            String actionKey = "customerSection" + i;
+            inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_1 + i, InputEvent.CTRL_DOWN_MASK), actionKey);
+            getActionMap().put(actionKey, new AbstractAction() {
+                @Override
+                public void actionPerformed(java.awt.event.ActionEvent e) {
+                    nav.select(sectionId);
+                }
+            });
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Bölümler
+    // -------------------------------------------------------------------------
+
+    private JComponent createServicesSection() {
+        servicesSection = new CustomerListSection<>("Servis Geçmişi", Arrays.asList(
+                new ColumnDef<>("Kayıt No", String.class, s -> "SRV-" + s.getId()),
+                new ColumnDef<>("Cihaz", Device.class, WorkOrder::getDevice),
+                new ColumnDef<>("Tarih", String.class, s -> s.getCreatedAt() != null ? s.getCreatedAt().format(DateFormats.dateTime()) : "-"),
+                ColumnDef.badge("Durum", ServiceStatus.class, WorkOrder::getServiceStatus),
+                ColumnDef.currency("Ücret", WorkOrder::getTotalServiceAmount),
+                ColumnDef.actionColumn("İşlem")
+        ), "Henüz servis kaydı yok", "Bu müşteri için açılan servis kayıtları burada listelenir.", false);
+        servicesSection.setEmptyAction("Yeni servis kaydı", this::openQuickIntakeModal);
+        servicesSection.setOnOpen(this::openWorkOrder);
+
+        JTable table = servicesSection.getTable();
+        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Device>(
+                d -> d != null ? d.getBrand() + " " + d.getModel() : "Belirtilmedi",
+                d -> d != null && d.getSerialNo() != null ? "SN: " + d.getSerialNo() : "Bilinmiyor"));
+        table.getColumnModel().getColumn(5).setCellRenderer(new ActionButtonRenderer());
+        table.getColumnModel().getColumn(5).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+            @Override
+            public void onView(int row) {
+                WorkOrder s = workOrderAt(table, row);
+                if (s != null) openWorkOrder(s);
+            }
+
+            @Override
+            public void onEdit(int row) {
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+                WorkOrder s = workOrderAt(table, row);
+                if (s != null) openEditModal(s);
+            }
+
+            @Override
+            public void onDelete(int row) {
+                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
+                WorkOrder s = workOrderAt(table, row);
+                if (s == null) return;
+
+                DialogHelper.confirmDelete(FormCustomer.this, "confirm.delete.workorder", () ->
+                                workOrderService.delete(s.getId())
+                                        .thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                                            Toast.show(FormCustomer.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
+                                            refreshData();
+                                        }))
+                                        .exceptionally(ex -> ErrorHandler.handle(FormCustomer.this, "Servis kaydı silinemedi", ex)),
+                        s.getId());
+            }
+        }));
+
+        table.getColumnModel().getColumn(0).setMaxWidth(110);
+        table.getColumnModel().getColumn(1).setPreferredWidth(260);
+        table.getColumnModel().getColumn(3).setPreferredWidth(130);
+        table.getColumnModel().getColumn(4).setPreferredWidth(110);
+        table.getColumnModel().getColumn(5).setMaxWidth(180);
+        table.getColumnModel().getColumn(5).setMinWidth(120);
+        return servicesSection;
+    }
+
+    private WorkOrder workOrderAt(JTable table, int viewRow) {
+        return servicesSection.getTableModel().getItemAt(table.convertRowIndexToModel(viewRow));
+    }
+
+    private JComponent createSalesSection() {
+        salesSection = new CustomerListSection<>("Satışlar ve İadeler", Arrays.asList(
+                new ColumnDef<>("Fiş No", String.class, this::saleLabel),
+                new ColumnDef<>("Tarih", String.class, s -> s.getSaleDate() != null ? s.getSaleDate().format(DateFormats.dateTime()) : "-"),
+                ColumnDef.currency("Toplam", Sale::getTotalAmount),
+                ColumnDef.badge("Durum", PaymentStatus.class, s -> PaymentService.resolveStatus(s.getTotalAmount(), s.getTotalPaid())),
+                new ColumnDef<Sale>("", String.class, s -> "").editable(true)
+        ), "Satış kaydı yok", "Bu müşteriye POS ekranından yapılan satışlar burada listelenir.", false);
+        salesSection.setOnOpen(this::openSale);
+        DynamicActionColumnSupport.install(salesSection.getTable(), 4, salesSection.getTableModel(), List.of(
+                DynamicActionColumnSupport.button("icons/eye.svg", new Color(13, 110, 253), "Detay", this::openSale)));
+        salesSection.getTable().getColumnModel().getColumn(4).setMaxWidth(60);
+        return salesSection;
+    }
+
+    private JComponent createPaymentsSection() {
+        paymentsSection = new CustomerListSection<>("Ödeme Geçmişi", Arrays.asList(
+                new ColumnDef<>("Tarih", String.class, p -> p.getPaymentDate() != null ? p.getPaymentDate().format(DateFormats.dateTime()) : "-"),
+                ColumnDef.badge("Ödeme Türü", PaymentType.class, Payment::getPaymentType),
+                ColumnDef.currency("Tutar", Payment::getAmount),
+                new ColumnDef<>("Not", String.class, p -> p.getNote() != null ? p.getNote() : "")
+        ), "Tahsilat yok", "Bu müşteriden alınan ödemeler burada listelenir.", false);
+        paymentsSection.setEmptyAction("Tahsilat al", this::openCollection);
+        JTable table = paymentsSection.getTable();
+        table.getColumnModel().getColumn(0).setPreferredWidth(160);
+        table.getColumnModel().getColumn(1).setPreferredWidth(150);
+        table.getColumnModel().getColumn(2).setPreferredWidth(120);
+        table.getColumnModel().getColumn(3).setPreferredWidth(360);
+        return paymentsSection;
+    }
+
+    private JComponent createDevicesSection() {
+        devicesSection = new CustomerListSection<>("Servise Getirdiği Cihazlar", Arrays.asList(
+                new ColumnDef<>("Cihaz", Device.class, d -> d),
+                new ColumnDef<>("Tür", String.class, d -> d.getDeviceType() != null ? d.getDeviceType().toString() : "-"),
+                new ColumnDef<>("Aksesuar", String.class, d -> d.getAccessory() != null ? d.getAccessory() : ""),
+                new ColumnDef<Device>("", String.class, d -> "").editable(true)
+        ), "Kayıtlı cihaz yok", "Servis kaydı açılan cihazlar burada listelenir.", false);
+        devicesSection.setOnOpen(this::openDevice);
+        JTable table = devicesSection.getTable();
+        table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Device>(
+                d -> d != null ? d.getBrand() + " " + d.getModel() : "Belirtilmedi",
+                d -> d != null && d.getSerialNo() != null ? "SN: " + d.getSerialNo() : "Seri no yok"));
+        table.getColumnModel().getColumn(0).setPreferredWidth(300);
+        DynamicActionColumnSupport.install(table, 3, devicesSection.getTableModel(), List.of(
+                DynamicActionColumnSupport.button("icons/eye.svg", new Color(13, 110, 253), "Cihaz detayı", this::openDevice)));
+        table.getColumnModel().getColumn(3).setMaxWidth(60);
+        return devicesSection;
+    }
+
+    private JComponent createSecondHandSection() {
+        secondHandSection = new CustomerListSection<>("2.El Alım-Satım", Arrays.asList(
+                new ColumnDef<>("Tarih", String.class, t -> t.getTransactionDate() != null ? t.getTransactionDate().format(DateFormats.dateTime()) : "-"),
+                new ColumnDef<>("İşlem", String.class, t -> t.getType() == DeviceTransactionType.PURCHASE ? "Müşteriden alım" : "Müşteriye satış"),
+                new ColumnDef<>("Cihaz", Device.class, DeviceTransaction::getDevice),
+                ColumnDef.currency("Fiyat", DeviceTransaction::getPrice),
+                new ColumnDef<DeviceTransaction>("", String.class, t -> "").editable(true)
+        ), "2.el işlem yok", "Bu müşteriden alınan ya da ona satılan 2.el cihazlar burada listelenir.", false);
+        secondHandSection.setOnOpen(this::openTransactionDevice);
+        JTable table = secondHandSection.getTable();
+        table.getColumnModel().getColumn(2).setCellRenderer(new MultiLineTableCellRenderer<Device>(
+                d -> d != null ? d.getBrand() + " " + d.getModel() : "Belirtilmedi",
+                d -> d != null && d.getSerialNo() != null ? "SN: " + d.getSerialNo() : ""));
+        table.getColumnModel().getColumn(2).setPreferredWidth(280);
+        DynamicActionColumnSupport.install(table, 4, secondHandSection.getTableModel(), List.of(
+                DynamicActionColumnSupport.button("icons/eye.svg", new Color(13, 110, 253), "Cihaz detayı", this::openTransactionDevice)));
+        table.getColumnModel().getColumn(4).setMaxWidth(60);
+        return secondHandSection;
+    }
+
+    private String saleLabel(Sale s) {
+        return s.getType() == SaleType.RETURN
+                ? "İADE-" + s.getId() + " (SAT-" + s.getParentSaleId() + ")"
+                : "SAT-" + s.getId();
+    }
+
+    // -------------------------------------------------------------------------
+    // Veri yükleme
+    // -------------------------------------------------------------------------
+
+    private void refreshData() {
+        header.setCustomer(customer);
+        Long id = customer.getId();
+
+        CompletableFuture<List<WorkOrder>> workOrdersF = workOrderService.getAll(id);
+        CompletableFuture<List<Sale>> salesF = saleService.getByCustomer(id);
+        CompletableFuture<List<Payment>> paymentsF = paymentService.getByCustomer(id);
+        CompletableFuture<List<Device>> devicesF = deviceService.getAllByCustomerId(id);
+        CompletableFuture<List<DeviceTransaction>> tradesF = deviceTransactionService.getByCustomerId(id);
+
+        workOrdersF.thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            workOrders = list;
+            servicesSection.setData(list);
+            overview.setWorkOrders(list);
+            nav.setCount(SECTION_SERVICES, list.size());
+        })).exceptionally(ex -> sectionError(servicesSection, "Servis kayıtları yüklenemedi", ex));
+
+        salesF.thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            salesSection.setData(list);
+            nav.setCount(SECTION_SALES, list.size());
+        })).exceptionally(ex -> sectionError(salesSection, "Satışlar yüklenemedi", ex));
+
+        paymentsF.thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            paymentsSection.setData(list);
+            nav.setCount(SECTION_PAYMENTS, list.size());
+            overview.setTotalCollected(list.stream().map(Payment::getAmount)
+                    .filter(a -> a != null).reduce(BigDecimal.ZERO, BigDecimal::add));
+        })).exceptionally(ex -> sectionError(paymentsSection, "Ödemeler yüklenemedi", ex));
+
+        devicesF.thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            devicesSection.setData(list);
+            nav.setCount(SECTION_DEVICES, list.size());
+        })).exceptionally(ex -> sectionError(devicesSection, "Cihazlar yüklenemedi", ex));
+
+        tradesF.thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            secondHandSection.setData(list);
+            nav.setCount(SECTION_SECONDHAND, list.size());
+        })).exceptionally(ex -> sectionError(secondHandSection, "2.el işlemleri yüklenemedi", ex));
+
+        CompletableFuture.allOf(workOrdersF, salesF, paymentsF, tradesF)
+                .thenAccept(v -> {
+                    List<CustomerActivity> activity = buildActivity(workOrdersF.join(), salesF.join(), paymentsF.join(), tradesF.join());
+                    SwingUtilities.invokeLater(() -> overview.setRecentActivity(activity));
+                })
+                .exceptionally(ex -> {
+                    Servicio.getLogger().error("Müşteri hareketleri yüklenemedi", ex);
+                    return null;
+                });
+
+        refreshAccount();
+    }
+
+    private void refreshAccount() {
+        paymentService.getCustomerBalance(customer.getId()).thenAccept(opt -> SwingUtilities.invokeLater(() ->
+                header.setBalance(opt.map(b -> b.getBalance()).orElse(BigDecimal.ZERO))
+        )).exceptionally(ex -> ErrorHandler.handle(this, "Cari bakiye yüklenemedi", ex));
+
+        paymentService.getOpenDocuments(customer.getId()).thenAccept(docs -> SwingUtilities.invokeLater(() ->
+                overview.setOpenDocuments(docs)
+        )).exceptionally(ex -> ErrorHandler.handle(this, "Açık belgeler yüklenemedi", ex));
+    }
+
+    private Void sectionError(CustomerListSection<?> section, String message, Throwable ex) {
+        Servicio.getLogger().error(message, ex);
+        SwingUtilities.invokeLater(() -> section.showError(message));
+        return null;
+    }
+
+    /** Servis, satış, tahsilat ve 2.el işlemlerini tek tarih sırasına dizer; en yeni önce. */
+    private List<CustomerActivity> buildActivity(List<WorkOrder> orders, List<Sale> sales,
+                                                 List<Payment> payments, List<DeviceTransaction> trades) {
+        List<CustomerActivity> all = new ArrayList<>();
+        for (WorkOrder w : orders) {
+            String device = w.getDevice() != null ? w.getDevice().getBrand() + " " + w.getDevice().getModel() : "Cihaz belirtilmedi";
+            String status = w.getServiceStatus() != null ? " — " + w.getServiceStatus().getDisplayName() : "";
+            all.add(new CustomerActivity(CustomerActivity.Kind.SERVICE, w.getCreatedAt(),
+                    "SRV-" + w.getId() + " · " + device + status, w.getTotalServiceAmount(), w));
+        }
+        for (Sale s : sales) {
+            CustomerActivity.Kind kind = s.getType() == SaleType.RETURN ? CustomerActivity.Kind.RETURN : CustomerActivity.Kind.SALE;
+            all.add(new CustomerActivity(kind, s.getSaleDate(), saleLabel(s), s.getTotalAmount(), s));
+        }
+        for (Payment p : payments) {
+            String type = p.getPaymentType() != null ? p.getPaymentType().getDisplayName() : "Ödeme";
+            String note = p.getNote() != null && !p.getNote().isBlank() ? " · " + p.getNote() : "";
+            all.add(new CustomerActivity(CustomerActivity.Kind.PAYMENT, p.getPaymentDate(), type + note, p.getAmount(), p));
+        }
+        for (DeviceTransaction t : trades) {
+            CustomerActivity.Kind kind = t.getType() == DeviceTransactionType.PURCHASE
+                    ? CustomerActivity.Kind.DEVICE_PURCHASE : CustomerActivity.Kind.DEVICE_SALE;
+            String device = t.getDevice() != null ? t.getDevice().getBrand() + " " + t.getDevice().getModel() : "Cihaz";
+            all.add(new CustomerActivity(kind, t.getTransactionDate(), device, t.getPrice(), t));
+        }
+        all.sort(Comparator.comparing(CustomerActivity::getDate, Comparator.nullsLast(Comparator.<LocalDateTime>reverseOrder())));
+        return all.size() > RECENT_ACTIVITY_LIMIT ? new ArrayList<>(all.subList(0, RECENT_ACTIVITY_LIMIT)) : all;
+    }
+
+    // -------------------------------------------------------------------------
+    // Kayıt açma
+    // -------------------------------------------------------------------------
+
+    private void openWorkOrder(WorkOrder workOrder) {
+        FormManager.showForm(new FormWorkOrder(workOrder));
+    }
+
+    private void openSale(Sale sale) {
+        FormManager.showForm(new FormSale(sale));
+    }
+
+    private void openDevice(Device device) {
+        FormManager.showForm(new FormDevice(device));
+    }
+
+    /** 2.el sorgusu cihazın yalnızca özet alanlarını taşıyor; detay formu için cihaz tam haliyle yüklenir. */
+    private void openTransactionDevice(DeviceTransaction transaction) {
+        deviceService.get(transaction.getDeviceId()).thenAccept(opt -> SwingUtilities.invokeLater(() ->
+                opt.ifPresent(this::openDevice)
+        )).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz yüklenemedi", ex));
+    }
+
+    private void openDocument(OpenDocumentDto document) {
+        if (document.getDocumentType() == AllocationTargetType.WORK_ORDER) {
+            workOrders.stream().filter(w -> w.getId().equals(document.getDocumentId())).findFirst()
+                    .ifPresent(this::openWorkOrder);
+        } else {
+            saleService.getById(document.getDocumentId()).thenAccept(opt -> SwingUtilities.invokeLater(() ->
+                    opt.ifPresent(this::openSale)
+            )).exceptionally(ex -> ErrorHandler.handle(this, "Satış yüklenemedi", ex));
+        }
+    }
+
+    private void openActivity(CustomerActivity activity) {
+        Object source = activity.getSource();
+        if (source instanceof WorkOrder w) {
+            openWorkOrder(w);
+        } else if (source instanceof Sale s) {
+            openSale(s);
+        } else if (source instanceof DeviceTransaction t) {
+            openTransactionDevice(t);
+        } else if (source instanceof Payment) {
+            nav.select(SECTION_PAYMENTS);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Kimlik şeridi işlemleri
+    // -------------------------------------------------------------------------
+
+    private void openWhatsApp() {
+        String digits = PhoneHelper.toWhatsAppDigits(customer.getPhoneNumber1());
+        if (digits == null) {
+            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noPhone"));
+            return;
+        }
+        if (!DesktopHelper.browseUrl("https://wa.me/" + digits)) {
+            Toast.show(this, Toast.Type.ERROR, Messages.get("toast.generic.error", "WhatsApp açılamadı"));
+        }
+    }
+
+    private void openCollection() {
+        CollectionPanel.open(this, customer, this::refreshData);
+    }
+
+    private void openEditModal() {
+        final String modalId = "customer_detail_edit";
+        CustomerEditPanel panel = new CustomerEditPanel(customer);
+
+        SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
+                new SimpleModalBorder.Option("Güncelle", SimpleModalBorder.OK_OPTION),
+                new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
+        };
+
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Müşteri Düzenle", options, (controller, action) -> {
+            if (action != SimpleModalBorder.OK_OPTION) return;
+            Customer updated = panel.getData();
+            if (updated == null) {
+                controller.consume();
+                return;
+            }
+            updated.setId(customer.getId());
+            updated.setCreatedAt(customer.getCreatedAt());
+
+            customerService.save(updated, true).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getFullName()));
+                formRefresh();
+            })).exceptionally(ex -> {
+                SwingUtilities.invokeLater(controller::consume);
+                return ErrorHandler.handle(this, "Müşteri güncellenemedi", ex);
+            });
+        }), modalId);
     }
 
     // -------------------------------------------------------------------------
@@ -186,391 +597,5 @@ public class FormCustomer extends Form {
                 return null;
             });
         }), MODAL_ID);
-    }
-
-    // -------------------------------------------------------------------------
-    // UI oluşturma
-    // -------------------------------------------------------------------------
-
-    private void createHeader() {
-        JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx, gap 15", "[][grow]", "[]"));
-        headerPanel.setOpaque(false);
-
-        JButton btnBack = new JButton(new Ikon("icons/arrow-left.svg", 1.2f));
-        btnBack.putClientProperty(FlatClientProperties.STYLE, "arc: 15; background: lighten($Panel.background, 5%); borderWidth: 0; margin: 8,10,8,10;");
-        btnBack.addActionListener(e -> FormManager.undo());
-        headerPanel.add(btnBack, "cell 0 0, aligny center");
-
-        JPanel titleBox = new JPanel(new MigLayout("insets 0, gap 0", "[grow]", "[][]"));
-        titleBox.setOpaque(false);
-
-        lblNameBadge = new JLabel();
-        lblNameBadge.putClientProperty(FlatClientProperties.STYLE, "font: bold +8");
-        updateNameAndBadge();
-
-        JLabel lblSubtitle = new JLabel("Müşteri Profili ve Servis Geçmişi");
-        lblSubtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
-
-        titleBox.add(lblNameBadge, "wrap");
-        titleBox.add(lblSubtitle);
-        headerPanel.add(titleBox, "cell 1 0");
-        add(headerPanel, "span 2, growx, wrap");
-    }
-
-    private void updateNameAndBadge() {
-        if (customer == null) return;
-        boolean hasBusinessName = customer.getBusinessName() != null && !customer.getBusinessName().isBlank();
-        String isim = (customer.getType() == CustomerType.KURUMSAL && hasBusinessName)
-                ? customer.getBusinessName()
-                : customer.getFullName();
-        String badge = customer.getType() != null ? customer.getType().getDisplayName() : "Bireysel";
-
-        // HTML rozetlerin renkleri de tema token'ından gelir; eskiden sabit koyu hex'lerdi
-        // ve açık temada isim satırında kara blok gibi duruyorlardı.
-        StringBuilder html = new StringBuilder("<html><span>").append(isim).append("</span>&nbsp;&nbsp;")
-                .append("<span style='background-color:").append(BadgePalette.backgroundHex(BadgeColor.GRAY))
-                .append("; color:").append(BadgePalette.foregroundHex(BadgeColor.GRAY))
-                .append("; font-size:11px; padding:3px 8px; border-radius:6px; font-weight:normal;'> ")
-                .append(badge).append(" </span>");
-
-        if (customer.isProblematic()) {
-            html.append("&nbsp;<span style='background-color:").append(BadgePalette.backgroundHex(BadgeColor.RED))
-                    .append("; color:").append(BadgePalette.foregroundHex(BadgeColor.RED))
-                    .append("; font-size:11px; padding:3px 8px; border-radius:6px; font-weight:bold;'>")
-                    .append("&#9888; Sorunlu Müşteri</span>");
-        }
-
-        html.append("</html>");
-        lblNameBadge.setText(html.toString());
-    }
-
-    private void createLeftColumn() {
-        JPanel leftPanel = new JPanel(new MigLayout("insets 0, gapy 20, fillx", "[grow]", "[pref][pref][pref]"));
-        leftPanel.setOpaque(false);
-        leftPanel.add(createContactCard(), "growx, wrap");
-        leftPanel.add(createSummaryCard(), "growx, wrap");
-        leftPanel.add(createAccountCard(), "growx");
-        add(leftPanel, "cell 0 1, aligny top");
-    }
-
-    /**
-     * Cari hesap kartı — servis + satış (POS) borçlarını birlikte gösterir (bkz. v_customer_balances).
-     * Mevcut "Müşteri Özeti"ndeki "Harcama" istatistiğinden farklı: o sadece iş emri ödemelerini
-     * toplar, bu kart {@code v_customer_balances} üzerinden satışları da dahil eder.
-     */
-    private JPanel createAccountCard() {
-        JPanel card = createRoundedCard();
-        card.setLayout(new MigLayout("insets 20, gapy 10, fillx", "[grow]", "[]10[grow][]10[pref!]"));
-
-        JLabel title = new JLabel("Cari Hesap");
-        title.setIcon(new Ikon("icons/hand-coins.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2; iconTextGap: 10");
-        card.add(title, "wrap");
-
-        JPanel grid = new JPanel(new MigLayout("insets 0, gap 10, fill", "[grow][grow][grow]", "[grow]"));
-        grid.setOpaque(false);
-
-        valTotalDebt = createStatValueLabel();
-        valTotalPaid = createStatValueLabel();
-        valBalance = createStatValueLabel();
-        // Bakiyenin rengi değerden sürülür (bkz. refreshAccountCard): borç yokken kırmızı
-        // sıfır gösteren bir kart, cihazı teslim etmeden önce bakılan sayıyı yanlış anlatıyordu.
-        valBalance.putClientProperty(FlatClientProperties.STYLE, "font: bold +10");
-
-        grid.add(createMiniStatBox(valTotalDebt, "Toplam Borç"), "grow");
-        grid.add(createMiniStatBox(valTotalPaid, "Toplam Tahsilat"), "grow");
-        grid.add(createMiniStatBox(valBalance, "Bakiye"), "grow");
-        card.add(grid, "growx, wrap");
-
-        List<ColumnDef<OpenDocumentDto>> columns = Arrays.asList(
-                new ColumnDef<>("Belge", String.class, OpenDocumentDto::getDocumentLabel),
-                new ColumnDef<>("Kalan", BigDecimal.class, OpenDocumentDto::getRemainingAmount)
-        );
-        openDocsTableModel = new GenericTableModel<>(columns);
-        JTable openDocsTable = new JTable(openDocsTableModel);
-        openDocsTable.setRowHeight(26);
-        openDocsTable.getColumnModel().getColumn(1).setCellRenderer(new CurrencyTableCellRenderer());
-        JScrollPane scroll = new JScrollPane(openDocsTable);
-        scroll.setPreferredSize(new Dimension(100, 120));
-        card.add(scroll, "grow, wrap");
-
-        JButton btnCollect = new JButton("Tahsilat Al");
-        btnCollect.putClientProperty(FlatClientProperties.STYLE,
-                "background: $Component.accentColor; foreground: #ffffff; arc: 10; margin: 6,12,6,12; font: bold");
-        btnCollect.addActionListener(e -> CollectionPanel.open(this, customer, this::refreshAccountCard));
-        card.add(btnCollect, "align right");
-
-        return card;
-    }
-
-    private void refreshAccountCard() {
-        paymentService.getCustomerBalance(customer.getId()).thenAccept(opt -> SwingUtilities.invokeLater(() -> {
-            CustomerBalanceDto balance = opt.orElse(null);
-            valTotalDebt.setText(Format.formatPrice(balance != null ? balance.getTotalDebt() : BigDecimal.ZERO));
-            valTotalPaid.setText(Format.formatPrice(balance != null ? balance.getTotalPaid() : BigDecimal.ZERO));
-
-            BigDecimal balanceValue = balance != null ? balance.getBalance() : BigDecimal.ZERO;
-            valBalance.setText(Format.formatPrice(balanceValue));
-            // Kırmızı yalnızca gerçekten borç varken: sıfır bakiye nötr okunur.
-            String balanceColor = balanceValue.compareTo(BigDecimal.ZERO) > 0
-                    ? SemanticColor.hex(SemanticColor.danger())
-                    : "$Label.foreground";
-            valBalance.putClientProperty(FlatClientProperties.STYLE, "font: bold +10; foreground: " + balanceColor);
-        })).exceptionally(ex -> ErrorHandler.handle(this, "Cari bakiye yüklenemedi", ex));
-
-        paymentService.getOpenDocuments(customer.getId()).thenAccept(docs -> SwingUtilities.invokeLater(() ->
-                openDocsTableModel.setData(docs)
-        )).exceptionally(ex -> ErrorHandler.handle(this, "Açık belgeler yüklenemedi", ex));
-    }
-
-    private JPanel createContactCard() {
-        JPanel card = createRoundedCard();
-        card.setLayout(new MigLayout("insets 20, gapy 15, fillx", "[25!][grow]", "[]15[][][][]"));
-
-        JLabel title = new JLabel("İletişim Bilgileri");
-        title.setIcon(new Ikon("icons/user.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2; iconTextGap: 10");
-        card.add(title, "span 2, wrap");
-
-        DateTimeFormatter df = DateFormats.dateTime();
-        addContactRow(card, "icons/phone.svg",    "Telefon",      customer.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1()) : "-");
-        addContactRow(card, "icons/mail.svg",     "E-posta",      customer.getEmail()        != null ? customer.getEmail()        : "-");
-        addContactRow(card, "icons/map-pin.svg",  "Adres",        customer.getAddress()      != null ? customer.getAddress()      : "-");
-        addContactRow(card, "icons/calendar.svg", "Kayıt Tarihi", customer.getCreatedAt()    != null ? customer.getCreatedAt().format(df) : "-");
-        return card;
-    }
-
-    private void addContactRow(JPanel parent, String iconPath, String label, String value) {
-        JLabel icon = new JLabel(new Ikon(iconPath, 0.75f));
-        icon.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
-
-        JLabel lblLabel = new JLabel(label);
-        lblLabel.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
-
-        JLabel lblValue = new JLabel(value);
-        lblValue.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-
-        parent.add(icon,     "aligny top, span 1 2");
-        parent.add(lblLabel, "wrap");
-        parent.add(lblValue, "gapbottom 10, wrap");
-    }
-
-    private JPanel createSummaryCard() {
-        JPanel card = createRoundedCard();
-        card.setLayout(new MigLayout("insets 20, gapy 15, fillx", "[grow]", "[]10[grow]"));
-
-        JLabel title = new JLabel("Müşteri Özeti");
-        title.setIcon(new Ikon("icons/wrench.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2; iconTextGap: 10");
-        card.add(title, "wrap");
-
-        JPanel grid = new JPanel(new MigLayout("insets 0, gap 10, fill", "[grow][grow]", "[grow][grow]"));
-        grid.setOpaque(false);
-
-        valTotalDevices = createStatValueLabel();
-        valActiveServices = createStatValueLabel();
-        valActiveServices.putClientProperty(FlatClientProperties.STYLE, "font: bold +10; foreground: $Component.accentColor");
-        valCompletedServices = createStatValueLabel();
-        valCompletedServices.putClientProperty(FlatClientProperties.STYLE,
-                "font: bold +10; foreground: " + SemanticColor.hex(SemanticColor.success()));
-        valTotalSpent = createStatValueLabel();
-
-        grid.add(createMiniStatBox(valTotalDevices,      "Toplam Cihaz"), "grow");
-        grid.add(createMiniStatBox(valActiveServices,    "Aktif İşlem"),  "grow, wrap");
-        grid.add(createMiniStatBox(valCompletedServices, "Tamamlanan"),   "grow");
-        grid.add(createMiniStatBox(valTotalSpent,        "Harcama"),      "grow");
-
-        card.add(grid, "grow");
-        return card;
-    }
-
-    private JLabel createStatValueLabel() {
-        JLabel lbl = new JLabel("0");
-        lbl.setHorizontalAlignment(SwingConstants.CENTER);
-        lbl.putClientProperty(FlatClientProperties.STYLE, "font: bold +10");
-        return lbl;
-    }
-
-    private JPanel createMiniStatBox(JLabel valueLabel, String title) {
-        JPanel box = new JPanel(new MigLayout("insets 15, fill", "[grow]", "[grow][pref]"));
-        box.putClientProperty(FlatClientProperties.STYLE, "arc: 12; background: lighten($Panel.background, 3%);");
-
-        JLabel lblTitle = new JLabel(title);
-        lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
-        lblTitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
-
-        box.add(valueLabel, "grow, center, wrap");
-        box.add(lblTitle,   "grow, center");
-        return box;
-    }
-
-    private void createRightColumn() {
-        JPanel rightPanel = createRoundedCard();
-        rightPanel.setLayout(new MigLayout("insets 20, fill", "[grow]", "[pref]15[grow]"));
-
-        JPanel toolbar = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "[]"));
-        toolbar.setOpaque(false);
-
-        JLabel title = new JLabel("Servis Geçmişi");
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-
-        JButton btnNewService = new JButton("Yeni Servis Kaydı");
-        btnNewService.setIcon(new Ikon("icons/plus.svg", 1f));
-        btnNewService.putClientProperty(FlatClientProperties.STYLE, "background: $Component.accentColor; foreground: #ffffff; arc: 10; font: bold");
-        btnNewService.addActionListener(e -> openQuickIntakeModal());
-
-        toolbar.add(title);
-        toolbar.add(btnNewService);
-        rightPanel.add(toolbar, "wrap, growx");
-
-        setupTable();
-        JScrollPane scroll = new JScrollPane(table);
-        scroll.setBorder(BorderFactory.createEmptyBorder());
-        rightPanel.add(scroll, "grow, push");
-
-        add(rightPanel, "cell 1 1, grow");
-    }
-
-    // -------------------------------------------------------------------------
-    // Tablo
-    // -------------------------------------------------------------------------
-
-    private void setupTable() {
-        List<ColumnDef<WorkOrder>> columns = Arrays.asList(
-                new ColumnDef<>("Kayıt No", String.class,        s -> "SRV-" + s.getId()),
-                new ColumnDef<>("Cihaz",    Device.class,        WorkOrder::getDevice),
-                new ColumnDef<>("Tarih",    String.class,        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(DateFormats.dateTime()) : "-"),
-                new ColumnDef<>("Durum",    ServiceStatus.class, WorkOrder::getServiceStatus),
-                new ColumnDef<>("Ücret",    BigDecimal.class, WorkOrder::getTotalServiceAmount),
-                new ColumnDef<>("İşlem",    String.class,        s -> "Detay")
-        );
-
-        tableModel = new GenericTableModel<>(columns);
-        table = new JTable(tableModel);
-        configureTable();
-    }
-
-    private void configureTable() {
-        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
-                "height:40; separatorColor:$TableHeader.background; font:bold +1;");
-        table.putClientProperty(FlatClientProperties.STYLE,
-                "rowHeight:50; showHorizontalLines:true; intercellSpacing:0,1; selectionBackground:$TableHeader.hoverBackground;");
-
-        Integer[] alignments = {
-                SwingConstants.CENTER, SwingConstants.LEADING, SwingConstants.LEADING,
-                SwingConstants.CENTER, SwingConstants.TRAILING, SwingConstants.CENTER
-        };
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, alignments));
-
-        table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
-                ((JLabel) c).setHorizontalAlignment(SwingConstants.CENTER);
-                ((JLabel) c).putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: $Label.disabledForeground");
-                return c;
-            }
-        });
-
-        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Device>(
-                d -> d != null ? d.getBrand() + " " + d.getModel() : "Belirtilmedi",
-                d -> d != null && d.getSerialNo() != null ? "SN: " + d.getSerialNo() : "Bilinmiyor",
-                d -> null,
-                d -> new Color(130, 130, 130)
-        ));
-
-        table.getColumnModel().getColumn(3).setCellRenderer(new UniversalVisualizableRenderer());
-
-        table.getColumnModel().getColumn(4).setCellRenderer(new CurrencyTableCellRenderer());
-
-        table.getColumnModel().getColumn(5).setCellRenderer(new ActionButtonRenderer());
-        table.getColumnModel().getColumn(5).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
-            @Override
-            public void onView(int row) {
-                int modelRow = table.convertRowIndexToModel(row);
-                WorkOrder s = tableModel.getItemAt(modelRow);
-                if (s != null) FormManager.showForm(new FormWorkOrder(s));
-            }
-
-            @Override
-            public void onEdit(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                WorkOrder s = tableModel.getItemAt(modelRow);
-                if (s != null) openEditModal(s);
-            }
-
-            @Override
-            public void onDelete(int row) {
-                if (table.isEditing()) table.getCellEditor().cancelCellEditing();
-                int modelRow = table.convertRowIndexToModel(row);
-                WorkOrder s = tableModel.getItemAt(modelRow);
-                if (s == null) return;
-
-                DialogHelper.confirmDelete(FormCustomer.this, "confirm.delete.workorder", () ->
-                        workOrderService.delete(s.getId())
-                                .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                                    Toast.show(FormCustomer.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
-                                    refreshData();
-                                }))
-                                .exceptionally(ex -> ErrorHandler.handle(FormCustomer.this, "Servis kaydı silinemedi", ex)),
-                        s.getId());
-            }
-        }));
-
-        table.getColumnModel().getColumn(0).setMaxWidth(100);
-        table.getColumnModel().getColumn(1).setPreferredWidth(250);
-        table.getColumnModel().getColumn(3).setPreferredWidth(130);
-        table.getColumnModel().getColumn(4).setPreferredWidth(100);
-        table.getColumnModel().getColumn(5).setMaxWidth(180);
-        table.getColumnModel().getColumn(5).setMinWidth(120);
-    }
-
-    // -------------------------------------------------------------------------
-    // Veri yükleme
-    // -------------------------------------------------------------------------
-
-    private void refreshData() {
-        updateNameAndBadge();
-        workOrderService.getAll(customer.getId()).thenAccept(services ->
-                SwingUtilities.invokeLater(() -> {
-                    tableModel.setData(services);
-                    calculateStats(services);
-                })
-        );
-        refreshAccountCard();
-    }
-
-    private void calculateStats(List<WorkOrder> workOrders) {
-        int active = 0, completed = 0;
-        BigDecimal totalSpent = BigDecimal.ZERO;
-
-        for (WorkOrder s : workOrders) {
-            if (s.getPayments() != null) {
-                for (Payment payment : s.getPayments()) {
-                    totalSpent = totalSpent.add(payment.getAmount());
-                }
-            }
-            if (s.getServiceStatus() == ServiceStatus.DELIVERED || s.getServiceStatus() == ServiceStatus.RETURN) {
-                completed++;
-            } else {
-                active++;
-            }
-        }
-
-        valTotalDevices.setText(String.valueOf(workOrders.size()));
-        valActiveServices.setText(String.valueOf(active));
-        valCompletedServices.setText(String.valueOf(completed));
-        valTotalSpent.setText(Format.formatPrice(totalSpent));
-    }
-
-    // -------------------------------------------------------------------------
-    // Yardımcı
-    // -------------------------------------------------------------------------
-
-    private JPanel createRoundedCard() {
-        JPanel p = new JPanel();
-        p.putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");
-        return p;
     }
 }

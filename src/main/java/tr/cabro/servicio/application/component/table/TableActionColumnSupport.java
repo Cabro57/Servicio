@@ -1,7 +1,5 @@
 package tr.cabro.servicio.application.component.table;
 
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.events.TableActionEvent;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 
 import javax.swing.*;

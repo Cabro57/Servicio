@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.component;
 
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.component.table.TableActionEvent;
 import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.application.utils.Ikon;
 

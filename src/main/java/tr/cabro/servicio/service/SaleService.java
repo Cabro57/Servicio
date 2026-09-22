@@ -348,6 +348,11 @@ public class SaleService {
         });
     }
 
+    /** Müşteri detayındaki Satışlar bölümü için — müşterinin satış ve iadeleri, en yeni önce. */
+    public CompletableFuture<List<Sale>> getByCustomer(Long customerId) {
+        return CompletableFuture.supplyAsync(() -> hydrateSales(saleRepository.findByCustomerId(customerId)));
+    }
+
     public CompletableFuture<Optional<Sale>> getById(Long id) {
         return CompletableFuture.supplyAsync(() -> {
             Optional<Sale> opt = saleRepository.findById(id);

@@ -2,8 +2,8 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.editors.ActionButtonEditor;
-import tr.cabro.servicio.application.events.TableActionEvent;
+import tr.cabro.servicio.application.component.table.ActionButtonEditor;
+import tr.cabro.servicio.application.component.table.TableActionEvent;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.system.Form;

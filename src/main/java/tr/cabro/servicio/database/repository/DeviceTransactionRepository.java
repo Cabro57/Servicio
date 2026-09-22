@@ -69,6 +69,11 @@ public interface DeviceTransactionRepository extends SqlObject {
             "ORDER BY tr.transaction_date DESC, tr.id DESC")
     List<DeviceTransaction> findByDeviceId(@Bind("deviceId") Long deviceId);
 
+    // Bir müşterinin alıcı ya da satıcı olduğu tüm alım/satım işlemleri — tarihe göre en yeni önce.
+    @SqlQuery(BASE_SELECT + "WHERE tr.customer_id = :customerId AND tr.is_deleted = 0 " +
+            "ORDER BY tr.transaction_date DESC, tr.id DESC")
+    List<DeviceTransaction> findByCustomerId(@Bind("customerId") Long customerId);
+
     // Şu an stokta olan cihazlar: en son transaction'ı PURCHASE olanlar.
     @SqlQuery(BASE_SELECT + "WHERE tr.is_deleted = 0 AND tr.type = 'PURCHASE' AND " + LATEST_PER_DEVICE +
             "ORDER BY tr.transaction_date DESC")

@@ -94,6 +94,11 @@ public class DeviceTransactionService {
         return CompletableFuture.supplyAsync(() -> repository.findByDeviceId(deviceId));
     }
 
+    /** Müşteri detayındaki 2.El bölümü için — müşterinin alıcı ya da satıcı olduğu işlemler, en yeni önce. */
+    public CompletableFuture<List<DeviceTransaction>> getByCustomerId(Long customerId) {
+        return CompletableFuture.supplyAsync(() -> repository.findByCustomerId(customerId));
+    }
+
     public CompletableFuture<List<DeviceTransaction>> getCurrentStock() {
         return CompletableFuture.supplyAsync(repository::findCurrentStockDevices);
     }
