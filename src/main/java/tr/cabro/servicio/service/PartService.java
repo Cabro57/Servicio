@@ -49,32 +49,44 @@ public class PartService {
         // FIX: getStock() → getStockQuantity()
         if (part.getStockQuantity() < 0) throw new ValidationException("Stok miktarı negatif olamaz.");
 
-        Integer stock = part.getStockQuantity();
+        // İstenen stok, kayıttan sonra hareket olarak yazılır. stock_quantity doğrudan yazılmaz:
+        // stock_movements tetikleyicisi (trg_stock_movement_in/out) hareketi stoka zaten ekliyor.
+        // Eskiden güncellemede önce stok = X yazılıp ardından X adet giriş hareketi ekleniyordu;
+        // tetikleyici bunu ikinci kez eklediği için her düzenlemede stok ikiye katlanıyordu.
+        // Ayrıca stok 0 girilen yeni parçada 0 adetlik hareket doğrulamaya takılıp kaydı hatalı gösteriyordu.
+        int requestedStock = part.getStockQuantity() != null ? part.getStockQuantity() : 0;
 
         return CompletableFuture.supplyAsync(() -> {
+            int currentStock;
             if (!update) {
                 // FIX: existsByBarcode metodu PartRepository'ye eklendi
                 if (partRepository.existsByBarcode(part.getBarcode())) {
                     throw new ValidationException("Bu barkod (" + part.getBarcode() + ") zaten sistemde kayıtlı!");
                 }
+                currentStock = 0;
                 part.setStockQuantity(0);
                 Long id = partRepository.insert(part);
                 part.setId(id);
             } else {
+                currentStock = partRepository.findById(part.getId())
+                        .map(Part::getStockQuantity).orElse(0);
+                part.setStockQuantity(currentStock);
                 partRepository.update(part);
             }
-            return part;
-        }).thenCompose(savedPart -> {
+            return currentStock;
+        }).thenCompose(currentStock -> {
+            int delta = requestedStock - currentStock;
+            part.setStockQuantity(requestedStock);
+            if (delta == 0) return CompletableFuture.completedFuture(part);
 
-            StockMovement stockMovement = new StockMovement();
-            stockMovement.setPartId(savedPart.getId());
-            stockMovement.setQuantity(stock);
-            stockMovement.setWarehouseId(savedPart.getWarehouseId());
-            stockMovement.setReferenceType(ReferenceType.PURCHASE);
-
-            stockService.addStock(stockMovement);
-
-            return CompletableFuture.completedFuture(savedPart);
+            StockMovement movement = new StockMovement();
+            movement.setPartId(part.getId());
+            movement.setQuantity(Math.abs(delta));
+            movement.setWarehouseId(part.getWarehouseId());
+            // Yeni kayıttaki ilk stok alış sayılır; sonradan elle yapılan değişiklik düzeltmedir.
+            movement.setReferenceType(update ? ReferenceType.ADJUSTMENT : ReferenceType.PURCHASE);
+            CompletableFuture<Void> write = delta > 0 ? stockService.addStock(movement) : stockService.removeStock(movement);
+            return write.thenApply(v -> part);
         });
     }
 

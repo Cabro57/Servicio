@@ -45,28 +45,41 @@ public class ProductService {
         if (product.getStockQuantity() != null && product.getStockQuantity() < 0)
             throw new ValidationException("Stok miktarı negatif olamaz.");
 
-        Integer stock = product.getStockQuantity();
+        // İstenen stok, kayıttan sonra yalnızca FARK olarak hareket yazılır; stock_quantity doğrudan
+        // yazılmaz çünkü product_stock_movements tetikleyicisi hareketi stoka zaten ekliyor.
+        // Eskiden güncellemede stok = X yazılıp ardından X adet giriş eklendiği için her düzenlemede
+        // stok ikiye katlanıyordu.
+        int requestedStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
 
         return CompletableFuture.supplyAsync(() -> {
+            int currentStock;
             if (!update) {
                 if (productRepository.existsByBarcode(product.getBarcode())) {
                     throw new ValidationException("Bu barkod (" + product.getBarcode() + ") zaten sistemde kayıtlı!");
                 }
+                currentStock = 0;
                 product.setStockQuantity(0);
                 Long id = productRepository.insert(product);
                 product.setId(id);
             } else {
+                currentStock = productRepository.findById(product.getId())
+                        .map(p -> p.getStockQuantity() != null ? p.getStockQuantity() : 0).orElse(0);
+                product.setStockQuantity(currentStock);
                 productRepository.update(product);
             }
+
+            int delta = requestedStock - currentStock;
+            if (delta != 0) {
+                ProductStockMovement movement = new ProductStockMovement();
+                movement.setProductId(product.getId());
+                // OUT hareketlerinde miktar eksi yazılır (satışla aynı kural); tetikleyici doğrudan toplar.
+                movement.setQuantity(delta);
+                movement.setType(delta > 0 ? StockType.IN : StockType.OUT);
+                movement.setReferenceType(update ? ReferenceType.ADJUSTMENT : ReferenceType.PURCHASE);
+                stockMovementRepository.insert(movement);
+            }
+            product.setStockQuantity(requestedStock);
             return product;
-        }).thenCompose(saved -> {
-            ProductStockMovement movement = new ProductStockMovement();
-            movement.setProductId(saved.getId());
-            movement.setQuantity(stock != null ? stock : 0);
-            movement.setType(StockType.IN);
-            movement.setReferenceType(ReferenceType.PURCHASE);
-            return CompletableFuture.runAsync(() -> stockMovementRepository.insert(movement))
-                    .thenApply(v -> saved);
         });
     }
 
