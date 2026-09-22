@@ -158,7 +158,7 @@ public class HelperPopup {
                     .sameVersion(manifest.getVersion(), Servicio.getInstance().getAppVersion());
 
             JLabel icon = new JLabel(new Ikon(
-                    isHotfix ? "icons/wrench.svg" : "icons/arrow-up-circle.svg",
+                    isHotfix ? "icons/wrench.svg" : "icons/circle-arrow-up.svg",
                     0.85f, "Component.accentColor"));
             JLabel text = styledLabel(
                     isHotfix ? Messages.get("updater.helper.patchAvailable") : Messages.get("updater.helper.updateAvailableShort"),
@@ -200,7 +200,7 @@ public class HelperPopup {
 
         } else {
             // Güncel
-            JLabel icon = new JLabel(new Ikon("icons/check-circle.svg", 0.85f));
+            JLabel icon = new JLabel(new Ikon("icons/circle-check.svg", 0.85f));
             icon.setForeground(green());
             JLabel text = styledLabel(Messages.get("updater.helper.uptodate"), 12, Font.PLAIN);
             text.setForeground(green());
