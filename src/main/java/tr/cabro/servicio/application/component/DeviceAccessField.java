@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.enums.DeviceAccessType;
 
 import javax.swing.*;
@@ -10,17 +11,15 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Cihaz ekran kilidi erişim bilgisini (PIN / Şifre / Desen) toplayan bileşen.
  * <p>
- * Tür seçimine göre giriş alanı değişir:
+ * Tür, açılır liste yerine yan yana düğmelerle seçilir; seçime göre giriş alanı değişir:
  * <ul>
  *   <li>{@link DeviceAccessType#PIN} — sadece rakam kabul eden şifre alanı</li>
  *   <li>{@link DeviceAccessType#PASSWORD} — serbest metin şifre alanı</li>
- *   <li>{@link DeviceAccessType#PATTERN} — 3x3 desen ızgarası, tıklama sırasına göre dizi üretir</li>
+ *   <li>{@link DeviceAccessType#PATTERN} — {@link PatternLockPad} üzerinde çizilen desen</li>
  *   <li>{@link DeviceAccessType#NONE} — giriş alanı gizlenir</li>
  * </ul>
  * Bu bileşen hiçbir şeyi şifrelemez/saklamaz — sadece düz metin değeri toplar;
@@ -28,44 +27,98 @@ import java.util.List;
  */
 public class DeviceAccessField extends JPanel {
 
-    private final JComboBox<DeviceAccessType> typeCombo;
+    private final SegmentedButtons<DeviceAccessType> typeButtons = new SegmentedButtons<>();
 
     private final JPasswordField pinField;
     private final JPasswordField passwordField;
-    private final PatternGridPanel patternGrid;
+    private final JPanel patternPanel;
+    private final PatternLockPad patternPad;
+    private final JLabel patternSummary;
+    private final JLabel noneHint;
 
     public DeviceAccessField() {
         // hidemode 3: setVisible(false) yapılan bileşen düzende hiç yer kaplamaz —
         // CardLayout kullanmıyoruz çünkü o, gösterilmeyen kartlar için bile en büyük
-        // kartın (desen ızgarası) boyutunu ayırıp altında boşluk bırakıyordu.
-        setLayout(new MigLayout("insets 0, fillx, wrap 1, hidemode 3", "[fill,grow]"));
+        // kartın (desen alanı) boyutunu ayırıp altında boşluk bırakıyordu.
+        setLayout(new MigLayout("insets 0, fillx, wrap 1, hidemode 3", "[fill,grow]", "[]8[]"));
+        setOpaque(false);
 
-        typeCombo = new JComboBox<>(DeviceAccessType.values());
-        add(typeCombo, "growx");
+        typeButtons.add(DeviceAccessType.NONE, "Kilit Yok", null)
+                .add(DeviceAccessType.PIN, "PIN", null)
+                .add(DeviceAccessType.PASSWORD, "Şifre", null)
+                .add(DeviceAccessType.PATTERN, "Desen", null);
+        typeButtons.setOnChange(type -> {
+            showFieldFor(type);
+            focusInput(type);
+        });
+        add(typeButtons, "growx 0");
+
+        noneHint = new JLabel("Cihazda ekran kilidi yok ya da müşteri paylaşmadı.");
+        noneHint.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
+        add(noneHint);
 
         pinField = new JPasswordField();
-        pinField.putClientProperty(FlatClientProperties.STYLE, "showRevealButton:true;");
-        pinField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ekran PIN'i");
+        pinField.putClientProperty(FlatClientProperties.STYLE, "showRevealButton: true");
+        pinField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ekran PIN'i (yalnızca rakam)");
         applyDigitsOnlyFilter(pinField);
-        add(pinField, "growx");
+        add(pinField);
 
         passwordField = new JPasswordField();
-        passwordField.putClientProperty(FlatClientProperties.STYLE, "showRevealButton:true;");
+        passwordField.putClientProperty(FlatClientProperties.STYLE, "showRevealButton: true");
         passwordField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ekran şifresi");
-        add(passwordField, "growx");
+        add(passwordField);
 
-        patternGrid = new PatternGridPanel();
-        add(patternGrid, "growx");
+        // Desen: solda çizim alanı, sağda sıra özeti ve düzeltme düğmeleri.
+        patternPad = new PatternLockPad();
+        patternSummary = new JLabel();
+        patternSummary.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        JLabel patternHelp = new JLabel("<html>Sürükleyerek çizin ya da noktalara sırayla tıklayın. "
+                + "Noktadaki sayı seçilme sırasıdır.</html>");
+        patternHelp.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
 
-        typeCombo.addActionListener(e -> showFieldFor((DeviceAccessType) typeCombo.getSelectedItem()));
+        JButton undo = smallButton("Geri Al", "icons/undo-2.svg");
+        undo.addActionListener(e -> patternPad.removeLast());
+        JButton reset = smallButton("Temizle", "icons/x.svg");
+        reset.addActionListener(e -> patternPad.setSequence(""));
+
+        JPanel side = new JPanel(new MigLayout("insets 0, wrap, gap 0", "[grow, fill]", "[]6[]12[]"));
+        side.setOpaque(false);
+        side.add(patternSummary);
+        side.add(patternHelp, "wmin 0, w 10:160:");
+        JPanel buttons = new JPanel(new MigLayout("insets 0, gap 6", "[][]", "[]"));
+        buttons.setOpaque(false);
+        buttons.add(undo);
+        buttons.add(reset);
+        side.add(buttons);
+
+        patternPanel = new JPanel(new MigLayout("insets 8 8 8 14, gapx 16", "[][grow, fill]", "[center]"));
+        patternPanel.putClientProperty(FlatClientProperties.STYLE, "arc: 14; background: fade($Label.foreground, 4%)");
+        patternPanel.add(patternPad);
+        patternPanel.add(side, "aligny center, wmin 0");
+        add(patternPanel);
+
+        patternPad.setOnChange(this::updatePatternSummary);
+        updatePatternSummary();
         showFieldFor(DeviceAccessType.NONE);
+    }
+
+    private void updatePatternSummary() {
+        String seq = patternPad.getSequence();
+        patternSummary.setText(seq.isEmpty() ? "Desen çizilmedi" : "Desen: " + seq.replace("-", " → "));
+    }
+
+    private static JButton smallButton(String text, String icon) {
+        JButton b = new JButton(text, new Ikon(icon, 0.75f));
+        b.putClientProperty(FlatClientProperties.STYLE, "arc: 8; margin: 3,8,3,8; iconTextGap: 4; font: -1");
+        return b;
     }
 
     private void showFieldFor(DeviceAccessType type) {
         if (type == null) type = DeviceAccessType.NONE;
+        noneHint.setVisible(type == DeviceAccessType.NONE);
         pinField.setVisible(type == DeviceAccessType.PIN);
         passwordField.setVisible(type == DeviceAccessType.PASSWORD);
-        patternGrid.setVisible(type == DeviceAccessType.PATTERN);
+        patternPanel.setVisible(type == DeviceAccessType.PATTERN);
 
         // Bu bileşen genelde bir modal içinde kullanılıyor; modalın kendisi de yeni
         // yüksekliğe göre yeniden boyutlansın diye üst hiyerarşiyi de geçersiz kılıyoruz.
@@ -76,6 +129,17 @@ public class DeviceAccessField extends JPanel {
             parent.revalidate();
             parent.repaint();
         }
+    }
+
+    private void focusInput(DeviceAccessType type) {
+        SwingUtilities.invokeLater(() -> {
+            switch (type) {
+                case PIN -> pinField.requestFocusInWindow();
+                case PASSWORD -> passwordField.requestFocusInWindow();
+                case PATTERN -> patternPad.requestFocusInWindow();
+                default -> { }
+            }
+        });
     }
 
     private void applyDigitsOnlyFilter(JPasswordField field) {
@@ -97,11 +161,13 @@ public class DeviceAccessField extends JPanel {
     // -------------------------------------------------------------------------
 
     public DeviceAccessType getAccessType() {
-        return (DeviceAccessType) typeCombo.getSelectedItem();
+        return typeButtons.getSelected();
     }
 
     public void setAccessType(DeviceAccessType type) {
-        typeCombo.setSelectedItem(type != null ? type : DeviceAccessType.NONE);
+        DeviceAccessType t = type != null ? type : DeviceAccessType.NONE;
+        typeButtons.setSelected(t);
+        showFieldFor(t);
     }
 
     /** Seçili türe göre girilen düz metin değeri döner (PATTERN için "1-5-9" gibi bir dizi). */
@@ -111,7 +177,7 @@ public class DeviceAccessField extends JPanel {
         return switch (type) {
             case PIN -> new String(pinField.getPassword());
             case PASSWORD -> new String(passwordField.getPassword());
-            case PATTERN -> patternGrid.getSequence();
+            case PATTERN -> patternPad.getSequence();
             default -> null;
         };
     }
@@ -124,79 +190,14 @@ public class DeviceAccessField extends JPanel {
         } else if (type == DeviceAccessType.PASSWORD) {
             passwordField.setText(value);
         } else if (type == DeviceAccessType.PATTERN) {
-            patternGrid.setSequence(value);
+            patternPad.setSequence(value);
         }
     }
 
     public void clear() {
         pinField.setText("");
         passwordField.setText("");
-        patternGrid.setSequence("");
+        patternPad.setSequence("");
         setAccessType(DeviceAccessType.NONE);
-    }
-
-    /**
-     * 3x3 desen kilidi ızgarası. Kullanıcı noktalara tıklama sırasına göre bir dizi
-     * ("1-2-3-6-9" gibi 1-9 arası düğüm numaraları) oluşturur.
-     */
-    private static class PatternGridPanel extends JPanel {
-
-        private final JToggleButton[] dots = new JToggleButton[9];
-        private final List<Integer> sequence = new ArrayList<>();
-        private final JLabel sequenceLabel = new JLabel(" ");
-
-        PatternGridPanel() {
-            setLayout(new MigLayout("insets 5, wrap 3", "[40!][40!][40!]", "[40!][40!][40!][]"));
-            for (int i = 0; i < 9; i++) {
-                int node = i + 1;
-                JToggleButton dot = new JToggleButton(String.valueOf(node));
-                dot.addActionListener(e -> onDotClicked(node));
-                dots[i] = dot;
-                add(dot, "grow");
-            }
-            JButton reset = new JButton("Deseni Temizle");
-            reset.addActionListener(e -> setSequence(""));
-            add(sequenceLabel, "span 3, wrap");
-            add(reset, "span 3");
-        }
-
-        private void onDotClicked(int node) {
-            if (sequence.contains(node)) {
-                dots[node - 1].setSelected(true); // zaten seçili düğüme tekrar tıklamayı yok say
-                return;
-            }
-            sequence.add(node);
-            updateLabel();
-        }
-
-        String getSequence() {
-            StringBuilder sb = new StringBuilder();
-            for (int node : sequence) {
-                if (sb.length() > 0) sb.append("-");
-                sb.append(node);
-            }
-            return sb.toString();
-        }
-
-        void setSequence(String value) {
-            sequence.clear();
-            for (JToggleButton dot : dots) dot.setSelected(false);
-            if (value != null && !value.isBlank()) {
-                for (String part : value.split("-")) {
-                    try {
-                        int node = Integer.parseInt(part.trim());
-                        if (node >= 1 && node <= 9) {
-                            sequence.add(node);
-                            dots[node - 1].setSelected(true);
-                        }
-                    } catch (NumberFormatException ignored) {}
-                }
-            }
-            updateLabel();
-        }
-
-        private void updateLabel() {
-            sequenceLabel.setText(sequence.isEmpty() ? "Deseni sırayla tıklayın" : "Desen: " + getSequence());
-        }
     }
 }

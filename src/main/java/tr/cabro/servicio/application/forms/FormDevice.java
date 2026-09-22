@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.forms;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.table.ActionButtonEditor;
+import tr.cabro.servicio.application.panels.edit.DeviceEditPanel;
 import tr.cabro.servicio.application.component.table.TableActionEvent;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
@@ -74,7 +75,7 @@ public class FormDevice extends Form {
     }
 
     private void createHeader() {
-        JPanel header = new JPanel(new MigLayout("insets 0, fillx, gap 15", "[][grow]", "[]"));
+        JPanel header = new JPanel(new MigLayout("insets 0, fillx, gap 15", "[][grow][]", "[]"));
         header.setOpaque(false);
 
         JButton btnBack = new JButton(new Ikon("icons/arrow-left.svg", 1.2f));
@@ -96,6 +97,11 @@ public class FormDevice extends Form {
         titleBox.add(lblDeviceTitle, "wrap");
         titleBox.add(lblSubtitle);
         header.add(titleBox, "grow");
+
+        JButton btnEdit = new JButton("Düzenle", new Ikon("icons/pencil.svg", 0.85f));
+        btnEdit.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,12,7,12; iconTextGap: 6");
+        btnEdit.addActionListener(e -> DeviceEditPanel.open(this, device, this::formRefresh));
+        header.add(btnEdit, "aligny center");
 
         add(header, "span 2, growx, wrap");
     }

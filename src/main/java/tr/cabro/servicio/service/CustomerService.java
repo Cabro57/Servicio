@@ -61,6 +61,19 @@ public class CustomerService {
         return CompletableFuture.supplyAsync(() -> customerRepository.findByIds(customerIds)); // Çekilen listeyi cihaz sayısıyla doldur
     }
 
+    /**
+     * Normalize edilmiş (E.164) numaranın başka bir müşteride kayıtlı olup olmadığını arar.
+     *
+     * @param excludeId düzenlenen müşterinin id'si; yeni kayıtta {@code null}
+     */
+    public CompletableFuture<Optional<Customer>> findOtherByPhone(String normalizedPhone, Long excludeId) {
+        if (Validator.isEmpty(normalizedPhone)) {
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+        long exclude = excludeId != null ? excludeId : -1L;
+        return CompletableFuture.supplyAsync(() -> customerRepository.findOtherByPhone(normalizedPhone, exclude));
+    }
+
     public CompletableFuture<List<Customer>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return getAll();

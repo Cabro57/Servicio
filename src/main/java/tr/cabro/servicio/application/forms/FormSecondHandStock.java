@@ -226,10 +226,9 @@ public class FormSecondHandStock extends AbstractTableForm {
             if (action == SimpleModalBorder.OPENED) { panel.requestInitialFocus(); return; }
             if (action != SimpleModalBorder.OK_OPTION) return;
 
+            if (!panel.validateForm()) { controller.consume(); return; }
             Customer seller = panel.getSeller();
             Device device = panel.getDevice();
-            if (seller == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.sellerRequired")); return; }
-            if (device == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.deviceRequired")); return; }
 
             java.util.concurrent.CompletableFuture<Device> deviceFuture = device.getId() != null
                     ? java.util.concurrent.CompletableFuture.completedFuture(device)
@@ -260,7 +259,7 @@ public class FormSecondHandStock extends AbstractTableForm {
         final String MODAL_ID = "secondhand_sale_modal";
 
         SalePanel[] panelRef = new SalePanel[1];
-        panelRef[0] = new SalePanel(purchase.getDevice(), e -> AppModal.pushModalDeferred(() -> {
+        panelRef[0] = new SalePanel(purchase, e -> AppModal.pushModalDeferred(() -> {
             CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
             return new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
                 if (a1 != SimpleModalBorder.YES_OPTION) return;
@@ -289,8 +288,8 @@ public class FormSecondHandStock extends AbstractTableForm {
             if (action == SimpleModalBorder.OPENED) { panel.requestInitialFocus(); return; }
             if (action != SimpleModalBorder.OK_OPTION) return;
 
+            if (!panel.validateForm()) { controller.consume(); return; }
             Customer buyer = panel.getBuyer();
-            if (buyer == null) { controller.consume(); Toast.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.buyerRequired")); return; }
 
             transactionService.recordSale(purchase.getDeviceId(), buyer.getId(), panel.getPrice(),
                     panel.getTransactionDate(), panel.getWarrantyMonths(), panel.getNote()

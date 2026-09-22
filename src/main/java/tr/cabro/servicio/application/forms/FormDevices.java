@@ -1,13 +1,13 @@
 package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import raven.modal.Toast;
 import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
+import tr.cabro.servicio.application.panels.edit.DeviceEditPanel;
 import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -15,7 +15,6 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
-import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.service.DeviceService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -112,7 +111,9 @@ public class FormDevices extends AbstractTableForm {
             }
 
             @Override
-            public void onEdit(Device d) {}
+            public void onEdit(Device d) {
+                if (d != null) DeviceEditPanel.open(FormDevices.this, d, FormDevices.this::refreshTable);
+            }
 
             @Override
             public void onDelete(Device d) {}
@@ -143,6 +144,6 @@ public class FormDevices extends AbstractTableForm {
 
     @Override
     protected void onNew() {
-        Toast.show(this, Toast.Type.INFO, Messages.get("toast.device.addedViaWorkOrder"));
+        DeviceEditPanel.open(this, new Device(), this::refreshTable);
     }
 }

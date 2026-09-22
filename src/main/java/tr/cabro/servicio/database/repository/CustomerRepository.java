@@ -80,6 +80,13 @@ public interface CustomerRepository extends SqlObject {
             "ORDER BY created_at DESC")
     List<Customer> search(@Bind("search") String searchTerm);
 
+    // Müşteri formundaki "bu numara başka müşteride kayıtlı" uyarısı için. Numaralar kayıtta E.164'e
+    // normalize edildiğinden eşitlik karşılaştırması yeterli; düzenlenen müşterinin kendisi hariç tutulur.
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, tax_office, phone_number_1, phone_number_2, email, address, note, is_problematic AS problematic, created_at, updated_at FROM customers " +
+            "WHERE is_deleted = 0 AND id <> :excludeId AND (phone_number_1 = :phone OR phone_number_2 = :phone) " +
+            "ORDER BY created_at DESC LIMIT 1")
+    Optional<Customer> findOtherByPhone(@Bind("phone") String phone, @Bind("excludeId") long excludeId);
+
     // =========================================================================
     // TABLO BAŞLIĞI FİLTRESİ + SAYFALAMA — dinamik WHERE (SqlWhereBuilder), JDBI SqlObject default metot.
     // Aggregate (device_count/spent) yapısı findAllTable() ile aynı — GROUP BY c.id sayesinde
