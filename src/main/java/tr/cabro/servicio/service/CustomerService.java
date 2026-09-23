@@ -25,7 +25,17 @@ public class CustomerService {
         validateCustomer(customer);
 
         return CompletableFuture.supplyAsync(() -> {
-            // --- 2. Veritabanı İşlemi ---
+            // --- 2. Benzersiz alan çakışmaları (TC / vergi no) ---
+            Customer deletedMatch = resolveUniqueConflicts(customer, update);
+            if (deletedMatch != null) {
+                // Aynı TC/vergi no ile silinmiş müşteri var: yeni kayıt açmak yerine geri getirilir,
+                // böylece eski cihaz/servis geçmişi de kişiye bağlı kalır.
+                customer.setId(deletedMatch.getId());
+                customerRepository.restore(customer);
+                return customer;
+            }
+
+            // --- 3. Veritabanı İşlemi ---
             if (!update) {
                 Long id = customerRepository.insert(customer);
                 customer.setId(id);
@@ -87,8 +97,49 @@ public class CustomerService {
         return CompletableFuture.supplyAsync(() -> customerRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
+    /**
+     * TC kimlik / vergi no çakışmalarını çözer. Aktif bir müşteride kullanılıyorsa kullanıcıya
+     * anlaşılır bir hata verir. Silinmiş bir müşteride kullanılıyorsa: yeni kayıtta ve tek eşleşmede o
+     * müşteri döndürülür (geri getirilecek), diğer durumlarda silinmiş kaydın alanları boşaltılır.
+     *
+     * @return geri getirilecek silinmiş müşteri; yoksa {@code null}
+     */
+    private Customer resolveUniqueConflicts(Customer customer, boolean update) {
+        List<Customer> matches = customerRepository.findByUniqueKeys(customer.getIdentityNo(), customer.getTaxNumber());
+        List<Customer> deleted = new ArrayList<>();
+        for (Customer match : matches) {
+            if (update && Objects.equals(match.getId(), customer.getId())) continue;
+            if (!match.isDeleted()) {
+                String field = Objects.equals(match.getIdentityNo(), customer.getIdentityNo())
+                        ? "TC kimlik numarası" : "Vergi numarası";
+                throw new ValidationException(field + " başka bir müşteride kayıtlı: " + displayName(match));
+            }
+            deleted.add(match);
+        }
+        if (!update && deleted.size() == 1) {
+            return deleted.get(0);
+        }
+        for (Customer match : deleted) {
+            customerRepository.releaseUniqueKeys(match.getId(), customer.getIdentityNo(), customer.getTaxNumber());
+        }
+        return null;
+    }
+
+    private static String displayName(Customer c) {
+        String name = (Objects.toString(c.getFirstName(), "") + " " + Objects.toString(c.getLastName(), "")).trim();
+        return Validator.isEmpty(c.getBusinessName()) ? name : c.getBusinessName() + " (" + name + ")";
+    }
+
+    private static String blankToNull(String value) {
+        return Validator.isEmpty(value) ? null : value.trim();
+    }
+
     private void validateCustomer(Customer customer) {
         // --- 1. Validasyon ve Normalizasyon ---
+
+        // UNIQUE kolonlar: boş metin NULL'a çevrilir, aksi halde iki boş değer birbiriyle çakışır.
+        customer.setIdentityNo(blankToNull(customer.getIdentityNo()));
+        customer.setTaxNumber(blankToNull(customer.getTaxNumber()));
 
         // Zorunlu Alanlar
         if (Validator.isEmpty(customer.getFirstName())) {

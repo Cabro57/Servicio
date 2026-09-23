@@ -9,6 +9,7 @@ import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.database.filter.SqlWhereBuilder;
 import tr.cabro.servicio.model.Customer;
@@ -39,6 +40,29 @@ public interface CustomerRepository extends SqlObject {
 
     @SqlUpdate("UPDATE customers SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id IN (<ids>)")
     void deleteByIds(@BindList("ids") List<Long> ids);
+
+    // --- BENZERSİZ ALAN ÇAKIŞMALARI ---
+    // identity_no ve tax_number kolonları UNIQUE; soft delete satırı silmediği için silinmiş müşteri de
+    // bu değerleri tutmaya devam eder. Bu yüzden arama silinmişleri de kapsar.
+    @SqlQuery("SELECT id, customer_type AS type, business_name, first_name, last_name, identity_no, tax_number, is_deleted AS deleted " +
+            "FROM customers WHERE (:identityNo IS NOT NULL AND identity_no = :identityNo) " +
+            "OR (:taxNumber IS NOT NULL AND tax_number = :taxNumber)")
+    List<Customer> findByUniqueKeys(@Bind("identityNo") String identityNo, @Bind("taxNumber") String taxNumber);
+
+    /** Silinmiş müşteriyi yeni girilen bilgilerle günceller ve geri getirir. */
+    @Transaction
+    default void restore(Customer customer) {
+        update(customer);
+        getHandle().createUpdate("UPDATE customers SET is_deleted = 0 WHERE id = :id")
+                .bind("id", customer.getId())
+                .execute();
+    }
+
+    /** Silinmiş müşterinin benzersiz alanlarını boşaltır; değerler başka bir müşteride kullanılabilir hale gelir. */
+    @SqlUpdate("UPDATE customers SET identity_no = CASE WHEN identity_no = :identityNo THEN NULL ELSE identity_no END, " +
+            "tax_number = CASE WHEN tax_number = :taxNumber THEN NULL ELSE tax_number END " +
+            "WHERE id = :id AND is_deleted = 1")
+    void releaseUniqueKeys(@Bind("id") Long id, @Bind("identityNo") String identityNo, @Bind("taxNumber") String taxNumber);
 
     // --- SEÇME (SELECT) İŞLEMLERİ ---
     // DÜZELTME: customer_type kolonu Java'daki "type" değişkeniyle eşleşmesi için "AS type" olarak seçildi.

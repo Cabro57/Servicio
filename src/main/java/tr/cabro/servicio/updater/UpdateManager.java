@@ -601,10 +601,46 @@ public class UpdateManager {
 
     // ─── Launcher Script ──────────────────────────────────────────────────────
 
+    /**
+     * Uygulamayı yeniden başlatacak komutun çalıştırılabilir dosyası: jpackage kurulumunda native
+     * launcher (Servicio.exe / bin/Servicio), aksi halde bu JVM'in kendi java(w)'sı. PATH'teki
+     * "java"ya güvenilmez — sistem PATH'inde eski bir Java (ör. Java 8) önce gelebiliyor ve yeni
+     * sürüm açılır açılmaz UnsupportedClassVersionError ile kapanıyordu; kurulu sürümlerde ise
+     * hiç Java olmayabilir.
+     *
+     * @return {@code [çalıştırılabilir, native launcher mı ("true"/"false")]}
+     */
+    private static String[] resolveRestartExecutable(boolean windows) {
+        String cmd = ProcessHandle.current().info().command().orElse(null);
+        if (cmd != null) {
+            String name = new File(cmd).getName().toLowerCase();
+            if (!name.startsWith("java")) {
+                return new String[]{cmd, "true"};
+            }
+        }
+        File bin = new File(System.getProperty("java.home"), "bin");
+        File java = new File(bin, windows ? "javaw.exe" : "java");
+        return new String[]{java.isFile() ? java.getAbsolutePath() : (windows ? "javaw" : "java"), "false"};
+    }
+
+    private static String buildRestartCommand(String jarName, String jvmArgs, boolean windows, boolean elevated) {
+        String[] exe = resolveRestartExecutable(windows);
+        boolean nativeLauncher = Boolean.parseBoolean(exe[1]);
+        String args = nativeLauncher ? ""
+                : ((jvmArgs != null && !jvmArgs.isEmpty() ? jvmArgs + " " : "") + "-jar \"" + jarName + "\"");
+        if (!windows) {
+            return "\"" + exe[0] + "\"" + (args.isEmpty() ? "" : " " + args) + " &";
+        }
+        if (elevated && nativeLauncher) {
+            // Script UAC ile yönetici olarak çalışıyor; uygulamanın da yönetici olarak açılmaması için
+            // explorer üzerinden (kullanıcının normal yetkisiyle) başlatılır.
+            return "start \"\" explorer.exe \"" + exe[0] + "\"";
+        }
+        return "start \"\" \"" + exe[0] + "\"" + (args.isEmpty() ? "" : " " + args);
+    }
+
     private File writeBatScript(String jarName, String jvmArgs) throws IOException {
-        String startCmd = (jvmArgs != null && !jvmArgs.isEmpty())
-                ? "start javaw " + jvmArgs + " -jar \"" + jarName + "\""
-                : "start javaw -jar \"" + jarName + "\"";
+        String startCmd = buildRestartCommand(jarName, jvmArgs, true, !appRootWritable);
 
         if (appRootWritable) {
             File   script = new File(appRoot, "update-restart.bat");
@@ -618,8 +654,9 @@ public class UpdateManager {
                 pw.println("set OLD_PID=%1");
                 pw.println("cd /d \"%~dp0\"");
                 pw.println("");
+                // PID ile beklenir: jpackage kurulumunda süreç adı "Servicio.exe", "java" içermez.
                 pw.println(":WAIT_JVM");
-                pw.println("tasklist /fi \"PID eq %OLD_PID%\" 2>nul | find /i \"java\" >nul");
+                pw.println("tasklist /fi \"PID eq %OLD_PID%\" /fo csv /nh 2>nul | find \"\"\"%OLD_PID%\"\"\" >nul");
                 pw.println("if not errorlevel 1 (");
                 pw.println("    timeout /t 1 /nobreak >nul");
                 pw.println("    goto WAIT_JVM");
@@ -655,8 +692,9 @@ public class UpdateManager {
             pw.println("set APPROOT=" + appRoot.getAbsolutePath());
             pw.println("cd /d \"%APPROOT%\"");
             pw.println("");
+            // PID ile beklenir: jpackage kurulumunda süreç adı "Servicio.exe", "java" içermez.
             pw.println(":WAIT_JVM");
-            pw.println("tasklist /fi \"PID eq %OLD_PID%\" 2>nul | find /i \"java\" >nul");
+            pw.println("tasklist /fi \"PID eq %OLD_PID%\" /fo csv /nh 2>nul | find \"\"\"%OLD_PID%\"\"\" >nul");
             pw.println("if not errorlevel 1 (");
             pw.println("    timeout /t 1 /nobreak >nul");
             pw.println("    goto WAIT_JVM");
@@ -672,9 +710,7 @@ public class UpdateManager {
     }
 
     private File writeShScript(String jarName, String jvmArgs) throws IOException {
-        String javaCmd = (jvmArgs != null && !jvmArgs.isEmpty())
-                ? "java " + jvmArgs + " -jar \"" + jarName + "\" &"
-                : "java -jar \"" + jarName + "\" &";
+        String javaCmd = buildRestartCommand(jarName, jvmArgs, false, false);
 
         if (appRootWritable) {
             File   script = new File(appRoot, "update-restart.sh");
