@@ -57,6 +57,9 @@ public class MyMenuValidation extends MenuValidation {
         }
 
         String itemName = resolveItemName(index[0]);
+        if (ServiceManager.getAppSettingService() == null) {
+            return true;
+        }
         if ("Parçalar".equals(itemName)) {
             return ServiceManager.getAppSettingService().isMenuShowParts();
         }
@@ -66,11 +69,22 @@ public class MyMenuValidation extends MenuValidation {
         return true;
     }
 
-    private static String resolveItemName(int position) {
-        if (menuItems == null || position < 0 || position >= menuItems.length) {
+    /**
+     * raven'ın verdiği indeks dizideki pozisyon DEĞİL, grup başlıkları ({@link Item.Label}) ve
+     * ayraçlar atlanarak sayılan menü sırasıdır. Menüye başlık eklenince pozisyonla eşlemek
+     * görünürlük kararını yanlış öğeye uyguluyordu; burada n'inci {@link Item} bulunur.
+     */
+    private static String resolveItemName(int menuIndex) {
+        if (menuItems == null || menuIndex < 0) {
             return null;
         }
-        MenuItem item = menuItems[position];
-        return (item instanceof Item) ? ((Item) item).getName() : null;
+        int seen = -1;
+        for (MenuItem item : menuItems) {
+            if (!item.isMenu()) continue;
+            if (++seen == menuIndex) {
+                return ((Item) item).getName();
+            }
+        }
+        return null;
     }
 }

@@ -1,6 +1,8 @@
 package tr.cabro.servicio.application.menu;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.util.ColorFunctions;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
 import raven.extras.AvatarIcon;
@@ -8,6 +10,7 @@ import raven.modal.drawer.DrawerPanel;
 import raven.modal.drawer.item.Item;
 import raven.modal.drawer.item.MenuItem;
 import raven.modal.drawer.menu.AbstractMenuElement;
+import raven.modal.drawer.menu.MenuItemLayoutOption;
 import raven.modal.drawer.menu.MenuOption;
 import raven.modal.drawer.menu.MenuStyle;
 import raven.modal.drawer.renderer.DrawerNoneLineStyle;
@@ -23,7 +26,6 @@ import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.forms.*;
-import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.User;
 
 import javax.swing.*;
@@ -183,25 +185,51 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
         // create simple menu option
         MenuOption simpleMenuOption = new MenuOption() {
+            {
+                // Dar (ikon) modda setter yok; alan protected.
+                compactMenuItemLayoutOption = new MenuItemLayoutOption()
+                        .setMenuHorizontalMargin(new Point(16, 16))
+                        .setLabelMargin(new Insets(14, 4, 4, 4))
+                        .setSeparatorMargin(new Insets(2, 20, 2, 20));
+            }
+
             @Override
             public Icon buildMenuIcon(String path, float scale) {
-                return new Ikon(path, scale);
+                // İkon, çizildiği butonun durumuna göre boyanır: seçiliyken yazıyla aynı vurgu rengi.
+                FlatSVGIcon icon = new FlatSVGIcon(path, scale);
+                FlatSVGIcon.ColorFilter filter = new FlatSVGIcon.ColorFilter();
+                filter.setMapperEx((component, color) -> menuIconColor(component));
+                icon.setColorFilter(filter);
+                return icon;
             }
         };
 
+        // Tezgâh akışına göre gruplu menü: en sık açılan iki ekran başlıksız en üstte, sonra
+        // operatörün "şapkalarına" göre gruplar. Grup başlıkları (Item.Label) menü sırasını
+        // kaydırmaz; görünürlük kararı için bkz. MyMenuValidation.resolveItemName.
         MenuItem[] items = new MenuItem[]{
                 new Item("Ana Sayfa", "layout-dashboard.svg", FormDashboard.class),
+                new Item("Müşteriler", "user-search.svg", FormCustomers.class),
+
+                new Item.Label("SERVİS"),
+                new Item("Servis Kayıtları", "wrench.svg", FormWorkOrders.class),
+                new Item("Cihazlar", "tablet-smartphone.svg", FormDevices.class),
+
+                new Item.Label("SATIŞ"),
                 new Item("Satış (POS)", "credit-card.svg", FormPos.class),
                 new Item("Satışlar", "file-text.svg", FormSales.class),
-                new Item("Servis Kayıtları", "wrench.svg", FormWorkOrders.class),
-                new Item("Müşteriler", "user-search.svg", FormCustomers.class),
+                new Item("2.el Alım-Satım", "tag.svg", FormSecondHandStock.class),
+
+                new Item.Label("FİNANS"),
                 new Item("Cari Hesaplar", "hand-coins.svg", FormAccounts.class),
                 new Item("Kasa Raporu", "banknote.svg", FormCashReport.class),
-                new Item("Cihazlar", "tablet-smartphone.svg", FormDevices.class),
+
+                new Item.Label("STOK"),
                 new Item("Parçalar", "circuit-board.svg", FormParts.class),
                 new Item("Ürünler", "shopping-bag.svg", FormProducts.class),
                 new Item("Tedarikçiler", "store.svg", FormSuppliers.class),
-                new Item("2.el Alım-Satım", "tag.svg", FormSecondHandStock.class),
+
+                new Item.Separator(),
                 // Ayarlar ve Hakkında bir Form açmaz, modal olarak gösterilir (aşağıdaki menü olayına bkz.)
                 new Item("Ayarlar", "settings.svg"),
                 new Item("Hakkında", "info.svg")
@@ -215,12 +243,20 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
             @Override
             public void styleMenuItem(JButton menu, int[] index, boolean isMainItem) {
-                menu.getFont().deriveFont(Font.BOLD);
-                boolean isTopLevel = index.length == 1;
-                if (isTopLevel) {
-                    // adjust item menu at the top level because it's contain icon
-                    menu.putClientProperty(FlatClientProperties.STYLE, "margin:-1,0,-1,0;");
-                }
+                // Satırlar biraz sıkı: grup başlıklarıyla birlikte 768px yükseklikte kaydırmadan sığsın.
+                menu.putClientProperty(FlatClientProperties.STYLE, ITEM_STYLE);
+                keepSelectedStyle(menu);
+            }
+
+            @Override
+            public void styleLabel(JLabel label) {
+                label.putClientProperty(FlatClientProperties.STYLE,
+                        "font:-2 bold;foreground:$Label.disabledForeground");
+            }
+
+            @Override
+            public void styleSeparator(JSeparator separator) {
+                separator.putClientProperty(FlatClientProperties.STYLE, "height:17;stripeIndent:8");
             }
 
             @Override
@@ -258,9 +294,67 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
         simpleMenuOption.setMenus(items)
                 .setBaseIconPath("icons")
-                .setIconScale(1f);
+                .setIconScale(0.8f);
+
+        // Grup başlıkları öğelerle aynı hizada başlar; başlıktan önce geniş, sonra dar boşluk.
+        simpleMenuOption.setMenuItemLayoutOption(new MenuItemLayoutOption()
+                .setMenuHorizontalMargin(new Point(12, 12))
+                .setLabelMargin(new Insets(16, 22, 4, 20))
+                .setSeparatorMargin(new Insets(2, 20, 2, 20)));
+
 
         return simpleMenuOption;
+    }
+
+    /**
+     * Menü satırının temel görünümü. margin, raven'ın 7px'lik dikey boşluğuna EKLENİR (-2 = 5px).
+     * DİKKAT: raven stili ";" ile bölüp anahtar-değer olarak birleştiriyor; ";" sonrası boşluk
+     * anahtarın parçası sayılıyor (" margin" ile "margin" ayrı anahtar olur ve eski değer kalır).
+     * Bu yüzden stil dizeleri boşluksuz yazılır.
+     */
+    private static final String ITEM_STYLE = "arc:12;margin:-2,0,-2,0;"
+            + "hoverBackground:fade($Label.foreground,5%);pressedBackground:fade($Label.foreground,9%)";
+
+    /**
+     * Seçili öğe: vurgu renginde yumuşak dolgu + vurgu renginde yazı. Eskiden yalnızca yazı rengi
+     * değişiyordu ve seçili ekran menüde gözden kaçıyordu.
+     */
+    private static final String SELECTED_STYLE = ";selectedBackground:fade($Component.accentColor,14%)"
+            + ";[light]selectedForeground:$Component.accentColor"
+            + ";[dark]selectedForeground:lighten($Component.accentColor,20%)";
+
+    /**
+     * Menü ikonunun rengi; {@link #SELECTED_STYLE}'daki yazı rengiyle aynı kural. Koyu temada vurgu
+     * rengi açılır, aksi halde koyu zemin üstünde 4.5:1 kontrastın altında kalıyordu.
+     */
+    private static Color menuIconColor(Component component) {
+        if (component instanceof AbstractButton button && button.isSelected()) {
+            Color accent = UIManager.getColor("Component.accentColor");
+            if (accent != null) {
+                return FlatLaf.isLafDark() ? ColorFunctions.lighten(accent, 0.2f) : accent;
+            }
+        }
+        if (component != null && !component.isEnabled()) {
+            return UIManager.getColor("Label.disabledForeground");
+        }
+        return UIManager.getColor("Label.foreground");
+    }
+
+    /**
+     * raven her mod değişiminde seçili stili kendi değerleriyle ({@code selectedBackground:null})
+     * sona ekliyor ve bizimkini eziyor. Stil her değiştiğinde bizimki yeniden en sona eklenir;
+     * zaten sondaysa dokunulmaz (sonsuz döngü olmaz).
+     */
+    private static void keepSelectedStyle(JButton menu) {
+        menu.addPropertyChangeListener(FlatClientProperties.STYLE, e -> {
+            Object value = e.getNewValue();
+            String style = value instanceof String ? (String) value : "";
+            if (!style.endsWith(SELECTED_STYLE)) {
+                menu.putClientProperty(FlatClientProperties.STYLE, style + SELECTED_STYLE);
+            }
+        });
+        Object current = menu.getClientProperty(FlatClientProperties.STYLE);
+        menu.putClientProperty(FlatClientProperties.STYLE, (current != null ? current : "") + SELECTED_STYLE);
     }
 
     @Override
