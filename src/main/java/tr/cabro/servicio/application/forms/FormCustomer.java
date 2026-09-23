@@ -20,6 +20,7 @@ import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.system.AppModal;
+import tr.cabro.servicio.application.system.NewCustomerModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -546,22 +547,7 @@ public class FormCustomer extends Form {
 
         // Panel referansını lambda içinden güncelleyebilmek için tek elemanlı dizi kullanıyoruz.
         QuickIntakePanel[] panelRef = new QuickIntakePanel[1];
-        panelRef[0] = new QuickIntakePanel(data, () -> AppModal.pushModalDeferred(() -> {
-            CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
-            return new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
-                if (a1 != SimpleModalBorder.YES_OPTION) return;
-                Customer newCustomer = newCustomerPanel.getData();
-                if (newCustomer == null) { c1.consume(); return; }
-                c1.consume();
-                newCustomer.setCreatedAt(LocalDateTime.now());
-                customerService.save(newCustomer, false).thenAccept(saved ->
-                        SwingUtilities.invokeLater(() -> {
-                            panelRef[0].appendNewCustomer(saved);
-                            AppModal.popModal(MODAL_ID);
-                        })
-                );
-            });
-        }, MODAL_ID));
+        panelRef[0] = new QuickIntakePanel(data, () -> NewCustomerModal.push(MODAL_ID, c -> panelRef[0].appendNewCustomer(c)));
         QuickIntakePanel panel = panelRef[0];
 
         SimpleModalBorder.Option[] options = isEdit

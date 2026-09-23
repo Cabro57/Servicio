@@ -10,12 +10,12 @@ import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
-import tr.cabro.servicio.application.panels.edit.CustomerEditPanel;
 import tr.cabro.servicio.application.panels.secondhand.PurchasePanel;
 import tr.cabro.servicio.application.panels.secondhand.SalePanel;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.application.system.AppModal;
+import tr.cabro.servicio.application.system.NewCustomerModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
@@ -37,7 +37,6 @@ import tr.cabro.servicio.util.Format;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -197,21 +196,7 @@ public class FormSecondHandStock extends AbstractTableForm {
         final String MODAL_ID = "secondhand_purchase_modal";
 
         PurchasePanel[] panelRef = new PurchasePanel[1];
-        panelRef[0] = new PurchasePanel(e -> AppModal.pushModalDeferred(() -> {
-            CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
-            return new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
-                if (a1 != SimpleModalBorder.YES_OPTION) return;
-                Customer newCustomer = newCustomerPanel.getData();
-                if (newCustomer == null) { c1.consume(); return; }
-                c1.consume();
-                newCustomer.setCreatedAt(LocalDateTime.now());
-                ServiceManager.getCustomerService().save(newCustomer, false).thenAccept(saved ->
-                        SwingUtilities.invokeLater(() -> {
-                            panelRef[0].appendNewCustomer(saved);
-                            AppModal.popModal(MODAL_ID);
-                        }));
-            });
-        }, MODAL_ID));
+        panelRef[0] = new PurchasePanel(e -> NewCustomerModal.push(MODAL_ID, c -> panelRef[0].appendNewCustomer(c)));
         PurchasePanel panel = panelRef[0];
 
         ServiceManager.getCustomerService().getAll().thenAccept(customers ->
@@ -259,21 +244,7 @@ public class FormSecondHandStock extends AbstractTableForm {
         final String MODAL_ID = "secondhand_sale_modal";
 
         SalePanel[] panelRef = new SalePanel[1];
-        panelRef[0] = new SalePanel(purchase, e -> AppModal.pushModalDeferred(() -> {
-            CustomerEditPanel newCustomerPanel = new CustomerEditPanel(new Customer());
-            return new SimpleModalBorder(newCustomerPanel, "Yeni Müşteri", SimpleModalBorder.YES_NO_OPTION, (c1, a1) -> {
-                if (a1 != SimpleModalBorder.YES_OPTION) return;
-                Customer newCustomer = newCustomerPanel.getData();
-                if (newCustomer == null) { c1.consume(); return; }
-                c1.consume();
-                newCustomer.setCreatedAt(LocalDateTime.now());
-                ServiceManager.getCustomerService().save(newCustomer, false).thenAccept(saved ->
-                        SwingUtilities.invokeLater(() -> {
-                            panelRef[0].appendNewCustomer(saved);
-                            AppModal.popModal(MODAL_ID);
-                        }));
-            });
-        }, MODAL_ID));
+        panelRef[0] = new SalePanel(purchase, e -> NewCustomerModal.push(MODAL_ID, c -> panelRef[0].appendNewCustomer(c)));
         SalePanel panel = panelRef[0];
 
         ServiceManager.getCustomerService().getAll().thenAccept(customers ->

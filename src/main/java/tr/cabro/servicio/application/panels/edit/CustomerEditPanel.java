@@ -141,7 +141,9 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
 
         if (kurumsal) {
             data.setBusinessName(businessNameField.getText().trim());
-            data.setTaxNumber(taxNumberField.getText().trim());
+            // tax_number UNIQUE: boş metin "" olarak yazılırsa ikinci vergi nosuz kurumsal müşteri eklenemez.
+            String taxNumber = taxNumberField.getText().trim();
+            data.setTaxNumber(taxNumber.isEmpty() ? null : taxNumber);
             data.setTaxOffice(taxOfficeField.getText().trim());
         } else {
             String identity = idNoField.getText().trim();
