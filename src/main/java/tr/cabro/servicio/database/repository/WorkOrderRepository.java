@@ -12,6 +12,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.database.filter.SqlWhereBuilder;
 import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.dto.ChartDataDto;
 import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 
@@ -135,6 +136,16 @@ public interface WorkOrderRepository extends SqlObject {
 
     @SqlQuery("SELECT COUNT(*) FROM work_orders WHERE service_status NOT IN (<statuses>)")
     long countByStatusesExcluded(@BindList("statuses") List<ServiceStatus> statuses);
+
+    // Ana sayfadaki servis hattı: açık (teslim/iade edilmemiş) iş emirlerinin duruma göre adetleri.
+    // label = service_status (enum name), value = adet.
+    @RegisterBeanMapper(ChartDataDto.class)
+    @SqlQuery("SELECT service_status AS label, COUNT(*) AS value FROM work_orders " +
+            "WHERE service_status NOT IN ('DELIVERED', 'RETURN') GROUP BY service_status")
+    List<ChartDataDto> countOpenGroupedByStatus();
+
+    @SqlQuery("SELECT COUNT(*) FROM work_orders WHERE created_at >= :start AND created_at < :end")
+    long countCreatedBetween(@Bind("start") LocalDateTime start, @Bind("end") LocalDateTime end);
 
     // "Bekleyen Tahsilatlar": kalan tutar > 0 olan iş emirleri. Kalan tutar v_document_balances
     // view'ından gelir (bkz. V19 migration) — belge toplamı - o belgeye tahsis edilmiş ödeme toplamı.

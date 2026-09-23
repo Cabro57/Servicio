@@ -144,6 +144,19 @@ public class PaymentService {
                         tr.cabro.servicio.model.dto.PaymentTypeSumDto::getTotal)));
     }
 
+    /** Ana sayfadaki "Bugünkü hareketler" — verilen günün ödemeleri (en yeni önce, en fazla {@code limit}). */
+    public CompletableFuture<List<Payment>> getPaymentsOn(java.time.LocalDate date, int limit) {
+        java.time.LocalDateTime start = date.atStartOfDay();
+        java.time.LocalDateTime end = start.plusDays(1);
+        return CompletableFuture.supplyAsync(() -> paymentRepository.findByDateRange(start, end, limit));
+    }
+
+    /** Borçlu müşterilerin toplam bakiyesi (açık alacak). */
+    public CompletableFuture<BigDecimal> getTotalReceivables() {
+        return CompletableFuture.supplyAsync(() -> BigDecimal.valueOf(accountRepository.sumPositiveBalances())
+                .setScale(2, java.math.RoundingMode.HALF_UP));
+    }
+
     public CompletableFuture<List<OpenDocumentDto>> getOpenDocuments(Long customerId) {
         return CompletableFuture.supplyAsync(() -> accountRepository.findOpenDocumentsByCustomer(customerId));
     }

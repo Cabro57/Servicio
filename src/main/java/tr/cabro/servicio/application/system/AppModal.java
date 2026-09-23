@@ -76,6 +76,14 @@ public class AppModal {
         ModalDialog.popModal(rootId);
     }
 
+    /** Şu an ekranda açık (kayıtlı ve kütüphanece hâlâ var olan) bir modal var mı? */
+    public static boolean hasOpenModal() {
+        for (ModalRecord record : OPEN.values()) {
+            if (ModalDialog.isIdExist(record.id)) return true;
+        }
+        return false;
+    }
+
     public static void closeModal(String id) {
         OPEN.remove(id);
         ModalDialog.closeModal(id);

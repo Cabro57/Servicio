@@ -10,6 +10,7 @@ import raven.modal.toast.option.ToastOption;
 import tr.cabro.servicio.application.component.FormSearchButton;
 import tr.cabro.servicio.application.component.MemoryBar;
 import tr.cabro.servicio.application.component.RefreshLine;
+import tr.cabro.servicio.application.component.StatusBar;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.i18n.Messages;
@@ -93,35 +94,20 @@ public class MainForm extends JPanel {
     private JPanel createFooter() {
         JPanel panel = new JPanel(new MigLayout(
                 "insets 1 n 1 n,al trailing center,gapx 10,height 30!",
-                "[]push[][][]", "fill"));
+                "[grow,fill][]", "fill"));
         panel.putClientProperty(FlatClientProperties.STYLE,
                 "[light]background:tint($Panel.background,20%);" +
                         "[dark]background:tint($Panel.background,5%);");
 
-        // Sürüm etiketi
-        JLabel lbVersion = new JLabel("Sürüm: " + Servicio.getInstance().getAppVersion());
-        lbVersion.putClientProperty(FlatClientProperties.STYLE,
-                "foreground:$Label.disabledForeground;");
-        lbVersion.setIcon(new Ikon("icons/git-merge.svg", 0.7f, "Label.disabledForeground"));
-        panel.add(lbVersion);
-
-        // Java sürümü
-        String javaVendor = System.getProperty("java.vendor", "");
-        if ("Oracle Corporation".equals(javaVendor)) javaVendor = "";
-        String java = javaVendor + " v" + System.getProperty("java.version", "").trim();
-        JLabel lbJava = new JLabel(String.format("Running on: Java %s", java));
-        lbJava.putClientProperty(FlatClientProperties.STYLE,
-                "foreground:$Label.disabledForeground;");
-        lbJava.setIcon(new Ikon("icons/java.svg", 1f, "Label.disabledForeground"));
-        panel.add(lbJava);
-
-        panel.add(new JSeparator(JSeparator.VERTICAL));
-        panel.add(new MemoryBar());
+        // İş durumu (kasa, atölye, teslime hazır, borçlu) + kısayol ipuçları. Sürüm, Java ve bellek
+        // gibi teknik bilgiler göz önünden kaldırıldı; Yardım (sağdaki ikon) menüsünde duruyor.
+        statusBar = new StatusBar();
+        panel.add(statusBar);
 
         // ── Helper butonu ──────────────────────────────────────────────────────
         helperButton = new JButton(new Ikon("icons/circle-alert.svg", 0.7f));
         helperButton.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
-        helperButton.setToolTipText("Yardım & Güncelleme");
+        helperButton.setToolTipText("Yardım, sürüm ve güncelleme");
         helperButton.addActionListener(e -> showHelperPopup());
 
         panel.add(helperButton);
@@ -141,6 +127,10 @@ public class MainForm extends JPanel {
         UpdateChecker checker  = Servicio.getInstance().getUpdateChecker();
         JFrame        frame    = (JFrame) SwingUtilities.getWindowAncestor(this);
         JPopupMenu    popup    = new JPopupMenu();
+
+        // ── Sistem bilgisi (eskiden alt çubukta duruyordu) ─────────────────────
+        popup.add(createSystemInfo());
+        popup.addSeparator();
 
         // ── Güncelleme varsa üstte vurgulu öğe ────────────────────────────────
         if (checker.isSplashCheckDone() && checker.hasPendingUpdate()) {
@@ -167,6 +157,15 @@ public class MainForm extends JPanel {
             popup.addSeparator();
         }
 
+        // ── Hakkında ───────────────────────────────────────────────────────────
+        JMenuItem menuAbout = new JMenuItem("Hakkında");
+        menuAbout.setIcon(new Ikon("icons/info.svg", 0.7f));
+        menuAbout.addActionListener(ae -> {
+            popup.setVisible(false);
+            FormManager.showAbout();
+        });
+        popup.add(menuAbout);
+
         // ── Güncellemeleri Kontrol Et ──────────────────────────────────────────
         JMenuItem menuCheck = new JMenuItem("Güncellemeleri Kontrol Et");
         menuCheck.setIcon(new Ikon("icons/refresh-cw.svg", 0.7f));
@@ -182,6 +181,28 @@ public class MainForm extends JPanel {
         popup.show(helperButton,
                 helperButton.getWidth() - popupW,
                 -popupH - 4);
+    }
+
+    /** Yardım menüsünün başındaki sürüm / Java / bellek satırları. */
+    private JPanel createSystemInfo() {
+        JPanel info = new JPanel(new MigLayout("insets 6 12 6 12, wrap, gapy 4", "[fill]", ""));
+        info.setOpaque(false);
+
+        JLabel lbVersion = new JLabel("Servicio " + Servicio.getInstance().getAppVersion());
+        lbVersion.putClientProperty(FlatClientProperties.STYLE, "font:bold;");
+        lbVersion.setIcon(new Ikon("icons/git-merge.svg", 0.7f));
+        info.add(lbVersion);
+
+        String javaVendor = System.getProperty("java.vendor", "");
+        if ("Oracle Corporation".equals(javaVendor)) javaVendor = "";
+        String java = (javaVendor + " v" + System.getProperty("java.version", "")).trim();
+        JLabel lbJava = new JLabel("Java " + java);
+        lbJava.putClientProperty(FlatClientProperties.STYLE, "foreground:$Label.disabledForeground;");
+        lbJava.setIcon(new Ikon("icons/java.svg", 1f, "Label.disabledForeground"));
+        info.add(lbJava);
+
+        info.add(new MemoryBar());
+        return info;
     }
 
     // ─── Toast: "Güncellemeleri Kontrol Et" ──────────────────────────────────
@@ -351,7 +372,7 @@ public class MainForm extends JPanel {
     // ─── Form Yönetimi ────────────────────────────────────────────────────────
 
     private JPanel createSearchBox() {
-        JPanel panel = new JPanel(new MigLayout("fill", "[fill,center,200:250:]", "[fill]"));
+        JPanel panel = new JPanel(new MigLayout("fill", "[fill,center,240:320:]", "[fill]"));
         FormSearchButton button = new FormSearchButton();
         button.addActionListener(e -> FormSearch.getInstance().showSearch());
         panel.add(button);
@@ -374,6 +395,8 @@ public class MainForm extends JPanel {
         mainPanel.repaint();
         mainPanel.revalidate();
 
+        if (statusBar != null) statusBar.refresh();
+
         buttonUndo.setEnabled(FormManager.FORMS.isUndoAble());
         buttonRedo.setEnabled(FormManager.FORMS.isRedoAble());
 
@@ -385,6 +408,10 @@ public class MainForm extends JPanel {
 
     public void refresh() { refreshLine.refresh(); }
 
+    public void refreshStatus() {
+        if (statusBar != null) statusBar.refresh();
+    }
+
     // ─── Alanlar ──────────────────────────────────────────────────────────────
 
     private JPanel      mainPanel;
@@ -393,4 +420,5 @@ public class MainForm extends JPanel {
     private JButton     buttonRedo;
     private JButton     buttonRefresh;
     private JButton     helperButton;
+    private StatusBar   statusBar;
 }

@@ -225,6 +225,30 @@ public class WorkOrderService {
                 .collect(Collectors.toList()));
     }
 
+    /**
+     * Ana sayfadaki servis hattı: açık iş emirlerinin duruma göre adetleri.
+     * Hiç kaydı olmayan açık durumlar da 0 ile döner; sıra {@link ServiceStatus} sırasıdır.
+     */
+    public CompletableFuture<Map<ServiceStatus, Long>> getOpenStatusCounts() {
+        return CompletableFuture.supplyAsync(() -> {
+            Map<ServiceStatus, Long> counts = new EnumMap<>(ServiceStatus.class);
+            for (ServiceStatus status : ServiceStatus.values()) {
+                if (status != ServiceStatus.DELIVERED && status != ServiceStatus.RETURN) counts.put(status, 0L);
+            }
+            workOrderRepository.countOpenGroupedByStatus().forEach(row -> {
+                if (row.getLabel() == null || row.getValue() == null) return;
+                counts.put(ServiceStatus.of(row.getLabel()), row.getValue().longValue());
+            });
+            return counts;
+        });
+    }
+
+    /** Verilen gün açılan iş emri sayısı. */
+    public CompletableFuture<Long> countCreatedOn(java.time.LocalDate date) {
+        LocalDateTime start = date.atStartOfDay();
+        return CompletableFuture.supplyAsync(() -> workOrderRepository.countCreatedBetween(start, start.plusDays(1)));
+    }
+
     public CompletableFuture<Void> setDelivered(Long serviceId) {
         return updateStatus(serviceId, ServiceStatus.DELIVERED);
     }

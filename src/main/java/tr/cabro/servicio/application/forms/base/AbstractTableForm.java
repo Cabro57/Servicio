@@ -367,4 +367,22 @@ public abstract class AbstractTableForm extends Form {
     protected abstract void loadTableData();
 
     protected abstract void onNew();
+
+    /**
+     * Dışarıdan (kısayol, komut paleti, ana sayfa) "yeni kayıt" akışını başlatır.
+     * Form ilk kez oluşturulduysa formInit() henüz EDT kuyruğunda bekliyor olabilir;
+     * bu yüzden çağrı bir sonraki EDT döngüsüne ertelenir.
+     */
+    public final void startNew() {
+        SwingUtilities.invokeLater(this::onNew);
+    }
+
+    /** Arama kutusuna odaklanır ve içeriğini seçer (ör. "Tahsilat Al" kısayolu müşteri aramaya iner). */
+    public final void focusSearch() {
+        SwingUtilities.invokeLater(() -> {
+            if (searchField == null) return;
+            searchField.requestFocusInWindow();
+            searchField.selectAll();
+        });
+    }
 }

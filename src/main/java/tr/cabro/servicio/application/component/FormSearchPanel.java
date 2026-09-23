@@ -11,11 +11,16 @@ import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.dto.PageResult;
+import tr.cabro.servicio.application.system.QuickAction;
 import tr.cabro.servicio.service.CustomerService;
 import tr.cabro.servicio.service.WorkOrderService;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.util.searchableresult.ActionResult;
 import tr.cabro.servicio.util.searchableresult.CustomerSearchResult;
+import tr.cabro.servicio.util.searchableresult.PartSearchResult;
 import tr.cabro.servicio.util.searchableresult.ISearchableResult;
 import tr.cabro.servicio.util.searchableresult.ServiceSearchResult;
 import tr.cabro.servicio.util.searchableresult.StaticFormResult;
@@ -35,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class FormSearchPanel extends JPanel {
@@ -56,7 +62,7 @@ public class FormSearchPanel extends JPanel {
         setLayout(new MigLayout("fillx,insets 0,wrap", "[fill,500]"));
         textSearch = new JTextField();
         panelResult = new PanelResult();
-        textSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ara...");
+        textSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Müşteri, servis, parça ara ya da bir işlem yaz…");
         textSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 0.7f));
         textSearch.putClientProperty(FlatClientProperties.STYLE, "" +
                 "border:3,3,3,3;" +
@@ -73,7 +79,26 @@ public class FormSearchPanel extends JPanel {
                 "trackInsets:0,3,0,3;" +
                 "width:12;");
         add(scrollPane);
+        add(new JSeparator(), "height 2!");
+        add(createKeyHints(), "gap 17 17 4 6");
         installSearchField();
+    }
+
+    /** Paletin altındaki klavye ipuçları. */
+    private JPanel createKeyHints() {
+        JPanel panel = new JPanel(new MigLayout("insets 0, gapx 4", "", "[center]"));
+        panel.setOpaque(false);
+        String[][] hints = {{"↑ ↓", "gez"}, {"Enter", "aç / çalıştır"}, {"Esc", "kapat"}};
+        for (int i = 0; i < hints.length; i++) {
+            JLabel key = new JLabel(hints[i][0]);
+            key.putClientProperty(FlatClientProperties.STYLE,
+                    "font: -2; foreground: $Label.disabledForeground; border: 0,4,0,4,$Component.borderColor,1,6");
+            JLabel text = new JLabel(hints[i][1]);
+            text.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
+            panel.add(key, i > 0 ? "gapleft 12" : "");
+            panel.add(text);
+        }
+        return panel;
     }
 
     public final void formCheck() {
@@ -140,28 +165,25 @@ public class FormSearchPanel extends JPanel {
     }
 
     private void performSearch(String st) {
-        // 1. Önceki aramayı iptal et (Debounce koruması)
+        // 1. Önceki aramayı iptal et; kuyrukta bekleyen eski geri çağrılar da seq ile elenir.
         if (activeSearchFuture != null && !activeSearchFuture.isDone()) {
             activeSearchFuture.cancel(true);
         }
+        final int seq = ++searchSeq;
 
         panelResult.removeAll();
         listItems.clear();
 
         if (st.isEmpty()) {
             showRecentResult();
-            updateLayout();
             return;
         }
 
-        // 2. Paralel Asenkron Aramaları Başlat
-        WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
-        CustomerService customerService = ServiceManager.getCustomerService();
-        CompletableFuture<List<WorkOrder>> servicesFuture = workOrderService.search(st);
-        CompletableFuture<List<Customer>> customersFuture = customerService.search(st);
-
-        // 3. Statik Form Araması (Lokal ve çok hızlı olduğu için UI thread'ini yormaz,
-        // ancak bütünlüğü bozmamak için onu da listeye hazırlıyoruz)
+        // 2. İşlemler ve sayfalar yerel ve anlık: DB beklemeden hemen listelenir.
+        List<ISearchableResult> actionResults = new ArrayList<>();
+        for (QuickAction action : QuickAction.values()) {
+            if (action.matches(st)) actionResults.add(new ActionResult(action));
+        }
         List<ISearchableResult> staticResults = new ArrayList<>();
         for (Map.Entry<SystemForm, Class<? extends Form>> entry : formsMap.entrySet()) {
             SystemForm s = entry.getKey();
@@ -171,32 +193,33 @@ public class FormSearchPanel extends JPanel {
                 }
             }
         }
+        addGroup("İşlemler", actionResults);
+        addGroup("Sayfalar", staticResults);
+        if (!listItems.isEmpty()) setSelected(0);
+        updateLayout();
 
-        // 4. Tüm Asenkron İşlemlerin Bitmesini Bekle (AllOf)
-        activeSearchFuture = CompletableFuture.allOf(servicesFuture, customersFuture)
-                .thenApply(v -> {
+        // 3. Paralel asenkron kayıt aramaları (her grupta ilk birkaç sonuç; palet taranabilir kalsın)
+        WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
+        CustomerService customerService = ServiceManager.getCustomerService();
+        CompletableFuture<PageResult<WorkOrder>> servicesFuture = workOrderService.searchPaged(st, 1, GROUP_LIMIT);
+        CompletableFuture<List<Customer>> customersFuture = customerService.search(st);
+        CompletableFuture<PageResult<Part>> partsFuture = ServiceManager.getPartService().searchPaged(st, 1, GROUP_LIMIT);
 
-                    List<ISearchableResult> combinedResults = new ArrayList<>(staticResults);
+        // 4. Kayıt grupları yerel grupların altına eklenir
+        activeSearchFuture = CompletableFuture.allOf(servicesFuture, customersFuture, partsFuture)
+                .thenAccept(v -> {
+                    List<ISearchableResult> services = new ArrayList<>();
+                    servicesFuture.join().getItems().forEach(w -> services.add(new ServiceSearchResult(w)));
+                    List<ISearchableResult> customers = new ArrayList<>();
+                    customersFuture.join().stream().limit(GROUP_LIMIT).forEach(c -> customers.add(new CustomerSearchResult(c)));
+                    List<ISearchableResult> parts = new ArrayList<>();
+                    partsFuture.join().getItems().forEach(p -> parts.add(new PartSearchResult(p)));
 
-                    try {
-                        servicesFuture.get().forEach(service -> combinedResults.add(new ServiceSearchResult(service)));
-
-                        customersFuture.get().forEach(customer -> combinedResults.add(new CustomerSearchResult(customer)));
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    return combinedResults;
-                })
-                .thenAccept(combinedResults -> {
                     SwingUtilities.invokeLater(() -> {
-                        for (ISearchableResult result : combinedResults) {
-                            Item item = new Item(result, false, false);
-                            checkComponentOrientation(item);
-                            panelResult.add(item);
-                            listItems.add(item);
-                        }
-
+                        if (seq != searchSeq) return;
+                        addGroup("Müşteriler", customers);
+                        addGroup("Servisler", services);
+                        addGroup("Parçalar", parts);
                         if (listItems.isEmpty()) {
                             panelResult.add(createNoResult(st));
                         } else if (getSelectedIndex() == -1) {
@@ -209,16 +232,35 @@ public class FormSearchPanel extends JPanel {
                     if (ex.getCause() instanceof java.util.concurrent.CancellationException || ex instanceof java.util.concurrent.CancellationException) {
                         return null;
                     }
-
-                    // Gerçek bir hata varsa logla
+                    // Gerçek bir hata: yerel gruplar kalır, altına bilgi satırı eklenir
+                    Servicio.getLogger().error("Arama sırasında asenkron hata: ", ex);
                     SwingUtilities.invokeLater(() -> {
-                        Servicio.getLogger().error("Arama sırasında asenkron hata: ", ex);
-                        panelResult.removeAll();
-                        panelResult.add(createNoResult("Hata oluştu."));
+                        if (seq != searchSeq) return;
+                        JLabel error = new JLabel("Kayıtlar aranamadı. Tekrar deneyin.");
+                        error.putClientProperty(FlatClientProperties.STYLE,
+                                "foreground:$Servicio.dangerColor;border:10,12,10,12;");
+                        panelResult.add(error);
                         updateLayout();
                     });
                     return null;
                 });
+    }
+
+    /** Her aramada artar; eski aramanın geç gelen sonuçlarını ayıklamak için. */
+    private int searchSeq;
+
+    private static final int GROUP_LIMIT = 6;
+
+    /** Başlıklı bir sonuç grubu ekler; boş grup hiç görünmez. */
+    private void addGroup(String title, List<ISearchableResult> results) {
+        if (results.isEmpty()) return;
+        panelResult.add(createLabel(title));
+        for (ISearchableResult result : results) {
+            Item item = new Item(result, false, false);
+            checkComponentOrientation(item);
+            panelResult.add(item);
+            listItems.add(item);
+        }
     }
 
     private boolean checkTags(String[] tags, String st) {
@@ -277,87 +319,82 @@ public class FormSearchPanel extends JPanel {
     }
 
     private void showRecentResult() {
-        List<Item> recentSearch = getRecentSearch(false);
-        List<Item> favoriteSearch = getRecentSearch(true);
+        final int seq = ++searchSeq;
         panelResult.removeAll();
         listItems.clear();
-        if (recentSearch != null && !recentSearch.isEmpty()) {
-            panelResult.add(createLabel("Son"));
-            for (Item item : recentSearch) {
-                checkComponentOrientation(item);
-                panelResult.add(item);
-                listItems.add(item);
-            }
-        }
-
-        if (favoriteSearch != null && !favoriteSearch.isEmpty()) {
-            panelResult.add(createLabel("Favori"));
-            for (Item item : favoriteSearch) {
-                checkComponentOrientation(item);
-                panelResult.add(item);
-                listItems.add(item);
-            }
-        }
-        if (listItems.isEmpty()) {
-            panelResult.add(new NoRecentResult());
-        } else {
-            setSelected(0);
-        }
+        List<ISearchableResult> actions = new ArrayList<>();
+        for (QuickAction action : QuickAction.values()) actions.add(new ActionResult(action));
+        addGroup("İşlemler", actions);
+        setSelected(0);
         updateLayout();
+
+        // Son ve favori kayıtlar DB'den çözülür; hepsi gelince tek seferde EDT'de eklenir.
+        CompletableFuture<List<ISearchableResult>> recentF = resolveRecent(false);
+        CompletableFuture<List<ISearchableResult>> favoriteF = resolveRecent(true);
+        CompletableFuture.allOf(recentF, favoriteF).thenRun(() -> SwingUtilities.invokeLater(() -> {
+            if (seq != searchSeq) return;
+            addRecentGroup("Son", recentF.join(), false);
+            addRecentGroup("Favori", favoriteF.join(), true);
+            updateLayout();
+        })).exceptionally(ex -> {
+            Servicio.getLogger().error("Son aramalar yüklenemedi", ex);
+            return null;
+        });
+    }
+
+    private void addRecentGroup(String title, List<ISearchableResult> results, boolean favorite) {
+        if (results.isEmpty()) return;
+        panelResult.add(createLabel(title));
+        for (ISearchableResult result : results) {
+            Item item = new Item(result, true, favorite);
+            checkComponentOrientation(item);
+            panelResult.add(item);
+            listItems.add(item);
+        }
     }
 
     private JLabel createLabel(String title) {
         JLabel label = new JLabel(title);
         label.putClientProperty(FlatClientProperties.STYLE, "" +
-                "font:bold +1;" +
-                "border:5,15,5,15;");
+                "font:bold -1;" +
+                "foreground:$Label.disabledForeground;" +
+                "border:10,12,4,12;");
         checkComponentOrientation(label);
         return label;
     }
 
-    private List<Item> getRecentSearch(boolean favorite) {
-        String[] recentSearch = RecentSearchStore.get(favorite);
-        if (recentSearch.length == 0) {
-            return null;
-        }
-
-        List<Item> list = new ArrayList<>();
-        for (String s : recentSearch) {
-
+    /** Kayıtlı son/favori kimlikleri, sırası korunarak sonuç nesnelerine çözer (silinmiş kayıtlar atlanır). */
+    private CompletableFuture<List<ISearchableResult>> resolveRecent(boolean favorite) {
+        List<CompletableFuture<Optional<ISearchableResult>>> futures = new ArrayList<>();
+        for (String s : RecentSearchStore.get(favorite)) {
             String[] sp = s.split(":");
-
-            if (sp[0].equals("STATIC")) {
-                Class<? extends Form> classForm = getClassForm(sp[1]);
-                if (MyMenuValidation.validation(classForm)) {
-                    Item item = createRecentItem(sp[1], favorite);
-                    if (item != null) {
-                        list.add(item);
+            if (sp.length < 2) continue;
+            try {
+                if (sp[0].equals("STATIC")) {
+                    Class<? extends Form> classForm = getClassForm(sp[1]);
+                    ISearchableResult result = null;
+                    if (classForm != null && MyMenuValidation.validation(classForm)) {
+                        for (Map.Entry<SystemForm, Class<? extends Form>> entry : formsMap.entrySet()) {
+                            if (entry.getKey().name().equals(sp[1])) result = new StaticFormResult(entry.getKey(), entry.getValue());
+                        }
                     }
+                    futures.add(CompletableFuture.completedFuture(Optional.ofNullable(result)));
+                } else if (sp[0].equals("SERVICE")) {
+                    futures.add(ServiceManager.getWorkOrderService().get(Long.parseLong(sp[1]))
+                            .thenApply(o -> o.map(ServiceSearchResult::new)));
+                } else if (sp[0].equals("CUSTOMER")) {
+                    futures.add(ServiceManager.getCustomerService().get(Long.parseLong(sp[1]))
+                            .thenApply(o -> o.map(CustomerSearchResult::new)));
                 }
-            } else if (sp[0].equals("SERVICE")) {
-                WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
-                workOrderService.get(Long.parseLong(sp[1])).thenAccept(serviceOptional -> {
-                    serviceOptional.ifPresent(service -> {
-                        ServiceSearchResult result = new ServiceSearchResult(service);
-                        Item item = new Item(result, true, favorite);
-                        list.add(item);
-                    });
-                });
-
-            } else if (sp[0].equals("CUSTOMER")) {
-                CustomerService service = ServiceManager.getCustomerService();
-                service.get(Long.parseLong(sp[1])).thenAccept(customerOptional -> {
-                    customerOptional.ifPresent(customer -> {
-                        CustomerSearchResult result = new CustomerSearchResult(customer);
-                        Item item = new Item(result, true, favorite);
-                        list.add(item);
-                    });
-                });
+            } catch (NumberFormatException ignored) {
+                // Bozuk kayıt: atla
             }
-
-
         }
-        return list;
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(v -> {
+            List<ISearchableResult> list = new ArrayList<>();
+            for (CompletableFuture<Optional<ISearchableResult>> f : futures) f.join().ifPresent(list::add);
+            return list;
+        });
     }
 
     private Class<? extends Form> getClassForm(String name) {
@@ -449,7 +486,7 @@ public class FormSearchPanel extends JPanel {
         private void init() {
             setFocusable(false);
             setHorizontalAlignment(JButton.LEADING);
-            setLayout(new MigLayout("insets 3 3 3 0,filly,gapy 2", "[]push[]"));
+            setLayout(new MigLayout("insets 3 6 3 0,filly,gapy 2", "[]10[]push[]"));
             putClientProperty(FlatClientProperties.STYLE, "" +
                     "background:null;" +
                     "arc:10;" +
@@ -460,12 +497,22 @@ public class FormSearchPanel extends JPanel {
             JLabel labelDescription = new JLabel(data.getDescription());
             labelDescription.putClientProperty(FlatClientProperties.STYLE, "" +
                     "foreground:$Label.disabledForeground;");
-            add(new JLabel(data.getDisplayName()), "cell 0 0");
-            add(labelDescription, "cell 0 1");
-            if (!isRecent) {
-                add(new JLabel(new FlatMenuArrowIcon()), "cell 1 0,span 1 2");
+            if (data.getIconPath() != null) {
+                add(new JLabel(new Ikon(data.getIconPath(), 18, "Label.disabledForeground")), "cell 0 0,span 1 2,aligny center");
+            }
+            JLabel labelName = new JLabel(data.getDisplayName());
+            labelName.putClientProperty(FlatClientProperties.STYLE, "font:bold;");
+            add(labelName, "cell 1 0");
+            add(labelDescription, "cell 1 1");
+            if (isRecent) {
+                add(createRecentOption(), "cell 2 0,span 1 2");
+            } else if (data.getShortcutText() != null) {
+                JLabel key = new JLabel(data.getShortcutText());
+                key.putClientProperty(FlatClientProperties.STYLE,
+                        "font: -2; foreground: $Label.disabledForeground; border: 1,5,1,5,$Component.borderColor,1,6");
+                add(key, "cell 2 0,span 1 2,aligny center,gapright 8");
             } else {
-                add(createRecentOption(), "cell 1 0,span 1 2");
+                add(new JLabel(new FlatMenuArrowIcon()), "cell 2 0,span 1 2");
             }
             addActionListener(e -> {
                 if (itemSource == null) {
@@ -539,66 +586,18 @@ public class FormSearchPanel extends JPanel {
             return button;
         }
 
+        // Son/favori listesi değişince grup başlıkları (İşlemler/Son/Favori) tutarlı kalsın diye
+        // liste yerinde yamanmaz, kayıt güncellenip baştan kurulur.
         protected void removeRecent() {
             RecentSearchStore.remove(data.getUniqueId(), isFavorite);
-            panelResult.remove(this);
-            listItems.remove(this);
-            if (listItems.isEmpty()) {
-                panelResult.removeAll();
-                panelResult.add(new NoRecentResult());
-            } else {
-                if (getCount(isFavorite) == 0) {
-                    if (isFavorite) {
-                        panelResult.remove(panelResult.getComponentCount() - 1);
-                    } else {
-                        panelResult.remove(0);
-                    }
-                }
-            }
-            updateLayout();
+            showRecentResult();
         }
 
         protected void addFavorite() {
             RecentSearchStore.add(data.getUniqueId(), true);
-            int[] index = getFirstFavoriteIndex();
-            panelResult.remove(this);
-            listItems.remove(this);
-            Item item = new Item(data, isRecent, true);
-            checkComponentOrientation(item);
-            if (index == null) {
-                panelResult.add(createLabel("Favori"));
-                panelResult.add(item);
-                listItems.add(item);
-            } else {
-                panelResult.remove(this);
-                listItems.remove(this);
-                panelResult.add(item, index[1] - 1);
-                listItems.add(index[0] - 1, item);
-            }
-            if (getCount(false) == 0) {
-                panelResult.remove(0);
-            }
-            updateLayout();
+            showRecentResult();
         }
 
-        private int getCount(boolean favorite) {
-            int count = 0;
-            for (Item item : listItems) {
-                if (item.isFavorite == favorite) {
-                    count++;
-                }
-            }
-            return count;
-        }
-
-        private int[] getFirstFavoriteIndex() {
-            for (int i = 0; i < listItems.size(); i++) {
-                if (listItems.get(i).isFavorite) {
-                    return new int[]{i, panelResult.getComponentZOrder(listItems.get(i))};
-                }
-            }
-            return null;
-        }
     }
 
     private static class PanelResult extends JPanel implements Scrollable {

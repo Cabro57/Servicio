@@ -269,6 +269,8 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         simpleMenuOption.setMenuValidation(new MyMenuValidation());
 
         simpleMenuOption.addMenuEvent((action, index) -> {
+            // FormManager seçimi eşitliyorsa form zaten açık: yalnızca işaretlensin, tekrar açılmasın.
+            if (FormManager.isSyncingDrawer()) return;
             // Ayarlar/Hakkında bir Form açmaz — index pozisyonuna göre değil isme göre yakalanır,
             // aksi halde menüye yeni öğe eklendiğinde (ör. Ürünler) pozisyon kayar ve yanlış öğe tetiklenir.
             String itemName = action.getItem().getName();

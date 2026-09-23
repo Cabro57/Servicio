@@ -28,6 +28,11 @@ public interface AccountRepository {
     @SqlQuery("SELECT COUNT(*) FROM v_customer_balances WHERE balance > 0")
     long countCustomersWithBalance();
 
+    // Toplam açık alacak (borçlu müşterilerin bakiyeleri toplamı). double döner: sqlite-jdbc'nin
+    // SUM sonucu için getBigDecimal davranışına güvenilmiyor, çağıran taraf BigDecimal'e çevirir.
+    @SqlQuery("SELECT COALESCE(SUM(balance), 0) FROM v_customer_balances WHERE balance > 0")
+    double sumPositiveBalances();
+
     @RegisterBeanMapper(CustomerBalanceDto.class)
     @SqlQuery("SELECT customer_id, total_debt, total_paid, balance FROM v_customer_balances WHERE customer_id = :customerId")
     Optional<CustomerBalanceDto> findBalanceByCustomer(@Bind("customerId") Long customerId);

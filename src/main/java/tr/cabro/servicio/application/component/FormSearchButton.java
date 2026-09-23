@@ -9,7 +9,8 @@ import javax.swing.*;
 public class FormSearchButton extends JButton {
 
     public FormSearchButton() {
-        super("Hızlı Arama...", new Ikon("icons/search.svg", 0.4f));
+        super("Ara veya işlem yap…", new Ikon("icons/search.svg", 0.4f));
+        setToolTipText("Müşteri, servis, parça ara ya da Yeni Servis, Tahsilat gibi işlemleri çalıştır (Ctrl+K)");
         init();
     }
 
@@ -26,7 +27,7 @@ public class FormSearchButton extends JButton {
                 "[dark]background:tint($Panel.background,10%);" +
                 "[light]foreground:tint($Button.foreground,40%);" +
                 "[dark]foreground:shade($Button.foreground,30%);");
-        JLabel label = new JLabel("Ctrl F");
+        JLabel label = new JLabel("Ctrl K");
         label.putClientProperty(FlatClientProperties.STYLE, "" +
                 "[light]foreground:tint($Button.foreground,40%);" +
                 "[dark]foreground:shade($Button.foreground,30%);");

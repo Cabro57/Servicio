@@ -35,6 +35,7 @@ public class FormManager {
 
     private static void install() {
         FormSearch.getInstance().installKeyMap(getMainForm());
+        QuickAction.installKeyMap(getMainForm());
     }
 
     public static void showForm(Form form) {
@@ -44,6 +45,42 @@ public class FormManager {
             form.formOpen();
             mainForm.setForm(form);
             mainForm.refresh();
+            syncDrawerSelection(form);
+        }
+    }
+
+    /** Menü olay işleyicisi bu bayrak açıkken form açmaz; yalnızca seçim işaretlenir. */
+    @Getter
+    private static boolean syncingDrawer;
+
+    /**
+     * Detay formları menüde yer almaz; seçim ait oldukları listeye düşer
+     * (ör. müşteri kartı açıkken menüde "Müşteriler" seçili görünür).
+     */
+    private static final java.util.Map<Class<? extends Form>, Class<? extends Form>> MENU_PARENT = java.util.Map.of(
+            tr.cabro.servicio.application.forms.FormCustomer.class, tr.cabro.servicio.application.forms.FormCustomers.class,
+            tr.cabro.servicio.application.forms.FormWorkOrder.class, tr.cabro.servicio.application.forms.FormWorkOrders.class,
+            tr.cabro.servicio.application.forms.FormPart.class, tr.cabro.servicio.application.forms.FormParts.class,
+            tr.cabro.servicio.application.forms.FormDevice.class, tr.cabro.servicio.application.forms.FormDevices.class,
+            tr.cabro.servicio.application.forms.FormSupplier.class, tr.cabro.servicio.application.forms.FormSuppliers.class,
+            tr.cabro.servicio.application.forms.FormProduct.class, tr.cabro.servicio.application.forms.FormProducts.class,
+            tr.cabro.servicio.application.forms.FormSale.class, tr.cabro.servicio.application.forms.FormSales.class);
+
+    /**
+     * Sol menüdeki seçimi gösterilen forma eşitler. Menü dışından yapılan geçişlerde (ana sayfa
+     * kısayolları, alt çubuk, komut paleti, geri/ileri) seçim eski öğede kalıyordu.
+     * raven'ın setSelectedItemClass'ı menü olayını da tetikler; bayrak sayesinde olay form açmaz.
+     */
+    private static void syncDrawerSelection(Form form) {
+        Class<? extends Form> cls = MENU_PARENT.getOrDefault(form.getClass(), form.getClass());
+        try {
+            if (Drawer.getMenuIndexClass(cls) == null) return;
+            syncingDrawer = true;
+            Drawer.setSelectedItemClass(cls);
+        } catch (RuntimeException ex) {
+            // Drawer henüz kurulmadıysa (giriş öncesi) seçim atlanır
+        } finally {
+            syncingDrawer = false;
         }
     }
 
@@ -53,9 +90,7 @@ public class FormManager {
             form.formCheck();
             form.formOpen();
             mainForm.setForm(form);
-            if (AllForms.isSingletonForm(form)) {
-                Drawer.setSelectedItemClass(form.getClass());
-            }
+            syncDrawerSelection(form);
         }
     }
 
@@ -65,10 +100,13 @@ public class FormManager {
             form.formCheck();
             form.formOpen();
             mainForm.setForm(form);
-            if (AllForms.isSingletonForm(form)) {
-                Drawer.setSelectedItemClass(form.getClass());
-            }
+            syncDrawerSelection(form);
         }
+    }
+
+    /** Alt durum çubuğunu (kasa, atölye, borçlu) hemen tazeler — para/servis değiştiren işlemlerden sonra. */
+    public static void refreshStatusBar() {
+        if (mainForm != null) mainForm.refreshStatus();
     }
 
     public static void refresh() {

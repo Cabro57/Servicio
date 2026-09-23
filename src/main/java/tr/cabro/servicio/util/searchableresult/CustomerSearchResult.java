@@ -45,6 +45,9 @@ public class CustomerSearchResult implements ISearchableResult {
     }
 
     @Override
+    public String getIconPath() { return "icons/user.svg"; }
+
+    @Override
     public String getUniqueId() {
         return "CUSTOMER:"+customer.getId();
     }

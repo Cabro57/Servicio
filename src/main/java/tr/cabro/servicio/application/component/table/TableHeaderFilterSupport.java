@@ -65,6 +65,17 @@ public class TableHeaderFilterSupport<T> {
         return activeFilters.values().stream().anyMatch(ColumnFilterValue::isActive);
     }
 
+    /**
+     * Başlık filtrelerini temizleyip tek bir kolona programatik filtre uygular
+     * (ör. ana sayfadaki servis hattından "Hazır" aşamasına tıklanınca). Tabloyu yeniler.
+     */
+    public void applyOnly(int column, ColumnFilterValue value) {
+        activeFilters.clear();
+        if (value != null && value.isActive()) activeFilters.put(column, value);
+        table.getTableHeader().repaint();
+        if (onFilterChanged != null) onFilterChanged.run();
+    }
+
     /** Tüm başlık filtrelerini kaldırır ve tabloyu yeniler. */
     public void clearAll() {
         if (activeFilters.isEmpty()) return;

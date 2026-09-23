@@ -67,6 +67,8 @@ public class FormSearch {
     public void installKeyMap(JComponent component) {
         ActionListener key = e -> showSearch();
         component.registerKeyboardAction(key, KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_DOWN_MASK), JComponent.WHEN_IN_FOCUSED_WINDOW);
+        // Ctrl+K: komut paleti (kayıt arama + işlem çalıştırma). Ctrl+F alışkanlık için korunuyor.
+        component.registerKeyboardAction(key, KeyStroke.getKeyStroke(KeyEvent.VK_K, KeyEvent.CTRL_DOWN_MASK), JComponent.WHEN_IN_FOCUSED_WINDOW);
     }
 
     public void showSearch() {

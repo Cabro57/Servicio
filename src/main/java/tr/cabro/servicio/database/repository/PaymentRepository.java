@@ -44,6 +44,12 @@ public interface PaymentRepository {
             "WHERE pa.target_type = :targetType AND pa.target_id = :targetId ORDER BY p.payment_date ASC")
     List<Payment> findByTarget(@Bind("targetType") AllocationTargetType targetType, @Bind("targetId") Long targetId);
 
+    // Ana sayfadaki "Bugünkü hareketler" listesi — tarih aralığındaki ödemeler, en yeni önce.
+    @SqlQuery("SELECT id, customer_id, amount, payment_type, note, payment_date, created_at FROM payments " +
+            "WHERE payment_date >= :start AND payment_date < :end ORDER BY payment_date DESC, id DESC LIMIT :limit")
+    List<Payment> findByDateRange(@Bind("start") LocalDateTime start, @Bind("end") LocalDateTime end,
+                                  @Bind("limit") int limit);
+
     // Günlük kasa raporu — yöntem bazında gün içi toplam (satış + servis tahsilatı + iade birlikte,
     // iade tutarları negatif olduğu için net kasa hareketini doğru yansıtır).
     @RegisterBeanMapper(PaymentTypeSumDto.class)

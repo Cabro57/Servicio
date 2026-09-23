@@ -30,6 +30,9 @@ public class StaticFormResult implements ISearchableResult {
     }
 
     @Override
+    public String getIconPath() { return "icons/layout-dashboard.svg"; }
+
+    @Override
     public void executeAction() {
         AppModal.closeModal(FormSearch.ID); // Arama panelini kapat
 

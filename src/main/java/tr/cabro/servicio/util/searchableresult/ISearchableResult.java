@@ -10,4 +10,10 @@ public interface ISearchableResult {
 
     // Tıklandığında veya Enter'a basıldığında çalışacak eylem
     void executeAction();
+
+    /** Satırın solunda gösterilecek ikon (icons/...svg); null ise ikon gösterilmez. */
+    default String getIconPath() { return null; }
+
+    /** Satırın sağında gösterilecek klavye kısayolu (ör. "Alt+N"); null ise ok işareti gösterilir. */
+    default String getShortcutText() { return null; }
 }

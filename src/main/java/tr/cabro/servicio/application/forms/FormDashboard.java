@@ -1,70 +1,74 @@
 package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
-import org.jfree.data.general.DefaultPieDataset;
-import org.jfree.data.time.*;
-import raven.modal.Toast;
-import tr.cabro.servicio.application.component.ToolBarSelection;
-import tr.cabro.servicio.application.component.chart.PieChart;
-import tr.cabro.servicio.application.component.chart.TimeSeriesChart;
-import tr.cabro.servicio.application.component.chart.themes.DefaultChartTheme;
-import tr.cabro.servicio.application.component.chart.utils.ToolBarTimeSeriesChartRenderer;
-import tr.cabro.servicio.application.component.dashboard.CardBox;
+import tr.cabro.servicio.application.component.QuickActionButton;
 import tr.cabro.servicio.application.panels.ActiveServiceTable;
-import tr.cabro.servicio.application.panels.PendingPaymentsTable;
-import tr.cabro.servicio.application.system.AllForms;
+import tr.cabro.servicio.application.panels.dashboard.AttentionPanel;
+import tr.cabro.servicio.application.panels.dashboard.CashTodayPanel;
+import tr.cabro.servicio.application.panels.dashboard.DistributionPanel;
+import tr.cabro.servicio.application.panels.dashboard.MovementsPanel;
+import tr.cabro.servicio.application.panels.dashboard.PeriodPanel;
+import tr.cabro.servicio.application.panels.dashboard.PipelinePanel;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
+import tr.cabro.servicio.application.system.QuickAction;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.SystemForm;
+import tr.cabro.servicio.i18n.AppLocale;
+import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.model.Payment;
 import tr.cabro.servicio.model.dto.ChartDataDto;
 import tr.cabro.servicio.model.dto.SummaryCardDto;
 import tr.cabro.servicio.model.enums.TimeFilter;
 import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-@SystemForm(name = "Ana Sayfa", description = "Gösterge paneli finansal ayrıntıları ve dağılımları görüntüler")
+/**
+ * Ana sayfa: tezgâhın operasyon panosu. Sol 2/3 bugünün işi (servis hattı, dikkat bekleyenler,
+ * aktif servisler, cihaz dağılımı), sağ 1/3 para (bugünkü kasa, bugünkü hareketler, dönem kazancı).
+ * Üstte sık işlemlerin kısayol şeridi; aynı işlemler Alt+harf ve Ctrl+K komut paletinden de çalışır.
+ */
+@SystemForm(name = "Ana Sayfa", description = "Bugünkü kasa, atölye durumu, bekleyen işler ve dönem kazancı",
+        tags = {"dashboard", "gösterge", "kasa", "kazanç", "özet"})
 public class FormDashboard extends Form {
 
-    // --- 1. ZAMAN FİLTRESİ İÇİN ENUM ---
-    // Tarih hesaplama mantığı (switch-case yerine) doğrudan enum içinde yapıldı
+    private static final int MOVEMENT_ROWS = 8;
 
+    private TimeFilter selectedTimeFilter = TimeFilter.MONTH_1;
+    private boolean loadedOnce;
 
-    private JPanel panelLayout;
-    private CardBox cardBox;
-    private TimeSeriesChart timeSeriesChart;
-    private PieChart deviceTypePieChart;
-    private PieChart brandPieChart;
+    private JLabel lblDate;
+    private PipelinePanel pipelinePanel;
+    private AttentionPanel attentionPanel;
     private ActiveServiceTable activeServiceTable;
-    private PendingPaymentsTable pendingPaymentsTable;
-    private JLabel lblTodaySalesCount, lblTodayReturnCount, lblTodayNetCash;
-
-    // Varsayılan zaman filtresi (1 Ay)
-    private TimeFilter selectedTimeFilter = TimeFilter.ALL_TIME;
+    private DistributionPanel distributionPanel;
+    private CashTodayPanel cashTodayPanel;
+    private MovementsPanel movementsPanel;
+    private PeriodPanel periodPanel;
 
     public FormDashboard() {
         init();
     }
 
     private void init() {
-        setLayout(new MigLayout("wrap,fill", "[fill]", "[grow 0][fill]"));
-        createTitle();
-        createPanelLayout();
-        createCard();
-        createDailyCashCard();
-        createChart();
-        createPieCharts();
-        createOtherTable();
+        setLayout(new MigLayout("wrap, fill, insets 0, gap 0", "[fill]", "[grow 0][fill, grow]"));
+        add(createHeader());
+        add(createContent());
     }
 
     @Override
@@ -73,327 +77,189 @@ public class FormDashboard extends Form {
     }
 
     @Override
+    public void formOpen() {
+        // İlk gösterimde formInit zaten yükleyecek; sonraki dönüşlerde (ör. tahsilattan sonra) tazele.
+        if (loadedOnce) loadData();
+    }
+
+    @Override
     public void formRefresh() {
         loadData();
     }
 
-    private void loadData() {
-        ReportManager reportManager = ServiceManager.getReportManager();
+    // ── Yerleşim ────────────────────────────────────────────────────────────
 
-        // Tarihleri Enum'dan doğrudan alıyoruz (Switch-case'e gerek kalmadı)
-        LocalDate[] dates = selectedTimeFilter.getRanges();
-        String startCurrent = dates[0].toString();
-        String endCurrent = dates[1].toString();
-        String startPrev = dates[2].toString();
-        String endPrev = dates[3].toString();
+    private JComponent createHeader() {
+        JPanel panel = new JPanel(new MigLayout("insets 14 18 10 18, fillx, gap 8", "[]push[][][][][]", "[center]"));
 
-        // ÖZET KARTLARI
-        CompletableFuture<SummaryCardDto> currentFuture = reportManager.getDashboardSummaryCards(startCurrent, endCurrent);
-        CompletableFuture<SummaryCardDto> prevFuture = reportManager.getDashboardSummaryCards(startPrev, endPrev);
-
-        CompletableFuture.allOf(currentFuture, prevFuture).thenAccept(v -> {
-            SummaryCardDto current = currentFuture.join();
-            SummaryCardDto prev = prevFuture.join();
-
-            SwingUtilities.invokeLater(() -> {
-                cardBox.setValueAt(0,
-                        String.format("%,d", current.getTotalRecords()),
-                        String.format("Önceki döneme göre: %,d", prev.getTotalRecords()),
-                        String.format("%.1f%%", calcChange(current.getTotalRecords(), prev.getTotalRecords())),
-                        calcChange(current.getTotalRecords(), prev.getTotalRecords()) >= 0);
-
-                cardBox.setValueAt(1,
-                        String.format("₺%,.2f", current.getTotalRevenue()),
-                        String.format("Önceki dönem: ₺%,.2f", prev.getTotalRevenue()),
-                        String.format("%.1f%%", calcChange(current.getTotalRevenue().doubleValue(), prev.getTotalRevenue().doubleValue())),
-                        calcChange(current.getTotalRevenue().doubleValue(), prev.getTotalRevenue().doubleValue()) >= 0);
-
-                cardBox.setValueAt(2,
-                        String.format("₺%,.2f", current.getTotalExpense()),
-                        String.format("Önceki dönem: ₺%,.2f", prev.getTotalExpense()),
-                        String.format("%.1f%%", calcChange(current.getTotalExpense().doubleValue(), prev.getTotalExpense().doubleValue())),
-                        calcChange(current.getTotalExpense().doubleValue(), prev.getTotalExpense().doubleValue()) <= 0);
-
-                cardBox.setValueAt(3,
-                        String.format("₺%,.2f", current.getTotalProfit()),
-                        String.format("Önceki dönem: ₺%,.2f", prev.getTotalProfit()),
-                        String.format("%.1f%%", calcChange(current.getTotalProfit().doubleValue(), prev.getTotalProfit().doubleValue())),
-                        calcChange(current.getTotalProfit().doubleValue(), prev.getTotalProfit().doubleValue()) >= 0);
-            });
-        });
-
-        // ÇİZGİ GRAFİK (BORSA)
-        String sqlFormat = selectedTimeFilter.getSqlFormat();
-        String granularity = selectedTimeFilter.getGranularity();
-
-        boolean useEffective = selectedTimeFilter == TimeFilter.ALL_TIME;
-
-        CompletableFuture<List<ChartDataDto>> revFuture =
-                reportManager.getRevenueTrend(sqlFormat, startCurrent, endCurrent, useEffective);
-        CompletableFuture<List<ChartDataDto>> profFuture =
-                reportManager.getProfitTrend(sqlFormat, startCurrent, endCurrent, useEffective);
-
-        CompletableFuture.allOf(revFuture, profFuture).thenAccept(v -> {
-            List<ChartDataDto> revData = revFuture.join();
-            List<ChartDataDto> profData = profFuture.join();
-
-            SwingUtilities.invokeLater(() -> {
-                TimeTableXYDataset dataset = new TimeTableXYDataset();
-
-                for (ChartDataDto dto : revData) {
-                    if (dto.getLabel() == null) continue;
-                    dataset.add(parsePeriod(dto.getLabel(), granularity), dto.getValue().doubleValue(), "Brüt Gelir");
-                }
-                for (ChartDataDto dto : profData) {
-                    if (dto.getLabel() == null) continue;
-                    dataset.add(parsePeriod(dto.getLabel(), granularity), dto.getValue().doubleValue(), "Net Kâr");
-                }
-
-                timeSeriesChart.setDataset(dataset);
-            });
-        });
-
-        // PASTA GRAFİKLER (Küçük dilimler %3'ün altındaysa "Diğer" grubuna alınır)
-        reportManager.getDeviceTypePieChart(startCurrent, endCurrent).thenAccept(data ->
-                SwingUtilities.invokeLater(() -> deviceTypePieChart.setDataset(createGroupedPieDataset(data, 3.0)))
-        ).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz türü grafiği yüklenemedi", ex));
-
-        reportManager.getBrandPieChart(startCurrent, endCurrent).thenAccept(data ->
-                SwingUtilities.invokeLater(() -> brandPieChart.setDataset(createGroupedPieDataset(data, 3.0)))
-        ).exceptionally(ex -> ErrorHandler.handle(this, "Marka grafiği yüklenemedi", ex));;
-
-        // ALT TABLOLAR (kendi içlerinde DB-tabanlı sayfalama ile çekiyor, sayfa 1'e dönülür)
-        activeServiceTable.loadPage(1);
-        pendingPaymentsTable.loadPage(1);
-
-        // "Bugünkü Kasa" seçili zaman filtresinden bağımsız, her zaman gerçek bugünü gösterir.
-        loadDailyCashCard();
-    }
-
-    /**
-     * Pasta Grafik Veri Temizleme Algoritması
-     * Belirtilen yüzdeden (Örn: %3) daha küçük olan dilimleri toplayıp "Diğer" olarak tek dilim yapar.
-     */
-    private DefaultPieDataset createGroupedPieDataset(List<ChartDataDto> data, double thresholdPercent) {
-        DefaultPieDataset dataset = new DefaultPieDataset();
-        if (data == null || data.isEmpty()) return dataset;
-
-        double total = data.stream().mapToDouble(d -> d.getValue().doubleValue()).sum();
-        if (total == 0) return dataset;
-
-        double otherSum = 0;
-
-        for (ChartDataDto dto : data) {
-            double value = dto.getValue().doubleValue();
-            double percent = (value / total) * 100.0;
-
-            if (percent < thresholdPercent) {
-                otherSum += value; // Diğer sepetine at
-            } else {
-                dataset.setValue(dto.getLabel() != null ? dto.getLabel() : "Bilinmeyen", value);
-            }
-        }
-
-        // Eğer diğerleri sepetinde veri varsa tek bir dilim olarak ekle
-        if (otherSum > 0) {
-            dataset.setValue("Diğer", otherSum);
-        }
-
-        return dataset;
-    }
-
-    private double calcChange(double current, double previous) {
-        if (previous == 0) return current > 0 ? 100.0 : 0.0;
-        return ((current - previous) / previous) * 100.0;
-    }
-
-    private RegularTimePeriod parsePeriod(String label, String granularity) {
-        if ("hour".equals(granularity)) {
-            // label: "2024-03-15 14:00"
-            String[] parts = label.split("T");
-            LocalDate date = LocalDate.parse(parts[0]);
-            int hour = Integer.parseInt(parts[1]);
-            return new Hour(hour, new Day(date.getDayOfMonth(), date.getMonthValue(), date.getYear()));
-        } else if ("day".equals(granularity)) {
-            LocalDate d = LocalDate.parse(label);
-            return new Day(d.getDayOfMonth(), d.getMonthValue(), d.getYear());
-        } else if ("week".equals(granularity)) {
-            String[] p = label.split("-");
-            return new Week(Integer.parseInt(p[1]), Integer.parseInt(p[0]));
-        } else {
-            String[] p = label.split("-");
-            return new Month(Integer.parseInt(p[1]), Integer.parseInt(p[0]));
-        }
-    }
-
-    private void createTitle() {
-        JPanel panel = new JPanel(new MigLayout("fillx", "[]push[][]"));
+        JPanel titleBox = new JPanel(new MigLayout("insets 0, wrap, gap 0", "[]", "[][]"));
+        titleBox.setOpaque(false);
         JLabel title = new JLabel("Ana Sayfa");
-        title.putClientProperty(FlatClientProperties.STYLE, "font:bold +3");
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +5");
+        lblDate = new JLabel();
+        lblDate.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        titleBox.add(title);
+        titleBox.add(lblDate);
+        panel.add(titleBox);
 
-        // Zaman Filtresi Başlığa Alındı
-        ToolBarSelection<TimeFilter> timeFilterSelection = new ToolBarSelection<>(
-                TimeFilter.values(),
-                selected -> {
-                    selectedTimeFilter = selected;
-                    loadData(); // Filtre değişince sayfayı yenile
-                }
-        );
+        QuickActionButton[] buttons = {
+                new QuickActionButton(QuickAction.NEW_SERVICE, true),
+                new QuickActionButton(QuickAction.QUICK_SALE, false),
+                new QuickActionButton(QuickAction.COLLECT, false),
+                new QuickActionButton(QuickAction.NEW_CUSTOMER, false),
+                new QuickActionButton(QuickAction.NEW_PART, false)
+        };
+        for (QuickActionButton b : buttons) panel.add(b);
 
-        //timeFilterSelection.setSelectedIndex(3); // Varsayılan: MONTH_1 (1A)
-
-        panel.add(title);
-        panel.add(timeFilterSelection); // Temaların yerine Zaman Filtresi geldi
-        add(panel);
+        // Şerit sığmıyorsa (1366 px ekran + açık menü) önce kısayol etiketleri gizlenir.
+        panel.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                boolean compact = panel.getWidth() < UIScale.scale(1180);
+                for (QuickActionButton b : buttons) b.setCompact(compact);
+            }
+        });
+        return panel;
     }
 
-    private void createPanelLayout() {
-        panelLayout = new JPanel(new DashboardLayout());
-        JScrollPane scrollPane = new JScrollPane(panelLayout);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "" +
-                "width:5; trackArc:$ScrollBar.thumbArc; trackInsets:0,0,0,0; thumbInsets:0,0,0,0;");
-        add(scrollPane);
-    }
+    private JComponent createContent() {
+        ContentPanel content = new ContentPanel(new MigLayout("insets 4 18 18 18, fillx, gap 14",
+                "[fill, grow][fill, 330:32%:440]", "[top]"));
 
-    private void createCard() {
-        JPanel panel = new JPanel(new MigLayout("fillx", "[fill]"));
-        cardBox = new CardBox();
-        cardBox.addCardItem(createIcon("icons/wrench.svg", DefaultChartTheme.getColor(0)), "Toplam Servis");
-        cardBox.addCardItem(createIcon("icons/banknote-arrow-up.svg", DefaultChartTheme.getColor(1)), "Toplam Gelir (Ciro)");
-        cardBox.addCardItem(createIcon("icons/banknote-arrow-down.svg", DefaultChartTheme.getColor(2)), "Toplam Parça Gideri");
-        cardBox.addCardItem(createIcon("icons/turkish-lira.svg", DefaultChartTheme.getColor(3)), "Toplam Net Kâr");
-        panel.add(cardBox);
-        panelLayout.add(panel);
-    }
-
-    /**
-     * Seçili zaman filtresinden BAĞIMSIZ, her zaman BUGÜNÜ gösteren küçük kasa özeti —
-     * {@code payments} tablosundan (bkz. SaleService.getDailyCashReport / FormCashReport).
-     */
-    private void createDailyCashCard() {
-        // Kart arka planı sarmalayıcıda DEĞİL, iç panelde durur — diğer dashboard
-        // bölümleriyle aynı yapı. DashboardLayout her sarmalayıcıya tam genişlik verdiği
-        // için, stili sarmalayıcıya koymak kartı kenarlara dayıyor; kardeş kartlar ise
-        // MigLayout'un varsayılan panel insets'i kadar (Windows'ta 7 px) içeride duruyor
-        // ve bu kart tek başına iki yana taşmış görünüyordu.
-        JPanel panel = new JPanel(new MigLayout("fillx", "[fill]"));
-
-        JPanel card = new JPanel(new MigLayout("fillx, insets 15", "[][grow][][grow][][grow][pref!]", "[]"));
-        card.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-
-        JLabel title = new JLabel("Bugünkü Kasa");
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +1");
-        card.add(title);
-
-        card.add(new JLabel("Satış:"), "gapleft 20");
-        lblTodaySalesCount = new JLabel("0");
-        card.add(lblTodaySalesCount);
-
-        card.add(new JLabel("İade:"), "gapleft 10");
-        lblTodayReturnCount = new JLabel("0");
-        card.add(lblTodayReturnCount);
-
-        card.add(new JLabel("Net Kasa:"), "gapleft 10");
-        lblTodayNetCash = new JLabel("0,00 ₺");
-        lblTodayNetCash.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        card.add(lblTodayNetCash);
-
-        JButton btnDetail = new JButton("Kasa Raporu");
-        btnDetail.addActionListener(e -> FormManager.showForm(AllForms.getForm(FormCashReport.class)));
-        card.add(btnDetail, "align right");
-
-        panel.add(card);
-        panelLayout.add(panel);
-    }
-
-    private void loadDailyCashCard() {
-        ServiceManager.getSaleService().getDailyCashReport(LocalDate.now()).thenAccept(report -> SwingUtilities.invokeLater(() -> {
-            lblTodaySalesCount.setText(String.valueOf(report.getSaleCount()));
-            lblTodayReturnCount.setText(String.valueOf(report.getReturnCount()));
-            lblTodayNetCash.setText(Format.formatPrice(report.getTotal()));
-        })).exceptionally(ex -> ErrorHandler.handle(this, "Günlük kasa özeti yüklenemedi", ex));
-    }
-
-    private void createChart() {
-        JPanel panel = new JPanel(new MigLayout("gap 14,wrap,fillx", "[fill]", "[350]"));
-        timeSeriesChart = new TimeSeriesChart();
-        timeSeriesChart.add(new ToolBarTimeSeriesChartRenderer(timeSeriesChart), "al trailing,grow 0", 0);
-        panel.add(timeSeriesChart);
-        panelLayout.add(panel);
-    }
-
-    private void createPieCharts() {
-        JPanel panel = new JPanel(new MigLayout("fillx,gap 14", "[fill, 50%][fill, 50%]", "[300]"));
-
-        deviceTypePieChart = new PieChart();
-        brandPieChart = new PieChart();
-
-        // İsteğe bağlı: Grafiğin içine renk temasını uyguluyoruz
-        DefaultChartTheme.applyTheme(deviceTypePieChart.getFreeChart());
-        DefaultChartTheme.applyTheme(brandPieChart.getFreeChart());
-
-        panel.add(deviceTypePieChart);
-        panel.add(brandPieChart);
-        panelLayout.add(panel);
-    }
-
-    private void createOtherTable() {
-        JPanel panel = new JPanel(new MigLayout("fillx,gap 14", "[fill, 50%][fill, 50%]", "[300]"));
-        //panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-
+        JPanel left = column();
+        pipelinePanel = new PipelinePanel();
+        attentionPanel = new AttentionPanel(() -> {
+            loadData();
+            FormManager.refreshStatusBar();
+        });
         activeServiceTable = new ActiveServiceTable(ServiceManager.getWorkOrderService());
-        pendingPaymentsTable = new PendingPaymentsTable(ServiceManager.getWorkOrderService());
+        distributionPanel = new DistributionPanel();
+        left.add(pipelinePanel);
+        left.add(attentionPanel);
+        left.add(activeServiceTable);
+        left.add(distributionPanel);
 
-        panel.add(activeServiceTable);
-        panel.add(pendingPaymentsTable);
-        panelLayout.add(panel);
+        JPanel right = column();
+        cashTodayPanel = new CashTodayPanel();
+        movementsPanel = new MovementsPanel();
+        periodPanel = new PeriodPanel(selectedTimeFilter, filter -> {
+            selectedTimeFilter = filter;
+            loadPeriod();
+        });
+        right.add(cashTodayPanel);
+        right.add(movementsPanel);
+        right.add(periodPanel);
+
+        content.add(left, "wmin 0");
+        content.add(right);
+
+        JScrollPane scroll = new JScrollPane(content);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE,
+                "width: 5; trackArc: $ScrollBar.thumbArc; trackInsets: 0,0,0,0; thumbInsets: 0,0,0,0");
+        return scroll;
     }
 
-    private Icon createIcon(String icon, Color color) {
-        return new FlatSVGIcon(icon, 1f).setColorFilter(new FlatSVGIcon.ColorFilter(color1 -> color));
+    private static JPanel column() {
+        JPanel panel = new JPanel(new MigLayout("insets 0, fillx, wrap, gap 14", "[fill, grow]", ""));
+        panel.setOpaque(false);
+        return panel;
     }
 
-    private class DashboardLayout implements LayoutManager {
-        private int gap = 0;
-        @Override public void addLayoutComponent(String name, Component comp) {}
-        @Override public void removeLayoutComponent(Component comp) {}
+    // ── Veri ────────────────────────────────────────────────────────────────
 
-        @Override
-        public Dimension preferredLayoutSize(Container parent) {
-            synchronized (parent.getTreeLock()) {
-                Insets insets = parent.getInsets();
-                int width = (insets.left + insets.right);
-                int height = insets.top + insets.bottom;
-                int g = UIScale.scale(gap);
-                int count = parent.getComponentCount();
-                for (int i = 0; i < count; i++) {
-                    height += parent.getComponent(i).getPreferredSize().height;
-                }
-                if (count > 1) height += (count - 1) * g;
-                return new Dimension(width, height);
-            }
+    private void loadData() {
+        // ActiveServiceTable ilk sayfasını kurucuda kendisi yükler; tekrar yükleme yalnızca sonraki yenilemelerde.
+        if (loadedOnce) activeServiceTable.loadPage(1);
+        loadedOnce = true;
+        lblDate.setText(LocalDate.now().format(
+                DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(AppLocale.uiLocale())));
+        loadToday();
+        attentionPanel.load();
+        loadPeriod();
+    }
+
+    /** Seçili dönemden bağımsız, her zaman bugünü gösteren bölümler. */
+    private void loadToday() {
+        LocalDate today = LocalDate.now();
+
+        ServiceManager.getWorkOrderService().getOpenStatusCounts()
+                .thenAccept(counts -> SwingUtilities.invokeLater(() -> pipelinePanel.setCounts(counts)))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Servis hattı yüklenemedi", ex));
+        ServiceManager.getWorkOrderService().countCreatedOn(today)
+                .thenAccept(n -> SwingUtilities.invokeLater(() -> pipelinePanel.setTodayCount(n)))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Bugün açılan servisler yüklenemedi", ex));
+
+        ServiceManager.getSaleService().getDailyCashReport(today)
+                .thenAccept(report -> SwingUtilities.invokeLater(() -> cashTodayPanel.setReport(report)))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Günlük kasa özeti yüklenemedi", ex));
+        ServiceManager.getPaymentService().getTotalReceivables()
+                .thenAccept(total -> SwingUtilities.invokeLater(() -> cashTodayPanel.setReceivables(total)))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Açık alacak yüklenemedi", ex));
+
+        CompletableFuture<List<Payment>> paymentsF = ServiceManager.getPaymentService().getPaymentsOn(today, MOVEMENT_ROWS);
+        paymentsF.thenCompose(payments -> {
+            List<Long> ids = payments.stream().map(Payment::getCustomerId).filter(Objects::nonNull)
+                    .distinct().collect(Collectors.toList());
+            CompletableFuture<Map<Long, Customer>> customersF = ids.isEmpty()
+                    ? CompletableFuture.completedFuture(Collections.emptyMap())
+                    : ServiceManager.getCustomerService().getAll(ids).thenApply(cs -> cs.stream()
+                    .collect(Collectors.toMap(Customer::getId, Function.identity(), (a, b) -> a)));
+            return customersF.thenAccept(customers ->
+                    SwingUtilities.invokeLater(() -> movementsPanel.setPayments(payments, customers)));
+        }).exceptionally(ex -> ErrorHandler.handle(this, "Bugünkü hareketler yüklenemedi", ex));
+    }
+
+    /** Dönem filtresine bağlı bölümler: kazanç özeti, trend grafiği, cihaz dağılımı. */
+    private void loadPeriod() {
+        ReportManager reportManager = ServiceManager.getReportManager();
+        TimeFilter filter = selectedTimeFilter;
+        LocalDate[] dates = filter.getRanges();
+        String start = dates[0].toString();
+        String end = dates[1].toString();
+
+        CompletableFuture<SummaryCardDto> currentF = reportManager.getDashboardSummaryCards(start, end);
+        CompletableFuture<SummaryCardDto> prevF = reportManager.getDashboardSummaryCards(dates[2].toString(), dates[3].toString());
+        // Dönemler arasında hızlı geçişte geç gelen eski sonuçlar atlanır.
+        CompletableFuture.allOf(currentF, prevF).thenRun(() -> SwingUtilities.invokeLater(() -> {
+                    if (filter != selectedTimeFilter) return;
+                    periodPanel.setSummary(currentF.join(), prevF.join(), filter != TimeFilter.ALL_TIME);
+                }))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Dönem özeti yüklenemedi", ex));
+
+        boolean useEffective = filter == TimeFilter.ALL_TIME;
+        CompletableFuture<List<ChartDataDto>> revF = reportManager.getRevenueTrend(filter.getSqlFormat(), start, end, useEffective);
+        CompletableFuture<List<ChartDataDto>> profF = reportManager.getProfitTrend(filter.getSqlFormat(), start, end, useEffective);
+        CompletableFuture.allOf(revF, profF).thenRun(() -> SwingUtilities.invokeLater(() -> {
+                    if (filter != selectedTimeFilter) return;
+                    periodPanel.setTrend(revF.join(), profF.join(), filter.getGranularity());
+                }))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Kazanç grafiği yüklenemedi", ex));
+
+        reportManager.getDeviceTypePieChart(start, end)
+                .thenAccept(data -> SwingUtilities.invokeLater(() -> {
+                    if (filter == selectedTimeFilter) distributionPanel.setDeviceTypes(data);
+                }))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Cihaz türü grafiği yüklenemedi", ex));
+        reportManager.getBrandPieChart(start, end)
+                .thenAccept(data -> SwingUtilities.invokeLater(() -> {
+                    if (filter == selectedTimeFilter) distributionPanel.setBrands(data);
+                }))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Marka grafiği yüklenemedi", ex));
+    }
+
+    /** Kaydırma alanında genişliği görünüm alanına eşitleyen içerik paneli (yatay kaydırma olmasın). */
+    private static class ContentPanel extends JPanel implements Scrollable {
+        ContentPanel(LayoutManager layout) {
+            super(layout);
         }
 
-        @Override public Dimension minimumLayoutSize(Container parent) { return new Dimension(10, 10); }
-
-        @Override
-        public void layoutContainer(Container parent) {
-            synchronized (parent.getTreeLock()) {
-                Insets insets = parent.getInsets();
-                int x = insets.left;
-                int y = insets.top;
-                int width = parent.getWidth() - (insets.left + insets.right);
-                int g = UIScale.scale(gap);
-                for (int i = 0; i < parent.getComponentCount(); i++) {
-                    Component com = parent.getComponent(i);
-                    Dimension size = com.getPreferredSize();
-                    com.setBounds(x, y, width, size.height);
-                    y += size.height + g;
-                }
-            }
-        }
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) { return 16; }
+        @Override public int getScrollableBlockIncrement(Rectangle r, int o, int d) { return r.height - 32; }
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
     }
 }

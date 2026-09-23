@@ -158,6 +158,52 @@ public class FormWorkOrders extends AbstractTableForm {
         sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(4, SortOrder.DESCENDING)));
     }
 
+    /** Durum kolonunun indeksi (setupTable'daki kolon sırası). */
+    private static final int STATUS_COLUMN = 6;
+
+    /**
+     * Listeyi tek bir duruma süzerek gösterir (ana sayfadaki servis hattı ve dikkat kuyruğu
+     * buradan açılır). Argümansız çağrı tüm filtreleri kaldırır. Form ilk kez açılıyorsa
+     * formInit() EDT kuyruğunda olduğu için çağrı bir sonraki döngüye ertelenir.
+     */
+    public void showStatus(ServiceStatus... statuses) {
+        SwingUtilities.invokeLater(() -> {
+            if (headerFilters == null) return;
+            if (searchField != null && !searchField.getText().isEmpty()) searchField.setText("");
+            currentPage = 1;
+            ColumnFilterValue value = null;
+            Set<String> names = new HashSet<>();
+            for (ServiceStatus status : statuses) if (status != null) names.add(status.name());
+            if (!names.isEmpty()) {
+                value = new ColumnFilterValue();
+                value.setEnumValues(names);
+            }
+            headerFilters.applyOnly(STATUS_COLUMN, value);
+        });
+    }
+
+    /** Tarih kolonunun indeksi (setupTable'daki kolon sırası). */
+    private static final int DATE_COLUMN = 4;
+
+    /** Belirli bir günde açılan servisleri gösterir (ana sayfadaki "Bugün alınan"). */
+    public void showCreatedOn(java.time.LocalDate date) {
+        SwingUtilities.invokeLater(() -> {
+            if (headerFilters == null) return;
+            if (searchField != null && !searchField.getText().isEmpty()) searchField.setText("");
+            currentPage = 1;
+            ColumnFilterValue value = new ColumnFilterValue();
+            value.setDateFrom(date);
+            value.setDateTo(date);
+            headerFilters.applyOnly(DATE_COLUMN, value);
+        });
+    }
+
+    /** Atölyede olan (teslim/iade edilmemiş) servisleri gösterir. */
+    public void showOpen() {
+        showStatus(ServiceStatus.UNDER_REPAIR, ServiceStatus.WAITING_FOR_PART,
+                ServiceStatus.ANOTHER_SERVICE, ServiceStatus.READY);
+    }
+
     @Override
     protected String getEmptyStateTitle() { return "Henüz servis kaydı yok"; }
 

@@ -31,6 +31,11 @@ public class ServiceSearchResult implements ISearchableResult {
 
     @Override
     public String getDescription() {
+        // Hydrate edilmiş kayıtta müşteri zaten var; EDT'de veritabanı beklemeyelim.
+        if (workOrder.getCustomer() != null) {
+            return "SRV-" + workOrder.getId() + "  ·  " + workOrder.getCustomer().getFullName()
+                    + (workOrder.getServiceStatus() != null ? "  ·  " + workOrder.getServiceStatus().getDisplayName() : "");
+        }
         try {
             // join() metodu asenkron işlemin tamamlanmasını bekler ve sonucu döndürür.
             Optional<Customer> customerOpt = ServiceManager.getCustomerService()
@@ -47,6 +52,9 @@ public class ServiceSearchResult implements ISearchableResult {
             return "Servis Bilgisi Alınamadı";
         }
     }
+
+    @Override
+    public String getIconPath() { return "icons/wrench.svg"; }
 
     @Override
     public String getUniqueId() {
