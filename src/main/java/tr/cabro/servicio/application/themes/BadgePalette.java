@@ -34,6 +34,8 @@ public final class BadgePalette {
     }
 
     /** Rozet görünümlü etiket/buton stili — zemin, yazı ve yuvarlaklık tek yerden. */
+    // "border: t,l,b,r" butonun FlatLaf çerçevesini düz boşluk kenarlığıyla değiştirir; bu yüzden
+    // extra'da borderWidth/borderColor gibi çerçeve stilleri KULLANILMAMALI (UnknownStyleException).
     public static String style(BadgeColor color, String extra) {
         return "background: " + backgroundHex(color)
                 + "; foreground: " + foregroundHex(color)

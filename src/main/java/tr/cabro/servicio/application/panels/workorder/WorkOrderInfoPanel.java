@@ -109,7 +109,7 @@ public class WorkOrderInfoPanel extends JPanel {
 
         btnWhatsapp = new JButton("WhatsApp Mesaj Gönder", new Ikon("icons/message-circle.svg", 1f));
         btnWhatsapp.putClientProperty(FlatClientProperties.STYLE,
-                BadgePalette.style(BadgeColor.GREEN, "arc: 10; borderWidth: 0"));
+                BadgePalette.style(BadgeColor.GREEN, "arc: 10"));
         btnWhatsapp.addActionListener(e -> onWhatsAppRequested.run());
         btnWhatsapp.setVisible(false);
 

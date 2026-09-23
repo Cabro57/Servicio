@@ -68,7 +68,7 @@ public class WorkOrderNotesPanel extends JPanel {
 
         JButton btnAddNote = new JButton("+ Not Ekle");
         btnAddNote.putClientProperty(FlatClientProperties.STYLE,
-                BadgePalette.style(BadgeColor.BLUE, "arc: 10; borderWidth: 0"));
+                BadgePalette.style(BadgeColor.BLUE, "arc: 10"));
         btnAddNote.addActionListener(e -> {
             String text = txtNewNote.getText().trim();
             if (text.isEmpty()) {

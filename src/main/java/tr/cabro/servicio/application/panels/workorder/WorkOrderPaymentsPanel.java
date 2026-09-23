@@ -157,7 +157,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
         JButton btnAddPayment = new JButton("+ Tahsilat Ekle");
         btnAddPayment.putClientProperty(FlatClientProperties.STYLE,
-                BadgePalette.style(BadgeColor.GREEN, "arc: 8; borderWidth: 0"));
+                BadgePalette.style(BadgeColor.GREEN, "arc: 8"));
 
         btnAddPayment.addActionListener(e -> {
             BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
