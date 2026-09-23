@@ -86,7 +86,7 @@ public class PanelThemes extends JPanel {
         themes.clear();
 
         // add core themes
-        categories.put(themes.size(), "Core Themes");
+        categories.put(themes.size(), "Temel temalar");
         for (ThemesInfo th : themesManager.coreThemes) {
             boolean show = (showLight && !th.dark) || (showDark && th.dark);
             if (show && !th.name.contains("/")) {
@@ -95,7 +95,7 @@ public class PanelThemes extends JPanel {
         }
 
         // add uncategorized bundled themes
-        categories.put(themes.size(), "IntelliJ Themes");
+        categories.put(themes.size(), "IntelliJ temaları");
         for (ThemesInfo th : themesManager.bundledThemes) {
             boolean show = (showLight && !th.dark) || (showDark && th.dark);
             if (show && !th.name.contains("/")) {
@@ -139,11 +139,12 @@ public class PanelThemes extends JPanel {
                 themesList.setSelectedIndex(0);
             }
         } else {
-            selectedCurrentLookAndFeel();
+            selectCurrentTheme();
         }
     }
 
-    private void selectedCurrentLookAndFeel() {
+    /** Listede aktif temayı seçili gösterir; tema başka bir yerden değiştiğinde de çağrılır. */
+    public void selectCurrentTheme() {
         LookAndFeel lookAndFeel = UIManager.getLookAndFeel();
         String theme = LafService.getActiveThemeResource();
         String lafClassName = lookAndFeel.getClass().getName();

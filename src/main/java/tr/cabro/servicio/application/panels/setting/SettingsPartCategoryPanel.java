@@ -81,31 +81,23 @@ public class SettingsPartCategoryPanel extends JPanel {
     }
 
     private void initComponent() {
-        setLayout(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[]1[]15[][grow][]"));
-        putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-
-        JLabel title = new JLabel("Parça Kategorileri");
-        title.putClientProperty(FlatClientProperties.STYLE, "font: $h2.font");
-
-        JLabel subtitle = new JLabel("Stok/parça ekranlarında seçilecek kategoriler.");
-        subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        setLayout(new MigLayout("insets 4 24 20 24, fill, wrap 2", "[grow][pref!]", "[][grow, fill]"));
+        setOpaque(false);
 
         categoryField = new JTextField();
-        categoryField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni Kategori...");
+        categoryField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni kategori adı — Enter ile ekle");
 
-        addButton = new JButton(new Ikon("icons/plus.svg", categoryField.getFont().getSize()));
+        addButton = new JButton("Ekle", new Ikon("icons/plus.svg", 16));
+        addButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,12,4,12; iconTextGap: 6");
 
         categoryList = new JList<>();
         categoryList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
         categoryList.setCellRenderer(new PartCategoryListCellRenderer(categoryList, this::onEdit, this::onDelete));
         categoryList.setModel(categoryModel);
 
-        add(title, "cell 0 0");
-        add(subtitle, "cell 0 1, wrap");
-
         add(categoryField, "growx");
         add(addButton, "wrap");
-        add(categoryList, "span 2, grow");
+        add(SettingsKit.listScroll(categoryList), "span 2, grow, hmin 160");
     }
 
     private JTextField categoryField;

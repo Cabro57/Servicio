@@ -22,7 +22,7 @@ import javax.swing.*;
 import java.util.Arrays;
 import java.util.List;
 
-public class SettingsTemplatesPanel extends JPanel {
+public class SettingsTemplatesPanel extends JPanel implements SettingsModal.HeaderActions {
 
     private GenericTableModel<DocumentTemplate> tableModal;
 
@@ -134,15 +134,22 @@ public class SettingsTemplatesPanel extends JPanel {
         }));
     }
 
-    private void initComponent() {
-        setLayout(new MigLayout("fillx,insets 5,gapy 10", "[grow][pref]", "[][grow]"));
+    @Override
+    public List<JComponent> headerActions() {
+        return List.of(add_button);
+    }
 
-        add_button = new JButton("Ekle");
-        add(add_button, "span, align right, wrap");
+    private void initComponent() {
+        setLayout(new MigLayout("fill, insets 4 24 20 24, gapy 10", "[grow, fill]", "[][grow, fill]"));
+        setOpaque(false);
+
+        add_button = SettingsKit.headerButton("Yeni şablon", "icons/plus.svg");
+
+        add(SettingsKit.note("Müşteriye WhatsApp mesajı gönderirken bu şablonlardan biri seçilir."), "wmin 0, wrap");
 
         table = new JTable();
         JScrollPane table_scroll = new JScrollPane(table);
-        add(table_scroll, "span, grow, pushy");
+        add(table_scroll, "grow, hmin 160");
     }
 
     JTable table;

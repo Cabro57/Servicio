@@ -23,7 +23,7 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
-public class SettingsRepairPanel extends JPanel {
+public class SettingsRepairPanel extends JPanel implements SettingsModal.HeaderActions {
 
     private static final DeviceType ALL_TYPES = new DeviceType(null, "Tümü", 0);
 
@@ -158,21 +158,26 @@ public class SettingsRepairPanel extends JPanel {
         table.getColumnModel().getColumn(3).setMaxWidth(100);
     }
 
+    @Override
+    public List<JComponent> headerActions() {
+        return List.of(add_button);
+    }
+
     private void initComponent() {
-        setLayout(new MigLayout("fillx,insets 5,gapy 10", "[grow][pref]", "[][grow]"));
+        setLayout(new MigLayout("fill, insets 4 24 20 24, gapy 10", "[][grow]", "[][grow, fill]"));
+        setOpaque(false);
 
-        // Cihaz tipi combobox
+        // Cihaz türü süzgeci
         device_type_combo = new JComboBox<>();
-        add(device_type_combo, "growx");
+        add(SettingsKit.label("Cihaz türü"));
+        add(device_type_combo, "wmin 160, wmax 260, wrap");
 
-        // Butonlar
-        add_button = new JButton("Ekle");
-        add(add_button, "wrap");
+        add_button = SettingsKit.headerButton("Yeni işçilik", "icons/plus.svg");
 
         // Tablo + scrollpane
         table = new JTable();
         JScrollPane table_scroll = new JScrollPane(table);
-        add(table_scroll, "span, grow, pushy");
+        add(table_scroll, "span, grow, hmin 160");
     }
 
     JTable table;

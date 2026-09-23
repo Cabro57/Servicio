@@ -140,7 +140,8 @@ public class DatabaseManager {
 
     // --- YEDEKLEME VE GERİ YÜKLEME İŞLEMLERİ ---
 
-    public static void backup(String fileName) {
+    /** Canlı yedek alır; başarılıysa {@code true}. Hata loglanır, çağıranı durdurmaz. */
+    public static boolean backup(String fileName) {
         try {
             File backupDir = AppSettings.getBackupDir();
             backupDir.mkdirs();
@@ -160,14 +161,16 @@ public class DatabaseManager {
                 stmt.execute("VACUUM INTO '" + targetPath + "'");
             }
             Servicio.getLogger().info("Yedek alındı: {}", fileName);
+            return true;
 
         } catch (Exception e) {
             Servicio.getLogger().error("Yedekleme başarısız: {}", e.getMessage());
+            return false;
         }
     }
 
-    public static void backup() {
-        backup(null);
+    public static boolean backup() {
+        return backup(null);
     }
 
     // DatabaseManager.java

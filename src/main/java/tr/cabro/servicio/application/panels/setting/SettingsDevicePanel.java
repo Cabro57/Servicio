@@ -35,8 +35,11 @@ public class SettingsDevicePanel extends JPanel {
 
     private void init() {
         initComponent();
-        deviceDictService.getAllTypes()
-                .thenAccept(deviceTypes -> deviceTypes.forEach(typeModel::addElement));
+        deviceDictService.getAllTypes().thenAccept(deviceTypes -> SwingUtilities.invokeLater(() -> {
+            deviceTypes.forEach(typeModel::addElement);
+            // Marka listesi boş açılmasın: ilk tür seçili gelsin.
+            if (!typeModel.isEmpty() && typeList.getSelectedIndex() < 0) typeList.setSelectedIndex(0);
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz türleri yüklenemedi", ex));
 
         typeField.addActionListener(e -> onTypeAdd());
 
@@ -133,77 +136,75 @@ public class SettingsDevicePanel extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 brandModel.clear();
                 deviceBrands.forEach(brandModel::addElement);
-                brandTitle.setText(deviceType.getName() + " Markaları");
+                brandTitle.setText(deviceType.getName() + " markaları");
             });
         }).exceptionally(ex -> ErrorHandler.handle(this, "Markalar yüklenemedi", ex));
     }
 
     private void initComponent() {
-        setLayout(new MigLayout("insets 5, gap 10", "[][grow]", "[fill, grow]"));
+        setLayout(new MigLayout("insets 4 24 20 24, gap 16", "[grow 40, fill, sg col][grow 60, fill, sg col]", "[fill, grow]"));
+        setOpaque(false);
 
-
-        // Ana panele ekle
-        add(getDeviceTypePanel(), "");
+        add(getDeviceTypePanel(), "grow");
         add(getBrandPanel(), "grow");
     }
 
     private JPanel getDeviceTypePanel() {
-        JPanel deviceTypePanel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[]1[]15[][grow][]"));
-        deviceTypePanel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-        JLabel title = new JLabel("Cihaz Türleri");
-        title.putClientProperty(FlatClientProperties.STYLE, "font: $h2.font");
+        JPanel deviceTypePanel = new JPanel(new MigLayout("insets 0, fill, wrap 2", "[grow][pref!]", "[]2[]10[][grow, fill]"));
+        deviceTypePanel.setOpaque(false);
+        JLabel title = new JLabel("Türler");
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
 
-        JLabel subtitle = new JLabel("Arıza kaydında seçilecek ana kategoriler.");
-        subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        JLabel subtitle = SettingsKit.note("Arıza kaydında ilk seçilen kategori.");
 
         typeField = new JTextField();
-        typeField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni Tür...");
+        typeField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni tür — Enter ile ekle");
 
-        typeAddButton = new JButton(new Ikon("icons/plus.svg", typeField.getFont().getSize()));
+        typeAddButton = new JButton(new Ikon("icons/plus.svg", 16));
+        typeAddButton.setToolTipText("Türü ekle");
+        typeAddButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
 
         typeList = new JList<>();
         typeList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
         typeList.setCellRenderer(new TypeListCellRenderer(typeList, this::onTypeDel));
         typeList.setModel(typeModel);
 
-        deviceTypePanel.add(title, "cell 0 0");
-        deviceTypePanel.add(subtitle, "cell 0 1, wrap");
-
+        deviceTypePanel.add(title, "span 2");
+        deviceTypePanel.add(subtitle, "span 2");
         deviceTypePanel.add(typeField, "growx");
-        deviceTypePanel.add(typeAddButton, "wrap");
-        deviceTypePanel.add(typeList, "span 2, grow");
+        deviceTypePanel.add(typeAddButton);
+        deviceTypePanel.add(SettingsKit.listScroll(typeList), "span 2, grow, hmin 160");
 
         return deviceTypePanel;
     }
 
     private JPanel getBrandPanel() {
-        JPanel brandPanel = new JPanel(new MigLayout("insets 5, fill, wrap 2", "[grow][pref!]", "[]1[]1[]15[][grow][]"));
-        brandPanel.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-        brandTitle = new JLabel("");
-        brandTitle.putClientProperty(FlatClientProperties.STYLE, "font: $h2.font");
+        JPanel brandPanel = new JPanel(new MigLayout("insets 0, fill, wrap 2", "[grow][pref!]", "[]2[]10[][grow, fill]"));
+        brandPanel.setOpaque(false);
+        brandTitle = new JLabel("Markalar");
+        brandTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
 
-        JLabel subtitle = new JLabel("Arıza kaydında seçilecek ana kategoriler.");
-        subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        JLabel subtitle = SettingsKit.note("Seçili türün markaları. Bir markayı başka türe taşımak için sürükleyip o türün üstüne bırakın.");
 
         brandField = new JTextField();
-        brandField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni Marka ekle...");
+        brandField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Yeni marka — Enter ile ekle");
 
-        brandAddButton = new JButton(new Ikon("icons/plus.svg", typeField.getFont().getSize()));
+        brandAddButton = new JButton(new Ikon("icons/plus.svg", 16));
+        brandAddButton.setToolTipText("Markayı seçili türe ekle");
+        brandAddButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
 
         brandList = new JList<>();
         brandList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
         brandList.setCellRenderer(new BrandListCellRenderer(brandList, this::onBrandDel));
         brandList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
+        brandList.setVisibleRowCount(-1);
         brandList.setModel(brandModel);
 
-        brandPanel.add(brandTitle, "cell 0 0");
-        brandPanel.add(subtitle, "cell 0 1, wrap");
-
-        brandPanel.add(new JSeparator(JSeparator.VERTICAL), "growx, wrap");
-
+        brandPanel.add(brandTitle, "span 2");
+        brandPanel.add(subtitle, "span 2, wmin 0");
         brandPanel.add(brandField, "growx");
-        brandPanel.add(brandAddButton, "wrap");
-        brandPanel.add(brandList, "span 2, grow");
+        brandPanel.add(brandAddButton);
+        brandPanel.add(SettingsKit.listScroll(brandList), "span 2, grow, hmin 160");
 
         return brandPanel;
     }

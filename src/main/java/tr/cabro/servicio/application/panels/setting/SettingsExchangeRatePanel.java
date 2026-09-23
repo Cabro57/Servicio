@@ -15,7 +15,7 @@ import tr.cabro.servicio.util.DialogHelper;
 import javax.swing.*;
 import java.math.BigDecimal;
 
-public class SettingsExchangeRatePanel extends JPanel {
+public class SettingsExchangeRatePanel extends JPanel implements SettingsModal.HeaderActions {
 
     private final ExchangeRateManager exchangeRateManager;
     private final DefaultListModel<ExchangeRate> rateModel;
@@ -77,25 +77,22 @@ public class SettingsExchangeRatePanel extends JPanel {
     }
 
     private void initComponent() {
-        setLayout(new MigLayout("insets 5, fill, wrap 1", "[grow]", "[]1[]15[][grow]"));
-        putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+        setLayout(new MigLayout("insets 4 24 20 24, fill, wrap 1", "[grow, fill]", "[][grow, fill]"));
+        setOpaque(false);
 
-        JLabel title = new JLabel("Döviz Kurları");
-        title.putClientProperty(FlatClientProperties.STYLE, "font: $h2.font");
-
-        JLabel subtitle = new JLabel("Parça alış/satış fiyatlarını dövizle girerken kullanılan TL kurları.");
-        subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
-
-        refreshButton = new JButton("TCMB'den Güncelle", new Ikon("icons/refresh-cw.svg", 1f));
+        refreshButton = SettingsKit.headerButton("TCMB'den güncelle", "icons/refresh-cw.svg");
 
         rateList = new JList<>();
         rateList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
         rateList.setCellRenderer(new ExchangeRateListCellRenderer(rateList, this::onEdit));
         rateList.setModel(rateModel);
 
-        add(title);
-        add(subtitle, "wrap");
-        add(refreshButton, "wrap");
-        add(rateList, "grow");
+        add(SettingsKit.note("Kur, TCMB'den çekilebilir ya da satırdaki düzenle simgesiyle elle girilebilir."), "wmin 0");
+        add(SettingsKit.listScroll(rateList), "grow, hmin 160");
+    }
+
+    @Override
+    public java.util.List<JComponent> headerActions() {
+        return java.util.List.of(refreshButton);
     }
 }

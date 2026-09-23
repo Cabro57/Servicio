@@ -1,8 +1,11 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.application.component.SegmentedButtons;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.documents.PdfDocumentBuilder;
 import tr.cabro.servicio.documents.receipt.ReceiptContent;
@@ -19,47 +22,64 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Ayarlar &gt; Uygulama &gt; Yazdırma: termal fiş yazıcısının kağıt genişliği ve deneme fişi.
+ * Ayarlar &gt; İşletme &gt; Yazdırma: termal fiş yazıcısının kağıt genişliği ve deneme fişi.
  * <p>
  * Ayar makineye bağlıdır ({@code config.json}); aynı veritabanını kullanan iki bilgisayarın
  * yazıcıları farklı olabilir.
  */
 public class SettingsPrintingPanel extends JPanel {
 
-    private JComboBox<ReceiptPaperWidth> paperCombo;
+    private JLabel paperNote;
 
     public SettingsPrintingPanel() {
-        initComponent();
-        paperCombo.setSelectedItem(AppSettings.get().getPrinting().getReceiptPaperWidth());
-        paperCombo.addActionListener(e -> {
-            AppSettings.get().getPrinting().setReceiptPaperWidth((ReceiptPaperWidth) paperCombo.getSelectedItem());
-            AppSettings.save();
-        });
+        setLayout(new MigLayout("fill, insets 0", "[grow, fill]", "[top]"));
+        setOpaque(false);
+        add(createPage());
     }
 
-    private void initComponent() {
-        setLayout(new MigLayout("fillx, insets 10, gapy 15", "[grow]", "[][grow]"));
+    private JPanel createPage() {
+        JPanel page = SettingsKit.page();
 
-        JPanel panel = new JPanel(new MigLayout("fill, insets 10", "[][grow]", "[]10[]5[]15[]"));
-        panel.setBorder(BorderFactory.createTitledBorder("Termal Fiş Yazıcısı"));
+        // --- Kağıt ---
+        SegmentedButtons<ReceiptPaperWidth> paper = new SegmentedButtons<>();
+        for (ReceiptPaperWidth width : ReceiptPaperWidth.values()) {
+            paper.add(width, width.toString(), null);
+        }
+        ReceiptPaperWidth current = AppSettings.get().getPrinting().getReceiptPaperWidth();
+        paper.setSelected(current);
+        paperNote = SettingsKit.note("");
+        updatePaperNote(current);
+        paper.setOnChange(width -> {
+            AppSettings.get().getPrinting().setReceiptPaperWidth(width);
+            AppSettings.save();
+            updatePaperNote(width);
+            SettingsKit.saved(this);
+        });
 
-        panel.add(new JLabel("Kağıt Genişliği:"));
-        paperCombo = new JComboBox<>(ReceiptPaperWidth.values());
-        paperCombo.setToolTipText("Satış, iade ve tahsilat fişleriyle cihaz kabul/teslim fişleri bu genişlikte basılır.");
-        panel.add(paperCombo, "w 160!, wrap");
+        JPanel paperRows = SettingsKit.rows();
+        paperRows.add(SettingsKit.label("Kağıt genişliği"));
+        paperRows.add(paper, "growx 0");
+        paperRows.add(paperNote, "skip");
+        SettingsKit.section(page, "Fiş yazıcısı",
+                "Satış, iade ve tahsilat fişleri ile cihaz kabul/teslim fişleri bu genişlikte basılır.", paperRows);
 
-        JLabel hint = new JLabel("<html>80 mm rulo yazıcılar satırda 48, 58 mm olanlar 32 karakter basar. "
-                + "Yazdırırken ölçeklendirmeyi kapatın (\"Gerçek boyut\" / %100), aksi halde fiş küçülür.</html>");
-        hint.putClientProperty("FlatLaf.styleClass", "small");
-        panel.add(hint, "span 2, wmin 0, wrap");
-
-        JButton testButton = new JButton("Deneme Fişi Oluştur");
-        testButton.setToolTipText("Seçili genişlikte örnek bir satış fişi açar; yazıcıdan basıp hizalamayı kontrol edin.");
+        // --- Deneme ---
+        JButton testButton = new JButton("Deneme fişi oluştur", new Ikon("icons/printer.svg", 16));
+        testButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         testButton.addActionListener(e -> openTestSlip());
-        panel.add(testButton, "span 2");
 
-        add(panel, "growx, wrap");
-        add(new JLabel(), "pushy, growy, wrap");
+        JPanel test = SettingsKit.stack();
+        test.add(testButton, "growx 0");
+        test.add(SettingsKit.wrappingNote("Seçili genişlikte örnek bir satış fişi açılır. Yazdırırken ölçeklendirmeyi "
+                + "kapatın (\"Gerçek boyut\" ya da %100); aksi halde fiş küçülür ve kenarları boş kalır."), "wmin 0, wmax 420");
+        SettingsKit.section(page, "Hizalama denemesi", "Yazıcıyı değiştirdiğinizde bir kez deneyin.", test);
+
+        return page;
+    }
+
+    private void updatePaperNote(ReceiptPaperWidth width) {
+        int chars = width == ReceiptPaperWidth.MM_80 ? 48 : 32;
+        paperNote.setText("Basılabilir alan " + Math.round(width.getPrintableMm()) + " mm · satırda " + chars + " karakter");
     }
 
     private void openTestSlip() {

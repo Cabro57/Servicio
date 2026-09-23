@@ -66,6 +66,9 @@ public class AppConfig {
         /** Vurgu rengi, {@link java.awt.Color#getRGB()} değeri. Boşsa tema varsayılanı kullanılır. */
         private Integer accentColor;
 
+        /** Arayüz yazı boyutu farkı (pt), tema varsayılanına eklenir. {@code -1 | 0 | 1 | 2}. */
+        private int fontSizeDelta = 0;
+
         private List<String> recentSearch = new ArrayList<>();
         private List<String> recentSearchFavorite = new ArrayList<>();
 
