@@ -1,6 +1,5 @@
 package tr.cabro.servicio.application.forms;
 
-import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
@@ -15,6 +14,7 @@ import tr.cabro.servicio.application.panels.secondhand.SalePanel;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.application.system.AppModal;
+import tr.cabro.servicio.application.system.DocumentExportModal;
 import tr.cabro.servicio.application.system.NewCustomerModal;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
@@ -31,12 +31,10 @@ import tr.cabro.servicio.model.enums.DeviceTransactionType;
 import tr.cabro.servicio.service.DeviceService;
 import tr.cabro.servicio.service.DeviceTransactionService;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.util.DesktopHelper;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -283,59 +281,25 @@ public class FormSecondHandStock extends AbstractTableForm {
         for (DeviceTransactionFormType type : DeviceTransactionFormType.values()) {
             if (!type.isApplicableTo(transaction)) continue;
             JMenuItem item = new JMenuItem(type.getDisplayName());
-            item.addActionListener(e -> {
-                if (type.requiresSigners()) {
-                    openSignerNamesModal(type, transaction);
-                } else {
-                    generateAndOpenDocument(type, transaction, null, null);
-                }
-            });
+            item.addActionListener(e -> openDocumentModal(type, transaction));
             popup.add(item);
         }
         popup.show(this, 0, 0);
     }
 
-    private void openSignerNamesModal(DeviceTransactionFormType type, DeviceTransaction transaction) {
+    /** İmza isimleri ve metinler düzenlenip belge açılır ya da farklı kaydedilir. */
+    private void openDocumentModal(DeviceTransactionFormType type, DeviceTransaction transaction) {
         ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> SwingUtilities.invokeLater(() -> {
             User shop = shopOpt.orElse(null);
-
-            JPanel panel = new JPanel(new MigLayout("fillx, wrap, insets 10, width 350", "[fill,grow]", "[][][][]"));
-            panel.add(new JLabel(type.getLeftSignerLabel() + ":"));
-            JTextField txtLeft = new JTextField(shop != null ? shop.getBusinessName() : "");
-            panel.add(txtLeft, "growx");
-            panel.add(new JLabel(type.getRightSignerLabel() + ":"));
-            JTextField txtRight = new JTextField(transaction.getCustomer() != null ? transaction.getCustomer().getFullName() : "");
-            panel.add(txtRight, "growx");
-
-            SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                    new SimpleModalBorder.Option("Oluştur", SimpleModalBorder.YES_OPTION),
-                    new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
-            };
-
-            AppModal.showModal(this, new SimpleModalBorder(panel, type.getDisplayName(), options, (controller, action) -> {
-                if (action != SimpleModalBorder.YES_OPTION) return;
-                generateAndOpenDocument(type, transaction, txtLeft.getText(), txtRight.getText());
-            }), "secondhand_generate_document_modal");
-        })).exceptionally(ex -> ErrorHandler.handle(this, "İmza modalı açılamadı", ex));
-    }
-
-    private void generateAndOpenDocument(DeviceTransactionFormType type, DeviceTransaction transaction, String leftSignerName, String rightSignerName) {
-        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
-            User shop = shopOpt.orElse(null);
-            try {
-                File pdf = type.generate(transaction, shop, leftSignerName, rightSignerName);
-                SwingUtilities.invokeLater(() -> {
-                    if (DesktopHelper.openFile(pdf)) {
-                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.document.created"));
-                    } else {
-                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.document.created.openFailed", pdf.getAbsolutePath()));
-                    }
-                });
-            } catch (Exception ex) {
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, Messages.get("toast.document.failed", ex.getMessage())));
-                Servicio.getLogger().error("2.el belge oluşturma hatası", ex);
-            }
-        }).exceptionally(ex -> ErrorHandler.handle(this, "2.el belgesi oluşturulamadı", ex));
+            String customerName = transaction.getCustomer() != null ? transaction.getCustomer().getFullName() : "";
+            DocumentExportModal.Spec spec = new DocumentExportModal.Spec(
+                    type.getDisplayName(), type.getFileSlug() + "-DT" + transaction.getId(),
+                    type.getLeftSignerLabel(), shop != null ? shop.getBusinessName() : "",
+                    type.getRightSignerLabel(), customerName,
+                    false, type.getEditableTexts(), type.getSupportedFormats());
+            DocumentExportModal.show(this, spec,
+                    (request, format, outFile) -> type.generate(transaction, shop, request, format, outFile));
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Belge penceresi açılamadı", ex));
     }
 
     // =========================================================================

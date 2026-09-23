@@ -180,7 +180,7 @@ public class FormSale extends Form {
         })).exceptionally(ex -> ErrorHandler.handle(this, "Satış detayı yüklenemedi", ex));
     }
 
-    /** Termal yazıcı henüz yok — 80mm PDF üretilip varsayılan PDF görüntüleyicide açılır (bkz. FormPos.printReceipt). */
+    /** Termal fiş PDF'i üretilip varsayılan PDF görüntüleyicide açılır (bkz. FormPos.printReceipt). */
     private void printReceipt() {
         if (loadedSale == null) return;
 

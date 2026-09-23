@@ -1,5 +1,6 @@
 package tr.cabro.servicio.documents;
 
+import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.User;
@@ -7,58 +8,51 @@ import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.util.PhoneHelper;
 
 import java.io.File;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
+import java.time.LocalDateTime;
 
 /**
  * Cihaz Kabul Formu — müşteri cihazı servise bırakırken imzalanır. Bu aşamada henüz
  * ücretlendirme belli olmayabileceği için kalem/tutar tablosu içermez.
+ * Termal karşılığı: {@link DeviceIntakeSlipGenerator}.
  */
 public class DeviceIntakeFormGenerator implements ServiceFormGenerator {
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy", new Locale("tr", "TR"));
-
-    private static final String TERMS = "Cihaz, belirtilen arıza şikayeti ile teslim alınmıştır. Onarım öncesi cihaz üzerinde " +
-            "yedeklenmemiş verilerin kaybolabileceğini, tahmini onarım süresinin arızanın niteliğine göre değişebileceğini " +
-            "müşteri kabul eder.";
 
     @Override
-    public File generate(WorkOrder workOrder, User shop, String leftSignerName, String rightSignerName) throws Exception {
+    public File generate(WorkOrder workOrder, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception {
         Customer customer = workOrder.getCustomer();
         Device device = workOrder.getDevice();
 
-        File outFile = File.createTempFile("servicio-cihaz-kabul-SRV" + workOrder.getId() + "-", ".pdf");
-        outFile.deleteOnExit();
+        DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Cihaz Kabul Formu",
+                "SRV-" + workOrder.getId(), date(workOrder.getCreatedAt()));
 
-        PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile);
-        pdf.addLetterhead(shop);
-        pdf.addTitle("Cihaz Kabul Formu");
+        pdf.section("Müşteri ve Cihaz");
+        pdf.fields(new String[][]{
+                {"Müşteri", customer != null ? customer.getFullName() : null},
+                {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
+                {"Cihaz", device != null ? device.getDisplayName() : null},
+                {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
+        });
+        // Ekran kilidi (PIN/şifre/desen) ayrı tabloda şifreli tutulur ve bilinçli olarak basılmaz.
+        pdf.wideField("Aksesuar", device != null ? device.getAccessory() : null);
 
-        pdf.document.add(pdf.buildInfoTable(new String[][]{
-                {"Kayıt No", "SRV-" + workOrder.getId()},
-                {"Tarih", workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().format(DATE_FORMATTER) : "-"},
-                {"Müşteri", customer != null ? customer.getFullName() : "-"},
-                {"Telefon", customer != null && customer.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1()) : "-"},
-                {"Cihaz", device != null ? device.getDisplayName() : "-"},
-                {"Seri No", device != null && device.getSerialNo() != null ? device.getSerialNo() : "-"},
-                {"Aksesuar", device != null && device.getAccessory() != null && !device.getAccessory().isBlank() ? device.getAccessory() : "-"}
-                // NOT: Ekran kilidi (PIN/şifre/desen) artık Device'ta değil, ayrı bir tabloda
-                // (DeviceAccessCredential) tutuluyor — bu PDF formuna eklenmesi ayrı bir işte ele alınacak.
-        }));
-        pdf.addSpacer();
+        pdf.section("Bildirilen Arıza");
+        pdf.paragraph(workOrder.getReportedFault(), "Belirtilmemiş.");
 
-        pdf.document.add(new com.lowagie.text.Paragraph("Bildirilen Arıza", pdf.sectionFont));
-        pdf.addParagraph(workOrder.getReportedFault() != null && !workOrder.getReportedFault().isBlank()
-                ? workOrder.getReportedFault() : "Belirtilmemiş.");
-        pdf.addSpacer();
+        pdf.section("Koşullar");
+        pdf.terms(request.text(DocumentText.INTAKE_TERMS));
 
-        pdf.document.add(new com.lowagie.text.Paragraph("Koşullar", pdf.sectionFont));
-        pdf.addParagraph(TERMS);
-        pdf.addSpacer();
-
-        pdf.document.add(pdf.buildSignatureLines("Teslim Eden (Müşteri)", leftSignerName, "Teslim Alan (İşletme)", rightSignerName));
+        pdf.signatures("Teslim Eden (Müşteri)", request.getLeftSignerName(), "Teslim Alan (İşletme)", request.getRightSignerName());
         pdf.close();
-
         return outFile;
+    }
+
+    /** Servis belgelerinin ortak tarih biçimi (bölge ayarına göre). */
+    static String date(LocalDateTime value) {
+        return value != null ? value.format(DateFormats.shortDate()) : "—";
+    }
+
+    static String phone(Customer c) {
+        return c != null && c.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(c.getPhoneNumber1()) : null;
     }
 }

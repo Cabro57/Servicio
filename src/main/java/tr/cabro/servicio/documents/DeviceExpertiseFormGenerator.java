@@ -1,15 +1,14 @@
 package tr.cabro.servicio.documents;
 
+import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.DeviceTransaction;
 import tr.cabro.servicio.model.User;
-import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
 
 import java.io.File;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
+import java.time.LocalDateTime;
 
 /**
  * Cihaz Ekspertizi Formu — ikinci el alım sırasında cihazın durumu/fonksiyon testi notlarını
@@ -17,36 +16,36 @@ import java.util.Locale;
  */
 public class DeviceExpertiseFormGenerator implements DeviceTransactionFormGenerator {
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy", new Locale("tr", "TR"));
-
     @Override
-    public File generate(DeviceTransaction transaction, User shop, String leftSignerName, String rightSignerName) throws Exception {
+    public File generate(DeviceTransaction transaction, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception {
         Customer seller = transaction.getCustomer();
         Device device = transaction.getDevice();
 
-        File outFile = File.createTempFile("servicio-cihaz-ekspertiz-DT" + transaction.getId() + "-", ".pdf");
-        outFile.deleteOnExit();
+        DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Cihaz Ekspertizi Formu",
+                "DT-" + transaction.getId(), date(transaction.getTransactionDate()));
 
-        PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile);
-        pdf.addLetterhead(shop);
-        pdf.addTitle("Cihaz Ekspertizi Formu");
+        pdf.section("Satıcı ve Cihaz");
+        pdf.fields(new String[][]{
+                {"Satıcı", seller != null ? seller.getFullName() : null},
+                {"Telefon", phone(seller)},
+                {"Cihaz", device != null ? device.getDisplayName() : null},
+                {"Seri No / IMEI", device != null ? device.getSerialNo() : null},
+                {"Alım Fiyatı", PdfDocumentBuilder.money(transaction.getPrice())}
+        });
 
-        pdf.document.add(pdf.buildInfoTable(new String[][]{
-                {"Kayıt No", "DT-" + transaction.getId()},
-                {"Tarih", transaction.getTransactionDate() != null ? transaction.getTransactionDate().format(DATE_FORMATTER) : "-"},
-                {"Satıcı", seller != null ? seller.getFullName() : "-"},
-                {"Telefon", seller != null && seller.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(seller.getPhoneNumber1()) : "-"},
-                {"Cihaz", device != null ? device.getDisplayName() : "-"},
-                {"Seri No", device != null && device.getSerialNo() != null ? device.getSerialNo() : "-"},
-                {"Alım Fiyatı", Format.formatPrice(transaction.getPrice())}
-        }));
-        pdf.addSpacer();
-
-        pdf.document.add(new com.lowagie.text.Paragraph("Ekspertiz Notları", pdf.sectionFont));
-        pdf.addParagraph(transaction.getExpertiseNotes() != null && !transaction.getExpertiseNotes().isBlank()
-                ? transaction.getExpertiseNotes() : "Belirtilmemiş.");
+        pdf.section("Ekspertiz Notları");
+        pdf.paragraph(transaction.getExpertiseNotes(), "Belirtilmemiş.");
 
         pdf.close();
         return outFile;
+    }
+
+    /** 2.el belgelerinin ortak tarih biçimi (bölge ayarına göre). */
+    static String date(LocalDateTime value) {
+        return value != null ? value.format(DateFormats.shortDate()) : "—";
+    }
+
+    static String phone(Customer c) {
+        return c != null && c.getPhoneNumber1() != null ? PhoneHelper.formatForDisplay(c.getPhoneNumber1()) : null;
     }
 }

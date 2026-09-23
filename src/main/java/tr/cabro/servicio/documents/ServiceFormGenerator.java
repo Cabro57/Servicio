@@ -7,9 +7,9 @@ import java.io.File;
 
 /**
  * Bir iş emrinden sabit tasarımlı bir PDF belge üreten form tiplerinin ortak arayüzü.
- * İmzasız formlar {@code leftSignerName}/{@code rightSignerName} parametrelerini yok sayar.
+ * İmzasız formlar {@link DocumentRequest}'teki imza isimlerini, termal fişler {@code format}'ı yok sayar.
  */
 public interface ServiceFormGenerator {
 
-    File generate(WorkOrder workOrder, User shop, String leftSignerName, String rightSignerName) throws Exception;
+    File generate(WorkOrder workOrder, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception;
 }

@@ -32,6 +32,7 @@ public class AppConfig {
     private Tables tables = new Tables();
     private Backup backup = new Backup();
     private Update update = new Update();
+    private Printing printing = new Printing();
 
     /**
      * Elle düzenlenmiş ya da eksik bir dosyadan sonra {@code null} kalan blokları varsayılana çeker.
@@ -42,8 +43,10 @@ public class AppConfig {
         if (tables == null) tables = new Tables();
         if (backup == null) backup = new Backup();
         if (update == null) update = new Update();
+        if (printing == null) printing = new Printing();
         ui.normalize();
         backup.normalize();
+        printing.normalize();
     }
 
     /** Arayüz tercihleri — pencere, tema, arama geçmişi. */
@@ -121,5 +124,18 @@ public class AppConfig {
 
         /** Kullanıcının "bu sürümü atla" dediği sürüm; bu sürüm için tekrar bildirim gösterilmez. */
         private String skippedVersion;
+    }
+
+    /** Yazdırma tercihleri — fiş yazıcısı makineye bağlı olduğu için burada. */
+    @Getter
+    @Setter
+    public static class Printing {
+
+        /** Termal fişlerin (satış, iade, tahsilat, kabul/teslim fişi) basılacağı rulo genişliği. */
+        private ReceiptPaperWidth receiptPaperWidth = ReceiptPaperWidth.MM_80;
+
+        void normalize() {
+            if (receiptPaperWidth == null) receiptPaperWidth = ReceiptPaperWidth.MM_80;
+        }
     }
 }

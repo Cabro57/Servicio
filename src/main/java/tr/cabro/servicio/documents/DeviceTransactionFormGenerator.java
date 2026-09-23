@@ -7,10 +7,10 @@ import java.io.File;
 
 /**
  * Bir {@link DeviceTransaction} (alım/satım olayı) için sabit tasarımlı PDF üreten form
- * tiplerinin ortak arayüzü. İmzasız formlar {@code leftSignerName}/{@code rightSignerName}
- * parametrelerini yok sayar.
+ * tiplerinin ortak arayüzü. İmzasız formlar {@link DocumentRequest}'teki imza
+ * isimlerini yok sayar.
  */
 public interface DeviceTransactionFormGenerator {
 
-    File generate(DeviceTransaction transaction, User shop, String leftSignerName, String rightSignerName) throws Exception;
+    File generate(DeviceTransaction transaction, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception;
 }

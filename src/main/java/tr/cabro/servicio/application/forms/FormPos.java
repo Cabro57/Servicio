@@ -1894,7 +1894,7 @@ public class FormPos extends Form {
         for (JButton button : paymentButtons) button.setEnabled(!value);
     }
 
-    /** Termal yazıcı henüz yok — 80mm PDF üretilip varsayılan PDF görüntüleyicide açılır. */
+    /** Termal fiş PDF'i (genişlik Ayarlar > Yazdırma'dan) üretilip varsayılan PDF görüntüleyicide açılır. */
     private void printReceipt(Sale sale, List<Payment> payments, BigDecimal changeGiven) {
         ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
             try {

@@ -11,15 +11,16 @@ import tr.cabro.servicio.application.panels.workorder.WorkOrderNotesPanel;
 import tr.cabro.servicio.application.panels.workorder.WorkOrderPaymentsPanel;
 import tr.cabro.servicio.application.system.AllForms;
 import tr.cabro.servicio.application.system.AppModal;
+import tr.cabro.servicio.application.system.DocumentExportModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
-import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.Badge;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.documents.ServiceFormType;
+import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.model.*;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.model.enums.TemplateType;
@@ -31,7 +32,6 @@ import tr.cabro.servicio.util.TemplateEngine;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
-import java.io.File;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
@@ -224,42 +224,36 @@ public class FormWorkOrder extends Form {
 
     private void showDocumentMenu(JButton anchor) {
         JPopupMenu popup = new JPopupMenu();
+        boolean thermalGroupStarted = false;
         for (ServiceFormType type : ServiceFormType.values()) {
+            if (type.isThermal() && !thermalGroupStarted) {
+                // A4 belgeler üstte, termal fişler ayraçtan sonra kendi başlığı altında.
+                popup.addSeparator();
+                JLabel groupLabel = new JLabel("Termal Fiş (" + AppSettings.get().getPrinting().getReceiptPaperWidth() + ")");
+                groupLabel.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
+                groupLabel.setBorder(BorderFactory.createEmptyBorder(4, 10, 2, 10));
+                popup.add(groupLabel);
+                thermalGroupStarted = true;
+            }
             JMenuItem item = new JMenuItem(type.getDisplayName());
-            item.addActionListener(e -> {
-                if (type.requiresSigners()) {
-                    openSignerNamesModal(type);
-                } else {
-                    generateAndOpenDocument(type, null, null);
-                }
-            });
+            item.addActionListener(e -> openDocumentModal(type));
             popup.add(item);
         }
         popup.show(anchor, 0, anchor.getHeight());
     }
 
-    private void openSignerNamesModal(ServiceFormType type) {
+    /** İmza isimleri, garanti ve metinler düzenlenip belge açılır ya da farklı kaydedilir. */
+    private void openDocumentModal(ServiceFormType type) {
         ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> SwingUtilities.invokeLater(() -> {
             User shop = shopOpt.orElse(null);
-
-            JPanel panel = new JPanel(new MigLayout("fillx, wrap, insets 10, width 350", "[fill,grow]", "[][][][]"));
-            panel.add(new JLabel(type.getLeftSignerLabel() + ":"));
-            JTextField txtLeft = new JTextField(defaultSignerName(type.getLeftSignerLabel(), shop));
-            panel.add(txtLeft, "growx");
-            panel.add(new JLabel(type.getRightSignerLabel() + ":"));
-            JTextField txtRight = new JTextField(defaultSignerName(type.getRightSignerLabel(), shop));
-            panel.add(txtRight, "growx");
-
-            SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
-                    new SimpleModalBorder.Option("Oluştur", SimpleModalBorder.YES_OPTION),
-                    new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
-            };
-
-            AppModal.showModal(this, new SimpleModalBorder(panel, type.getDisplayName(), options, (controller, action) -> {
-                if (action != SimpleModalBorder.YES_OPTION) return;
-                generateAndOpenDocument(type, txtLeft.getText(), txtRight.getText());
-            }), "generate_document_modal");
-        })).exceptionally(ex -> ErrorHandler.handle(this, "İmza modalı açılamadı", ex));
+            DocumentExportModal.Spec spec = new DocumentExportModal.Spec(
+                    type.getDisplayName(), type.getFileSlug() + "-SRV" + workOrder.getId(),
+                    type.getLeftSignerLabel(), defaultSignerName(type.getLeftSignerLabel(), shop),
+                    type.getRightSignerLabel(), defaultSignerName(type.getRightSignerLabel(), shop),
+                    type.hasWarrantyDays(), type.getEditableTexts(), type.getSupportedFormats());
+            DocumentExportModal.show(this, spec,
+                    (request, format, outFile) -> type.generate(workOrder, shop, request, format, outFile));
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Belge penceresi açılamadı", ex));
     }
 
     /**
@@ -275,25 +269,6 @@ public class FormWorkOrder extends Form {
             return workOrder.getCustomer().getFullName();
         }
         return "";
-    }
-
-    private void generateAndOpenDocument(ServiceFormType formType, String leftSignerName, String rightSignerName) {
-        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
-            User shop = shopOpt.orElse(null);
-            try {
-                File pdf = formType.generate(workOrder, shop, leftSignerName, rightSignerName);
-                SwingUtilities.invokeLater(() -> {
-                    if (DesktopHelper.openFile(pdf)) {
-                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.document.created"));
-                    } else {
-                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.document.created.openFailed", pdf.getAbsolutePath()));
-                    }
-                });
-            } catch (Exception ex) {
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, Messages.get("toast.document.failed", ex.getMessage())));
-                Servicio.getLogger().error("PDF belge oluşturma hatası", ex);
-            }
-        }).exceptionally(ex -> ErrorHandler.handle(this, "Belge oluşturulamadı", ex));
     }
 
     // =========================================================================
