@@ -154,7 +154,7 @@ public class FormDevice extends Form {
         views.addView(VIEW_SERVICE, "Servis");
         views.addView(VIEW_TRADE, "Alım-satım");
         views.setOnChange(k -> applyView());
-        history.addHeaderAction(views);
+        history.setTabs(views);
 
         JTable t = history.getTable();
         t.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<HistoryEntry>(

@@ -72,6 +72,32 @@ public class ColumnDef<T> {
         return this;
     }
 
+    /** Bir seçim listesi seçeneği (kimlik + görünen ad). */
+    public static final class Option {
+        public final Long id;
+        public final String label;
+
+        public Option(Long id, String label) {
+            this.id = id;
+            this.label = label;
+        }
+    }
+
+    /**
+     * Bu kolonu, verilen SQL kolonu (kimlik alanı) üzerinden LOOKUP filtresine açar; seçenekler
+     * popup açılırken {@code options} ile (asenkron) yüklenir. Başlık adı popup başlığı olur.
+     */
+    public ColumnDef<T> lookupFilter(String sqlColumn,
+                                     java.util.function.Supplier<java.util.concurrent.CompletableFuture<java.util.List<Option>>> options) {
+        this.filterColumn = sqlColumn;
+        this.filterType = FilterType.LOOKUP;
+        this.lookupOptions = options;
+        return this;
+    }
+
+    @Getter
+    private java.util.function.Supplier<java.util.concurrent.CompletableFuture<java.util.List<Option>>> lookupOptions;
+
     public boolean isFilterable() {
         return filterType != FilterType.NONE;
     }

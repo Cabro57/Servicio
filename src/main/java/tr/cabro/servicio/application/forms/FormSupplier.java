@@ -86,7 +86,7 @@ public class FormSupplier extends Form {
         views.addView(VIEW_ALL, "Tümü");
         views.addView(VIEW_REORDER, "Sipariş gerekli");
         views.setOnChange(k -> applyView());
-        partsSection.addHeaderAction(views);
+        partsSection.setTabs(views);
 
         JTable t = partsSection.getTable();
         t.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Part>(

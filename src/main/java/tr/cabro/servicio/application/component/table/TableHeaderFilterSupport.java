@@ -148,6 +148,8 @@ public class TableHeaderFilterSupport<T> {
             content = buildEnumFilterPanel(column, def, popup);
         } else if (def.getFilterType() == FilterType.DATE_RANGE) {
             content = buildDateRangeFilterPanel(column, popup);
+        } else if (def.getFilterType() == FilterType.LOOKUP) {
+            content = buildLookupFilterPanel(column, def, popup);
         } else {
             return;
         }
@@ -198,6 +200,88 @@ public class TableHeaderFilterSupport<T> {
             refreshHeaderAndNotify();
         });
 
+        return panel;
+    }
+
+    /**
+     * Seçim listesi filtresi: arama kutusu + kaydırmalı onay kutuları. Seçenekler popup açılırken
+     * asenkron yüklenir; seçili olanlar en üstte durur.
+     */
+    private JPanel buildLookupFilterPanel(int column, ColumnDef<T> def, JPopupMenu popup) {
+        ColumnFilterValue current = activeFilters.get(column);
+        Set<Long> selected = new java.util.LinkedHashSet<>(current != null && current.getIds() != null ? current.getIds() : Set.of());
+
+        JPanel panel = new JPanel(new MigLayout("insets 10, wrap 1, gapy 6", "[fill,grow, 260:260:320]"));
+        JTextField search = new JTextField();
+        search.putClientProperty(com.formdev.flatlaf.FlatClientProperties.PLACEHOLDER_TEXT, def.getName() + " ara…");
+        search.putClientProperty(com.formdev.flatlaf.FlatClientProperties.TEXT_FIELD_LEADING_ICON,
+                new Ikon("icons/search.svg", 14, "Label.disabledForeground"));
+        search.putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
+        panel.add(search);
+
+        JPanel list = new JPanel(new MigLayout("insets 0, wrap 1, gapy 2", "[fill,grow]"));
+        list.add(new JLabel("Yükleniyor…"));
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setPreferredSize(new Dimension(280, 220));
+        scroll.getVerticalScrollBar().putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, "width: 8");
+        panel.add(scroll, "growx");
+
+        JPanel buttons = new JPanel(new MigLayout("insets 0", "[grow][]"));
+        JButton clearButton = new JButton("Temizle");
+        JButton applyButton = new JButton("Uygula");
+        buttons.add(clearButton);
+        buttons.add(applyButton, "align right");
+        panel.add(buttons, "growx");
+
+        java.util.List<JCheckBox> boxes = new java.util.ArrayList<>();
+        Runnable filter = () -> {
+            String q = search.getText().trim().toLowerCase(java.util.Locale.ROOT);
+            for (JCheckBox b : boxes) b.setVisible(q.isEmpty() || b.getText().toLowerCase(java.util.Locale.ROOT).contains(q));
+            list.revalidate();
+            list.repaint();
+        };
+        search.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { filter.run(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { filter.run(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { filter.run(); }
+        });
+
+        def.getLookupOptions().get().thenAccept(options -> SwingUtilities.invokeLater(() -> {
+            list.removeAll();
+            boxes.clear();
+            java.util.List<ColumnDef.Option> sorted = new java.util.ArrayList<>(options);
+            sorted.sort(java.util.Comparator
+                    .comparing((ColumnDef.Option o) -> !selected.contains(o.id))
+                    .thenComparing(o -> o.label == null ? "" : o.label.toLowerCase(java.util.Locale.ROOT)));
+            for (ColumnDef.Option o : sorted) {
+                JCheckBox cb = new JCheckBox(o.label, selected.contains(o.id));
+                cb.putClientProperty("optionId", o.id);
+                boxes.add(cb);
+                list.add(cb);
+            }
+            if (boxes.isEmpty()) list.add(new JLabel("Seçenek yok"));
+            list.revalidate();
+            list.repaint();
+            search.requestFocusInWindow();
+        }));
+
+        clearButton.addActionListener(e -> {
+            activeFilters.remove(column);
+            popup.setVisible(false);
+            refreshHeaderAndNotify();
+        });
+        applyButton.addActionListener(e -> {
+            Set<Long> ids = new java.util.LinkedHashSet<>();
+            for (JCheckBox cb : boxes) if (cb.isSelected()) ids.add((Long) cb.getClientProperty("optionId"));
+            // Süzgeçte gizlenmiş ama önceden seçili olanlar da korunur (liste yüklenmeden Uygula'ya basılırsa da).
+            if (boxes.isEmpty()) ids.addAll(selected);
+            ColumnFilterValue value = new ColumnFilterValue();
+            value.setIds(ids);
+            if (ids.isEmpty()) activeFilters.remove(column); else activeFilters.put(column, value);
+            popup.setVisible(false);
+            refreshHeaderAndNotify();
+        });
         return panel;
     }
 

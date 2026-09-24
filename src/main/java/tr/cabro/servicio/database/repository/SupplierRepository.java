@@ -61,6 +61,14 @@ public interface SupplierRepository extends SqlObject {
 
     default PageResult<Supplier> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                       int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, page, pageSize, null);
+    }
+
+    /** Sıralama anahtarları ({@link #SORTS}) sabit bir beyaz listedir; SQL parçası kullanıcıdan gelmez. */
+    java.util.Map<String, String> SORTS = java.util.Map.of("NEWEST", "created_at DESC", "NAME", "name COLLATE NOCASE ASC");
+
+    default PageResult<Supplier> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                      int page, int pageSize, String sortKey) {
         SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
         String likeTerm = (searchTerm != null && !searchTerm.isBlank()) ? "%" + searchTerm.trim() + "%" : null;
 
@@ -77,7 +85,7 @@ public interface SupplierRepository extends SqlObject {
         params.put("offset", (page - 1) * pageSize);
 
         String listSql = "SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers " +
-                whereClause + " ORDER BY name LIMIT :limit OFFSET :offset";
+                whereClause + " ORDER BY " + SORTS.getOrDefault(sortKey == null ? "NEWEST" : sortKey, SORTS.get("NEWEST")) + " LIMIT :limit OFFSET :offset";
         String countSql = "SELECT COUNT(*) FROM suppliers " + whereClause;
 
         List<Supplier> items = getHandle().createQuery(listSql).bindMap(params).map(BeanMapper.of(Supplier.class)).list();

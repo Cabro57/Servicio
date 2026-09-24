@@ -107,4 +107,9 @@ public class DeviceTransactionService {
                                                                                  boolean onlyInStock, int page, int pageSize) {
         return CompletableFuture.supplyAsync(() -> repository.searchFilteredPaged(searchTerm, filters, onlyInStock, page, pageSize));
     }
+
+    public CompletableFuture<PageResult<DeviceTransaction>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                                 boolean onlyInStock, int page, int pageSize, String sortKey) {
+        return CompletableFuture.supplyAsync(() -> repository.searchFilteredPaged(searchTerm, filters, onlyInStock, page, pageSize, sortKey));
+    }
 }

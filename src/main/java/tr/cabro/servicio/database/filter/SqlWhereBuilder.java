@@ -60,6 +60,17 @@ public final class SqlWhereBuilder {
                     sql.append(" AND ").append(column).append(" IN (").append(placeholders).append(")");
                 }
 
+                if (value.getIds() != null && !value.getIds().isEmpty()) {
+                    // Kimlikler Long: bind gerektirmeden güvenle gömülür (metin girdisi buraya asla ulaşmaz).
+                    StringBuilder list = new StringBuilder();
+                    for (Long id : value.getIds()) {
+                        if (id == null) continue;
+                        if (list.length() > 0) list.append(",");
+                        list.append(id.longValue());
+                    }
+                    if (list.length() > 0) sql.append(" AND ").append(column).append(" IN (").append(list).append(")");
+                }
+
                 if (value.getDateFrom() != null) {
                     String paramName = "f" + (paramIndex++);
                     params.put(paramName, LocalDateTime.of(value.getDateFrom(), LocalTime.MIN));

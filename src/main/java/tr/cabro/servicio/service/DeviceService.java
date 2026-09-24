@@ -77,6 +77,11 @@ public class DeviceService {
         return CompletableFuture.supplyAsync(() -> deviceRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
+    public CompletableFuture<PageResult<Device>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                     int page, int pageSize, String sortKey) {
+        return CompletableFuture.supplyAsync(() -> deviceRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
+    }
+
     // -------------------------------------------------------------------------
     // Doğrulama
     // -------------------------------------------------------------------------

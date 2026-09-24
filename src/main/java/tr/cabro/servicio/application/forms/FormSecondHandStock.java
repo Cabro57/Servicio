@@ -1,8 +1,16 @@
 package tr.cabro.servicio.application.forms;
 
+import java.util.ArrayList;
+import tr.cabro.servicio.application.component.table.Lookups;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
+import tr.cabro.servicio.application.renderer.AmountChipCellRenderer;
+import tr.cabro.servicio.application.renderer.ChipCellRenderer;
+import tr.cabro.servicio.model.enums.BadgeColor;
+import tr.cabro.servicio.application.renderer.RowParts;
 import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
+import tr.cabro.servicio.application.renderer.StatusDotCellRenderer;
 import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.application.system.FormManager;
@@ -173,9 +181,9 @@ public class FormSecondHandStock extends AbstractTableForm {
     protected void setupTable() {
         List<ColumnDef<DeviceTransaction>> columns = Arrays.asList(
                 new ColumnDef<DeviceTransaction>("Cihaz", DeviceTransaction.class, t -> t).alignment(SwingConstants.LEADING),
-                new ColumnDef<DeviceTransaction>("Tür", String.class,
-                        t -> t.getType() == DeviceTransactionType.PURCHASE ? "Alım" : "Satım").alignment(SwingConstants.LEADING),
-                new ColumnDef<DeviceTransaction>("Karşı Taraf", DeviceTransaction.class, t -> t).alignment(SwingConstants.LEADING),
+                new ColumnDef<DeviceTransaction>("İşlem", DeviceTransaction.class, t -> t).alignment(SwingConstants.CENTER),
+                new ColumnDef<DeviceTransaction>("Karşı Taraf", DeviceTransaction.class, t -> t).alignment(SwingConstants.LEADING)
+                        .lookupFilter("tr.customer_id", Lookups.customers()),
                 new ColumnDef<DeviceTransaction>("Tarih", DeviceTransaction.class, t -> t)
                         .alignment(SwingConstants.LEADING).dateRangeFilter("transaction_date"),
                 new ColumnDef<DeviceTransaction>("Fiyat", BigDecimal.class, DeviceTransaction::getPrice).alignment(SwingConstants.TRAILING),
@@ -185,11 +193,14 @@ public class FormSecondHandStock extends AbstractTableForm {
         setTableModel(tableModel);
         TableColumnConfigurator.applyColumnRenderers(table, columns);
 
-        table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<DeviceTransaction>(
+        // Cihaz: işlem türünün rengiyle nokta (alım mavi, satım yeşil); altında seri no.
+        table.getColumnModel().getColumn(0).setCellRenderer(new StatusDotCellRenderer<DeviceTransaction>(
                 t -> t.getDevice() != null ? t.getDevice().getDisplayName() : "Bilinmeyen cihaz",
-                t -> t.getDevice() != null && t.getDevice().getSerialNo() != null ? "SN " + t.getDevice().getSerialNo() : ""));
-        table.getColumnModel().getColumn(1).setCellRenderer(
-                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground", 8));
+                t -> t.getDevice() != null && t.getDevice().getSerialNo() != null ? "SN " + t.getDevice().getSerialNo() : "Seri no yok",
+                t -> t.getType() == DeviceTransactionType.PURCHASE ? BadgeColor.BLUE : BadgeColor.GREEN));
+        table.getColumnModel().getColumn(1).setCellRenderer(new ChipCellRenderer<DeviceTransaction>(t ->
+                t.getType() == DeviceTransactionType.PURCHASE ? ChipCellRenderer.badge("Alım", BadgeColor.BLUE)
+                        : ChipCellRenderer.badge("Satım", BadgeColor.GREEN)));
         table.getColumnModel().getColumn(2).setCellRenderer(new MultiLineTableCellRenderer<DeviceTransaction>(
                 t -> t.getCustomer() != null ? t.getCustomer().getFullName() : "-",
                 t -> t.getCustomer() != null ? PhoneHelper.formatForDisplay(t.getCustomer().getPhoneNumber1()) : ""));
@@ -202,20 +213,25 @@ public class FormSecondHandStock extends AbstractTableForm {
                     return t.getType() == DeviceTransactionType.PURCHASE ? "alındı, " + ago : "satıldı, " + ago;
                 }));
         table.getColumnModel().getColumn(4).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
+        table.getColumnModel().getColumn(0).setPreferredWidth(280);
+        table.getColumnModel().getColumn(0).setMinWidth(220);
+        table.getColumnModel().getColumn(1).setPreferredWidth(100);
+        table.getColumnModel().getColumn(2).setPreferredWidth(220);
+        table.getColumnModel().getColumn(3).setPreferredWidth(170);
+        table.getColumnModel().getColumn(4).setPreferredWidth(130);
         configureActionColumn();
         headerFilters = installHeaderFilters(columns);
+
+        addSort("NEWEST", "En yeni");
+        addSort("OLDEST", "En eski");
+        addSort("PRICE", "Fiyat (yüksekten)");
+        addSort("NAME", "Cihaz adı (A-Z)");
 
         // Satır, cihazın sayfasını (2.el geçmişi dahil) açar.
         openRowsWith(tableModel, t -> {
             if (t.getDevice() != null) FormManager.showForm(new FormDevice(t.getDevice()));
         }, 5);
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(260);
-        table.getColumnModel().getColumn(1).setPreferredWidth(80);
-        table.getColumnModel().getColumn(1).setMaxWidth(110);
-        table.getColumnModel().getColumn(2).setPreferredWidth(220);
-        table.getColumnModel().getColumn(3).setPreferredWidth(160);
-        table.getColumnModel().getColumn(4).setPreferredWidth(130);
     }
 
     private void configureActionColumn() {
@@ -230,8 +246,14 @@ public class FormSecondHandStock extends AbstractTableForm {
     }
 
     @Override
+    protected void onSortChanged(String key) {
+        currentPage = 1;
+        super.onSortChanged(key);
+    }
+
+    @Override
     protected void loadTableData() {
-        transactionService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), false, currentPage, pageSize).thenAccept(result -> {
+        transactionService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), false, currentPage, pageSize, getSortKey()).thenAccept(result -> {
             SwingUtilities.invokeLater(() -> {
                 tableModel.setData(result.getItems());
                 if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());

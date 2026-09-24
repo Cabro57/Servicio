@@ -90,6 +90,14 @@ public interface DeviceTransactionRepository extends SqlObject {
 
     default PageResult<DeviceTransaction> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                 boolean onlyInStock, int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, onlyInStock, page, pageSize, null);
+    }
+
+    /** Sıralama anahtarları ({@link #SORTS}) sabit bir beyaz listedir; SQL parçası kullanıcıdan gelmez. */
+    java.util.Map<String, String> SORTS = java.util.Map.of("NEWEST", "tr.transaction_date DESC, tr.id DESC", "OLDEST", "tr.transaction_date ASC, tr.id ASC", "PRICE", "tr.price DESC", "NAME", "d.model COLLATE NOCASE ASC");
+
+    default PageResult<DeviceTransaction> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                boolean onlyInStock, int page, int pageSize, String sortKey) {
         SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
         String likeTerm = (searchTerm != null && !searchTerm.isBlank()) ? "%" + searchTerm.trim() + "%" : null;
 
@@ -109,7 +117,7 @@ public interface DeviceTransactionRepository extends SqlObject {
         params.put("limit", pageSize);
         params.put("offset", (page - 1) * pageSize);
 
-        String listSql = BASE_SELECT + whereClause + " ORDER BY tr.transaction_date DESC, tr.id DESC LIMIT :limit OFFSET :offset";
+        String listSql = BASE_SELECT + whereClause + " ORDER BY " + SORTS.getOrDefault(sortKey == null ? "NEWEST" : sortKey, SORTS.get("NEWEST")) + " LIMIT :limit OFFSET :offset";
         String countSql = "SELECT COUNT(*) FROM device_transactions tr " +
                 "JOIN devices d ON tr.device_id = d.id " +
                 "JOIN device_types dt ON d.device_type_id = dt.id " +

@@ -1,5 +1,14 @@
 package tr.cabro.servicio.application.forms;
 
+import java.util.ArrayList;
+import tr.cabro.servicio.application.component.table.Lookups;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
+import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
+import tr.cabro.servicio.application.renderer.AmountChipCellRenderer;
+import tr.cabro.servicio.application.renderer.ChipCellRenderer;
+import tr.cabro.servicio.application.renderer.RowParts;
+import tr.cabro.servicio.model.enums.BadgeColor;
+import tr.cabro.servicio.application.renderer.StatusDotCellRenderer;
 import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
@@ -160,24 +169,41 @@ public class FormAccounts extends AbstractTableForm {
                 new ColumnDef<CustomerBalanceDto>("Toplam Borçlanma", BigDecimal.class, CustomerBalanceDto::getTotalDebt).alignment(SwingConstants.TRAILING),
                 new ColumnDef<CustomerBalanceDto>("Toplam Tahsilat", BigDecimal.class, CustomerBalanceDto::getTotalPaid).alignment(SwingConstants.TRAILING),
                 new ColumnDef<CustomerBalanceDto>("Bakiye", BigDecimal.class, CustomerBalanceDto::getBalance).alignment(SwingConstants.TRAILING),
+                new ColumnDef<CustomerBalanceDto>("Durum", CustomerBalanceDto.class, b -> b).alignment(SwingConstants.CENTER),
                 new ColumnDef<CustomerBalanceDto>("", String.class, b -> "").editable(true)
         );
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
         TableColumnConfigurator.applyColumnRenderers(table, columns);
 
-        table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<CustomerBalanceDto>(
+        // Müşteri: bakiye durumunun rengiyle nokta; altında telefon.
+        table.getColumnModel().getColumn(0).setCellRenderer(new StatusDotCellRenderer<CustomerBalanceDto>(
                 b -> customerName(b.getCustomerId()),
                 b -> {
                     Customer c = customerCache.get(b.getCustomerId());
                     return c != null ? PhoneHelper.formatForDisplay(c.getPhoneNumber1()) : "";
-                }));
-        // Borçlanma ve tahsilat zaten sayılmış tutarlar: nötr ve soluk; anlamı bakiye taşır.
+                },
+                b -> stateOf(b).color));
+        // Borçlanma ve tahsilat zaten sayılmış tutarlar: nötr; anlamı bakiye taşır.
         table.getColumnModel().getColumn(1).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
         table.getColumnModel().getColumn(2).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
         table.getColumnModel().getColumn(3).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.BALANCE));
+        table.getColumnModel().getColumn(4).setCellRenderer(new ChipCellRenderer<CustomerBalanceDto>(b ->
+                ChipCellRenderer.badge(stateOf(b).label, stateOf(b).color)));
 
-        DynamicActionColumnSupport.install(table, 4, tableModel, List.of(
+        addSort("NEWEST", "Bakiye (büyükten)");
+        addSort("DEBT", "Borç (çoktan aza)");
+        addSort("CREDIT", "Alacak (çoktan aza)");
+        addSort("NAME", "Müşteri adı (A-Z)");
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(300);
+        table.getColumnModel().getColumn(0).setMinWidth(220);
+        table.getColumnModel().getColumn(1).setPreferredWidth(150);
+        table.getColumnModel().getColumn(2).setPreferredWidth(150);
+        table.getColumnModel().getColumn(3).setPreferredWidth(150);
+        table.getColumnModel().getColumn(4).setPreferredWidth(120);
+
+        DynamicActionColumnSupport.install(table, 5, tableModel, List.of(
                 DynamicActionColumnSupport.button("icons/hand-coins.svg", SemanticColor.success(), "Tahsilat al",
                         b -> {
                             Customer c = customerCache.get(b.getCustomerId());
@@ -187,14 +213,8 @@ public class FormAccounts extends AbstractTableForm {
         openRowsWith(tableModel, b -> {
             Customer c = customerCache.get(b.getCustomerId());
             if (c != null) FormManager.showForm(new FormCustomer(c));
-        }, 4);
+        }, 5);
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(320);
-        table.getColumnModel().getColumn(1).setPreferredWidth(150);
-        table.getColumnModel().getColumn(2).setPreferredWidth(150);
-        table.getColumnModel().getColumn(3).setPreferredWidth(150);
-        table.getColumnModel().getColumn(4).setMinWidth(70);
-        table.getColumnModel().getColumn(4).setMaxWidth(80);
     }
 
     private String customerName(Long customerId) {
@@ -208,10 +228,35 @@ public class FormAccounts extends AbstractTableForm {
     @Override
     protected String getEmptyStateDescription() { return "Veresiye satış veya tahsilat yaptığınızda burada görünür."; }
 
+    /** Bakiye durumu: etiket, renk ve tutarın altındaki açıklama tek yerden. */
+    private static final class State {
+        final String label;
+        final String caption;
+        final BadgeColor color;
+
+        State(String label, String caption, BadgeColor color) {
+            this.label = label;
+            this.caption = caption;
+            this.color = color;
+        }
+    }
+
+    private static State stateOf(CustomerBalanceDto b) {
+        if (b.getBalance() == null || b.getBalance().signum() == 0) return new State("Kapalı", null, BadgeColor.GRAY);
+        return b.getBalance().signum() > 0 ? new State("Borçlu", "bize borçlu", BadgeColor.YELLOW)
+                : new State("Alacaklı", "biz borçluyuz", BadgeColor.RED);
+    }
+
+    @Override
+    protected void onSortChanged(String key) {
+        currentPage = 1;
+        super.onSortChanged(key);
+    }
+
     @Override
     protected void loadTableData() {
         CompletableFuture<PageResult<CustomerBalanceDto>> future =
-                paymentService.searchAccountsPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize);
+                paymentService.searchAccountsPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize, getSortKey());
 
         future.thenCompose(result -> {
             List<Long> customerIds = result.getItems().stream().map(CustomerBalanceDto::getCustomerId).collect(Collectors.toList());

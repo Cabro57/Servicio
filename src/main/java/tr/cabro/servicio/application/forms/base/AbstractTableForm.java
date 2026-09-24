@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.forms.base;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.table.ListSummary;
+import tr.cabro.servicio.application.component.table.ListTabBar;
 import tr.cabro.servicio.application.component.table.ListTable;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.component.table.TableStatePanel;
@@ -66,6 +67,8 @@ public abstract class AbstractTableForm extends Form {
     private TableStatePanel statePanel;
     private TableHeaderFilterSupport<?> headerFilterSupport;
     private JLabel resultCount;
+    private JButton clearLink;
+    private ListTabBar toolbar;
 
     public AbstractTableForm() {
         // init formInit() üzerinden çağrılır.
@@ -102,9 +105,11 @@ public abstract class AbstractTableForm extends Form {
 
         JPanel actions = new JPanel(new MigLayout("insets 0, gap 8", "", "[center]"));
         actions.setOpaque(false);
-        for (JComponent c : createHeaderActions()) actions.add(c);
+        searchField = createSearchField();
+        actions.add(searchField, "w 220:300:340, sgy row, growy");
+        for (JComponent c : createHeaderActions()) actions.add(c, "sgy row, growy");
         btnNew = createPrimaryButton();
-        actions.add(btnNew);
+        actions.add(btnNew, "sgy row, growy");
 
         summary = new ListSummary();
 
@@ -113,31 +118,27 @@ public abstract class AbstractTableForm extends Form {
         header.add(summary, "wmin 0");
         add(header, "wrap");
 
-        // --- 2. Liste kartı: sekmeler + arama, tablo, alt bilgi ---
-        JPanel card = new JPanel(new MigLayout("fill, insets 10 14 8 14, gap 0, hidemode 3",
-                "[grow, fill]", "[pref]8[grow, fill]6[pref]"));
+        // --- 2. Liste kartı: sekme çubuğu (karta bitişik), tablo, alt bilgi ---
+        JPanel card = new JPanel(new MigLayout("fill, insets 0 8 8 8, gap 0, hidemode 3",
+                "[grow, fill]", "[pref]4[grow, fill]6[pref]"));
         card.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
 
         views = new ViewTabs();
         initViews();
         views.setOnChange(key -> onViewChanged(key));
 
-        searchField = new JTextField(22);
-        searchField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, getSearchPlaceholder());
-        searchField.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
-                new Ikon("icons/search.svg", 16, "Label.disabledForeground"));
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        searchField.setToolTipText("Ara (Ctrl+F)");
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) { applyFilter(); }
-            public void removeUpdate(DocumentEvent e) { applyFilter(); }
-            public void changedUpdate(DocumentEvent e) { applyFilter(); }
-        });
-
-        JPanel toolbar = new JPanel(new MigLayout("insets 0, gap 8, hidemode 3", "[]push[][][]", "[center]"));
-        toolbar.setOpaque(false);
+        // Sekme çubuğu kartın üst kenarına oturur; altındaki tek hairline tabloyu ayırır.
+        toolbar = new ListTabBar();
         toolbar.add(views, "wmin 0");
+
+        clearLink = new JButton("Filtreyi temizle", new Ikon("icons/x.svg", 14, "Label.disabledForeground"));
+        clearLink.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+        clearLink.putClientProperty(FlatClientProperties.STYLE, "arc: 8; margin: 3,8,3,8; iconTextGap: 4; focusWidth: 0");
+        clearLink.setToolTipText("Arama, sekme ve sütun filtrelerini sıfırla");
+        clearLink.setVisible(false);
+        clearLink.addActionListener(e -> clearFilters());
+        toolbar.add(clearLink);
+
         if (hasFilterCombo()) {
             filterCombo = createFilterCombo();
             if (filterCombo != null) {
@@ -147,8 +148,7 @@ public abstract class AbstractTableForm extends Form {
         }
         JComponent extra = createExtraToolbarComponent();
         if (extra != null) toolbar.add(extra);
-        toolbar.add(searchField, "w 200:280:340");
-        card.add(toolbar, "wrap");
+        card.add(toolbar, "wrap, growx");
 
         table = new ListTable();
         TableStyler.applyStandardStyle(table);
@@ -168,6 +168,7 @@ public abstract class AbstractTableForm extends Form {
 
         JPanel footer = new JPanel(new MigLayout("insets 0, fillx, gap 8", "[]push[]", "[center]"));
         footer.setOpaque(false);
+        footer.setBorder(BorderFactory.createEmptyBorder(0, 6, 0, 6));
         resultCount = new JLabel(" ");
         resultCount.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
         footer.add(resultCount);
@@ -187,6 +188,22 @@ public abstract class AbstractTableForm extends Form {
                 if (isShowing()) focusSearch();
             }
         });
+    }
+
+    private JTextField createSearchField() {
+        JTextField f = new JTextField(22);
+        f.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, getSearchPlaceholder());
+        f.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,8,5,8");
+        f.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
+                new Ikon("icons/search.svg", 16, "Label.disabledForeground"));
+        f.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        f.setToolTipText("Ara (Ctrl+F)");
+        f.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { applyFilter(); }
+            public void removeUpdate(DocumentEvent e) { applyFilter(); }
+            public void changedUpdate(DocumentEvent e) { applyFilter(); }
+        });
+        return f;
     }
 
     /** Sayfanın tek vurgu dolgulu düğmesi: "Yeni …" + (varsa) Alt+harf kısayolu. */
@@ -276,6 +293,7 @@ public abstract class AbstractTableForm extends Form {
             statePanel.showLoading();
             showCard(CARD_STATE);
         }
+        if (clearLink != null) clearLink.setVisible(isFilterActive());
         loadTableData();
         refreshViewCounts();
         // Özet cümlesi aramadan bağımsızdır: her tuş vuruşunda değil, arama boşken (açılış,
@@ -295,6 +313,7 @@ public abstract class AbstractTableForm extends Form {
      */
     private void updateTableState() {
         if (tableArea == null || statePanel == null) return;
+        if (clearLink != null) clearLink.setVisible(isFilterActive());
 
         if (table.getRowCount() > 0) {
             showCard(CARD_DATA);
@@ -350,6 +369,63 @@ public abstract class AbstractTableForm extends Form {
         support.setOnFilterChanged(this::refreshTable);
         this.headerFilterSupport = support;
         return support;
+    }
+
+    // --- Sıralama ---
+
+    private final Map<String, String> sorts = new LinkedHashMap<>();
+    private String sortKey;
+    private JButton sortButton;
+
+    /**
+     * Sıralama seçeneği ekler (başlıksız tablolarda sütun başlığına tıklamanın yerini alır). İlk
+     * eklenen varsayılandır. Düğme sekme çubuğunun sağında "Sırala: En yeni" olarak görünür.
+     */
+    protected void addSort(String key, String label) {
+        sorts.put(key, label);
+        if (sortKey == null) sortKey = key;
+        if (sortButton == null && toolbar != null) {
+            sortButton = new JButton();
+            sortButton.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+            sortButton.putClientProperty(FlatClientProperties.STYLE, "arc: 8; margin: 4,10,4,10; iconTextGap: 6; focusWidth: 0");
+            sortButton.setIcon(new Ikon("icons/arrow-down-up.svg", 14, "Label.disabledForeground"));
+            sortButton.addActionListener(e -> showSortMenu());
+            toolbar.add(sortButton, "gapleft 4, shrink 0");
+        }
+        updateSortButton();
+    }
+
+    protected String getSortKey() {
+        return sortKey;
+    }
+
+    private void showSortMenu() {
+        JPopupMenu menu = new JPopupMenu();
+        ButtonGroup group = new ButtonGroup();
+        for (Map.Entry<String, String> e : sorts.entrySet()) {
+            JRadioButtonMenuItem item = new JRadioButtonMenuItem(e.getValue(), e.getKey().equals(sortKey));
+            item.addActionListener(a -> {
+                if (e.getKey().equals(sortKey)) return;
+                sortKey = e.getKey();
+                updateSortButton();
+                onSortChanged(sortKey);
+            });
+            group.add(item);
+            menu.add(item);
+        }
+        menu.show(sortButton, 0, sortButton.getHeight() + 4);
+    }
+
+    private void updateSortButton() {
+        if (sortButton == null) return;
+        String label = sorts.get(sortKey);
+        // Düz metin: HTML etiketi dar alanda satır atlayıp düğmeyi iki satıra bölüyordu.
+        sortButton.setText("Sırala: " + (label != null ? label : ""));
+    }
+
+    /** Sıralama değişince çağrılır; sayfalı formlar sayfayı başa alıp {@code super}'i çağırmalıdır. */
+    protected void onSortChanged(String key) {
+        refreshTable();
     }
 
     // --- Görünüm sekmeleri ---

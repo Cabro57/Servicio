@@ -24,7 +24,7 @@ public class MovementsPanel extends JPanel {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 
-    private final JPanel list = new JPanel(new MigLayout("insets 0, fillx, wrap, gap 0", "[fill]", ""));
+    private final JPanel list = new JPanel(new MigLayout("insets 0, fillx, wrap, gapy 4", "[fill]", ""));
 
     public MovementsPanel() {
         setLayout(new MigLayout("insets 0, fillx, wrap", "[fill]", "[]"));
@@ -56,6 +56,8 @@ public class MovementsPanel extends JPanel {
 
     private JButton row(Payment p, Customer customer) {
         JButton row = DashboardUi.rowButton();
+        row.putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE,
+                "background: null; arc: 10; borderWidth: 0; focusWidth: 0; innerFocusWidth: 0; margin: 7,10,7,10");
         row.setLayout(new MigLayout("insets 0, fillx, gap 8 1", "[36!][grow,fill][right]", "[][]"));
 
         PaymentType type = p.getPaymentType() != null ? p.getPaymentType() : PaymentType.OTHER;

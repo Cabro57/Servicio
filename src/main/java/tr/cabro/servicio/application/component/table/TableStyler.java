@@ -15,15 +15,15 @@ public final class TableStyler {
 
     /**
      * Liste ekranlarındaki (Servis Kayıtları, Müşteriler vb.) tam-boy tablo stili: soluk, kalın
-     * olmayan küçük başlık; 48px satır; yalnızca yatay çizgi. Hover/seçim zemini {@link ListTable}'da.
+     * olmayan küçük başlık; 54px satır; yalnızca yatay çizgi. Hover/seçim zemini {@link ListTable}'da.
      */
     public static void applyStandardStyle(JTable table) {
         table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
-                "height:34; hoverBackground:null; pressedBackground:null; separatorColor:$Table.background;"
+                "height:36; hoverBackground:null; pressedBackground:null; separatorColor:$Table.background;"
                         + " bottomSeparatorColor:$Component.borderColor; background:$Table.background;"
                         + " foreground:$Label.disabledForeground; font:-1");
         table.putClientProperty(FlatClientProperties.STYLE,
-                "rowHeight:48; showHorizontalLines:true; showVerticalLines:false; intercellSpacing:0,1;"
+                "rowHeight:54; showHorizontalLines:true; showVerticalLines:false; intercellSpacing:0,1;"
                         + " gridColor:$Component.borderColor; cellFocusColor:null;"
                         + " selectionBackground:$Servicio.rowSelectedBackground; selectionForeground:$Table.foreground;"
                         + " selectionInactiveBackground:$Servicio.rowSelectedBackground; selectionInactiveForeground:$Table.foreground");

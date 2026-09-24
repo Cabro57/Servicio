@@ -67,4 +67,9 @@ public class SupplierService {
                                                                        int page, int pageSize) {
         return CompletableFuture.supplyAsync(() -> repository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
+
+    public CompletableFuture<PageResult<Supplier>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                       int page, int pageSize, String sortKey) {
+        return CompletableFuture.supplyAsync(() -> repository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
+    }
 }

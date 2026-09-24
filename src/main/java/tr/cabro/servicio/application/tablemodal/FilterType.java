@@ -7,5 +7,7 @@ package tr.cabro.servicio.application.tablemodal;
 public enum FilterType {
     NONE,
     ENUM,
-    DATE_RANGE
+    DATE_RANGE,
+    /** Bir kayda bağlı seçim listesi (müşteri, tedarikçi, kategori…): arama kutulu çoklu seçim, kimliklerle süzer. */
+    LOOKUP
 }

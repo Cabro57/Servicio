@@ -2,7 +2,7 @@ package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import raven.datetime.DatePicker;
+import tr.cabro.servicio.application.component.PeriodNavigator;
 import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.component.table.ListTable;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
@@ -33,6 +33,8 @@ import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -54,14 +56,14 @@ public class FormCashReport extends Form {
     private static DateTimeFormatter longDate() {
         return DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.FULL).withLocale(AppLocale.uiLocale());
     }
+    private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("d MMM HH:mm", AppLocale.uiLocale());
     private static final String VIEW_ALL = "all";
 
     private final SaleService saleService;
     private final PaymentService paymentService;
 
-    private LocalDate day = LocalDate.now();
-    private DatePicker datePicker;
-    private boolean syncingPicker;
+    private LocalDate from = LocalDate.now();
+    private LocalDate to = LocalDate.now();
     private JLabel title;
     private ListSummary summary;
     private ViewTabs views;
@@ -71,7 +73,7 @@ public class FormCashReport extends Form {
     private TableStatePanel statePanel;
     private JLabel breakdownLabel;
     private JLabel netLabel;
-    private JButton btnNext;
+    private PeriodNavigator navigator;
 
     private List<Payment> dayPayments = Collections.emptyList();
     private Map<Long, Customer> customers = Collections.emptyMap();
@@ -98,17 +100,18 @@ public class FormCashReport extends Form {
         add(header, "wrap");
 
         // --- Hareket kartı ---
-        JPanel card = new JPanel(new MigLayout("fill, insets 10 14 8 14, gap 0", "[grow, fill]", "[pref]8[grow, fill]6[pref]"));
+        JPanel card = new JPanel(new MigLayout("fill, insets 0 8 8 8, gap 0", "[grow, fill]", "[pref]4[grow, fill]6[pref]"));
         card.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
 
         views = new ViewTabs();
         views.addView(VIEW_ALL, "Tüm hareketler");
         for (PaymentType type : PaymentType.values()) views.addView(type.name(), type.getDisplayName());
         views.setOnChange(key -> applyView());
-        card.add(views, "wrap, wmin 0");
+        card.add(new tr.cabro.servicio.application.component.table.ListTabBar(views), "wrap, growx");
 
         List<ColumnDef<Payment>> columns = Arrays.asList(
-                new ColumnDef<Payment>("Saat", String.class, p -> p.getPaymentDate() != null ? p.getPaymentDate().format(TIME) : "")
+                new ColumnDef<Payment>("Zaman", String.class, p -> p.getPaymentDate() == null ? ""
+                        : p.getPaymentDate().format(isSingleDay() ? TIME : DATE_TIME))
                         .alignment(SwingConstants.LEADING),
                 new ColumnDef<Payment>("Hareket", Payment.class, p -> p).alignment(SwingConstants.LEADING),
                 ColumnDef.<Payment>badge("Yöntem", PaymentType.class, Payment::getPaymentType),
@@ -124,8 +127,8 @@ public class FormCashReport extends Form {
         table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Payment>(
                 this::who, this::what));
         table.getColumnModel().getColumn(3).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEGATIVE));
-        table.getColumnModel().getColumn(0).setMaxWidth(90);
-        table.getColumnModel().getColumn(0).setPreferredWidth(70);
+        table.getColumnModel().getColumn(0).setMaxWidth(120);
+        table.getColumnModel().getColumn(0).setPreferredWidth(100);
         table.getColumnModel().getColumn(1).setPreferredWidth(520);
         table.getColumnModel().getColumn(2).setPreferredWidth(170);
         table.getColumnModel().getColumn(3).setPreferredWidth(150);
@@ -142,6 +145,7 @@ public class FormCashReport extends Form {
 
         JPanel footer = new JPanel(new MigLayout("insets 0, fillx, gap 8", "[]push[]", "[center]"));
         footer.setOpaque(false);
+        footer.setBorder(BorderFactory.createEmptyBorder(0, 6, 0, 6));
         breakdownLabel = new JLabel(" ");
         breakdownLabel.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
         netLabel = new JLabel(" ");
@@ -153,78 +157,64 @@ public class FormCashReport extends Form {
         refresh();
     }
 
-    /** ‹ [tarih] › [Bugün] — gün gezgini. Gelecek güne geçilmez. */
+    /** Dönem (gün ya da tarih aralığı) gezgini + "Tahsilat Al". Gelecek güne geçilmez; Ctrl+←/→ ile dönem kayar. */
     private JComponent buildDayNavigator() {
-        JPanel panel = new JPanel(new MigLayout("insets 0, gap 6", "", "[center]"));
+        JPanel panel = new JPanel(new MigLayout("insets 0, gap 10", "", "[center]"));
         panel.setOpaque(false);
 
-        JButton prev = navButton("icons/chevron-left.svg", "Önceki gün", () -> setDay(day.minusDays(1)));
-        btnNext = navButton("icons/chevron-right.svg", "Sonraki gün", () -> setDay(day.plusDays(1)));
-
-        JFormattedTextField dateField = new JFormattedTextField();
-        dateField.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
-        datePicker = new DatePicker();
-        datePicker.setDateFormat("dd/MM/yyyy");
-        datePicker.setEditor(dateField);
-        datePicker.setCloseAfterSelected(true);
-        datePicker.setSelectedDate(day);
-        datePicker.addDateSelectionListener(e -> {
-            if (syncingPicker) return;
-            LocalDate picked = datePicker.getSelectedDate();
-            if (picked != null && !picked.equals(day)) setDay(picked);
-        });
-
-        JButton today = new JButton("Bugün");
-        today.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 6,12,6,12");
-        today.addActionListener(e -> setDay(LocalDate.now()));
+        navigator = new PeriodNavigator((f, t) -> { from = f; to = t; refresh(); });
 
         JButton collect = tr.cabro.servicio.application.component.detail.DetailKit.primaryButton(
                 "Tahsilat Al", "icons/hand-coins.svg", null, QuickAction.COLLECT);
         collect.setToolTipText("Cari hesaptan müşteri seçip ödeme al (" + QuickAction.COLLECT.getShortcutText() + ")");
         collect.addActionListener(e -> QuickAction.COLLECT.run());
 
-        panel.add(prev);
-        panel.add(dateField, "w 136!");
-        panel.add(btnNext);
-        panel.add(today, "gapright 8");
-        panel.add(collect);
+        panel.add(navigator, "growy");
+        panel.add(collect, "growy");
+
+        bindDayKey(KeyEvent.VK_LEFT, "servicio.cash.prevDay", () -> navigator.shift(-1));
+        bindDayKey(KeyEvent.VK_RIGHT, "servicio.cash.nextDay", () -> navigator.shift(1));
         return panel;
     }
 
-    private static JButton navButton(String icon, String tip, Runnable action) {
-        JButton b = new JButton(new Ikon(icon, 16, "Label.foreground"));
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 6,6,6,6");
-        b.setToolTipText(tip);
-        b.getAccessibleContext().setAccessibleName(tip);
-        b.addActionListener(e -> action.run());
-        return b;
+    private void bindDayKey(int key, String name, Runnable action) {
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(key, InputEvent.CTRL_DOWN_MASK), name);
+        getActionMap().put(name, new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (isShowing()) action.run();
+            }
+        });
     }
 
-    private void setDay(LocalDate newDay) {
-        if (newDay.isAfter(LocalDate.now())) newDay = LocalDate.now();
-        day = newDay;
-        syncingPicker = true;
-        datePicker.setSelectedDate(day);
-        syncingPicker = false;
-        refresh();
+    private boolean isSingleDay() {
+        return from.equals(to);
+    }
+
+    /** Özet cümlesinin tarih parçası: tek gün "Bugün, 24 Eylül 2026", aralık "1 Eyl – 24 Eyl 2026". */
+    private String periodText(LocalDate f, LocalDate t) {
+        if (f.equals(t)) return f.equals(LocalDate.now()) ? "Bugün, " + f.format(longDate()) : f.format(longDate());
+        DateTimeFormatter d = DateTimeFormatter.ofPattern("d MMM yyyy", AppLocale.uiLocale());
+        return f.format(d) + " – " + t.format(d);
     }
 
     private void refresh() {
-        btnNext.setEnabled(day.isBefore(LocalDate.now()));
+        if (navigator != null) navigator.render();
         summary.showLoading();
         statePanel.showLoading();
         ((CardLayout) tableArea.getLayout()).show(tableArea, "state");
-        final LocalDate requested = day;
+        final LocalDate reqFrom = from;
+        final LocalDate reqTo = to;
 
-        saleService.getDailyCashReport(requested).thenCombine(paymentService.getDayMovements(requested), (report, payments) -> {
+        saleService.getCashReport(reqFrom, reqTo).thenCombine(paymentService.getMovements(reqFrom, reqTo), (report, payments) -> {
             List<Long> ids = payments.stream().map(Payment::getCustomerId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
             Map<Long, Customer> map = ids.isEmpty() ? Collections.emptyMap()
                     : ServiceManager.getCustomerService().getAll(ids).join().stream().collect(Collectors.toMap(Customer::getId, c -> c));
             SwingUtilities.invokeLater(() -> {
-                if (!requested.equals(day)) return;
+                if (!reqFrom.equals(from) || !reqTo.equals(to)) return;
                 customers = map;
                 dayPayments = payments;
-                String dateText = requested.equals(LocalDate.now()) ? "Bugün, " + requested.format(longDate()) : requested.format(longDate());
+                String dateText = periodText(reqFrom, reqTo);
                 BigDecimal total = report.getTotal() != null ? report.getTotal() : BigDecimal.ZERO;
                 summary.set(
                         ListSummary.Part.of(dateText),
@@ -272,7 +262,7 @@ public class FormCashReport extends Form {
 
         if (rows.isEmpty()) {
             if (dayPayments.isEmpty()) {
-                statePanel.showMessage("icons/banknote.svg", day.equals(LocalDate.now()) ? "Bugün henüz hareket yok" : "Bu gün hareket yok",
+                statePanel.showMessage("icons/banknote.svg", isSingleDay() ? (from.equals(LocalDate.now()) ? "Bugün henüz hareket yok" : "Bu gün hareket yok") : "Bu dönemde hareket yok",
                         QuickAction.QUICK_SALE.getShortcutText() + " ile satış, " + QuickAction.COLLECT.getShortcutText()
                                 + " ile tahsilat kaydettiğinizde burada görünür.");
             } else {

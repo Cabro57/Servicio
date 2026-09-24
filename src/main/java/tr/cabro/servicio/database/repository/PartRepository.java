@@ -155,6 +155,14 @@ public interface PartRepository extends SqlObject {
 
     default PageResult<Part> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                 int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, page, pageSize, null);
+    }
+
+    /** Sıralama anahtarları sabit bir beyaz listedir; SQL parçası kullanıcıdan gelmez. */
+    java.util.Map<String, String> SORTS = java.util.Map.of("NEWEST", "p.created_at DESC", "NAME", "p.name COLLATE NOCASE ASC", "STOCK", "p.stock_quantity ASC", "PRICE", "p.sale_price DESC");
+
+    default PageResult<Part> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                int page, int pageSize, String sortKey) {
         SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
         boolean searching = searchTerm != null && !searchTerm.isBlank();
 
@@ -168,7 +176,9 @@ public interface PartRepository extends SqlObject {
         params.put("offset", (page - 1) * pageSize);
 
         // Aramada ada göre, aksi halde en yeni önce (eski findAllPaged/searchPaged sırası korunur).
-        String order = searching ? " ORDER BY p.name" : " ORDER BY p.created_at DESC";
+        // Sıralama seçilmediyse: aramada ada göre, aksi halde en yeni önce (eski davranış).
+        String order = sortKey != null && SORTS.containsKey(sortKey) ? " ORDER BY " + SORTS.get(sortKey)
+                : searching ? " ORDER BY p.name" : " ORDER BY p.created_at DESC";
         String listSql = SEARCH_SELECT + SEARCH_FROM + whereClause + order + " LIMIT :limit OFFSET :offset";
         String countSql = "SELECT COUNT(*) " + SEARCH_FROM + whereClause;
 

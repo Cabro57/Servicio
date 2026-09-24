@@ -65,6 +65,14 @@ public interface AccountRepository extends SqlObject {
 
     default PageResult<CustomerBalanceDto> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, page, pageSize, null);
+    }
+
+    /** Sıralama anahtarları ({@link #SORTS}) sabit bir beyaz listedir; SQL parçası kullanıcıdan gelmez. */
+    java.util.Map<String, String> SORTS = java.util.Map.of("NEWEST", "ABS(vb.balance) DESC", "DEBT", "vb.balance DESC", "CREDIT", "vb.balance ASC", "NAME", "c.first_name COLLATE NOCASE ASC, c.last_name COLLATE NOCASE ASC");
+
+    default PageResult<CustomerBalanceDto> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                               int page, int pageSize, String sortKey) {
         SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
         boolean searching = searchTerm != null && !searchTerm.isBlank();
         String whereClause = "WHERE c.is_deleted = 0" + where.getWhereFragment() + (searching ? FILTER_SEARCH : "");
@@ -76,7 +84,7 @@ public interface AccountRepository extends SqlObject {
         params.put("offset", (page - 1) * pageSize);
 
         List<CustomerBalanceDto> items = getHandle().createQuery(SEARCH_SELECT + SEARCH_FROM + whereClause
-                        + " ORDER BY ABS(vb.balance) DESC LIMIT :limit OFFSET :offset")
+                        + " ORDER BY " + SORTS.getOrDefault(sortKey == null ? "NEWEST" : sortKey, SORTS.get("NEWEST")) + " LIMIT :limit OFFSET :offset")
                 .bindMap(params).mapToBean(CustomerBalanceDto.class).list();
         long total = getHandle().createQuery("SELECT COUNT(*) " + SEARCH_FROM + whereClause)
                 .bindMap(countParams).mapTo(Long.class).one();

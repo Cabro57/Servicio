@@ -138,8 +138,13 @@ public class PaymentService {
 
     /** Günlük kasa raporu — ödeme yöntemi bazında gün içi net toplam (iade tutarları negatif olduğu için doğal olarak netleşir). */
     public CompletableFuture<Map<PaymentType, BigDecimal>> getDailyBreakdown(java.time.LocalDate date) {
-        java.time.LocalDateTime start = date.atStartOfDay();
-        java.time.LocalDateTime end = start.plusDays(1);
+        return getBreakdown(date, date);
+    }
+
+    /** Ödeme yöntemi bazında net toplam; {@code from} ve {@code to} günleri dahil. */
+    public CompletableFuture<Map<PaymentType, BigDecimal>> getBreakdown(java.time.LocalDate from, java.time.LocalDate to) {
+        java.time.LocalDateTime start = from.atStartOfDay();
+        java.time.LocalDateTime end = to.plusDays(1).atStartOfDay();
         return CompletableFuture.supplyAsync(() -> paymentRepository.sumByTypeForDateRange(start, end).stream()
                 .collect(Collectors.toMap(tr.cabro.servicio.model.dto.PaymentTypeSumDto::getPaymentType,
                         tr.cabro.servicio.model.dto.PaymentTypeSumDto::getTotal)));
@@ -150,8 +155,13 @@ public class PaymentService {
      * ({@link Payment#getAllocations()} doldurulur), en yeni önce.
      */
     public CompletableFuture<List<Payment>> getDayMovements(java.time.LocalDate date) {
-        java.time.LocalDateTime start = date.atStartOfDay();
-        java.time.LocalDateTime end = start.plusDays(1);
+        return getMovements(date, date);
+    }
+
+    /** {@link #getDayMovements} için tarih aralığı sürümü; {@code from} ve {@code to} günleri dahil. */
+    public CompletableFuture<List<Payment>> getMovements(java.time.LocalDate from, java.time.LocalDate to) {
+        java.time.LocalDateTime start = from.atStartOfDay();
+        java.time.LocalDateTime end = to.plusDays(1).atStartOfDay();
         return CompletableFuture.supplyAsync(() -> {
             List<Payment> payments = paymentRepository.findByDateRange(start, end, 5000);
             if (payments.isEmpty()) return payments;
@@ -193,6 +203,11 @@ public class PaymentService {
     public CompletableFuture<PageResult<CustomerBalanceDto>> searchAccountsPaged(String searchTerm,
             Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize) {
         return CompletableFuture.supplyAsync(() -> accountRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
+    }
+
+    public CompletableFuture<PageResult<CustomerBalanceDto>> searchAccountsPaged(String searchTerm,
+            Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize, String sortKey) {
+        return CompletableFuture.supplyAsync(() -> accountRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
     }
 
     /** Süzgeçle eşleşen hesapların bakiye toplamı. */

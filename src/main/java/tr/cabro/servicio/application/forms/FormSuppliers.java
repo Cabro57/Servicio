@@ -1,5 +1,15 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.util.PhoneHelper;
+import tr.cabro.servicio.application.component.table.Lookups;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
+import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
+import tr.cabro.servicio.application.renderer.AmountChipCellRenderer;
+import tr.cabro.servicio.application.renderer.ChipCellRenderer;
+import tr.cabro.servicio.application.renderer.StatusDotCellRenderer;
+import java.util.ArrayList;
+import tr.cabro.servicio.model.enums.BadgeColor;
+import tr.cabro.servicio.application.renderer.RowParts;
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
@@ -163,6 +173,15 @@ public class FormSuppliers extends AbstractTableForm {
         TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
         headerFilters = installHeaderFilters(columns);
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(280);
+        table.getColumnModel().getColumn(0).setMinWidth(200);
+        table.getColumnModel().getColumn(1).setPreferredWidth(220);
+        table.getColumnModel().getColumn(2).setPreferredWidth(240);
+        table.getColumnModel().getColumn(3).setPreferredWidth(120);
+
+        addSort("NAME", "Ad (A-Z)");
+        addSort("NEWEST", "En yeni");
     }
 
     private static String firmName(Supplier s) {
@@ -179,7 +198,6 @@ public class FormSuppliers extends AbstractTableForm {
                     if (contact != null && tax != null) return contact + "  ·  " + tax;
                     return contact != null ? contact : (tax != null ? tax : "");
                 }));
-
         table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Supplier>(
                 s -> s.getPhone() != null && !s.getPhone().isBlank() ? Format.formatPhoneNumber(s.getPhone()) : "Telefon yok",
                 s -> s.getEmail() != null ? s.getEmail() : ""));
@@ -216,12 +234,6 @@ public class FormSuppliers extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(280);
-        table.getColumnModel().getColumn(1).setPreferredWidth(220);
-        table.getColumnModel().getColumn(2).setPreferredWidth(220);
-        table.getColumnModel().getColumn(3).setPreferredWidth(110);
-        table.getColumnModel().getColumn(4).setMinWidth(96);
-        table.getColumnModel().getColumn(4).setMaxWidth(96);
     }
 
     // Tabloyu Güncelleme (Asenkron)
@@ -232,8 +244,14 @@ public class FormSuppliers extends AbstractTableForm {
     protected String getEmptyStateDescription() { return "Parça aldığınız firmaları ekleyin, alımları onlara bağlayabilirsiniz."; }
 
     @Override
+    protected void onSortChanged(String key) {
+        currentPage = 1;
+        super.onSortChanged(key);
+    }
+
+    @Override
     protected void loadTableData() {
-        supplierService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize).thenAccept(result -> {
+        supplierService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize, getSortKey()).thenAccept(result -> {
             SwingUtilities.invokeLater(() -> {
                 tableModel.setData(result.getItems());
                 if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());

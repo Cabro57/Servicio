@@ -1,5 +1,13 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.util.PhoneHelper;
+import tr.cabro.servicio.application.component.table.Lookups;
+import tr.cabro.servicio.application.renderer.AmountChipCellRenderer;
+import tr.cabro.servicio.application.renderer.ChipCellRenderer;
+import java.util.ArrayList;
+import tr.cabro.servicio.application.renderer.RowParts;
+import tr.cabro.servicio.model.enums.BadgeColor;
+import tr.cabro.servicio.application.renderer.StatusDotCellRenderer;
 import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
@@ -158,8 +166,9 @@ public class FormProducts extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<Product>> columns = Arrays.asList(
+                new ColumnDef<Product>("Ürün", Product.class, p -> p).alignment(SwingConstants.LEADING)
+                        .lookupFilter("p.category_id", Lookups.partCategories()),
                 new ColumnDef<Product>("SKU", String.class, Product::getBarcode).alignment(SwingConstants.LEADING),
-                new ColumnDef<Product>("Ürün", Product.class, p -> p).alignment(SwingConstants.LEADING),
                 new ColumnDef<Product>("Marka", String.class, p -> p.getBrand() != null && !p.getBrand().isBlank() ? p.getBrand() : "—").alignment(SwingConstants.LEADING),
                 new ColumnDef<Product>("Stok", Product.class, p -> p).alignment(SwingConstants.CENTER),
                 new ColumnDef<Product>("Satış Fiyatı", BigDecimal.class, Product::getSalePrice).alignment(SwingConstants.TRAILING),
@@ -169,50 +178,56 @@ public class FormProducts extends AbstractTableForm {
         setTableModel(tableModel);
         TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
+        installHeaderFilters(columns);
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(320);
+        table.getColumnModel().getColumn(0).setMinWidth(240);
+        table.getColumnModel().getColumn(1).setPreferredWidth(110);
+        table.getColumnModel().getColumn(2).setPreferredWidth(180);
+        table.getColumnModel().getColumn(3).setPreferredWidth(130);
+        table.getColumnModel().getColumn(4).setPreferredWidth(130);
+
+        addSort("NEWEST", "En yeni");
+        addSort("NAME", "Ad (A-Z)");
+        addSort("STOCK", "Stok (azdan çoğa)");
+        addSort("PRICE", "Satış fiyatı");
     }
 
     /**
      * "Kritik stok" sekmesi/özetiyle aynı ölçüt: {@code stock_quantity < min_stock_level}.
      * Ölçüt ayrışırsa özet bir sayı, tablo başka bir sayı gösterir.
      */
+    private static BadgeColor stockColor(Product p) {
+        int stock = p.getStockQuantity() != null ? p.getStockQuantity() : 0;
+        return stock <= 0 ? BadgeColor.RED : isCriticalStock(p) ? BadgeColor.YELLOW : BadgeColor.GREEN;
+    }
+
     private static boolean isCriticalStock(Product item) {
         return item != null && item.getStockQuantity() != null && item.getMinStockLevel() != null
                 && item.getStockQuantity() < item.getMinStockLevel();
     }
 
     private void configureTableColumns() {
-        table.getColumnModel().getColumn(0).setCellRenderer(
-                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: -1", 12));
-
-        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Product>(
+        // Ürün: stok durumunun rengiyle nokta; altında kategori.
+        table.getColumnModel().getColumn(0).setCellRenderer(new StatusDotCellRenderer<Product>(
                 Product::getName,
                 p -> {
-                    String category = p.getCategory() != null ? p.getCategory().getName() : null;
-                    String extra = null;
-                    if (category != null && extra != null && !extra.isBlank()) return category + "  ·  " + extra;
-                    return category != null ? category : (extra != null && !extra.isBlank() ? extra : "Kategorisiz");
-                }));
-
-        table.getColumnModel().getColumn(2).setCellRenderer(new TooltipCellRenderer());
-
-        // Stok: kritik seviye metinle de yazılır, yalnızca renge bırakılmaz.
-        table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, false, row, column);
-                label.setHorizontalAlignment(SwingConstants.CENTER);
-                label.setFont(table.getFont().deriveFont(Font.BOLD));
-                Product item = (Product) value;
-                int stock = item != null && item.getStockQuantity() != null ? item.getStockQuantity() : 0;
-                boolean critical = isCriticalStock(item);
-                label.setText(stock <= 0 ? "Tükendi" : critical ? stock + "  ·  kritik" : String.valueOf(stock));
-                // else dalı şart: DefaultTableCellRenderer son rengi saklar.
-                label.setForeground(critical || stock <= 0 ? SemanticColor.danger() : table.getForeground());
-                label.setToolTipText(critical ? "Stok, belirlenen minimum seviyenin (" + item.getMinStockLevel() + ") altında." : null);
-                return label;
-            }
-        });
-
+                    List<String> bits = new ArrayList<>();
+                    bits.add(p.getCategory() != null ? p.getCategory().getName() : "Kategorisiz");
+                    
+                    return String.join("  ·  ", bits);
+                },
+                p -> stockColor(p)));
+        table.getColumnModel().getColumn(1).setCellRenderer(
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: -1", 8));
+        table.getColumnModel().getColumn(2).setCellRenderer(StyledLabelCellRenderer.of(SwingConstants.LEADING, null, 8));
+        // Stok: çip metni durumu da yazar (Tükendi / Kritik · N / N adet), yalnızca renge bırakılmaz.
+        table.getColumnModel().getColumn(3).setCellRenderer(new ChipCellRenderer<Product>(p -> {
+            int stock = p.getStockQuantity() != null ? p.getStockQuantity() : 0;
+            if (stock <= 0) return ChipCellRenderer.badge("Tükendi", BadgeColor.RED);
+            if (isCriticalStock(p)) return ChipCellRenderer.badge("Kritik · " + stock, BadgeColor.YELLOW);
+            return ChipCellRenderer.badge(stock + " adet", BadgeColor.GREEN);
+        }));
         table.getColumnModel().getColumn(4).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
 
         TableActionColumnSupport.install(table, 5, tableModel, new TableActionColumnSupport.Handlers<Product>() {
@@ -244,15 +259,6 @@ public class FormProducts extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(110);
-        table.getColumnModel().getColumn(0).setMaxWidth(150);
-        table.getColumnModel().getColumn(1).setPreferredWidth(320);
-        table.getColumnModel().getColumn(2).setPreferredWidth(180);
-        table.getColumnModel().getColumn(3).setPreferredWidth(110);
-        table.getColumnModel().getColumn(3).setMaxWidth(140);
-        table.getColumnModel().getColumn(4).setPreferredWidth(130);
-        table.getColumnModel().getColumn(5).setMinWidth(96);
-        table.getColumnModel().getColumn(5).setMaxWidth(96);
     }
 
     @Override
@@ -262,8 +268,14 @@ public class FormProducts extends AbstractTableForm {
     protected String getEmptyStateDescription() { return "Satış ekranında (POS) satacağınız ürünleri eklediğinizde burada görünür."; }
 
     @Override
+    protected void onSortChanged(String key) {
+        currentPage = 1;
+        super.onSortChanged(key);
+    }
+
+    @Override
     protected void loadTableData() {
-        productService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize).thenAccept(result ->
+        productService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize, getSortKey()).thenAccept(result ->
                 SwingUtilities.invokeLater(() -> {
                     tableModel.setData(result.getItems());
                     if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());

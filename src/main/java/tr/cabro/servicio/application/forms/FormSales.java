@@ -1,10 +1,19 @@
 package tr.cabro.servicio.application.forms;
 
+import java.util.ArrayList;
+import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
+import tr.cabro.servicio.application.component.table.Lookups;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
+import tr.cabro.servicio.application.renderer.AmountChipCellRenderer;
+import tr.cabro.servicio.application.renderer.ChipCellRenderer;
+import tr.cabro.servicio.model.enums.BadgeColor;
+import tr.cabro.servicio.application.renderer.RowParts;
 import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.component.table.PaginationBar;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
+import tr.cabro.servicio.application.renderer.StatusDotCellRenderer;
 import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.system.AllForms;
 import tr.cabro.servicio.application.system.FormManager;
@@ -169,40 +178,53 @@ public class FormSales extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<Sale>> columns = Arrays.asList(
-                new ColumnDef<Sale>("Fiş", Sale.class, s -> s).alignment(SwingConstants.LEADING),
-                new ColumnDef<Sale>("Tarih", String.class,
-                        s -> s.getSaleDate() != null ? s.getSaleDate().format(DateFormats.dateTime()) : "-").alignment(SwingConstants.LEADING),
-                new ColumnDef<Sale>("Müşteri", Sale.class, s -> s).alignment(SwingConstants.LEADING),
+                new ColumnDef<Sale>("Fiş", Sale.class, s -> s).alignment(SwingConstants.LEADING).dateRangeFilter("s.sale_date"),
+                new ColumnDef<Sale>("Müşteri", Sale.class, s -> s).alignment(SwingConstants.LEADING)
+                        .lookupFilter("s.customer_id", Lookups.customers()),
                 new ColumnDef<Sale>("Toplam", BigDecimal.class, Sale::getTotalAmount).alignment(SwingConstants.TRAILING),
-                new ColumnDef<Sale>("Kalan", BigDecimal.class, FormSales::remaining).alignment(SwingConstants.TRAILING),
-                ColumnDef.<Sale>badge("Ödeme", PaymentStatus.class,
-                        s -> PaymentService.resolveStatus(s.getTotalAmount(), s.getTotalPaid()))
+                new ColumnDef<Sale>("Ödeme", Sale.class, s -> s).alignment(SwingConstants.TRAILING)
         );
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
-        tr.cabro.servicio.application.component.table.TableColumnConfigurator.applyColumnRenderers(table, columns);
+        TableColumnConfigurator.applyColumnRenderers(table, columns);
+        installHeaderFilters(columns);
 
-        table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Sale>(
+        // Fiş: ödeme durumunun rengiyle nokta, fiş no; altında zaman / hangi fişin iadesi.
+        table.getColumnModel().getColumn(0).setCellRenderer(new StatusDotCellRenderer<Sale>(
                 s -> (s.getType() == SaleType.RETURN ? "İADE-" : "SAT-") + s.getId(),
-                s -> s.getType() == SaleType.RETURN ? "SAT-" + s.getParentSaleId() + " iadesi" : "Satış fişi",
-                s -> s.getType() == SaleType.RETURN ? UIManager.getColor("Servicio.dangerColor") : null,
-                s -> null));
-        table.getColumnModel().getColumn(1).setCellRenderer(
-                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground", 8));
-        table.getColumnModel().getColumn(2).setCellRenderer(new MultiLineTableCellRenderer<Sale>(
+                s -> {
+                    String date = s.getSaleDate() != null ? RowParts.when(s.getSaleDate()) : "-";
+                    return s.getType() == SaleType.RETURN ? date + "  ·  SAT-" + s.getParentSaleId() + " iadesi" : date;
+                },
+                s -> PaymentService.resolveStatus(s.getTotalAmount(), s.getTotalPaid()).getBadgeColor()));
+        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Sale>(
                 s -> s.getCustomer() != null ? s.getCustomer().getFullName() : "Perakende",
                 s -> s.getCustomer() != null ? PhoneHelper.formatForDisplay(s.getCustomer().getPhoneNumber1()) : "Kayıtsız müşteri"));
-        table.getColumnModel().getColumn(3).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEGATIVE));
-        table.getColumnModel().getColumn(4).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.OWED));
+        table.getColumnModel().getColumn(2).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEGATIVE));
+        // Ödeme: üstte kalan tutar (yoksa soluk tire), altında ödeme durumu çipi.
+        table.getColumnModel().getColumn(3).setCellRenderer(new AmountChipCellRenderer<Sale>()
+                .amount(FormSales::remaining, RowParts.Money.OWED)
+                .zeroText("—")
+                .caption(s -> remaining(s).signum() > 0 ? "kalan" : null)
+                .captionColor(s -> "Servicio.warningColor")
+                .chip(s -> {
+                    PaymentStatus st = PaymentService.resolveStatus(s.getTotalAmount(), s.getTotalPaid());
+                    return ChipCellRenderer.badge(st.getDisplayName(), st.getBadgeColor());
+                }));
+
+        addSort("NEWEST", "En yeni");
+        addSort("OLDEST", "En eski");
+        addSort("AMOUNT", "Tutar (yüksekten)");
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(240);
+        table.getColumnModel().getColumn(0).setMinWidth(200);
+        table.getColumnModel().getColumn(1).setPreferredWidth(280);
+        table.getColumnModel().getColumn(1).setMinWidth(180);
+        table.getColumnModel().getColumn(2).setPreferredWidth(140);
+        table.getColumnModel().getColumn(3).setPreferredWidth(180);
 
         openRowsWith(tableModel, sale -> FormManager.showForm(new FormSale(sale)), -1);
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(150);
-        table.getColumnModel().getColumn(1).setPreferredWidth(150);
-        table.getColumnModel().getColumn(2).setPreferredWidth(260);
-        table.getColumnModel().getColumn(3).setPreferredWidth(130);
-        table.getColumnModel().getColumn(4).setPreferredWidth(120);
-        table.getColumnModel().getColumn(5).setPreferredWidth(140);
     }
 
     /** Satış fişinde tahsil edilmemiş tutar; iadelerde kalan kavramı yok. */
@@ -219,8 +241,14 @@ public class FormSales extends AbstractTableForm {
     protected String getEmptyStateDescription() { return "POS ekranından tamamlanan satışlar burada listelenir."; }
 
     @Override
+    protected void onSortChanged(String key) {
+        currentPage = 1;
+        super.onSortChanged(key);
+    }
+
+    @Override
     protected void loadTableData() {
-        saleService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize).thenAccept(result ->
+        saleService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize, getSortKey()).thenAccept(result ->
                 SwingUtilities.invokeLater(() -> {
                     tableModel.setData(result.getItems());
                     if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());

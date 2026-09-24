@@ -80,6 +80,14 @@ public interface SaleRepository extends SqlObject {
 
     default PageResult<Sale> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                  int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, page, pageSize, null);
+    }
+
+    /** Sıralama anahtarları ({@link #SORTS}) sabit bir beyaz listedir; SQL parçası kullanıcıdan gelmez. */
+    java.util.Map<String, String> SORTS = java.util.Map.of("NEWEST", "s.sale_date DESC", "OLDEST", "s.sale_date ASC", "AMOUNT", "s.total_amount DESC");
+
+    default PageResult<Sale> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                 int page, int pageSize, String sortKey) {
         SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
         boolean searching = searchTerm != null && !searchTerm.isBlank();
         String whereClause = "WHERE s.is_deleted = 0" + where.getWhereFragment() + (searching ? FILTER_SEARCH : "");
@@ -91,7 +99,7 @@ public interface SaleRepository extends SqlObject {
         params.put("offset", (page - 1) * pageSize);
 
         List<Sale> items = getHandle().createQuery(SEARCH_SELECT + SEARCH_FROM + whereClause
-                        + " ORDER BY s.sale_date DESC LIMIT :limit OFFSET :offset")
+                        + " ORDER BY " + SORTS.getOrDefault(sortKey == null ? "NEWEST" : sortKey, SORTS.get("NEWEST")) + " LIMIT :limit OFFSET :offset")
                 .bindMap(params).mapToBean(Sale.class).list();
         long total = getHandle().createQuery("SELECT COUNT(*) " + SEARCH_FROM + whereClause)
                 .bindMap(countParams).mapTo(Long.class).one();

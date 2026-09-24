@@ -140,6 +140,14 @@ public class ProductService {
         });
     }
 
+    public CompletableFuture<PageResult<Product>> searchFilteredPaged(String searchTerm,
+            java.util.Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize, String sortKey) {
+        return CompletableFuture.supplyAsync(() -> {
+            PageResult<Product> r = productRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey);
+            return new PageResult<>(hydrateProducts(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
+        });
+    }
+
     public CompletableFuture<PartStatsDto> getStats() {
         return CompletableFuture.supplyAsync(productRepository::getStats);
     }

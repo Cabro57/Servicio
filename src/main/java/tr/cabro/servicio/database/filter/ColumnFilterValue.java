@@ -28,6 +28,9 @@ public class ColumnFilterValue {
      */
     private String condition;
 
+    /** LOOKUP filtresi için seçilen kayıt kimlikleri (Long olduğundan SQL'e güvenle gömülür). */
+    private Set<Long> ids;
+
     public static ColumnFilterValue condition(String trustedSql) {
         ColumnFilterValue v = new ColumnFilterValue();
         v.condition = trustedSql;
@@ -41,7 +44,7 @@ public class ColumnFilterValue {
     }
 
     public boolean isActive() {
-        return (enumValues != null && !enumValues.isEmpty()) || dateFrom != null || dateTo != null
+        return (enumValues != null && !enumValues.isEmpty()) || (ids != null && !ids.isEmpty()) || dateFrom != null || dateTo != null
                 || (condition != null && !condition.isBlank());
     }
 }

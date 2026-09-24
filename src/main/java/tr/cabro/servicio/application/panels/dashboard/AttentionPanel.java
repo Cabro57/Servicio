@@ -8,6 +8,9 @@ import tr.cabro.servicio.application.forms.FormCustomer;
 import tr.cabro.servicio.application.forms.FormWorkOrder;
 import tr.cabro.servicio.application.forms.FormWorkOrders;
 import tr.cabro.servicio.application.panels.CollectionPanel;
+import tr.cabro.servicio.application.component.table.ViewTabs;
+import tr.cabro.servicio.application.utils.ServiceBadges;
+import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.application.system.AllForms;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.Ikon;
@@ -45,10 +48,8 @@ public class AttentionPanel extends JPanel {
 
     private enum Tab { READY, DEBT, WAITING }
 
-    private final JToggleButton tabReady = tab("Teslime hazır");
-    private final JToggleButton tabDebt = tab("Borçlu");
-    private final JToggleButton tabWaiting = tab("Parça bekliyor");
-    private final JPanel list = new JPanel(new MigLayout("insets 0, fillx, wrap, gap 0", "[fill]", ""));
+    private final ViewTabs tabs = new ViewTabs();
+    private final JPanel list = new JPanel(new MigLayout("insets 0, fillx, wrap, gapy 4", "[fill]", ""));
     private final JButton btnSeeAll;
 
     private Tab current;
@@ -69,17 +70,10 @@ public class AttentionPanel extends JPanel {
 
         JPanel card = DashboardUi.card("insets 14 16 10 16, fillx, wrap", "[fill]", "[]6[]");
 
-        JToolBar tabs = new JToolBar();
-        tabs.setFloatable(false);
-        tabs.putClientProperty(FlatClientProperties.STYLE, "background: null");
-        ButtonGroup group = new ButtonGroup();
-        for (JToggleButton b : new JToggleButton[]{tabReady, tabDebt, tabWaiting}) {
-            group.add(b);
-            tabs.add(b);
-        }
-        tabReady.addActionListener(e -> select(Tab.READY, true));
-        tabDebt.addActionListener(e -> select(Tab.DEBT, true));
-        tabWaiting.addActionListener(e -> select(Tab.WAITING, true));
+        tabs.addView(Tab.READY.name(), "Teslime hazır");
+        tabs.addView(Tab.DEBT.name(), "Borçlu");
+        tabs.addView(Tab.WAITING.name(), "Parça bekliyor");
+        tabs.setOnChange(key -> select(Tab.valueOf(key), true));
 
         btnSeeAll = DashboardUi.link("Tümünü gör", this::openAll);
 
@@ -94,12 +88,6 @@ public class AttentionPanel extends JPanel {
         list.add(DashboardUi.emptyState("Yükleniyor…", " "));
         card.add(list);
         add(card);
-    }
-
-    private static JToggleButton tab(String text) {
-        JToggleButton b = new JToggleButton(text);
-        b.putClientProperty(FlatClientProperties.STYLE, "toolbar.margin: 3,8,3,8; arc: 10");
-        return b;
     }
 
     // ── Veri ────────────────────────────────────────────────────────────────
@@ -122,9 +110,9 @@ public class AttentionPanel extends JPanel {
             waiting = waitingF.join();
             debt = debtF.join();
             debtCustomers = customersF.join();
-            tabReady.setText("Teslime hazır  " + ready.getTotalItems());
-            tabDebt.setText("Borçlu  " + debt.getTotalItems());
-            tabWaiting.setText("Parça bekliyor  " + waiting.getTotalItems());
+            tabs.setCount(Tab.READY.name(), ready.getTotalItems());
+            tabs.setCount(Tab.DEBT.name(), debt.getTotalItems());
+            tabs.setCount(Tab.WAITING.name(), waiting.getTotalItems());
             // Kullanıcı sekme seçmediyse ilk dolu kuyruk öne gelir: önce teslim, sonra para, sonra tedarik.
             Tab target = current;
             if (!userPickedTab || target == null) {
@@ -154,9 +142,7 @@ public class AttentionPanel extends JPanel {
     private void select(Tab tab, boolean byUser) {
         if (byUser) userPickedTab = true;
         current = tab;
-        tabReady.setSelected(tab == Tab.READY);
-        tabDebt.setSelected(tab == Tab.DEBT);
-        tabWaiting.setSelected(tab == Tab.WAITING);
+        tabs.select(tab.name(), false);
         render();
     }
 
@@ -189,77 +175,54 @@ public class AttentionPanel extends JPanel {
 
     // ── Satırlar ───────────────────────────────────────────────────────────
 
+    /**
+     * Teslime hazır ve parça bekleyen satırı: durum rengiyle nokta, müşteri; altında cihaz, servis no ve
+     * durumun süresi (hazır 3 günü, parça beklerken 7 günü aşınca uyarı rengi). Sağda kalan tutar ve ödeme çipi.
+     */
     private JButton workOrderRow(WorkOrder wo) {
-        JButton row = DashboardUi.rowButton();
-        row.setLayout(new MigLayout("insets 0, fillx, gap 2 1", "[grow,fill]12[right]", "[][]"));
-
         String customer = wo.getCustomer() != null ? wo.getCustomer().getFullName() : "Müşteri #" + wo.getCustomerId();
         String device = wo.getDevice() != null ? wo.getDevice().getDisplayName() : "Cihaz";
-        JLabel name = new JLabel(customer);
-        name.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        row.add(name, "wmin 0");
+        boolean ready = current == Tab.READY;
+
+        String since = ServiceBadges.sinceText(wo, ready ? "hazır" : "bekliyor");
+        String sub = device + "  ·  SRV-" + wo.getId() + (since.isEmpty() ? "" : "  ·  " + since);
+        boolean lingering = ServiceBadges.daysInStatus(wo) >= (ready ? 3 : 7);
 
         BigDecimal remaining = wo.getRemainingAmount();
         boolean owes = remaining != null && remaining.signum() > 0;
-        JLabel amount = new JLabel(owes ? Format.formatPrice(remaining) + " kalan" : "Ödendi");
-        amount.putClientProperty(FlatClientProperties.STYLE, owes
-                ? "font: bold; foreground: $Servicio.dangerColor"
-                : "foreground: $Label.disabledForeground");
-        row.add(amount, "wrap");
+        JComponent right = RowKit.money(owes ? Format.formatPrice(remaining) : null, null,
+                null, ServiceBadges.payment(wo));
 
-        String since = sinceText(wo, current == Tab.READY ? "hazır" : "bekliyor");
-        row.add(DashboardUi.small(device + "  ·  SRV-" + wo.getId() + (since.isEmpty() ? "" : "  ·  " + since)), "span 2");
-
+        JButton row = RowKit.row(ready ? BadgeColor.PURPLE : BadgeColor.YELLOW, customer, sub,
+                lingering ? "Label.foreground" : null, right);
         row.getAccessibleContext().setAccessibleName(customer + ", " + device);
         row.addActionListener(e -> FormManager.showForm(new FormWorkOrder(wo)));
         return row;
     }
 
+    /** Borçlu müşteri satırı: sarı nokta (bize borçlu), ad ve telefon; sağda bakiye ve satır içinde "Tahsilat" düğmesi. */
     private JComponent debtRow(CustomerBalanceDto b) {
         Customer c = debtCustomers.get(b.getCustomerId());
         String nameText = c != null ? c.getFullName() : "Müşteri #" + b.getCustomerId();
-
-        JButton row = DashboardUi.rowButton();
-        row.setLayout(new MigLayout("insets 0, fillx, gap 2 1", "[grow,fill]12[right]", "[][]"));
-        JLabel name = new JLabel(nameText);
-        name.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        row.add(name, "wmin 0");
-        JLabel amount = new JLabel(Format.formatPrice(b.getBalance()));
-        amount.putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: $Servicio.dangerColor");
-        row.add(amount, "wrap");
         String phone = c != null && c.getPhoneNumber1() != null && !c.getPhoneNumber1().isEmpty()
                 ? PhoneHelper.formatForDisplay(c.getPhoneNumber1()) : "Telefon kayıtlı değil";
-        row.add(DashboardUi.small(phone), "span 2");
+
+        JButton collect = new JButton("Tahsilat", new Ikon("icons/hand-coins.svg", 14, "Label.foreground"));
+        collect.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10");
+        collect.setEnabled(c != null);
+        collect.addActionListener(e -> CollectionPanel.open(this, c, onMoneyChanged));
+
+        JPanel right = new JPanel(new MigLayout("insets 0, gap 14", "[right][]", "[center]"));
+        right.setOpaque(false);
+        right.add(RowKit.money(Format.formatPrice(b.getBalance()), null, null, null));
+        right.add(collect);
+
+        JButton row = RowKit.row(BadgeColor.YELLOW, nameText, phone, null, right);
         row.getAccessibleContext().setAccessibleName(nameText + ", borç " + Format.formatPrice(b.getBalance()));
         row.addActionListener(e -> {
             if (c != null) FormManager.showForm(new FormCustomer(c));
         });
-
-        JButton collect = new JButton("Tahsilat", new Ikon("icons/hand-coins.svg", 14, "Label.foreground"));
-        collect.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
-        collect.setEnabled(c != null);
-        collect.addActionListener(e -> CollectionPanel.open(this, c, onMoneyChanged));
-
-        JPanel wrap = new JPanel(new MigLayout("insets 0, fillx, gap 8", "[grow,fill][]", "[center]"));
-        wrap.setOpaque(false);
-        wrap.add(row);
-        wrap.add(collect);
-        return wrap;
-    }
-
-    /**
-     * Durumun ne zamandan beri sürdüğü. updated_at her düzenlemede değiştiği için kullanılmaz;
-     * durumun değiştiği an bilinmiyorsa (V23 öncesi kayıtlar) cihazın geliş tarihinden
-     * "gündür serviste" gösterilir. Gün, saat farkı değil takvim günü olarak sayılır.
-     */
-    private static String sinceText(WorkOrder wo, String verb) {
-        LocalDateTime changed = wo.getStatusChangedAt();
-        LocalDateTime time = changed != null ? changed : wo.getCreatedAt();
-        if (time == null) return "";
-        if (changed == null) verb = "serviste";
-        long days = ChronoUnit.DAYS.between(time.toLocalDate(), LocalDate.now());
-        if (days <= 0) return "bugün " + (changed != null ? verb : "geldi");
-        return days + " gündür " + verb;
+        return row;
     }
 
     private void openAll() {

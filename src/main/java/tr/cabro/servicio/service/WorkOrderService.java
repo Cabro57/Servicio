@@ -348,8 +348,14 @@ public class WorkOrderService {
     /** Tablo başlığı filtresi (durum/tarih vb.) + serbest metin arama — sunucu tarafında, tüm kayıtlar üzerinde. */
     public CompletableFuture<PageResult<WorkOrder>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                         int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, page, pageSize, WorkOrderRepository.Sort.NEWEST, WorkOrderRepository.PayFilter.ALL);
+    }
+
+    public CompletableFuture<PageResult<WorkOrder>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                        int page, int pageSize, WorkOrderRepository.Sort sort,
+                                                                        WorkOrderRepository.PayFilter pay) {
         return CompletableFuture.supplyAsync(() -> {
-            PageResult<WorkOrder> result = workOrderRepository.searchFilteredPaged(searchTerm, filters, page, pageSize);
+            PageResult<WorkOrder> result = workOrderRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sort, pay);
             hydrateServices(result.getItems());
             return result;
         });

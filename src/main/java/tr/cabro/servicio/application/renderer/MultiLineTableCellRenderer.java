@@ -69,6 +69,13 @@ public class MultiLineTableCellRenderer<T> extends JPanel implements TableCellRe
         return this;
     }
 
+    /** Her iki satırı da sağa yaslar (sağa yaslı para sütunlarının iki satırlı hücreleri için). */
+    public MultiLineTableCellRenderer<T> trailing() {
+        topLabel.setHorizontalAlignment(SwingConstants.TRAILING);
+        bottomLabel.setHorizontalAlignment(SwingConstants.TRAILING);
+        return this;
+    }
+
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
         // Arka plan her durumda (değer null olsa da) ayarlanmalı, yoksa önceki satırın rengi kalır

@@ -377,6 +377,14 @@ public class SaleService {
         });
     }
 
+    public CompletableFuture<PageResult<Sale>> searchFilteredPaged(String searchTerm,
+            Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize, String sortKey) {
+        return CompletableFuture.supplyAsync(() -> {
+            PageResult<Sale> r = saleRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey);
+            return new PageResult<>(hydrateSales(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
+        });
+    }
+
     /** Süzgeçle eşleşen fişlerin net toplamı (liste özeti için). */
     public CompletableFuture<BigDecimal> sumFiltered(Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters) {
         return CompletableFuture.supplyAsync(() -> saleRepository.sumFiltered(filters));
@@ -399,10 +407,16 @@ public class SaleService {
      * içindeki satış/iade adedi.
      */
     public CompletableFuture<tr.cabro.servicio.model.dto.DailyCashReportDto> getDailyCashReport(java.time.LocalDate date) {
-        java.time.LocalDateTime start = date.atStartOfDay();
-        java.time.LocalDateTime end = start.plusDays(1);
+        return getCashReport(date, date);
+    }
 
-        return paymentService.getDailyBreakdown(date).thenApply(breakdown -> {
+    /** Kasa raporunun tarih aralığı sürümü; {@code from} ve {@code to} günleri dahil ({@code date} = {@code from}). */
+    public CompletableFuture<tr.cabro.servicio.model.dto.DailyCashReportDto> getCashReport(java.time.LocalDate from, java.time.LocalDate to) {
+        java.time.LocalDate date = from;
+        java.time.LocalDateTime start = from.atStartOfDay();
+        java.time.LocalDateTime end = to.plusDays(1).atStartOfDay();
+
+        return paymentService.getBreakdown(from, to).thenApply(breakdown -> {
             long saleCount = saleRepository.countByTypeForDateRange(SaleType.SALE, start, end);
             long returnCount = saleRepository.countByTypeForDateRange(SaleType.RETURN, start, end);
             BigDecimal total = breakdown.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);

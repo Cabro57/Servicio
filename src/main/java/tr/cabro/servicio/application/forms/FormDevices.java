@@ -1,5 +1,15 @@
 package tr.cabro.servicio.application.forms;
 
+import java.util.ArrayList;
+import tr.cabro.servicio.util.PhoneHelper;
+import tr.cabro.servicio.application.component.table.Lookups;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
+import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
+import tr.cabro.servicio.application.renderer.AmountChipCellRenderer;
+import tr.cabro.servicio.application.renderer.ChipCellRenderer;
+import tr.cabro.servicio.application.renderer.StatusDotCellRenderer;
+import tr.cabro.servicio.model.enums.BadgeColor;
+import tr.cabro.servicio.application.renderer.RowParts;
 import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.model.dictionary.DeviceType;
@@ -144,7 +154,8 @@ public class FormDevices extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<Device>> columns = Arrays.asList(
-                new ColumnDef<Device>("Cihaz", Device.class, d -> d).alignment(SwingConstants.LEADING),
+                new ColumnDef<Device>("Cihaz", Device.class, d -> d).alignment(SwingConstants.LEADING)
+                        .lookupFilter("d.device_type_id", Lookups.deviceTypes()),
                 new ColumnDef<Device>("Seri No / IMEI", String.class, d -> d.getSerialNo() != null && !d.getSerialNo().isBlank() ? d.getSerialNo() : "—").alignment(SwingConstants.LEADING),
                 new ColumnDef<Device>("Aksesuar", String.class, d -> d.getAccessory() != null && !d.getAccessory().isBlank() ? d.getAccessory() : "—").alignment(SwingConstants.LEADING),
                 new ColumnDef<Device>("Kayıt", String.class, d -> Format.formatDate(d.getCreatedAt()))
@@ -156,6 +167,16 @@ public class FormDevices extends AbstractTableForm {
         TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
         headerFilters = installHeaderFilters(columns);
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(320);
+        table.getColumnModel().getColumn(0).setMinWidth(240);
+        table.getColumnModel().getColumn(1).setPreferredWidth(220);
+        table.getColumnModel().getColumn(2).setPreferredWidth(220);
+        table.getColumnModel().getColumn(3).setPreferredWidth(120);
+
+        addSort("NEWEST", "En yeni");
+        addSort("OLDEST", "En eski");
+        addSort("NAME", "Marka / model (A-Z)");
     }
 
     private void configureTableColumns() {
@@ -183,12 +204,6 @@ public class FormDevices extends AbstractTableForm {
             public void onDelete(Device d) {}
         });
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(300);
-        table.getColumnModel().getColumn(1).setPreferredWidth(200);
-        table.getColumnModel().getColumn(2).setPreferredWidth(200);
-        table.getColumnModel().getColumn(3).setPreferredWidth(110);
-        table.getColumnModel().getColumn(4).setMaxWidth(96);
-        table.getColumnModel().getColumn(4).setMinWidth(110);
     }
 
     @Override
@@ -198,8 +213,14 @@ public class FormDevices extends AbstractTableForm {
     protected String getEmptyStateDescription() { return "Servise gelen cihazlar kaydedildikçe burada toplanır."; }
 
     @Override
+    protected void onSortChanged(String key) {
+        currentPage = 1;
+        super.onSortChanged(key);
+    }
+
+    @Override
     protected void loadTableData() {
-        deviceService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize).thenAccept(result ->
+        deviceService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize, getSortKey()).thenAccept(result ->
                 SwingUtilities.invokeLater(() -> {
                     tableModel.setData(result.getItems());
                     if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());

@@ -1,5 +1,16 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.component.table.Lookups;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
+import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
+import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
+import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
+import tr.cabro.servicio.application.renderer.AmountChipCellRenderer;
+import tr.cabro.servicio.application.renderer.ChipCellRenderer;
+import tr.cabro.servicio.application.renderer.StatusDotCellRenderer;
+import java.util.ArrayList;
+import tr.cabro.servicio.model.enums.BadgeColor;
+import tr.cabro.servicio.application.renderer.RowParts;
 import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.application.renderer.*;
 import raven.modal.Toast;
@@ -165,23 +176,34 @@ public class FormCustomers extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<Customer>> columns = Arrays.asList(
-                new ColumnDef<Customer>("ID", String.class, c -> String.format("C-%03d", c.getId())).alignment(SwingConstants.LEADING),
-                new ColumnDef<Customer>("Müşteri Adı", Customer.class, c -> c).alignment(SwingConstants.LEADING),
+                new ColumnDef<Customer>("Müşteri", Customer.class, c -> c).alignment(SwingConstants.LEADING),
                 new ColumnDef<Customer>("İletişim", Customer.class, c -> c).alignment(SwingConstants.LEADING),
                 ColumnDef.<Customer>badge("Tip", CustomerType.class, Customer::getType).enumFilter("c.customer_type", CustomerType.class),
-                new ColumnDef<Customer>("Cihaz Sayısı", Integer.class, Customer::getDeviceCount).alignment(SwingConstants.CENTER),
+                new ColumnDef<Customer>("Cihaz", Integer.class, Customer::getDeviceCount).alignment(SwingConstants.CENTER),
                 ColumnDef.<Customer>currency("Toplam Harcama", Customer::getSpent),
-                new ColumnDef<Customer>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(DateFormats.dateTime()) : "-")
+                new ColumnDef<Customer>("Kayıt", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(DateFormats.dateTime()) : "-")
                         .alignment(SwingConstants.LEADING).dateRangeFilter("c.created_at"),
                 ColumnDef.<Customer>actionColumn("")
         );
-        // Toplam harcama bir anlam (borç/alacak) taşımaz: kalın, nötr.
-
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
         TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
         headerFilters = installHeaderFilters(columns);
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(260);
+        table.getColumnModel().getColumn(0).setMinWidth(200);
+        table.getColumnModel().getColumn(1).setPreferredWidth(200);
+        table.getColumnModel().getColumn(1).setMinWidth(160);
+        table.getColumnModel().getColumn(2).setPreferredWidth(110);
+        table.getColumnModel().getColumn(3).setPreferredWidth(90);
+        table.getColumnModel().getColumn(4).setPreferredWidth(140);
+        table.getColumnModel().getColumn(5).setPreferredWidth(150);
+
+        addSort("NEWEST", "En yeni");
+        addSort("NAME", "Ad (A-Z)");
+        addSort("SPENT", "En çok harcama");
+        addSort("DEVICES", "Cihaz sayısı");
     }
 
     @Override
@@ -191,8 +213,14 @@ public class FormCustomers extends AbstractTableForm {
     protected String getEmptyStateDescription() { return "Servis kaydı açabilmek için önce müşteri eklemelisiniz."; }
 
     @Override
+    protected void onSortChanged(String key) {
+        currentPage = 1;
+        super.onSortChanged(key);
+    }
+
+    @Override
     protected void loadTableData() {
-        customerService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize).thenAccept(result -> {
+        customerService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize, getSortKey()).thenAccept(result -> {
             SwingUtilities.invokeLater(() -> {
                 tableModel.setData(result.getItems());
                 if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
@@ -203,37 +231,26 @@ public class FormCustomers extends AbstractTableForm {
     }
 
     private void configureTableColumns() {
-        // Not: hizalama ColumnDef.alignment(...) üzerinden geliyor; Tip/Toplam Harcama/İşlem
-        // kolonlarının renderer'ı TableColumnConfigurator.applyColumnRenderers(...) ile atandı.
-
-        table.getColumnModel().getColumn(0).setCellRenderer(
-                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground", 12));
-
-        // Ad kalın, altında firma/sorun bilgisi; tür ayrımını Tip rozeti taşır (satır başı ikon yok).
-        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Customer>(
+        // Müşteri: sorunluysa kırmızı nokta; altında müşteri no · firma.
+        table.getColumnModel().getColumn(0).setCellRenderer(new StatusDotCellRenderer<Customer>(
                 Customer::getFullName,
                 c -> {
-                    String firm = c.getBusinessName() != null && !c.getBusinessName().isBlank() ? c.getBusinessName() : null;
-                    if (c.isProblematic()) return firm != null ? firm + "  ·  sorunlu müşteri" : "Sorunlu müşteri";
-                    return firm != null ? firm : "";
+                    List<String> bits = new ArrayList<>();
+                    bits.add(String.format("C-%03d", c.getId()));
+                    if (c.getBusinessName() != null && !c.getBusinessName().isBlank()) bits.add(c.getBusinessName());
+                    if (c.isProblematic()) bits.add("sorunlu müşteri");
+                    return String.join("  ·  ", bits);
                 },
-                c -> null,
-                c -> c.isProblematic() ? UIManager.getColor("Servicio.dangerColor") : null));
-
-        table.getColumnModel().getColumn(2).setCellRenderer(
-                new MultiLineTableCellRenderer<Customer>(
-                        c -> PhoneHelper.formatForDisplay(c.getPhoneNumber1()),
-                        c -> c.getEmail() != null ? c.getEmail() : ""
-                ).plainTop()
-        );
-
-        table.getColumnModel().getColumn(4).setCellRenderer(StyledLabelCellRenderer.of(SwingConstants.CENTER, null));
-        table.getColumnModel().getColumn(5).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
-
-        table.getColumnModel().getColumn(6).setCellRenderer(
+                c -> c.isProblematic() ? BadgeColor.RED : null));
+        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Customer>(
+                c -> PhoneHelper.formatForDisplay(c.getPhoneNumber1()),
+                c -> c.getEmail() != null ? c.getEmail() : "").plainTop());
+        table.getColumnModel().getColumn(3).setCellRenderer(StyledLabelCellRenderer.of(SwingConstants.CENTER, null));
+        table.getColumnModel().getColumn(4).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
+        table.getColumnModel().getColumn(5).setCellRenderer(
                 StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: -1", 8));
 
-        TableActionColumnSupport.install(table, 7, tableModel, new TableActionColumnSupport.Handlers<Customer>() {
+        TableActionColumnSupport.install(table, 6, tableModel, new TableActionColumnSupport.Handlers<Customer>() {
             @Override
             public void onView(Customer c) {
                 customerService.get(c.getId()).thenAccept(response -> {
@@ -262,15 +279,6 @@ public class FormCustomers extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(0).setMaxWidth(80);
-        table.getColumnModel().getColumn(1).setPreferredWidth(220);
-        table.getColumnModel().getColumn(2).setPreferredWidth(180);
-        table.getColumnModel().getColumn(3).setPreferredWidth(110);
-        table.getColumnModel().getColumn(4).setPreferredWidth(100);
-        table.getColumnModel().getColumn(5).setPreferredWidth(130);
-        table.getColumnModel().getColumn(6).setPreferredWidth(150);
-        table.getColumnModel().getColumn(7).setMaxWidth(96);
-        table.getColumnModel().getColumn(7).setMinWidth(110);
     }
 
     // --- 4. MODAL / PENCERE İŞLEMLERİ ---

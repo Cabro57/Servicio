@@ -1,6 +1,8 @@
 package tr.cabro.servicio.application.component.detail;
 
+import tr.cabro.servicio.application.component.table.ListTabBar;
 import tr.cabro.servicio.application.component.table.ListTable;
+import tr.cabro.servicio.application.component.table.ViewTabs;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -32,6 +34,7 @@ public class DetailListSection<T> extends JPanel {
     private final ListTable table;
     private final TableStatePanel statePanel;
     private final JPanel body = new JPanel(new CardLayout());
+    private JPanel header;
     private final JPanel headerActions = new JPanel(new MigLayout("insets 0, gap 8", "", "[]"));
 
     private final String emptyTitle;
@@ -56,7 +59,7 @@ public class DetailListSection<T> extends JPanel {
         lblTitle.putClientProperty(FlatClientProperties.STYLE, compact ? "font: bold +1" : "font: $h3.font");
         headerActions.setOpaque(false);
 
-        JPanel header = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "[]"));
+        header = new JPanel(new MigLayout("insets 0, fillx, hidemode 3", "[grow][]", "[]"));
         header.setOpaque(false);
         header.add(lblTitle, "wmin 0");
         header.add(headerActions);
@@ -103,6 +106,12 @@ public class DetailListSection<T> extends JPanel {
     /** Başlığın sağına bölüme özgü bir kontrol (buton, özet etiketi) ekler. */
     public void addHeaderAction(JComponent component) {
         headerActions.add(component);
+    }
+
+    /** Sekmeleri başlığın altına, hairline'lı ortak sekme çubuğu olarak koyar (liste sayfalarıyla aynı görünüm). */
+    public void setTabs(ViewTabs tabs) {
+        header.add(new ListTabBar(tabs), "newline, span, growx, gaptop 6");
+        header.revalidate();
     }
 
     /** Boş durumda gösterilecek davet butonu — ör. "Yeni servis kaydı". */

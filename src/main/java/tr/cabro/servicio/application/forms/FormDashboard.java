@@ -4,7 +4,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.QuickActionButton;
-import tr.cabro.servicio.application.panels.ActiveServiceTable;
+import tr.cabro.servicio.application.panels.dashboard.ActiveServicesPanel;
 import tr.cabro.servicio.application.panels.dashboard.AttentionPanel;
 import tr.cabro.servicio.application.panels.dashboard.CashTodayPanel;
 import tr.cabro.servicio.application.panels.dashboard.DistributionPanel;
@@ -55,7 +55,7 @@ public class FormDashboard extends Form {
     private JLabel lblDate;
     private PipelinePanel pipelinePanel;
     private AttentionPanel attentionPanel;
-    private ActiveServiceTable activeServiceTable;
+    private ActiveServicesPanel activeServiceTable;
     private DistributionPanel distributionPanel;
     private CashTodayPanel cashTodayPanel;
     private MovementsPanel movementsPanel;
@@ -132,7 +132,7 @@ public class FormDashboard extends Form {
             loadData();
             FormManager.refreshStatusBar();
         });
-        activeServiceTable = new ActiveServiceTable(ServiceManager.getWorkOrderService());
+        activeServiceTable = new ActiveServicesPanel(ServiceManager.getWorkOrderService());
         distributionPanel = new DistributionPanel();
         left.add(pipelinePanel);
         left.add(attentionPanel);
@@ -171,7 +171,7 @@ public class FormDashboard extends Form {
     // ── Veri ────────────────────────────────────────────────────────────────
 
     private void loadData() {
-        // ActiveServiceTable ilk sayfasını kurucuda kendisi yükler; tekrar yükleme yalnızca sonraki yenilemelerde.
+        // ActiveServicesPanel ilk sayfasını kurucuda kendisi yükler; tekrar yükleme yalnızca sonraki yenilemelerde.
         if (loadedOnce) activeServiceTable.loadPage(1);
         loadedOnce = true;
         lblDate.setText(LocalDate.now().format(

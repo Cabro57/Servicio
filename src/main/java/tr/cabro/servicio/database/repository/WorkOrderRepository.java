@@ -167,10 +167,55 @@ public interface WorkOrderRepository extends SqlObject {
     // kullanıcıdan gelmez; değerler her zaman bind parametresi (bkz. SqlWhereBuilder).
     // =========================================================================
 
+    /** Servis listesinin sıralama seçenekleri; SQL parçası sabittir, kullanıcıdan gelmez. */
+    enum Sort {
+        NEWEST("s.created_at DESC"),
+        OLDEST("s.created_at ASC"),
+        LONGEST_IN_STATUS("COALESCE(s.status_changed_at, s.created_at) ASC"),
+        RECENT_ACTIVITY("COALESCE(s.status_changed_at, s.updated_at, s.created_at) DESC"),
+        REMAINING_DESC("(SELECT COALESCE(vb.remaining_amount, 0) FROM v_document_balances vb "
+                + "WHERE vb.document_type = 'WORK_ORDER' AND vb.document_id = s.id) DESC, s.created_at DESC"),
+        CUSTOMER("c.first_name COLLATE NOCASE ASC, c.last_name COLLATE NOCASE ASC, s.created_at DESC");
+
+        final String orderBy;
+
+        Sort(String orderBy) {
+            this.orderBy = orderBy;
+        }
+    }
+
+    /** Ödeme durumu süzgeci; belge toplamı/kalanı v_document_balances'tan gelir (kalemi olmayan iş = ücret yok). */
+    enum PayFilter {
+        ALL(null),
+        PAID("(bal.total > 0 AND bal.remaining <= 0)"),
+        PARTIAL("(bal.total > 0 AND bal.remaining > 0 AND bal.remaining < bal.total)"),
+        UNPAID("(bal.total > 0 AND bal.remaining >= bal.total)"),
+        FREE("(bal.total = 0)");
+
+        final String sql;
+
+        PayFilter(String sql) {
+            this.sql = sql;
+        }
+    }
+
     default PageResult<WorkOrder> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                        int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, page, pageSize, Sort.NEWEST, PayFilter.ALL);
+    }
+
+    default PageResult<WorkOrder> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                       int page, int pageSize, Sort sort, PayFilter pay) {
         SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
+        String from = SEARCH_FROM;
         String whereClause = SEARCH_WHERE + where.getWhereFragment();
+        if (pay != null && pay.sql != null) {
+            from += "LEFT JOIN (SELECT document_id, COALESCE(total_amount, 0) AS total, COALESCE(remaining_amount, 0) AS remaining "
+                    + "FROM v_document_balances WHERE document_type = 'WORK_ORDER') bal ON bal.document_id = s.id ";
+            // Kalemi olmayan iş görünümde hiç yer almayabilir: bal.* NULL ise toplam 0 sayılır.
+            String fixed = pay.sql.replace("bal.total", "COALESCE(bal.total, 0)").replace("bal.remaining", "COALESCE(bal.remaining, 0)");
+            whereClause += "AND " + fixed + " ";
+        }
 
         Map<String, Object> countParams = new HashMap<>(where.getParams());
         countParams.put("search", (searchTerm != null && !searchTerm.isBlank()) ? "%" + searchTerm.trim() + "%" : "%");
@@ -179,8 +224,8 @@ public interface WorkOrderRepository extends SqlObject {
         params.put("limit", pageSize);
         params.put("offset", (page - 1) * pageSize);
 
-        String listSql = SEARCH_SELECT + SEARCH_FROM + whereClause + " ORDER BY s.created_at DESC LIMIT :limit OFFSET :offset";
-        String countSql = "SELECT COUNT(*) " + SEARCH_FROM + whereClause;
+        String listSql = SEARCH_SELECT + from + whereClause + " ORDER BY " + (sort != null ? sort : Sort.NEWEST).orderBy + " LIMIT :limit OFFSET :offset";
+        String countSql = "SELECT COUNT(*) " + from + whereClause;
 
         List<WorkOrder> items = getHandle().createQuery(listSql).bindMap(params).map(BeanMapper.of(WorkOrder.class)).list();
         long total = getHandle().createQuery(countSql).bindMap(countParams).mapTo(Long.class).one();

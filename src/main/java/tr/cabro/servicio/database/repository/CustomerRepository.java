@@ -119,6 +119,14 @@ public interface CustomerRepository extends SqlObject {
 
     default PageResult<Customer> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                       int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, page, pageSize, null);
+    }
+
+    /** Sıralama anahtarları ({@link #SORTS}) sabit bir beyaz listedir; SQL parçası kullanıcıdan gelmez. */
+    java.util.Map<String, String> SORTS = java.util.Map.of("NEWEST", "c.created_at DESC", "NAME", "c.first_name COLLATE NOCASE ASC, c.last_name COLLATE NOCASE ASC", "SPENT", "spent DESC", "DEVICES", "device_count DESC");
+
+    default PageResult<Customer> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                      int page, int pageSize, String sortKey) {
         SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
         String likeTerm = (searchTerm != null && !searchTerm.isBlank()) ? "%" + searchTerm.trim() + "%" : null;
 
@@ -146,7 +154,7 @@ public interface CustomerRepository extends SqlObject {
                 " GROUP BY c.id, c.customer_type, c.business_name, c.first_name, c.last_name, c.identity_no, " +
                 "c.tax_number, c.tax_office, c.phone_number_1, c.phone_number_2, c.email, c.address, c.note, " +
                 "c.is_problematic, c.created_at, c.updated_at " +
-                "ORDER BY c.created_at DESC LIMIT :limit OFFSET :offset";
+                "ORDER BY " + SORTS.getOrDefault(sortKey == null ? "NEWEST" : sortKey, SORTS.get("NEWEST")) + " LIMIT :limit OFFSET :offset";
 
         String countSql = "SELECT COUNT(*) FROM customers c " + whereClause;
 

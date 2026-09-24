@@ -100,6 +100,14 @@ public interface DeviceRepository extends SqlObject {
 
     default PageResult<Device> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                     int page, int pageSize) {
+        return searchFilteredPaged(searchTerm, filters, page, pageSize, null);
+    }
+
+    /** Sıralama anahtarları ({@link #SORTS}) sabit bir beyaz listedir; SQL parçası kullanıcıdan gelmez. */
+    java.util.Map<String, String> SORTS = java.util.Map.of("NEWEST", "d.created_at DESC", "NAME", "db.name COLLATE NOCASE ASC, d.model COLLATE NOCASE ASC", "OLDEST", "d.created_at ASC");
+
+    default PageResult<Device> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                    int page, int pageSize, String sortKey) {
         SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
         String likeTerm = (searchTerm != null && !searchTerm.isBlank()) ? "%" + searchTerm.trim() + "%" : null;
 
@@ -115,7 +123,7 @@ public interface DeviceRepository extends SqlObject {
         params.put("limit", pageSize);
         params.put("offset", (page - 1) * pageSize);
 
-        String listSql = BASE_SELECT + whereClause + " ORDER BY d.created_at DESC LIMIT :limit OFFSET :offset";
+        String listSql = BASE_SELECT + whereClause + " ORDER BY " + SORTS.getOrDefault(sortKey == null ? "NEWEST" : sortKey, SORTS.get("NEWEST")) + " LIMIT :limit OFFSET :offset";
         String countSql = "SELECT COUNT(*) FROM devices d " +
                 "JOIN device_types dt ON d.device_type_id = dt.id " +
                 "JOIN device_brands db ON d.brand_id = db.id " + whereClause;

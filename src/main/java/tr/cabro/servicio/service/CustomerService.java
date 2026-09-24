@@ -97,6 +97,11 @@ public class CustomerService {
         return CompletableFuture.supplyAsync(() -> customerRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
+    public CompletableFuture<PageResult<Customer>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                                       int page, int pageSize, String sortKey) {
+        return CompletableFuture.supplyAsync(() -> customerRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
+    }
+
     /**
      * TC kimlik / vergi no çakışmalarını çözer. Aktif bir müşteride kullanılıyorsa kullanıcıya
      * anlaşılır bir hata verir. Silinmiş bir müşteride kullanılıyorsa: yeni kayıtta ve tek eşleşmede o
