@@ -55,7 +55,7 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
         add(createPage());
 
         btnSave.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,16,5,16; font: bold; "
-                + "background: $Component.accentColor; foreground: $Button.default.foreground");
+                + "background: $Component.accentColor; foreground: $Servicio.onAccentForeground");
         btnSave.setEnabled(false);
         btnSave.addActionListener(e -> save());
 

@@ -13,14 +13,21 @@ public final class TableStyler {
 
     private TableStyler() {}
 
-    /** Liste ekranlarındaki (Servis Kayıtları, Müşteriler vb.) tam-boy tablo stili. */
+    /**
+     * Liste ekranlarındaki (Servis Kayıtları, Müşteriler vb.) tam-boy tablo stili: soluk, kalın
+     * olmayan küçük başlık; 48px satır; yalnızca yatay çizgi. Hover/seçim zemini {@link ListTable}'da.
+     */
     public static void applyStandardStyle(JTable table) {
         table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
-                "height:40; hoverBackground:null; pressedBackground:null; separatorColor:$TableHeader.background; font: $large.font;");
+                "height:34; hoverBackground:null; pressedBackground:null; separatorColor:$Table.background;"
+                        + " bottomSeparatorColor:$Component.borderColor; background:$Table.background;"
+                        + " foreground:$Label.disabledForeground; font:-1");
         table.putClientProperty(FlatClientProperties.STYLE,
-                "rowHeight:52; showHorizontalLines:true; intercellSpacing:0,1; " +
-                        "cellFocusColor:$TableHeader.hoverBackground; selectionBackground:$TableHeader.hoverBackground; " +
-                        "selectionForeground:$Table.foreground; font: $large.font;");
+                "rowHeight:48; showHorizontalLines:true; showVerticalLines:false; intercellSpacing:0,1;"
+                        + " gridColor:$Component.borderColor; cellFocusColor:null;"
+                        + " selectionBackground:$Servicio.rowSelectedBackground; selectionForeground:$Table.foreground;"
+                        + " selectionInactiveBackground:$Servicio.rowSelectedBackground; selectionInactiveForeground:$Table.foreground");
+        table.setFillsViewportHeight(true);
     }
 
     /** Dashboard'daki küçük özet tabloları (Aktif Servisler, Bekleyen Tahsilatlar) için şeffaf/kompakt stil. */

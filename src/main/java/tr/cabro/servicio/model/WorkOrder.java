@@ -51,6 +51,10 @@ public class WorkOrder {
     @ColumnName("updated_at")
     private LocalDateTime updatedAt;
 
+    /** Durumun son değiştiği an; V23 öncesi kayıtlarda bilinmiyorsa null. */
+    @ColumnName("status_changed_at")
+    private LocalDateTime statusChangedAt;
+
     // --- İLİŞKİSEL VERİLER (DB'ye yazılmaz) ---
     private Customer customer;
     private Device device;

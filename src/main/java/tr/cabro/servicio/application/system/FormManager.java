@@ -220,7 +220,8 @@ public class FormManager {
         pendingModals = null;
     }
 
-    private static MainForm getMainForm() {
+    /** Ana form; modalların sahibi olarak kullanılır (ör. Alt+T tahsilat penceresi). */
+    public static MainForm getMainForm() {
         if (mainForm == null) {
             mainForm = new MainForm();
         }

@@ -34,10 +34,9 @@ public class TypeListCellRenderer extends JPanel implements ListCellRenderer<Dev
 
         nameLabel.putClientProperty(FlatClientProperties.STYLE, "font: $semibold.font");
 
-        badgeLabel.setFont(badgeLabel.getFont().deriveFont(Font.BOLD, 11f));
-        badgeLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        badgeLabel.setPreferredSize(new Dimension(26, 20));
-        badgeLabel.setOpaque(true);
+        badgeLabel.putClientProperty(FlatClientProperties.STYLE, "font: -1");
+        badgeLabel.setHorizontalAlignment(SwingConstants.TRAILING);
+        badgeLabel.setOpaque(false);
 
         deleteBtn = new JButton();
         deleteBtn.setIcon(new Ikon("icons/trash-2.svg", deleteBtn.getFont().getSize()));
@@ -115,23 +114,15 @@ public class TypeListCellRenderer extends JPanel implements ListCellRenderer<Dev
         }
 
 
-        if (selected) {
-            setBackground(list.getSelectionBackground());
-            nameLabel.setForeground(list.getSelectionForeground());
-            iconLabel.setForeground(list.getSelectionForeground());
-            badgeLabel.setBackground(UIManager.getColor("Component.accentColor") != null
-                    ? UIManager.getColor("Component.accentColor").darker() : new Color(0x1e3a6e));
-            badgeLabel.setForeground(list.getSelectionForeground());
-        } else {
-            setBackground(list.getBackground());
-            nameLabel.setForeground(list.getForeground());
-            iconLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
-            badgeLabel.setBackground(UIManager.getColor("Button.background") != null
-                    ? UIManager.getColor("Button.background") : new Color(0x2a3450));
-            badgeLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
-        }
+        // Seçim tablolardaki seçim tonuyla; yazı rengi değişmez, sayı soluk metin (rozet değil).
+        setBackground(selected ? UIManager.getColor("Servicio.rowSelectedBackground") : list.getBackground());
+        nameLabel.setForeground(list.getForeground());
+        badgeLabel.setOpaque(false);
+        badgeLabel.setForeground(UIManager.getColor("Label.disabledForeground"));
+        badgeLabel.setText(value.getBrandCount() == null || value.getBrandCount() == 0 ? "marka yok" : value.getBrandCount() + " marka");
 
-        iconLabel.setText("■");
+        iconLabel.setText("");
+        iconLabel.setVisible(false);
         return this;
     }
 }

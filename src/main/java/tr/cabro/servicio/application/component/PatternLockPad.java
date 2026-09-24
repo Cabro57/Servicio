@@ -186,7 +186,7 @@ public class PatternLockPad extends JComponent {
             FlatUIUtils.setRenderingHints(g2);
             Color accent = UIManager.getColor("Component.accentColor");
             Color idle = UIManager.getColor("Component.borderColor");
-            Color text = UIManager.getColor("Button.default.foreground");
+            Color text = UIManager.getColor("Servicio.onAccentForeground");
             if (accent == null) accent = new Color(0x2675BF);
             if (idle == null) idle = Color.GRAY;
             if (text == null) text = Color.WHITE;

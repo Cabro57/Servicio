@@ -4,7 +4,12 @@ import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.application.renderer.*;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.system.QuickAction;
+import tr.cabro.servicio.util.Format;
+import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
@@ -78,11 +83,11 @@ public class FormCustomers extends AbstractTableForm {
         refreshTable();
     }
 
-    // --- 1. ÜST KISIM VE ARAMA AYARLARI ---
+    // --- 1. BAŞLIK, ARAMA VE GÖRÜNÜMLER ---
 
     @Override
     protected String getNewButtonText() {
-        return "Yeni Müşteri Ekle";
+        return "Yeni Müşteri";
     }
 
     @Override
@@ -91,52 +96,68 @@ public class FormCustomers extends AbstractTableForm {
     }
 
     @Override
-    protected String getTableTitleText() {
-        return "Tüm Müşteriler";
+    protected QuickAction getNewQuickAction() {
+        return QuickAction.NEW_CUSTOMER;
     }
 
     @Override
     protected String getSearchPlaceholder() {
-        return "İsim, telefon veya e-posta ara...";
+        return "Ad, telefon, TC veya firma ara…";
     }
 
-    // --- 2. İSTATİSTİK KARTLARI (DASHBOARD) ---
+    private static final String VIEW_ALL = "all";
+    private static final String VIEW_DEBT = "debt";
+    private static final String VIEW_CORPORATE = "corporate";
+    private static final String VIEW_PROBLEM = "problem";
+
+    /** Bakiyesi (servis + satış − ödeme) artı olan müşteriler; kuruş yuvarlamasına tolerans. */
+    private static final String DEBT_CONDITION =
+            "c.id IN (SELECT customer_id FROM v_customer_balances WHERE balance > 0.009)";
 
     @Override
-    protected void initCards() {
-        cardBox.addCardItem(new Ikon("icons/users.svg", 0.7f), "Toplam Müşteri");
-        cardBox.addCardItem(new Ikon("icons/store.svg", 0.7f), "Kurumsal Müşteri");
-        cardBox.addCardItem(new Ikon("icons/triangle-alert.svg", 0.7f), "Sorunlu Müşteri");
-        cardBox.addCardItem(new Ikon("icons/badge-turkish-lira.svg", 0.7f), "Toplam Ciro");
+    protected void initViews() {
+        addView(VIEW_ALL, "Tümü");
+        addView(VIEW_DEBT, "Borçlu");
+        addView(VIEW_CORPORATE, "Kurumsal");
+        addView(VIEW_PROBLEM, "Sorunlu");
     }
 
-    // Artık bu metodu tek başına çağırmıyoruz, refreshTable içinde her şeyi senkron yapıyoruz
+    @Override
+    protected Map<String, ColumnFilterValue> viewFilters(String key) {
+        if (VIEW_DEBT.equals(key)) return Map.of("view:debt", ColumnFilterValue.condition(DEBT_CONDITION));
+        if (VIEW_CORPORATE.equals(key)) return Map.of("c.customer_type", ColumnFilterValue.enumOf(CustomerType.KURUMSAL.name()));
+        if (VIEW_PROBLEM.equals(key)) return Map.of("view:problem", ColumnFilterValue.condition("c.is_problematic = 1"));
+        return Collections.emptyMap();
+    }
+
+    @Override
+    protected CompletableFuture<Long> countMatching(Map<String, ColumnFilterValue> filters) {
+        return customerService.searchFilteredPaged(currentSearchTerm, filters, 1, 1).thenApply(PageResult::getTotalItems);
+    }
+
+    @Override
+    protected void onViewChanged(String key) {
+        currentPage = 1;
+        super.onViewChanged(key);
+    }
+
+    // --- 2. ÖZET CÜMLESİ ---
+
     @Override
     protected void refreshStats() {
-        customerService.getAllTable().thenAccept(customers -> {
+        CompletableFuture<Long> total = customerService.searchFilteredPaged(null, Collections.emptyMap(), 1, 1)
+                .thenApply(PageResult::getTotalItems);
+        CompletableFuture<Long> debtors = customerService.searchFilteredPaged(null, viewFilters(VIEW_DEBT), 1, 1)
+                .thenApply(PageResult::getTotalItems);
+        CompletableFuture<BigDecimal> receivable = ServiceManager.getPaymentService().getTotalReceivables();
 
-            long totalCustomer = customers.size();
-
-            long totalKurumsal = customers.stream()
-                    .filter(c -> c.getType() == CustomerType.KURUMSAL)
-                    .count();
-
-            long totalProblematic = customers.stream()
-                    .filter(Customer::isProblematic)
-                    .count();
-
-            long totalCiro = customers.stream()
-                    .map(Customer::getSpent)
-                    .mapToLong(BigDecimal::longValue)
-                    .sum();
-
-            SwingUtilities.invokeLater(() -> {
-                cardBox.setValueAt(0, String.valueOf(totalCustomer), " ", "", true);
-                cardBox.setValueAt(1, String.valueOf(totalKurumsal), " ", "", true);
-                cardBox.setValueAt(2, String.valueOf(totalProblematic), " ", "", true);
-                cardBox.setValueAt(3, String.valueOf(totalCiro), " ", "", true);
-            });
-        }).exceptionally(ex -> ErrorHandler.handle(this, "Müşteri istatistikleri yüklenemedi", ex));
+        CompletableFuture.allOf(total, debtors, receivable).thenRun(() -> SwingUtilities.invokeLater(() -> {
+            long d = debtors.join();
+            summary.set(
+                    ListSummary.Part.strong(total.join() + " müşteri"),
+                    d > 0 ? ListSummary.Part.meaning(d + " borçlu", "Servicio.warningColor") : ListSummary.Part.of("borçlu müşteri yok"),
+                    d > 0 ? ListSummary.Part.of("toplam alacak " + Format.formatPrice(receivable.join())) : null);
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Müşteri özeti yüklenemedi", ex));
     }
 
     // --- 3. TABLO YAPILANDIRMASI ---
@@ -152,8 +173,9 @@ public class FormCustomers extends AbstractTableForm {
                 ColumnDef.<Customer>currency("Toplam Harcama", Customer::getSpent),
                 new ColumnDef<Customer>("Kayıt Tarihi", String.class, c -> c.getCreatedAt() != null ? c.getCreatedAt().format(DateFormats.dateTime()) : "-")
                         .alignment(SwingConstants.LEADING).dateRangeFilter("c.created_at"),
-                ColumnDef.<Customer>actionColumn("İşlem")
+                ColumnDef.<Customer>actionColumn("")
         );
+        // Toplam harcama bir anlam (borç/alacak) taşımaz: kalın, nötr.
 
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
@@ -170,13 +192,11 @@ public class FormCustomers extends AbstractTableForm {
 
     @Override
     protected void loadTableData() {
-        Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
-
-        customerService.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize).thenAccept(result -> {
+        customerService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize).thenAccept(result -> {
             SwingUtilities.invokeLater(() -> {
                 tableModel.setData(result.getItems());
                 if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
-                refreshStats();
+                setResultCount(result.getTotalItems());
                 refreshLayout();
             });
         }).exceptionally(ex -> ErrorHandler.handle(this, "Müşteri tablosu yenilenemedi", ex));
@@ -187,21 +207,31 @@ public class FormCustomers extends AbstractTableForm {
         // kolonlarının renderer'ı TableColumnConfigurator.applyColumnRenderers(...) ile atandı.
 
         table.getColumnModel().getColumn(0).setCellRenderer(
-                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: +1"));
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground", 12));
 
-        table.getColumnModel().getColumn(1).setCellRenderer(new CustomerTableCellRenderer());
+        // Ad kalın, altında firma/sorun bilgisi; tür ayrımını Tip rozeti taşır (satır başı ikon yok).
+        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Customer>(
+                Customer::getFullName,
+                c -> {
+                    String firm = c.getBusinessName() != null && !c.getBusinessName().isBlank() ? c.getBusinessName() : null;
+                    if (c.isProblematic()) return firm != null ? firm + "  ·  sorunlu müşteri" : "Sorunlu müşteri";
+                    return firm != null ? firm : "";
+                },
+                c -> null,
+                c -> c.isProblematic() ? UIManager.getColor("Servicio.dangerColor") : null));
 
         table.getColumnModel().getColumn(2).setCellRenderer(
                 new MultiLineTableCellRenderer<Customer>(
                         c -> PhoneHelper.formatForDisplay(c.getPhoneNumber1()),
-                        Customer::getEmail
-                )
+                        c -> c.getEmail() != null ? c.getEmail() : ""
+                ).plainTop()
         );
 
         table.getColumnModel().getColumn(4).setCellRenderer(StyledLabelCellRenderer.of(SwingConstants.CENTER, null));
+        table.getColumnModel().getColumn(5).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
 
         table.getColumnModel().getColumn(6).setCellRenderer(
-                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground", 15));
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: -1", 8));
 
         TableActionColumnSupport.install(table, 7, tableModel, new TableActionColumnSupport.Handlers<Customer>() {
             @Override
@@ -209,7 +239,6 @@ public class FormCustomers extends AbstractTableForm {
                 customerService.get(c.getId()).thenAccept(response -> {
                     response.ifPresent(customer -> SwingUtilities.invokeLater(() -> {
                         Form formInstance = new FormCustomer(customer);
-                        Toast.show(FormCustomers.this, Toast.Type.INFO, Messages.get("toast.customer.viewingDetails", customer.getFirstName()));
                         FormManager.showForm(formInstance);
                     }));
                 }).exceptionally(ex -> ErrorHandler.handle(FormCustomers.this, "Müşteri detayı açılamadı", ex));
@@ -240,69 +269,9 @@ public class FormCustomers extends AbstractTableForm {
         table.getColumnModel().getColumn(4).setPreferredWidth(100);
         table.getColumnModel().getColumn(5).setPreferredWidth(130);
         table.getColumnModel().getColumn(6).setPreferredWidth(150);
-        table.getColumnModel().getColumn(7).setMaxWidth(180);
-        table.getColumnModel().getColumn(7).setMinWidth(120);
+        table.getColumnModel().getColumn(7).setMaxWidth(96);
+        table.getColumnModel().getColumn(7).setMinWidth(110);
     }
-
-    // DÜZELTME: Verileri ve istatistikleri aynı anda çeken asenkron yapı
-//    @Override
-//    protected void refreshTable() {
-//        CompletableFuture<List<CustomersTableDto>> customersFuture = customerService.getAll();
-//        CompletableFuture<List<WorkOrder>> servicesFuture = workOrderService.getAll();
-//
-//        CompletableFuture.allOf(customersFuture, servicesFuture).thenAccept(v -> {
-//            List<CustomersTableDto> allCustomers = customersFuture.join();
-//            List<WorkOrder> allWorkOrders = servicesFuture.join();
-//
-//            customerSpentMap.clear();
-//            BigDecimal totalGlobalRevenue = BigDecimal.ZERO;
-//
-//            // Müşterilerin servis ödemelerini hesapla (Ciro)
-//            for (WorkOrder s : allWorkOrders) {
-//                if (s.getCustomerId() == null || s.getCustomerId() <= 0) continue;
-//
-//                BigDecimal servicePaid = BigDecimal.ZERO;
-//                if (s.getPayments() != null) {
-//                    for (WorkOrderPayment payment : s.getPayments()) {
-//                        servicePaid = servicePaid.add(payment.getAmount());
-//                    }
-//                }
-//
-//                customerSpentMap.merge(s.getCustomerId(), servicePaid, BigDecimal::add);
-//                totalGlobalRevenue = totalGlobalRevenue.add(servicePaid);
-//            }
-//
-//            // Kart İstatistiklerini Hesapla
-//            long totalCount = allCustomers.size();
-//            long normalCount = allCustomers.stream()
-//                    .filter(c -> c.getType() != null && c.getType() == CustomerType.NORMAL)
-//                    .count();
-//
-//            long businessCount = allCustomers.stream()
-//                    .filter(c -> c.getType() != null &&
-//                            (c.getType() == CustomerType.SMALL_BUSINESS || c.getType() == CustomerType.DEALER))
-//                    .count();
-//
-//            BigDecimal finalTotalRevenue = totalGlobalRevenue;
-//
-//            // Arayüzü (UI) Güvenli Şekilde Güncelle
-//            SwingUtilities.invokeLater(() -> {
-//                tableModel.setData(allCustomers);
-//
-//                cardBox.setValueAt(0, String.valueOf(totalCount), "Sistemdeki tüm kayıtlar", "", true);
-//                cardBox.setValueAt(1, String.valueOf(normalCount), "Bireysel kullanıcılar", "", true);
-//                cardBox.setValueAt(2, String.valueOf(businessCount), "İşletme ve ticari hesaplar", "", true);
-//                cardBox.setValueAt(3, Format.formatPrice(finalTotalRevenue), "Tüm zamanların cirosu", "", true);
-//            });
-//
-//        }).exceptionally(ex -> {
-//            SwingUtilities.invokeLater(() -> {
-//                Toast.show(this, Toast.Type.ERROR, "Veriler yüklenemedi: " + ex.getMessage());
-//                Servicio.getLogger().error("Tablo yenileme hatası", ex);
-//            });
-//            return null;
-//        });
-//    }
 
     // --- 4. MODAL / PENCERE İŞLEMLERİ ---
 

@@ -4,7 +4,11 @@ import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.model.dto.PageResult;
+import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
@@ -79,52 +83,80 @@ public class FormSuppliers extends AbstractTableForm {
 
     @Override
     protected String getNewButtonText() {
-        return "Yeni Tedarikçi Ekle";
+        return "Yeni Tedarikçi";
     }
 
     @Override
-    protected String getTableTitleText() {
-        return "Tüm Tedarikçiler";
+    protected String getNewButtonIconPath() {
+        return "icons/store.svg";
     }
 
     @Override
     protected String getSearchPlaceholder() {
-        return "Firma, ilgili kişi veya e-posta ara...";
+        return "Firma, ilgili kişi, vergi no veya telefon ara…";
+    }
+
+    // --- Görünüm sekmeleri ---
+
+    private static final String VIEW_ALL = "all";
+    private static final String VIEW_REORDER = "reorder";
+    private static final String VIEW_WITH_PARTS = "parts";
+
+    /** Stoğu minimumun altına düşmüş parçası olan tedarikçiler: sipariş verilecek yerler. */
+    private static final String REORDER_CONDITION = "id IN (SELECT supplier_id FROM parts WHERE is_deleted = 0 "
+            + "AND supplier_id IS NOT NULL AND stock_quantity < min_stock_level)";
+    private static final String WITH_PARTS_CONDITION = "id IN (SELECT supplier_id FROM parts WHERE is_deleted = 0 "
+            + "AND supplier_id IS NOT NULL)";
+
+    @Override
+    protected void initViews() {
+        addView(VIEW_ALL, "Tümü");
+        addView(VIEW_REORDER, "Sipariş gerekli");
+        addView(VIEW_WITH_PARTS, "Parça tedarik edenler");
     }
 
     @Override
-    protected void initCards() {
-        cardBox.addCardItem(new Ikon("icons/package-check.svg", 0.7f), "Toplam Tedarikçi");
+    protected Map<String, ColumnFilterValue> viewFilters(String key) {
+        if (VIEW_REORDER.equals(key)) return Map.of("view:reorder", ColumnFilterValue.condition(REORDER_CONDITION));
+        if (VIEW_WITH_PARTS.equals(key)) return Map.of("view:parts", ColumnFilterValue.condition(WITH_PARTS_CONDITION));
+        return Collections.emptyMap();
+    }
+
+    @Override
+    protected CompletableFuture<Long> countMatching(Map<String, ColumnFilterValue> filters) {
+        return supplierService.searchFilteredPaged(currentSearchTerm, filters, 1, 1).thenApply(PageResult::getTotalItems);
+    }
+
+    @Override
+    protected void onViewChanged(String key) {
+        currentPage = 1;
+        super.onViewChanged(key);
     }
 
     @Override
     protected void refreshStats() {
-        supplierService.getAll().thenAccept(suppliers -> {
-            long supplierCount = suppliers.size();
-            SwingUtilities.invokeLater(() -> {
-                cardBox.setValueAt(0, String.valueOf(supplierCount), "Tüm kayıtlılar", "", true);
-            });
-        }).exceptionally(ex -> {
-            Servicio.getLogger().error("İstatistikler çekilirken hata oluştu!", ex);
-            SwingUtilities.invokeLater(() -> {
-                Toast.show(FormSuppliers.this, Toast.Type.ERROR, Messages.get("toast.stats.loadFailed"));
-            });
-            return null;
-        });
-
+        CompletableFuture<Long> total = supplierService.searchFilteredPaged(null, Collections.emptyMap(), 1, 1)
+                .thenApply(PageResult::getTotalItems);
+        CompletableFuture<Long> reorder = supplierService.searchFilteredPaged(null, viewFilters(VIEW_REORDER), 1, 1)
+                .thenApply(PageResult::getTotalItems);
+        CompletableFuture.allOf(total, reorder).thenRun(() -> SwingUtilities.invokeLater(() -> {
+            long r = reorder.join();
+            summary.set(
+                    ListSummary.Part.strong(total.join() + " tedarikçi"),
+                    r > 0 ? ListSummary.Part.meaning(r + " tedarikçiden sipariş gerekli", "Servicio.warningColor")
+                            : ListSummary.Part.of("kritik stokta parça yok"));
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Tedarikçi özeti yüklenemedi", ex));
     }
 
     @Override
     protected void setupTable() {
         List<ColumnDef<Supplier>> columns = Arrays.asList(
-                new ColumnDef<Supplier>("ID", String.class, supplier -> "S-" + supplier.getId()).alignment(SwingConstants.LEADING),
-                new ColumnDef<Supplier>("Firma İsmi", String.class, Supplier::getBusinessName).alignment(SwingConstants.LEADING),
-                new ColumnDef<Supplier>("İlgili Kişi", String.class, Supplier::getName).alignment(SwingConstants.LEADING),
-                new ColumnDef<Supplier>("İletişim", String.class, s -> Format.formatPhoneNumber(s.getPhone())).alignment(SwingConstants.LEADING),
-                new ColumnDef<Supplier>("Adres", String.class, Supplier::getAddress).alignment(SwingConstants.LEADING),
-                new ColumnDef<Supplier>("Kayıt Tarihi", String.class, s -> Format.formatDate(s.getCreatedAt()))
+                new ColumnDef<Supplier>("Firma", Supplier.class, s -> s).alignment(SwingConstants.LEADING),
+                new ColumnDef<Supplier>("İletişim", Supplier.class, s -> s).alignment(SwingConstants.LEADING),
+                new ColumnDef<Supplier>("Adres", String.class, s -> s.getAddress() != null && !s.getAddress().isBlank() ? s.getAddress() : "—").alignment(SwingConstants.LEADING),
+                new ColumnDef<Supplier>("Kayıt", String.class, s -> Format.formatDate(s.getCreatedAt()))
                         .alignment(SwingConstants.LEADING).dateRangeFilter("created_at"),
-                ColumnDef.<Supplier>actionColumn("İşlem")
+                ColumnDef.<Supplier>actionColumn("")
         );
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
@@ -133,20 +165,32 @@ public class FormSuppliers extends AbstractTableForm {
         headerFilters = installHeaderFilters(columns);
     }
 
+    private static String firmName(Supplier s) {
+        return s.getBusinessName() != null && !s.getBusinessName().isBlank() ? s.getBusinessName() : s.getName();
+    }
+
     private void configureTableColumns() {
-        table.getColumnModel().getColumn(0).setCellRenderer(
-                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: +1"));
+        table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Supplier>(
+                FormSuppliers::firmName,
+                s -> {
+                    boolean hasFirm = s.getBusinessName() != null && !s.getBusinessName().isBlank();
+                    String contact = hasFirm && s.getName() != null && !s.getName().isBlank() ? "İlgili: " + s.getName() : null;
+                    String tax = s.getTaxNumber() != null && !s.getTaxNumber().isBlank() ? "VN " + s.getTaxNumber() : null;
+                    if (contact != null && tax != null) return contact + "  ·  " + tax;
+                    return contact != null ? contact : (tax != null ? tax : "");
+                }));
 
-        table.getColumnModel().getColumn(3).setCellRenderer(new MultiLineTableCellRenderer<Supplier>(
-                supplier -> Format.formatPhoneNumber(supplier.getPhone()),
-                Supplier::getEmail
+        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Supplier>(
+                s -> s.getPhone() != null && !s.getPhone().isBlank() ? Format.formatPhoneNumber(s.getPhone()) : "Telefon yok",
+                s -> s.getEmail() != null ? s.getEmail() : ""));
+        table.getColumnModel().getColumn(2).setCellRenderer(
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground", 8));
+        table.getColumnModel().getColumn(3).setCellRenderer(
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: -1", 8));
 
-        ));
-
-        TableActionColumnSupport.install(table, 6, tableModel, new TableActionColumnSupport.Handlers<Supplier>() {
+        TableActionColumnSupport.install(table, 4, tableModel, new TableActionColumnSupport.Handlers<Supplier>() {
             @Override
             public void onEdit(Supplier supplier) {
-                System.out.println(supplier.getPhone());
                 openEditModal(supplier);
             }
 
@@ -172,10 +216,12 @@ public class FormSuppliers extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(0).setMaxWidth(80);
-        table.getColumnModel().getColumn(1).setPreferredWidth(150);
-        table.getColumnModel().getColumn(6).setMaxWidth(180);
-        table.getColumnModel().getColumn(6).setMinWidth(120);
+        table.getColumnModel().getColumn(0).setPreferredWidth(280);
+        table.getColumnModel().getColumn(1).setPreferredWidth(220);
+        table.getColumnModel().getColumn(2).setPreferredWidth(220);
+        table.getColumnModel().getColumn(3).setPreferredWidth(110);
+        table.getColumnModel().getColumn(4).setMinWidth(96);
+        table.getColumnModel().getColumn(4).setMaxWidth(96);
     }
 
     // Tabloyu Güncelleme (Asenkron)
@@ -187,13 +233,11 @@ public class FormSuppliers extends AbstractTableForm {
 
     @Override
     protected void loadTableData() {
-        Map<String, ColumnFilterValue> filters = headerFilters != null ? headerFilters.getActiveFilters() : java.util.Collections.emptyMap();
-
-        supplierService.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize).thenAccept(result -> {
+        supplierService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize).thenAccept(result -> {
             SwingUtilities.invokeLater(() -> {
                 tableModel.setData(result.getItems());
                 if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
-                refreshStats(); // İstatistikleri veriler gelince güncelle
+                setResultCount(result.getTotalItems());
                 refreshLayout();
             });
         }).exceptionally(e -> {

@@ -30,6 +30,13 @@ public interface SaleItemRepository {
     @SqlQuery("SELECT " + COLUMNS + "FROM sale_items WHERE id = :id")
     Optional<SaleItem> findById(@Bind("id") Long id);
 
+    /** Ürün detayı: ürünün geçtiği tüm satış/iade kalemleri (silinmemiş fişler), en yeni önce. */
+    @SqlQuery("SELECT si.id, si.sale_id, si.product_id, si.item_name, si.quantity, si.purchase_price, si.unit_price, " +
+            "si.sale_currency, si.unit_price_original, si.line_discount_type, si.line_discount_value, si.line_total, " +
+            "si.created_at, si.source_sale_item_id FROM sale_items si JOIN sales s ON s.id = si.sale_id " +
+            "WHERE si.product_id = :productId AND s.is_deleted = 0 ORDER BY s.sale_date DESC, si.id DESC LIMIT 500")
+    List<SaleItem> findByProductId(@Bind("productId") Long productId);
+
     @SqlQuery("SELECT " + COLUMNS + "FROM sale_items WHERE sale_id = :saleId ORDER BY id ASC")
     List<SaleItem> findBySaleId(@Bind("saleId") Long saleId);
 
@@ -40,4 +47,8 @@ public interface SaleItemRepository {
      */
     @SqlQuery("SELECT COALESCE(SUM(quantity), 0) FROM sale_items WHERE source_sale_item_id = :sourceSaleItemId")
     int sumReturnedQuantity(@Bind("sourceSaleItemId") Long sourceSaleItemId);
+
+    /** Bir satış kaleminden şimdiye kadar iade edilen tutar (iade kalemleri negatif olduğundan sonuç ≤ 0). */
+    @SqlQuery("SELECT COALESCE(SUM(line_total), 0) FROM sale_items WHERE source_sale_item_id = :sourceSaleItemId")
+    java.math.BigDecimal sumReturnedAmount(@Bind("sourceSaleItemId") Long sourceSaleItemId);
 }

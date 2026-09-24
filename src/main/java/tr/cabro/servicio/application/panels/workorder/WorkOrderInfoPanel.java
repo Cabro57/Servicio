@@ -52,7 +52,7 @@ public class WorkOrderInfoPanel extends JPanel {
         this.workOrderService = ServiceManager.getWorkOrderService();
         this.onWhatsAppRequested = onWhatsAppRequested;
 
-        setLayout(new MigLayout("insets 0, gapy 20", "[fill, grow]", "[pref!][pref!][pref!]"));
+        setLayout(new MigLayout("insets 0, gapy 16", "[fill, grow]", "[pref!][pref!][pref!]"));
         setOpaque(false);
         add(createCustomerCard(), "wrap");
         add(createDeviceCard(), "wrap");
@@ -69,9 +69,9 @@ public class WorkOrderInfoPanel extends JPanel {
         if (workOrder.getCustomer() != null) {
             lblCustomerName.setText(workOrder.getCustomer().getFullName());
             lblCustomerPhone.setText(workOrder.getCustomer().getPhoneNumber1() != null
-                    ? PhoneHelper.formatForDisplay(workOrder.getCustomer().getPhoneNumber1()) : "-");
-            lblCustomerEmail.setText(workOrder.getCustomer().getEmail() != null
-                    ? workOrder.getCustomer().getEmail() : "-");
+                    ? PhoneHelper.formatForDisplay(workOrder.getCustomer().getPhoneNumber1()) : "Telefon yok");
+            String email = workOrder.getCustomer().getEmail();
+            lblCustomerEmail.setText(email != null && !email.isBlank() ? email : " ");
             btnWhatsapp.setVisible(workOrder.getCustomer().getPhoneNumber1() != null
                     && !workOrder.getCustomer().getPhoneNumber1().isBlank());
         } else {
@@ -92,41 +92,54 @@ public class WorkOrderInfoPanel extends JPanel {
         lblDateArrival.setText(dateStr);
         lblDateEstimated.setText(workOrder.getCreatedAt() != null
                 ? workOrder.getCreatedAt().plusDays(3).format(formatter) : "-");
+        lblDateStatus.setText(workOrder.getStatusChangedAt() != null ? workOrder.getStatusChangedAt().format(formatter) : "Bilinmiyor");
+        lblDateDelivery.setText(workOrder.getDeliveryDate() != null ? workOrder.getDeliveryDate().format(formatter) : "Teslim edilmedi");
+        if (workOrder.getCreatedAt() != null) {
+            java.time.LocalDate end = workOrder.getDeliveryDate() != null ? workOrder.getDeliveryDate().toLocalDate() : java.time.LocalDate.now();
+            long days = java.time.temporal.ChronoUnit.DAYS.between(workOrder.getCreatedAt().toLocalDate(), end);
+            lblDaysIn.setText(days <= 0 ? "Aynı gün" : days + " gün");
+        } else {
+            lblDaysIn.setText("-");
+        }
     }
 
     private JPanel createCustomerCard() {
         JPanel card = WorkOrderPanelSupport.createCardPanel();
-        card.setLayout(new MigLayout("insets 20, fillx, wrap 2", "[grow][]", "[]15[][][]10[]"));
-        JLabel title = new JLabel("Müşteri Bilgileri");
-        title.setIcon(new Ikon("icons/user.svg"));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        card.setLayout(new MigLayout("insets 16 18 16 18, fillx, wrap, hidemode 3", "[grow, fill]", "[]10[]2[]2[]"));
+        JButton link = new JButton("Müşteriye git");
+        link.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+        link.putClientProperty(FlatClientProperties.STYLE, "foreground: $Component.accentColor; margin: 2,6,2,6");
+        link.addActionListener(e -> {
+            if (workOrder.getCustomer() != null) {
+                tr.cabro.servicio.application.system.FormManager.showForm(
+                        new tr.cabro.servicio.application.forms.FormCustomer(workOrder.getCustomer()));
+            }
+        });
         lblCustomerName = new JLabel("-");
-        lblCustomerName.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");
+        lblCustomerName.putClientProperty(FlatClientProperties.STYLE, "font: bold +1");
         lblCustomerPhone = new JLabel("-");
-        lblCustomerPhone.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
         lblCustomerEmail = new JLabel("-");
         lblCustomerEmail.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
 
-        btnWhatsapp = new JButton("WhatsApp Mesaj Gönder", new Ikon("icons/message-circle.svg", 1f));
-        btnWhatsapp.putClientProperty(FlatClientProperties.STYLE,
-                BadgePalette.style(BadgeColor.GREEN, "arc: 10"));
-        btnWhatsapp.addActionListener(e -> onWhatsAppRequested.run());
+        // Görünmez tutulur: WhatsApp artık kimlik şeridinde (onWhatsAppRequested oradan çağrılır).
+        btnWhatsapp = new JButton();
         btnWhatsapp.setVisible(false);
 
-        card.add(title, "span 2");
-        card.add(lblCustomerName, "span 2");
-        card.add(lblCustomerPhone, "span 2");
-        card.add(lblCustomerEmail, "span 2");
-        card.add(btnWhatsapp, "span 2, growx");
+        JPanel head = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "[center]"));
+        head.setOpaque(false);
+        head.add(WorkOrderPanelSupport.createTitle("Müşteri"));
+        head.add(link);
+        card.add(head);
+        card.add(lblCustomerName, "wmin 0");
+        card.add(lblCustomerPhone, "wmin 0");
+        card.add(lblCustomerEmail, "wmin 0");
         return card;
     }
 
     private JPanel createDeviceCard() {
         JPanel card = WorkOrderPanelSupport.createCardPanel();
-        card.setLayout(new MigLayout("insets 20, fillx", "[100!][grow]", "[]15[][][][][]15[]5[]"));
-        JLabel title = new JLabel("Cihaz Bilgileri");
-        title.setIcon(new Ikon("icons/tablet-smartphone.svg"));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        card.setLayout(new MigLayout("insets 16 18 16 18, fillx", "[110!][grow, right]", "[]10[][][][][]14[]6[]"));
+        JLabel title = WorkOrderPanelSupport.createTitle("Cihaz ve arıza");
         lblDeviceType = new JLabel("-");
         lblDeviceType.putClientProperty(FlatClientProperties.STYLE, "font: bold");
         lblDeviceBrand = new JLabel("-");
@@ -136,10 +149,10 @@ public class WorkOrderInfoPanel extends JPanel {
         lblDeviceSerial = new JLabel("-");
         lblDeviceSerial.putClientProperty(FlatClientProperties.STYLE, "font: bold");
         card.add(title, "span 2, wrap");
-        card.add(WorkOrderPanelSupport.createMutedLabel("Tür:")); card.add(lblDeviceType, "wrap");
-        card.add(WorkOrderPanelSupport.createMutedLabel("Marka:")); card.add(lblDeviceBrand, "wrap");
-        card.add(WorkOrderPanelSupport.createMutedLabel("Model:")); card.add(lblDeviceModel, "wrap");
-        card.add(WorkOrderPanelSupport.createMutedLabel("Seri No:")); card.add(lblDeviceSerial, "wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Tür")); card.add(lblDeviceType, "wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Marka")); card.add(lblDeviceBrand, "wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Model")); card.add(lblDeviceModel, "wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Seri no")); card.add(lblDeviceSerial, "wrap");
 
         lblDeviceAccess = new JLabel("-");
         lblDeviceAccess.putClientProperty(FlatClientProperties.STYLE, "font: bold");
@@ -147,30 +160,33 @@ public class WorkOrderInfoPanel extends JPanel {
         btnRevealAccess.setToolTipText("Erişim kodunu göster/gizle");
         btnRevealAccess.setVisible(false);
         btnRevealAccess.addActionListener(e -> toggleAccessReveal());
-        JPanel accessRow = new JPanel(new MigLayout("insets 0, fillx", "[grow][]"));
-        accessRow.add(lblDeviceAccess, "growx");
+        JPanel accessRow = new JPanel(new MigLayout("insets 0, fillx, gap 4, hidemode 3", "push[][]", "[center]"));
+        accessRow.add(lblDeviceAccess);
         accessRow.add(btnRevealAccess);
-        card.add(WorkOrderPanelSupport.createMutedLabel("Erişim Kodu:")); card.add(accessRow, "wrap, growx");
+        accessRow.setOpaque(false);
+        card.add(WorkOrderPanelSupport.createMutedLabel("Erişim kodu")); card.add(accessRow, "wrap, growx");
 
-        card.add(WorkOrderPanelSupport.createMutedLabel("Müşteri Şikayeti:"), "span 2, wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Müşteri şikâyeti"), "span 2, wrap");
         txtReportedFault = new JTextArea();
         txtReportedFault.setEditable(false);
         txtReportedFault.setLineWrap(true);
         txtReportedFault.setWrapStyleWord(true);
-        txtReportedFault.putClientProperty(FlatClientProperties.STYLE,
-                "background: lighten($Panel.background, 3%); border: 10,10,10,10;");
-        card.add(txtReportedFault, "span 2, growx, h 60!, wrap");
+        txtReportedFault.putClientProperty(FlatClientProperties.STYLE, "font: bold; border: 0,0,0,0");
+        txtReportedFault.setOpaque(false);
+        card.add(txtReportedFault, "span 2, growx, wmin 0, wrap");
 
-        card.add(WorkOrderPanelSupport.createMutedLabel("Teknisyen Arıza Tespiti:"), "span 2, gaptop 10, wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Teknisyen arıza tespiti"), "span 2, gaptop 10, wrap");
         txtDetectedFault = new JTextArea();
         txtDetectedFault.setLineWrap(true);
         txtDetectedFault.setWrapStyleWord(true);
-        txtDetectedFault.putClientProperty(FlatClientProperties.STYLE,
-                "background: lighten($Panel.background, 3%); border: 10,10,10,10;");
-        card.add(txtDetectedFault, "span 2, growx, h 60!, wrap");
+        txtDetectedFault.putClientProperty(FlatClientProperties.STYLE, "border: 8,10,8,10");
+        txtDetectedFault.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Tespit edilen arızayı yazın…");
+        JScrollPane detectedScroll = new JScrollPane(txtDetectedFault);
+        detectedScroll.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
+        card.add(detectedScroll, "span 2, growx, h 70!, wrap");
 
-        JButton btnSaveDetectedFault = new JButton("Kaydet");
-        btnSaveDetectedFault.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
+        JButton btnSaveDetectedFault = new JButton("Tespiti kaydet");
+        btnSaveDetectedFault.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10");
         btnSaveDetectedFault.addActionListener(e -> saveDetectedFault());
         card.add(btnSaveDetectedFault, "span 2, align right, gaptop 5");
         return card;
@@ -188,7 +204,7 @@ public class WorkOrderInfoPanel extends JPanel {
 
     /** Bu servis kaydına ait cihaz erişim kodunu (varsa) yükler; süresi dolup silindiyse "-" gösterir. */
     private void loadDeviceAccessCredential() {
-        lblDeviceAccess.setText("-");
+        lblDeviceAccess.setText("—");
         btnRevealAccess.setVisible(false);
         currentAccessSecret = null;
         currentAccessTypeLabel = null;
@@ -223,19 +239,28 @@ public class WorkOrderInfoPanel extends JPanel {
         lblDeviceAccess.setText(currentAccessTypeLabel + ": " + (accessRevealed ? currentAccessSecret : "••••••"));
     }
 
+    private JLabel lblDateStatus, lblDateDelivery, lblDaysIn;
+
     private JPanel createTimelineCard() {
         JPanel card = WorkOrderPanelSupport.createCardPanel();
-        card.setLayout(new MigLayout("insets 20, fillx", "[100!][grow, right]", "[]15[][]"));
-        JLabel title = new JLabel("Zaman Çizelgesi");
-        title.setIcon(new Ikon("icons/clock.svg"));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        lblDateArrival = new JLabel("-");
-        lblDateArrival.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        lblDateEstimated = new JLabel("-");
-        lblDateEstimated.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-        card.add(title, "span 2, wrap");
-        card.add(WorkOrderPanelSupport.createMutedLabel("Geliş:")); card.add(lblDateArrival, "wrap");
-        card.add(WorkOrderPanelSupport.createMutedLabel("Tahmini Bitiş:")); card.add(lblDateEstimated, "wrap");
+        card.setLayout(new MigLayout("insets 16 18 16 18, fillx, hidemode 3", "[][grow, right]", "[]10[][][][][]"));
+        lblDateArrival = boldLabel();
+        lblDateEstimated = boldLabel();
+        lblDateStatus = boldLabel();
+        lblDateDelivery = boldLabel();
+        lblDaysIn = boldLabel();
+        card.add(WorkOrderPanelSupport.createTitle("Zaman çizelgesi"), "span 2, wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Geliş")); card.add(lblDateArrival, "wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Tahmini bitiş")); card.add(lblDateEstimated, "wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Son durum değişimi")); card.add(lblDateStatus, "wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Teslim")); card.add(lblDateDelivery, "wrap");
+        card.add(WorkOrderPanelSupport.createMutedLabel("Serviste geçen")); card.add(lblDaysIn, "wrap");
         return card;
+    }
+
+    private static JLabel boldLabel() {
+        JLabel l = new JLabel("-");
+        l.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+        return l;
     }
 }

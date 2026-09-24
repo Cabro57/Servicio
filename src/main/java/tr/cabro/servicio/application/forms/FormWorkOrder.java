@@ -15,6 +15,8 @@ import tr.cabro.servicio.application.system.DocumentExportModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.component.Badge;
+import tr.cabro.servicio.application.component.detail.DetailHeader;
+import tr.cabro.servicio.application.component.detail.DetailKit;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.i18n.DateFormats;
@@ -54,15 +56,18 @@ public class FormWorkOrder extends Form {
     private WorkOrder workOrder;
     private final WorkOrderService workOrderService;
 
-    // --- Header ---
-    private JLabel lblHeaderTitle;
-    private JLabel lblHeaderSubtitle;
-    private Badge lblHeaderBadge;
+    // --- Kimlik şeridi ---
+    private DetailHeader header;
+    private Badge statusBadge;
+    private Badge urgentBadge;
     private JComboBox<ServiceStatus> statusComboBox;
+    private JButton btnWhatsApp;
 
-    // --- Layout ---
+    // --- Gövde: solda çalışma alanı (kalemler + ödemeler), sağda dosya (müşteri, cihaz, notlar) ---
     private WorkOrderInfoPanel infoPanel;
-    private JPanel rightColumn;
+    private JPanel workColumn;
+    private JPanel notesHolder;
+    private WorkOrderItemsPanel itemsPanel;
 
     // =========================================================================
     // CONSTRUCTOR
@@ -78,7 +83,7 @@ public class FormWorkOrder extends Form {
         this.workOrder = workOrder;
         hydrateHeader();
         infoPanel.refresh(workOrder);
-        buildRightColumn();
+        buildWorkArea();
     }
 
     @Override
@@ -93,7 +98,7 @@ public class FormWorkOrder extends Form {
             SwingUtilities.invokeLater(() -> {
                 hydrateHeader();
                 infoPanel.refresh(workOrder);
-                buildRightColumn();
+                buildWorkArea();
             });
         }).exceptionally(ex -> ErrorHandler.handle(this, "Servis kaydı yenilenemedi", ex));
     }
@@ -103,57 +108,52 @@ public class FormWorkOrder extends Form {
     // =========================================================================
 
     private void initComponent(WorkOrder initialWorkOrder) {
-        setLayout(new MigLayout("fill, insets 20", "[grow]", "[pref!]20[grow, fill]"));
+        setLayout(new MigLayout("fill, insets 20, gap 16", "[grow, fill]", "[pref][grow, fill]"));
         createHeaderPanel();
 
-        JPanel contentPanel = new JPanel(new MigLayout("insets 0, gapx 20", "[330!, fill][grow, fill]", "[grow, fill]"));
-        contentPanel.setOpaque(false);
+        workColumn = new JPanel(new MigLayout("insets 0, wrap, fillx, gapy 16", "[grow, fill]", ""));
+        workColumn.setOpaque(false);
 
         infoPanel = new WorkOrderInfoPanel(initialWorkOrder, this::openWhatsAppModal);
+        notesHolder = new JPanel(new MigLayout("insets 0, fill", "[grow, fill]", "[]"));
+        notesHolder.setOpaque(false);
+        JPanel side = new JPanel(new MigLayout("insets 0, wrap, fillx, gapy 16", "[grow, fill]", ""));
+        side.setOpaque(false);
+        side.add(infoPanel);
+        side.add(notesHolder);
 
-        rightColumn = new JPanel(new MigLayout("insets 0, gapy 20", "[fill, grow]", "[]"));
-        rightColumn.setOpaque(false);
-
-        contentPanel.add(infoPanel, "grow");
-        contentPanel.add(rightColumn, "grow");
-
-        JScrollPane scrollPane = new JScrollPane(contentPanel);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.setBackground(null);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        add(scrollPane, "grow");
+        JPanel content = new JPanel(new MigLayout("insets 0, fillx, gap 16", "[grow, fill][360!, fill]", "[top]"));
+        content.setOpaque(false);
+        content.add(workColumn, "wmin 0");
+        content.add(side);
+        add(DetailKit.scroll(content), "grow, hmin 0");
     }
 
     // =========================================================================
-    // HEADER
+    // KİMLİK ŞERİDİ
     // =========================================================================
 
     private void createHeaderPanel() {
-        JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx", "[][][][grow][][]", "[]"));
-        headerPanel.setOpaque(false);
+        header = new DetailHeader(() -> FormManager.showForm(AllForms.getForm(FormWorkOrders.class)));
 
-        JButton btnBack = new JButton(new Ikon("icons/arrow-left.svg", 0.5f));
-        btnBack.putClientProperty(FlatClientProperties.STYLE, "arc: 999; background: lighten($Panel.background, 5%);");
-        btnBack.addActionListener(e -> FormManager.showForm(AllForms.getForm(FormWorkOrders.class)));
+        statusBadge = new Badge(ServiceStatus.UNDER_REPAIR);
+        statusBadge.setShowIcon(true);
+        urgentBadge = new Badge(new tr.cabro.servicio.model.contract.Visualizable() {
+            @Override public String getDisplayName() { return "Acil"; }
+            @Override public String getIconPath() { return "icons/triangle-alert.svg"; }
+            @Override public tr.cabro.servicio.model.enums.BadgeColor getBadgeColor() { return tr.cabro.servicio.model.enums.BadgeColor.RED; }
+        }).setShowIcon(true);
+        header.addBadge(statusBadge);
+        header.addBadge(urgentBadge);
 
-        JPanel titlePanel = new JPanel(new MigLayout("insets 0, gapy 2", "[fill]", "[][]"));
-        titlePanel.setOpaque(false);
-        lblHeaderTitle = new JLabel("SRV-YENİ");
-        lblHeaderTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold +8");
-        lblHeaderSubtitle = new JLabel("Kayıt Tarihi: -");
-        lblHeaderSubtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; font: -1");
-        titlePanel.add(lblHeaderTitle, "wrap");
-        titlePanel.add(lblHeaderSubtitle);
+        header.addStat("total", "Toplam");
+        header.addStat("paid", "Ödenen");
+        header.addStat("remaining", "Kalan");
 
-        lblHeaderBadge = new Badge(ServiceStatus.UNDER_REPAIR);
-        lblHeaderBadge.setShowIcon(true);
-        lblHeaderBadge.setShowBorder(true);
-        lblHeaderBadge.setOpaque(true);
-
-        JPanel statusPanel = new JPanel(new MigLayout("insets 0", "[][]", "[]"));
-        statusPanel.setOpaque(false);
         statusComboBox = new JComboBox<>(ServiceStatus.values());
         statusComboBox.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
+        statusComboBox.setToolTipText("Servis durumunu değiştir");
+        statusComboBox.getAccessibleContext().setAccessibleName("Servis durumu");
         statusComboBox.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -170,8 +170,10 @@ public class FormWorkOrder extends Form {
 
             workOrderService.updateStatus(workOrder.getId(), newStatus)
                     .thenAccept(unused -> {
-                        SwingUtilities.invokeLater(() -> lblHeaderBadge.setVisualizable(newStatus));
+                        SwingUtilities.invokeLater(() -> statusBadge.setVisualizable(newStatus));
                         workOrder.setServiceStatus(newStatus);
+                        workOrder.setStatusChangedAt(java.time.LocalDateTime.now());
+                        SwingUtilities.invokeLater(() -> infoPanel.refresh(workOrder));
                     }).exceptionally(ex -> {
                         SwingUtilities.invokeLater(() -> {
                             ActionListener[] ls = statusComboBox.getActionListeners();
@@ -182,40 +184,63 @@ public class FormWorkOrder extends Form {
                         return ErrorHandler.handle(this, "Servis durumu güncellenemedi", ex);
                     });
         });
+        header.addActionComponent(statusComboBox);
 
-        statusPanel.add(new JLabel("Durum Güncelle:"));
-        statusPanel.add(statusComboBox);
-
-        JButton btnGenerateDoc = new JButton("Form", new Ikon("icons/file-text.svg", 1f));
-        btnGenerateDoc.putClientProperty(FlatClientProperties.STYLE,
-                "background: lighten($Panel.background, 5%); arc: 10; font: bold");
+        JButton btnGenerateDoc = header.addAction("Belge", "icons/file-text.svg", null);
+        btnGenerateDoc.setToolTipText("Servis formu, teklif, fiş…");
         btnGenerateDoc.addActionListener(e -> showDocumentMenu(btnGenerateDoc));
+        btnWhatsApp = header.addAction("WhatsApp", "icons/message-circle.svg", this::openWhatsAppModal);
+        header.setPrimary("Parça / İşçilik Ekle", "icons/plus.svg", () -> {
+            if (itemsPanel != null) itemsPanel.openItemAddModal();
+        });
 
-        headerPanel.add(btnBack, "w 40!, h 40!, aligny top");
-        headerPanel.add(titlePanel, "gapleft 15, aligny top");
-        headerPanel.add(lblHeaderBadge, "gapleft 10, aligny top, gaptop 5");
-        headerPanel.add(new JLabel(""), "growx, pushx");
-        headerPanel.add(statusPanel, "align right, aligny top");
-        headerPanel.add(btnGenerateDoc, "gapleft 10, aligny top");
-
-        add(headerPanel, "wrap, growx");
+        add(header, "growx, wmin 0, wrap");
     }
 
     private void hydrateHeader() {
-        lblHeaderTitle.setText("SRV-" + workOrder.getId());
-
-        DateTimeFormatter formatter = DateFormats.dateTime();
-        String dateStr = workOrder.getCreatedAt() != null ? workOrder.getCreatedAt().format(formatter) : "-";
-        lblHeaderSubtitle.setText("Kayıt Tarihi: " + dateStr);
+        header.setTitle("SRV-" + workOrder.getId());
 
         ServiceStatus currentStatus = workOrder.getServiceStatus() != null
                 ? workOrder.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
-        lblHeaderBadge.setVisualizable(currentStatus);
+        statusBadge.setVisualizable(currentStatus);
+        urgentBadge.setVisible("URGENT".equalsIgnoreCase(workOrder.getUrgencyStatus()));
+
+        Customer c = workOrder.getCustomer();
+        Device d = workOrder.getDevice();
+        String since = null;
+        if (workOrder.getCreatedAt() != null) {
+            long days = java.time.temporal.ChronoUnit.DAYS.between(workOrder.getCreatedAt().toLocalDate(),
+                    workOrder.getDeliveryDate() != null ? workOrder.getDeliveryDate().toLocalDate() : java.time.LocalDate.now());
+            since = "Geliş " + workOrder.getCreatedAt().format(DateFormats.shortDate())
+                    + (workOrder.getDeliveryDate() != null ? ", teslim " + workOrder.getDeliveryDate().format(DateFormats.shortDate())
+                    : (days <= 0 ? ", bugün geldi" : ", " + days + " gündür serviste"));
+        }
+        header.setMeta(c != null ? c.getFullName() : "Müşterisiz kayıt",
+                d != null ? d.getBrand() + " " + d.getModel() : null,
+                since);
+
+        boolean hasPhone = c != null && c.getPhoneNumber1() != null && !c.getPhoneNumber1().isBlank();
+        btnWhatsApp.setEnabled(hasPhone);
+        btnWhatsApp.setToolTipText(hasPhone ? "Müşteriye şablonlu WhatsApp mesajı gönder" : "Müşterinin telefonu kayıtlı değil");
 
         ActionListener[] listeners = statusComboBox.getActionListeners();
         for (ActionListener l : listeners) statusComboBox.removeActionListener(l);
         statusComboBox.setSelectedItem(currentStatus);
         for (ActionListener l : listeners) statusComboBox.addActionListener(l);
+
+        hydrateMoney();
+    }
+
+    /** Toplam / ödenen / kalan: kalem ya da ödeme değişince yeniden okunur. */
+    private void hydrateMoney() {
+        java.math.BigDecimal total = workOrder.getTotalServiceAmount();
+        java.math.BigDecimal paid = workOrder.getTotalPaid();
+        java.math.BigDecimal remaining = workOrder.getRemainingAmount();
+        header.setStat("total", tr.cabro.servicio.util.Format.formatPrice(total), null);
+        header.setStat("paid", tr.cabro.servicio.util.Format.formatPrice(paid), paid.signum() > 0 ? "Servicio.successColor" : null);
+        header.setStat("remaining", remaining.signum() > 0 ? tr.cabro.servicio.util.Format.formatPrice(remaining)
+                        : (total.signum() > 0 ? "Ödendi" : "—"),
+                remaining.signum() > 0 ? "Servicio.warningColor" : "Label.disabledForeground");
     }
 
     // =========================================================================
@@ -336,20 +361,23 @@ public class FormWorkOrder extends Form {
     }
 
     // =========================================================================
-    // RIGHT COLUMN (Parça/Ödeme/Not panelleri)
+    // ÇALIŞMA ALANI (Parça/Ödeme/Not panelleri)
     // =========================================================================
 
-    private void buildRightColumn() {
-        rightColumn.removeAll();
+    private void buildWorkArea() {
+        workColumn.removeAll();
+        notesHolder.removeAll();
 
         WorkOrderPaymentsPanel paymentsPanel = new WorkOrderPaymentsPanel(workOrder);
-        WorkOrderItemsPanel itemsPanel = new WorkOrderItemsPanel(workOrder, paymentsPanel::refresh);
+        paymentsPanel.setOnChanged(this::hydrateMoney);
+        itemsPanel = new WorkOrderItemsPanel(workOrder, paymentsPanel::refresh);
         WorkOrderNotesPanel notesPanel = new WorkOrderNotesPanel(workOrder);
 
-        rightColumn.add(itemsPanel, "wrap, growx");
-        rightColumn.add(paymentsPanel, "wrap, growx");
-        rightColumn.add(notesPanel, "wrap, growx");
-        rightColumn.revalidate();
-        rightColumn.repaint();
+        workColumn.add(itemsPanel, "growx");
+        workColumn.add(paymentsPanel, "growx");
+        notesHolder.add(notesPanel, "growx");
+        workColumn.revalidate();
+        workColumn.repaint();
+        notesHolder.revalidate();
     }
 }

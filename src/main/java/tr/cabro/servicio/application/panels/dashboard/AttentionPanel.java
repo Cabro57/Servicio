@@ -23,8 +23,9 @@ import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
 import java.math.BigDecimal;
-import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -206,8 +207,7 @@ public class AttentionPanel extends JPanel {
                 : "foreground: $Label.disabledForeground");
         row.add(amount, "wrap");
 
-        String since = sinceText(wo.getUpdatedAt() != null ? wo.getUpdatedAt() : wo.getCreatedAt(),
-                current == Tab.READY ? "hazır" : "bekliyor");
+        String since = sinceText(wo, current == Tab.READY ? "hazır" : "bekliyor");
         row.add(DashboardUi.small(device + "  ·  SRV-" + wo.getId() + (since.isEmpty() ? "" : "  ·  " + since)), "span 2");
 
         row.getAccessibleContext().setAccessibleName(customer + ", " + device);
@@ -247,10 +247,18 @@ public class AttentionPanel extends JPanel {
         return wrap;
     }
 
-    private static String sinceText(LocalDateTime time, String verb) {
+    /**
+     * Durumun ne zamandan beri sürdüğü. updated_at her düzenlemede değiştiği için kullanılmaz;
+     * durumun değiştiği an bilinmiyorsa (V23 öncesi kayıtlar) cihazın geliş tarihinden
+     * "gündür serviste" gösterilir. Gün, saat farkı değil takvim günü olarak sayılır.
+     */
+    private static String sinceText(WorkOrder wo, String verb) {
+        LocalDateTime changed = wo.getStatusChangedAt();
+        LocalDateTime time = changed != null ? changed : wo.getCreatedAt();
         if (time == null) return "";
-        long days = Duration.between(time, LocalDateTime.now()).toDays();
-        if (days <= 0) return "bugün " + verb;
+        if (changed == null) verb = "serviste";
+        long days = ChronoUnit.DAYS.between(time.toLocalDate(), LocalDate.now());
+        if (days <= 0) return "bugün " + (changed != null ? verb : "geldi");
         return days + " gündür " + verb;
     }
 

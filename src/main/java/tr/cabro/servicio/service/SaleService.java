@@ -65,6 +65,65 @@ public class SaleService {
     }
 
     /**
+     * Bir satış kaleminin iade edilebilir kalanı: adet ve müşteriye geri ödenebilecek tutar.
+     * Tutar, kalem iskontosu ve fiş iskontosu düşülmüş NET tutardır (fiş iskontosu kalemlere
+     * net tutarları oranında dağıtılır); daha önce yapılmış iadeler bu tutardan düşülür.
+     * Kısmi iadede kalan tutar kalan adede orantılanır, son adet kalan kuruşu da alır —
+     * böylece bir kalemin toplam iadesi hiçbir zaman ödenen net tutarı aşmaz.
+     */
+    public static class ReturnQuote {
+        public final SaleItem item;
+        public final int returnable;
+        public final BigDecimal refundable;
+
+        ReturnQuote(SaleItem item, int returnable, BigDecimal refundable) {
+            this.item = item;
+            this.returnable = returnable;
+            this.refundable = refundable;
+        }
+
+        /** {@code quantity} adet iade edilince geri ödenecek tutar (pozitif). */
+        public BigDecimal amountFor(int quantity) {
+            if (quantity <= 0 || returnable <= 0) return BigDecimal.ZERO;
+            if (quantity >= returnable) return refundable;
+            return refundable.multiply(BigDecimal.valueOf(quantity))
+                    .divide(BigDecimal.valueOf(returnable), 2, RoundingMode.HALF_UP);
+        }
+    }
+
+    /** Kalemin iskontolar sonrası net tutarı; fiş iskontosu subtotal/total oranıyla dağıtılır. */
+    private static BigDecimal netLineTotal(Sale original, SaleItem item) {
+        BigDecimal line = item.getLineTotal() != null ? item.getLineTotal() : BigDecimal.ZERO;
+        BigDecimal subtotal = original.getSubtotal();
+        BigDecimal total = original.getTotalAmount();
+        if (subtotal == null || total == null || subtotal.signum() <= 0 || total.compareTo(subtotal) == 0) {
+            return line.setScale(2, RoundingMode.HALF_UP);
+        }
+        return line.multiply(total).divide(subtotal, 2, RoundingMode.HALF_UP);
+    }
+
+    private static ReturnQuote quote(Sale original, SaleItem item, SaleItemRepository itemRepo) {
+        int alreadyQty = -itemRepo.sumReturnedQuantity(item.getId());
+        BigDecimal alreadyAmount = itemRepo.sumReturnedAmount(item.getId()).abs();
+        int returnable = item.getQuantity() - alreadyQty;
+        BigDecimal refundable = netLineTotal(original, item).subtract(alreadyAmount).max(BigDecimal.ZERO);
+        return new ReturnQuote(item, returnable, refundable);
+    }
+
+    /** İade paneli için satışın kalemleri ve her birinin iade edilebilir kalanı. */
+    public CompletableFuture<List<ReturnQuote>> getReturnQuotes(Long saleId) {
+        return CompletableFuture.supplyAsync(() -> DatabaseManager.inTransaction(handle -> {
+            SaleRepository saleRepo = handle.attach(SaleRepository.class);
+            SaleItemRepository itemRepo = handle.attach(SaleItemRepository.class);
+            Sale original = saleRepo.findById(saleId)
+                    .orElseThrow(() -> new ValidationException("Satış bulunamadı."));
+            List<ReturnQuote> result = new ArrayList<>();
+            for (SaleItem item : itemRepo.findBySaleId(saleId)) result.add(quote(original, item, itemRepo));
+            return result;
+        }));
+    }
+
+    /**
      * İade — orijinal satışa {@code parent_sale_id} ile bağlı, {@code type='RETURN'}, negatif
      * miktar/tutarlı YENİ bir satış kaydı (ayrı bir sale_returns tablosu yok). Stok girişi
      * {@link ReferenceType#RETURN} ile geri eklenir. Aynı kalemin iki kez iadesi
@@ -109,12 +168,16 @@ public class SaleService {
                     throw new ValidationException("Kalem bu satışa ait değil.");
                 }
 
-                int alreadyReturned = -itemRepo.sumReturnedQuantity(originalItem.getId());
-                int returnable = originalItem.getQuantity() - alreadyReturned;
-                if (line.quantity > returnable) {
+                ReturnQuote q = quote(original, originalItem, itemRepo);
+                if (line.quantity > q.returnable) {
                     throw new ValidationException(
-                            "'" + originalItem.getItemName() + "' için en fazla " + returnable + " adet iade edilebilir.");
+                            "'" + originalItem.getItemName() + "' için en fazla " + q.returnable + " adet iade edilebilir.");
                 }
+                // İskontolar düşülmüş net tutar; brüt (birim fiyat × adet) ile aradaki fark iskonto olarak
+                // kalemde görünür, böylece iade fişi satış fişiyle aynı indirimi taşır.
+                BigDecimal refund = q.amountFor(line.quantity);
+                BigDecimal gross = originalItem.getUnitPrice().multiply(BigDecimal.valueOf(line.quantity));
+                BigDecimal discount = gross.subtract(refund).max(BigDecimal.ZERO);
 
                 SaleItem returnItem = new SaleItem();
                 returnItem.setProductId(originalItem.getProductId());
@@ -123,8 +186,13 @@ public class SaleService {
                 returnItem.setPurchasePrice(originalItem.getPurchasePrice());
                 returnItem.setUnitPrice(originalItem.getUnitPrice());
                 returnItem.setSaleCurrency(originalItem.getSaleCurrency());
+                returnItem.setUnitPriceOriginal(originalItem.getUnitPriceOriginal());
                 returnItem.setSourceSaleItemId(originalItem.getId());
-                returnItem.setLineTotal(originalItem.getUnitPrice().multiply(BigDecimal.valueOf(-line.quantity)));
+                if (discount.signum() > 0) {
+                    returnItem.setLineDiscountType(DiscountType.AMOUNT);
+                    returnItem.setLineDiscountValue(discount);
+                }
+                returnItem.setLineTotal(refund.negate());
 
                 returnItems.add(returnItem);
                 subtotal = subtotal.add(returnItem.getLineTotal());
@@ -300,6 +368,20 @@ public class SaleService {
         });
     }
 
+    /** Liste sayfası: arama + görünüm sekmesi/başlık filtreleri + sayfalama. */
+    public CompletableFuture<PageResult<Sale>> searchFilteredPaged(String searchTerm,
+            Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize) {
+        return CompletableFuture.supplyAsync(() -> {
+            PageResult<Sale> r = saleRepository.searchFilteredPaged(searchTerm, filters, page, pageSize);
+            return new PageResult<>(hydrateSales(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
+        });
+    }
+
+    /** Süzgeçle eşleşen fişlerin net toplamı (liste özeti için). */
+    public CompletableFuture<BigDecimal> sumFiltered(Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters) {
+        return CompletableFuture.supplyAsync(() -> saleRepository.sumFiltered(filters));
+    }
+
     public CompletableFuture<PageResult<Sale>> searchPaged(String searchTerm, int page, int pageSize) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAllPaged(page, pageSize);
         int offset = (page - 1) * pageSize;
@@ -346,6 +428,37 @@ public class SaleService {
             }
             return result;
         });
+    }
+
+    /** Satış detayı: bu satışa bağlı iade fişleri (en yeni önce). */
+    public CompletableFuture<List<Sale>> getReturnsOf(Long saleId) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<Sale> returns = new ArrayList<>(saleRepository.findByParentSaleId(saleId));
+            returns.sort(java.util.Comparator.comparing(Sale::getSaleDate, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed());
+            return hydrateSales(returns);
+        });
+    }
+
+    /** Ürün detayı: ürünün geçtiği kalemler ({@link SaleItem#getSaleId()} ile) ve o fişler. */
+    public CompletableFuture<ProductSales> getProductSales(Long productId) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<SaleItem> items = saleItemRepository.findByProductId(productId);
+            List<Long> saleIds = items.stream().map(SaleItem::getSaleId).distinct().collect(Collectors.toList());
+            List<Sale> sales = new ArrayList<>();
+            for (Long id : saleIds) saleRepository.findById(id).ifPresent(sales::add);
+            return new ProductSales(items, hydrateSales(sales));
+        });
+    }
+
+    /** {@link #getProductSales} sonucu: kalemler ve fişler (fişler en yeni önce). */
+    public static class ProductSales {
+        public final List<SaleItem> items;
+        public final List<Sale> sales;
+
+        ProductSales(List<SaleItem> items, List<Sale> sales) {
+            this.items = items;
+            this.sales = sales;
+        }
     }
 
     /** Müşteri detayındaki Satışlar bölümü için — müşterinin satış ve iadeleri, en yeni önce. */

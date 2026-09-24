@@ -43,6 +43,12 @@ public final class SqlWhereBuilder {
                 ColumnFilterValue value = entry.getValue();
                 if (value == null || !value.isActive()) continue;
 
+                if (value.getCondition() != null && !value.getCondition().isBlank()) {
+                    // Koddan gelen sabit koşul (bkz. ColumnFilterValue.condition); kolon adı kullanılmaz.
+                    sql.append(" AND (").append(value.getCondition()).append(")");
+                    continue;
+                }
+
                 if (value.getEnumValues() != null && !value.getEnumValues().isEmpty()) {
                     StringBuilder placeholders = new StringBuilder();
                     for (String enumValue : value.getEnumValues()) {

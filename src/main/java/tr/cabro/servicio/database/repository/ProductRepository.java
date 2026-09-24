@@ -1,6 +1,12 @@
 package tr.cabro.servicio.database.repository;
 
+import org.jdbi.v3.sqlobject.SqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
+import tr.cabro.servicio.database.filter.SqlWhereBuilder;
+import tr.cabro.servicio.model.dto.PageResult;
+import java.util.HashMap;
+import java.util.Map;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindList;
@@ -14,7 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RegisterBeanMapper(Product.class)
-public interface ProductRepository {
+public interface ProductRepository extends SqlObject {
 
     // --- INSERT / UPDATE ---
     @SqlUpdate("INSERT INTO products (barcode, name, brand, category_id, purchase_price, sale_price, " +
@@ -98,4 +104,32 @@ public interface ProductRepository {
             "  COALESCE(SUM(purchase_price * stock_quantity), 0.0) AS total_inventory_value " +
             "FROM products WHERE is_deleted = 0")
     PartStatsDto getStats();
+
+    // =========================================================================
+    // LİSTE SAYFASI: arama + görünüm sekmesi/başlık filtresi + sayfalama (dinamik WHERE, SqlWhereBuilder)
+    // =========================================================================
+
+    default PageResult<Product> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                int page, int pageSize) {
+        SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
+        boolean searching = searchTerm != null && !searchTerm.isBlank();
+
+        StringBuilder whereClause = new StringBuilder("WHERE p.is_deleted = 0").append(where.getWhereFragment());
+        if (searching) whereClause.append(" AND (p.name LIKE :search OR p.barcode LIKE :search OR p.brand LIKE :search OR pc.name LIKE :search)");
+
+        Map<String, Object> countParams = new HashMap<>(where.getParams());
+        if (searching) countParams.put("search", "%" + searchTerm.trim() + "%");
+        Map<String, Object> params = new HashMap<>(countParams);
+        params.put("limit", pageSize);
+        params.put("offset", (page - 1) * pageSize);
+
+        // Aramada ada göre, aksi halde en yeni önce (eski findAllPaged/searchPaged sırası korunur).
+        String order = searching ? " ORDER BY p.name" : " ORDER BY p.created_at DESC";
+        String listSql = SEARCH_SELECT + SEARCH_FROM + whereClause + order + " LIMIT :limit OFFSET :offset";
+        String countSql = "SELECT COUNT(*) " + SEARCH_FROM + whereClause;
+
+        java.util.List<Product> items = getHandle().createQuery(listSql).bindMap(params).mapToBean(Product.class).list();
+        long total = getHandle().createQuery(countSql).bindMap(countParams).mapTo(Long.class).one();
+        return new PageResult<>(items, page, pageSize, total);
+    }
 }

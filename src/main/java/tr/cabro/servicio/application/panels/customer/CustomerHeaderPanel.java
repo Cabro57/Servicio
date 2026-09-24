@@ -43,7 +43,7 @@ public class CustomerHeaderPanel extends JPanel {
     public CustomerHeaderPanel(Runnable onBack, Runnable onWhatsApp, Runnable onEdit,
                                Runnable onCollect, Runnable onNewService) {
         setLayout(new MigLayout("insets 14 16 14 20, fillx, gapx 14", "[][grow, fill][][]", "[center][]"));
-        putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");
+        putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
 
         JButton btnBack = new JButton(new Ikon("icons/arrow-left.svg", 1.1f));
         btnBack.setToolTipText("Geri");
@@ -82,9 +82,9 @@ public class CustomerHeaderPanel extends JPanel {
         JButton btnEdit = secondaryButton("Düzenle", "icons/user-pen.svg", onEdit);
         JButton btnCollect = secondaryButton("Tahsilat Al", "icons/hand-coins.svg", onCollect);
 
-        JButton btnNewService = new JButton("Yeni Servis", new Ikon("icons/plus.svg", 0.9f, "Button.default.foreground"));
+        JButton btnNewService = new JButton("Yeni Servis", new Ikon("icons/plus.svg", 0.9f, "Servicio.onAccentForeground"));
         btnNewService.putClientProperty(FlatClientProperties.STYLE,
-                "background: $Component.accentColor; foreground: $Button.default.foreground; arc: 10; margin: 7,14,7,14; font: bold");
+                "background: $Component.accentColor; foreground: $Servicio.onAccentForeground; arc: 10; margin: 7,14,7,14; font: bold");
         btnNewService.addActionListener(e -> onNewService.run());
 
         JPanel actions = new JPanel(new MigLayout("insets 0, gap 8", "[][][][]", "[]"));

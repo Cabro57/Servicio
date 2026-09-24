@@ -39,7 +39,7 @@ public class TableStatePanel extends JPanel {
         titleLabel.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
         descriptionLabel.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
         actionButton.putClientProperty(FlatClientProperties.STYLE,
-                "background: $Component.accentColor; foreground: $Button.default.foreground; arc: 10; margin: 6,14,6,14");
+                "background: $Component.accentColor; foreground: $Servicio.onAccentForeground; arc: 10; margin: 6,14,6,14");
         progressBar.setIndeterminate(true);
 
         add(iconLabel, "align center");

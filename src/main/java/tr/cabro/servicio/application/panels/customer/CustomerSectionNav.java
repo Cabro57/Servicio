@@ -22,7 +22,7 @@ public class CustomerSectionNav extends JPanel {
     public CustomerSectionNav(Consumer<String> onSelect) {
         this.onSelect = onSelect;
         setLayout(new MigLayout("insets 8, wrap, gapy 2, fillx", "[grow, fill]", ""));
-        putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");
+        putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
     }
 
     /**

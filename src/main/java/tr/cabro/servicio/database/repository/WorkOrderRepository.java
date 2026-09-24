@@ -26,9 +26,9 @@ import java.util.Optional;
 public interface WorkOrderRepository extends SqlObject {
 
     @SqlUpdate("INSERT INTO work_orders (customer_id, device_id, technician_id, reported_fault, " +
-            "urgency_status, service_status, warranty_end_date, delivery_date, created_at, updated_at) " +
+            "urgency_status, service_status, warranty_end_date, delivery_date, created_at, updated_at, status_changed_at) " +
             "VALUES (:customerId, :deviceId, :technicianId, :reportedFault, " +
-            ":urgencyStatus, :serviceStatus, :warrantyEndDate, :deliveryDate, :createdAt, :updatedAt)")
+            ":urgencyStatus, :serviceStatus, :warrantyEndDate, :deliveryDate, :createdAt, :updatedAt, :createdAt)")
     @GetGeneratedKeys
     Long insert(@BindBean WorkOrder workOrder);
 
@@ -38,7 +38,8 @@ public interface WorkOrderRepository extends SqlObject {
             "WHERE id=:id")
     void update(@BindBean WorkOrder workOrder);
 
-    @SqlUpdate("UPDATE work_orders SET service_status=:status, delivery_date=:deliveryDate, updated_at=:updatedAt WHERE id=:id")
+    @SqlUpdate("UPDATE work_orders SET service_status=:status, delivery_date=:deliveryDate, updated_at=:updatedAt, " +
+            "status_changed_at=CASE WHEN service_status IS :status THEN status_changed_at ELSE :updatedAt END WHERE id=:id")
     void updateStatus(@Bind("id") Long id,
                       @Bind("status") ServiceStatus status,
                       @Bind("deliveryDate") LocalDateTime deliveryDate,

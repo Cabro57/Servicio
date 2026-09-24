@@ -17,13 +17,18 @@ public final class WorkOrderPanelSupport {
     private WorkOrderPanelSupport() {
     }
 
+    /** Kart içi gömülü tablolar: liste sayfalarıyla aynı soluk başlık ve çizgi dili, daha alçak satır. */
     public static void styleTable(JTable table) {
-        table.setRowHeight(38);
         table.setShowVerticalLines(false);
         table.setIntercellSpacing(new Dimension(0, 1));
         table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().putClientProperty(FlatClientProperties.STYLE,
+                "height:30; hoverBackground:null; pressedBackground:null; separatorColor:$Table.background;"
+                        + " bottomSeparatorColor:$Component.borderColor; background:$Table.background;"
+                        + " foreground:$Label.disabledForeground; font:-1");
         table.putClientProperty(FlatClientProperties.STYLE,
-                "background: lighten($Panel.background, 2%); selectionBackground: lighten($Panel.background, 5%)");
+                "rowHeight:42; showHorizontalLines:true; gridColor:$Component.borderColor; cellFocusColor:null;"
+                        + " selectionBackground:$Servicio.rowSelectedBackground; selectionForeground:$Table.foreground");
     }
 
     public static JPanel createEmptyStatePanel(String message) {
@@ -39,9 +44,17 @@ public final class WorkOrderPanelSupport {
         return label;
     }
 
+    /** Detay kartı: liste sayfalarıyla aynı beyaz zemin, ince çizgi, 15px köşe. */
     public static JPanel createCardPanel() {
         JPanel panel = new JPanel();
-        panel.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); arc: 15;");
+        panel.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
         return panel;
+    }
+
+    /** Kart başlığı ({@code $h3.font}); ikon kullanılmaz, başlık kendi ağırlığıyla okunur. */
+    public static JLabel createTitle(String text) {
+        JLabel title = new JLabel(text);
+        title.putClientProperty(FlatClientProperties.STYLE, "font: $h3.font");
+        return title;
     }
 }

@@ -23,6 +23,20 @@ public final class TableActionColumnSupport {
 
     public static <T> void install(JTable table, int actionColumnIndex,
                                     GenericTableModel<T> tableModel, Handlers<T> handlers) {
+        // Liste sayfalarında düğmeler ayrı kolonda değil, satırın üstüne binen şeritte (ListTable).
+        if (table instanceof ListTable) {
+            ListTable lt = (ListTable) table;
+            java.util.function.Function<Integer, T> at = row -> tableModel.getItemAt(table.convertRowIndexToModel(row));
+            lt.setRowActions(actionColumnIndex, java.util.List.of(
+                    new ListTable.RowAction("icons/eye.svg", tr.cabro.servicio.application.themes.SemanticColor.info(),
+                            "Detayı aç (satıra tıklayın ya da Enter)", row -> handlers.onView(at.apply(row))),
+                    new ListTable.RowAction("icons/pencil.svg", tr.cabro.servicio.application.themes.SemanticColor.warning(),
+                            "Düzenle", row -> handlers.onEdit(at.apply(row))),
+                    new ListTable.RowAction("icons/trash-2.svg", tr.cabro.servicio.application.themes.SemanticColor.danger(),
+                            "Sil", row -> handlers.onDelete(at.apply(row)))));
+            installRowActivation(table, actionColumnIndex, tableModel, handlers);
+            return;
+        }
         table.getColumnModel().getColumn(actionColumnIndex).setCellEditor(
                 new ActionButtonEditor(new TableActionEvent() {
                     @Override
@@ -65,6 +79,14 @@ public final class TableActionColumnSupport {
      */
     private static <T> void installRowActivation(JTable table, int actionColumnIndex,
                                                  GenericTableModel<T> tableModel, Handlers<T> handlers) {
+        // Liste sayfalarında satırın tamamı hedeftir: tek tık ve Enter ListTable'da.
+        if (table instanceof ListTable) {
+            ((ListTable) table).setRowOpener(row -> {
+                T item = tableModel.getItemAt(table.convertRowIndexToModel(row));
+                if (item != null) handlers.onView(item);
+            }, actionColumnIndex);
+            return;
+        }
         Runnable openSelected = () -> {
             int row = table.getSelectedRow();
             if (row < 0) return;

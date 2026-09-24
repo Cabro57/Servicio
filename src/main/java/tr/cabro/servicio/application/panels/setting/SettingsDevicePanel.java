@@ -150,10 +150,10 @@ public class SettingsDevicePanel extends JPanel {
     }
 
     private JPanel getDeviceTypePanel() {
-        JPanel deviceTypePanel = new JPanel(new MigLayout("insets 0, fill, wrap 2", "[grow][pref!]", "[]2[]10[][grow, fill]"));
-        deviceTypePanel.setOpaque(false);
+        JPanel deviceTypePanel = new JPanel(new MigLayout("insets 14 16 14 16, fill, wrap 2", "[grow][pref!]", "[]2[]10[][grow, fill]"));
+        deviceTypePanel.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
         JLabel title = new JLabel("Türler");
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        title.putClientProperty(FlatClientProperties.STYLE, "font: $h3.font");
 
         JLabel subtitle = SettingsKit.note("Arıza kaydında ilk seçilen kategori.");
 
@@ -165,7 +165,7 @@ public class SettingsDevicePanel extends JPanel {
         typeAddButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
 
         typeList = new JList<>();
-        typeList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+        typeList.putClientProperty(FlatClientProperties.STYLE, "selectionArc: 10");
         typeList.setCellRenderer(new TypeListCellRenderer(typeList, this::onTypeDel));
         typeList.setModel(typeModel);
 
@@ -173,16 +173,18 @@ public class SettingsDevicePanel extends JPanel {
         deviceTypePanel.add(subtitle, "span 2");
         deviceTypePanel.add(typeField, "growx");
         deviceTypePanel.add(typeAddButton);
-        deviceTypePanel.add(SettingsKit.listScroll(typeList), "span 2, grow, hmin 160");
+        JScrollPane typeScroll = SettingsKit.listScroll(typeList);
+        typeScroll.setBorder(BorderFactory.createEmptyBorder());
+        deviceTypePanel.add(typeScroll, "span 2, grow, hmin 160");
 
         return deviceTypePanel;
     }
 
     private JPanel getBrandPanel() {
-        JPanel brandPanel = new JPanel(new MigLayout("insets 0, fill, wrap 2", "[grow][pref!]", "[]2[]10[][grow, fill]"));
-        brandPanel.setOpaque(false);
+        JPanel brandPanel = new JPanel(new MigLayout("insets 14 16 14 16, fill, wrap 2", "[grow][pref!]", "[]2[]10[][grow, fill]"));
+        brandPanel.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
         brandTitle = new JLabel("Markalar");
-        brandTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        brandTitle.putClientProperty(FlatClientProperties.STYLE, "font: $h3.font");
 
         JLabel subtitle = SettingsKit.note("Seçili türün markaları. Bir markayı başka türe taşımak için sürükleyip o türün üstüne bırakın.");
 
@@ -194,7 +196,7 @@ public class SettingsDevicePanel extends JPanel {
         brandAddButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
 
         brandList = new JList<>();
-        brandList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
+
         brandList.setCellRenderer(new BrandListCellRenderer(brandList, this::onBrandDel));
         brandList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
         brandList.setVisibleRowCount(-1);
@@ -204,7 +206,9 @@ public class SettingsDevicePanel extends JPanel {
         brandPanel.add(subtitle, "span 2, wmin 0");
         brandPanel.add(brandField, "growx");
         brandPanel.add(brandAddButton);
-        brandPanel.add(SettingsKit.listScroll(brandList), "span 2, grow, hmin 160");
+        JScrollPane brandScroll = SettingsKit.listScroll(brandList);
+        brandScroll.setBorder(BorderFactory.createEmptyBorder());
+        brandPanel.add(brandScroll, "span 2, grow, hmin 160");
 
         return brandPanel;
     }

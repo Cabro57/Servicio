@@ -36,12 +36,18 @@ public class ReturnPanel extends JPanel {
 
     private static class Row {
         final SaleItem item;
+        final SaleService.ReturnQuote quote;
         final int maxReturnable;
         int quantity = 0;
 
-        Row(SaleItem item, int maxReturnable) {
-            this.item = item;
-            this.maxReturnable = maxReturnable;
+        Row(SaleService.ReturnQuote quote) {
+            this.item = quote.item;
+            this.quote = quote;
+            this.maxReturnable = quote.returnable;
+        }
+
+        BigDecimal amount() {
+            return quote.amountFor(quantity);
         }
     }
 
@@ -120,6 +126,7 @@ public class ReturnPanel extends JPanel {
                 new ColumnDef<>("Satılan", Integer.class, r -> r.item.getQuantity()),
                 new ColumnDef<>("İade Edilebilir", Integer.class, r -> r.maxReturnable),
                 new ColumnDef<>("İade Adedi", Integer.class, r -> r.quantity),
+                new ColumnDef<>("İade Tutarı", String.class, r -> r.quantity > 0 ? Format.formatPrice(r.amount()) : ""),
                 new ColumnDef<Row>("", String.class, r -> "").editable(true)
         );
         tableModel = new GenericTableModel<>(columns);
@@ -128,29 +135,24 @@ public class ReturnPanel extends JPanel {
     private JTable buildTable() {
         JTable table = new JTable(tableModel);
         table.setRowHeight(30);
-        DynamicActionColumnSupport.install(table, 4, tableModel, List.of(
+        DynamicActionColumnSupport.install(table, 5, tableModel, List.of(
                 DynamicActionColumnSupport.button("icons/plus.svg", new Color(46, 204, 113), "Artır",
                         r -> { if (r.quantity < r.maxReturnable) { r.quantity++; refresh(); } }),
                 DynamicActionColumnSupport.button("icons/minus.svg", new Color(230, 126, 34), "Azalt",
                         r -> { if (r.quantity > 0) { r.quantity--; refresh(); } })
         ));
-        table.getColumnModel().getColumn(4).setMaxWidth(90);
+        table.getColumnModel().getColumn(5).setMaxWidth(90);
         return table;
     }
 
     private void loadItems() {
-        saleService.getById(sale.getId()).thenAccept(opt -> {
-            if (opt.isEmpty()) return;
-            List<SaleItem> items = opt.get().getItems();
-            saleService.getReturnableQuantities(sale.getId()).thenAccept(returnableMap -> SwingUtilities.invokeLater(() -> {
-                rows.clear();
-                for (SaleItem item : items) {
-                    int max = returnableMap.getOrDefault(item.getId(), 0);
-                    if (max > 0) rows.add(new Row(item, max));
-                }
-                refresh();
-            })).exceptionally(ex -> ErrorHandler.handle(this, "İade edilebilir miktarlar yüklenemedi", ex));
-        }).exceptionally(ex -> ErrorHandler.handle(this, "Satış kalemleri yüklenemedi", ex));
+        saleService.getReturnQuotes(sale.getId()).thenAccept(quotes -> SwingUtilities.invokeLater(() -> {
+            rows.clear();
+            for (SaleService.ReturnQuote q : quotes) {
+                if (q.returnable > 0) rows.add(new Row(q));
+            }
+            refresh();
+        })).exceptionally(ex -> ErrorHandler.handle(this, "İade edilebilir miktarlar yüklenemedi", ex));
     }
 
     private void refresh() {
@@ -158,7 +160,7 @@ public class ReturnPanel extends JPanel {
 
         BigDecimal total = BigDecimal.ZERO;
         for (Row row : rows) {
-            total = total.add(row.item.getUnitPrice().multiply(BigDecimal.valueOf(row.quantity)));
+            total = total.add(row.amount());
         }
         lblReturnTotal.setText("İade edilecek tutar: " + Format.formatPrice(total));
         refundAmountField.setValue(total.doubleValue());
@@ -170,7 +172,7 @@ public class ReturnPanel extends JPanel {
         for (Row row : rows) {
             if (row.quantity <= 0) continue;
             lines.add(new SaleService.ReturnLine(row.item.getId(), row.quantity));
-            total = total.add(row.item.getUnitPrice().multiply(BigDecimal.valueOf(row.quantity)));
+            total = total.add(row.amount());
         }
         if (lines.isEmpty()) {
             Toast.show(this, Toast.Type.WARNING, Messages.get("toast.return.noItemsSelected"));

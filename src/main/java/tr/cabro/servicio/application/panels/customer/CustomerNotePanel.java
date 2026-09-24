@@ -25,7 +25,7 @@ public class CustomerNotePanel extends JPanel {
 
     public CustomerNotePanel(Runnable onEdit) {
         setLayout(new MigLayout("insets 14 16 14 12, fillx, wrap", "[grow, fill]", "[]8[]"));
-        putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");
+        putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
 
         JLabel title = new JLabel("Notlar", new Ikon("icons/file-text.svg", 0.85f, "Label.disabledForeground"), SwingConstants.LEADING);
         title.putClientProperty(FlatClientProperties.STYLE, "font: bold; iconTextGap: 8");

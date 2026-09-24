@@ -179,6 +179,15 @@ public class PartService {
         });
     }
 
+    /** Liste sayfası: arama + görünüm sekmesi/başlık filtreleri + sayfalama. */
+    public CompletableFuture<PageResult<Part>> searchFilteredPaged(String searchTerm,
+            java.util.Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize) {
+        return CompletableFuture.supplyAsync(() -> {
+            PageResult<Part> r = partRepository.searchFilteredPaged(searchTerm, filters, page, pageSize);
+            return new PageResult<>(hydrateParts(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
+        });
+    }
+
     public CompletableFuture<PartStatsDto> getStats() {
         return CompletableFuture.supplyAsync(partRepository::getStats);
     }

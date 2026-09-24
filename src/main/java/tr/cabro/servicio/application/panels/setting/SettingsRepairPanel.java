@@ -19,62 +19,105 @@ import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.DialogHelper;
 
 import javax.swing.*;
+import tr.cabro.servicio.application.component.table.ViewTabs;
+import tr.cabro.servicio.util.Format;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Tamirler (hazır işçilik kalemleri): üstte cihaz türü sekmeleri (sayılı), altında işçilik satırları —
+ * kalın ad, altında tür ve açıklama, sağda varsayılan fiyat; düzenle/sil satırın üstüne gelince
+ * görünür, satıra tıklamak düzenler. Eski ekran açılır liste süzgeci + her satırda üç ikonlu tabloydu.
+ */
 public class SettingsRepairPanel extends JPanel implements SettingsModal.HeaderActions {
 
-    private static final DeviceType ALL_TYPES = new DeviceType(null, "Tümü", 0);
-
-    private final DefaultComboBoxModel<DeviceType> comboBoxModel = new DefaultComboBoxModel<>();
-    private GenericTableModel<Labor> tableModal;
+    private static final String ALL = "all";
 
     private final LaborService laborService;
+    private final ViewTabs views = new ViewTabs();
+    private DictionaryList<Labor> list;
+    private List<Labor> all = List.of();
+    private final java.util.List<String> typeKeys = new java.util.ArrayList<>();
+    private JButton add_button;
 
     public SettingsRepairPanel() {
         laborService = ServiceManager.getLaborService();
-
-        init();
-    }
-
-    private void init() {
         initComponent();
 
-        setupTable();
+        views.addView(ALL, "Tümü");
+        views.addView("general", "Genel");
+        views.setOnChange(k -> applyView());
+        ServiceManager.getDeviceDictionaryManager().getAllTypes().thenAccept(types -> SwingUtilities.invokeLater(() -> {
+            for (DeviceType t : types) {
+                views.addView("type:" + t.getId(), t.getName());
+                typeKeys.add("type:" + t.getId());
+            }
+            views.revalidate();
+            updateCounts();
+        }));
 
-        comboBoxModel.addElement(ALL_TYPES);
-        device_type_combo.setModel(comboBoxModel);
-        ServiceManager.getDeviceDictionaryManager().getAllTypes().thenAccept(types -> {
-            SwingUtilities.invokeLater(() -> types.forEach(comboBoxModel::addElement));
-        });
-
+        add_button.addActionListener(e -> setupEditModal("LABOR_ADD", false, new Labor()));
         refreshTable();
-
-        device_type_combo.addActionListener(e -> refreshTable());
-
-        add_button.addActionListener(e -> {
-            setupEditModal("LABOR_ADD", false, new Labor());
-        });
     }
 
-    private void setupTable() {
-        List<ColumnDef<Labor>> columns = Arrays.asList(
-                new ColumnDef<>("İşlem Adı", String.class, Labor::getName),
-                new ColumnDef<>("Tür", String.class, l -> l.getDeviceTypeId() == null ? "Genel" : l.getDeviceTypeName()),
-                new ColumnDef<>("Açıklama", String.class, Labor::getDescription),
-                new ColumnDef<>("Fiyat", BigDecimal.class, Labor::getDefaultPrice),
-                new ColumnDef<>("İşlem", String.class, labor -> "Detay")
-        );
-        tableModal = new GenericTableModel<>(columns);
+    private void initComponent() {
+        setLayout(new MigLayout("fill, insets 4 24 20 24, gapy 10", "[grow, fill]", "[][grow, fill]"));
+        setOpaque(false);
+        add_button = SettingsKit.headerButton("Yeni işçilik", "icons/plus.svg");
 
-        table.setModel(tableModal);
+        list = new DictionaryList<Labor>(Labor::getName, SettingsRepairPanel::subtitle,
+                l -> l.getDefaultPrice() != null ? Format.formatPrice(l.getDefaultPrice()) : "fiyat yok")
+                .onSelect(l -> setupEditModal("LABOR_EDIT", true, l))
+                .onEdit(l -> setupEditModal("LABOR_EDIT", true, l))
+                .onDelete(this::delete);
+        list.setEmptyText("Bu türde işçilik yok", "Sık yaptığınız işleri fiyatıyla ekleyin; servis kaydında tek tıkla seçilir.");
 
-        configureTableColumns();
+        add(views, "wmin 0, wrap");
+        add(list, "grow, hmin 160");
+    }
+
+    private static String subtitle(Labor l) {
+        String type = l.getDeviceTypeId() == null ? "Genel (tüm cihazlar)" : l.getDeviceTypeName();
+        String desc = l.getDescription();
+        return desc != null && !desc.isBlank() ? type + "  ·  " + desc : type;
+    }
+
+    private void refreshTable() {
+        laborService.getAll().thenAccept(labors -> SwingUtilities.invokeLater(() -> {
+            all = labors;
+            updateCounts();
+            applyView();
+        })).exceptionally(ex -> ErrorHandler.handle(this, "İşçilik listesi yenilenemedi", ex));
+    }
+
+    private boolean matches(Labor l, String key) {
+        if (key == null || ALL.equals(key)) return true;
+        if ("general".equals(key)) return l.getDeviceTypeId() == null;
+        return l.getDeviceTypeId() != null && key.equals("type:" + l.getDeviceTypeId());
+    }
+
+    private void updateCounts() {
+        views.setCount(ALL, (long) all.size());
+        views.setCount("general", all.stream().filter(l -> matches(l, "general")).count());
+        for (String key : typeKeys) views.setCount(key, all.stream().filter(x -> matches(x, key)).count());
+    }
+
+    private void applyView() {
+        String key = views.getSelected();
+        list.setItems(all.stream().filter(l -> matches(l, key)).collect(java.util.stream.Collectors.toList()), null);
+    }
+
+    private void delete(Labor l) {
+        DialogHelper.confirmDelete(this, "confirm.delete.labor", () ->
+                        laborService.delete(l.getId()).thenAccept(response -> SwingUtilities.invokeLater(() -> {
+                            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.labor.deleted"));
+                            refreshTable();
+                        })).exceptionally(ex -> ErrorHandler.handle(this, "İşçilik silinemedi", ex)),
+                l.getName());
     }
 
     private void setupEditModal(String id, boolean updated, Labor labor) {
-
         ProcessEditPanel panel = new ProcessEditPanel();
 
         SimpleModalBorder.Option[] options = new SimpleModalBorder.Option[]{
@@ -83,7 +126,7 @@ public class SettingsRepairPanel extends JPanel implements SettingsModal.HeaderA
         };
 
         AppModal.showModal(this, new SimpleModalBorder(
-                panel, "İşçilik Formu", options,
+                panel, updated ? "İşçilik Düzenle" : "Yeni İşçilik", options,
                 (controller, action) -> {
                     if (action == SimpleModalBorder.OPENED) {
                         panel.formOpen();
@@ -93,12 +136,10 @@ public class SettingsRepairPanel extends JPanel implements SettingsModal.HeaderA
                         Labor newLabor = panel.getLabor();
 
                         laborService.save(newLabor, updated)
-                                .thenAccept(labor1 -> {
-                                   SwingUtilities.invokeLater(() -> {
-                                       refreshTable();
-                                       Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.labor.savedNamed", labor1.getName()));
-                                   });
-                                }).exceptionally(ex -> {
+                                .thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+                                    refreshTable();
+                                    SettingsKit.saved(this);
+                                })).exceptionally(ex -> {
                                     SwingUtilities.invokeLater(controller::consume);
                                     return ErrorHandler.handle(this, "İşçilik kaydedilemedi", ex);
                                 });
@@ -107,81 +148,8 @@ public class SettingsRepairPanel extends JPanel implements SettingsModal.HeaderA
         , id);
     }
 
-    private void refreshTable() {
-        DeviceType selectedType = (DeviceType) device_type_combo.getSelectedItem();
-        boolean filterByType = selectedType != null && selectedType.getId() != null;
-
-        var future = filterByType
-                ? laborService.getByTypeId(selectedType.getId())
-                : laborService.getAll();
-
-        future.thenAccept(labors -> {
-            SwingUtilities.invokeLater(() -> {
-                tableModal.setData(labors);
-            });
-        }).exceptionally(ex -> ErrorHandler.handle(this, "İşçilik tablosu yenilenemedi", ex));
-    }
-
-    private void configureTableColumns() {
-
-        table.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());
-        table.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
-            @Override
-            public void onEdit(int row) {
-                int modelRow = table.convertRowIndexToModel(row);
-                Labor l = tableModal.getItemAt(modelRow);
-
-                setupEditModal("LABOR_EDIT", true, l);
-            }
-
-            @Override
-            public void onDelete(int row) {
-                int modelRow = table.convertRowIndexToModel(row);
-                Labor l = tableModal.getItemAt(modelRow);
-
-                DialogHelper.confirmDelete(SettingsRepairPanel.this, "confirm.delete.labor", () ->
-                        laborService.delete(l.getId()).thenAccept(response -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toast.show(SettingsRepairPanel.this, Toast.Type.SUCCESS, Messages.get("toast.labor.deleted"));
-                                refreshTable();
-                            });
-                        }).exceptionally(ex -> ErrorHandler.handle(SettingsRepairPanel.this, "İşçilik silinemedi", ex)),
-                        l.getName());
-            }
-
-            @Override
-            public void onView(int row) {
-
-            }
-        }));
-
-        table.getColumnModel().getColumn(3).setMaxWidth(100);
-    }
-
     @Override
     public List<JComponent> headerActions() {
         return List.of(add_button);
     }
-
-    private void initComponent() {
-        setLayout(new MigLayout("fill, insets 4 24 20 24, gapy 10", "[][grow]", "[][grow, fill]"));
-        setOpaque(false);
-
-        // Cihaz türü süzgeci
-        device_type_combo = new JComboBox<>();
-        add(SettingsKit.label("Cihaz türü"));
-        add(device_type_combo, "wmin 160, wmax 260, wrap");
-
-        add_button = SettingsKit.headerButton("Yeni işçilik", "icons/plus.svg");
-
-        // Tablo + scrollpane
-        table = new JTable();
-        JScrollPane table_scroll = new JScrollPane(table);
-        add(table_scroll, "span, grow, hmin 160");
-    }
-
-    JTable table;
-    JComboBox<DeviceType> device_type_combo;
-    JButton add_button;
-
 }

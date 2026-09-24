@@ -3,7 +3,6 @@ package tr.cabro.servicio.application.panels.setting;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import tr.cabro.servicio.application.renderer.list.PartCategoryListCellRenderer;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.i18n.Messages;
@@ -37,6 +36,7 @@ public class SettingsPartCategoryPanel extends JPanel {
         partCategoryService.getAll().thenAccept(categories -> SwingUtilities.invokeLater(() -> {
             categoryModel.clear();
             categories.forEach(categoryModel::addElement);
+            categoryList.setItems(categories, null);
         })).exceptionally(ex -> ErrorHandler.handle(this, "Parça kategorileri yüklenemedi", ex));
     }
 
@@ -90,17 +90,18 @@ public class SettingsPartCategoryPanel extends JPanel {
         addButton = new JButton("Ekle", new Ikon("icons/plus.svg", 16));
         addButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,12,4,12; iconTextGap: 6");
 
-        categoryList = new JList<>();
-        categoryList.putClientProperty(FlatClientProperties.STYLE_CLASS, "dashboardBackground");
-        categoryList.setCellRenderer(new PartCategoryListCellRenderer(categoryList, this::onEdit, this::onDelete));
-        categoryList.setModel(categoryModel);
+        categoryList = new DictionaryList<PartCategory>(PartCategory::getName, null,
+                c -> c.getPartCount() == null || c.getPartCount() == 0 ? "parça yok" : c.getPartCount() + " parça")
+                .onEdit(this::onEdit)
+                .onDelete(this::onDelete);
+        categoryList.setEmptyText("Henüz kategori yok", "Parça ve ürünleri gruplamak için yukarıdan kategori ekleyin.");
 
         add(categoryField, "growx");
         add(addButton, "wrap");
-        add(SettingsKit.listScroll(categoryList), "span 2, grow, hmin 160");
+        add(categoryList, "span 2, grow, hmin 160");
     }
 
     private JTextField categoryField;
     private JButton addButton;
-    private JList<PartCategory> categoryList;
+    private DictionaryList<PartCategory> categoryList;
 }

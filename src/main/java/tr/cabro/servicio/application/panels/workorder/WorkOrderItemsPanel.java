@@ -59,52 +59,51 @@ public class WorkOrderItemsPanel extends JPanel {
     }
 
     private void build() {
-        putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); arc: 15;");
-        setLayout(new MigLayout("insets 20, fillx", "[grow][]", "[]15[]10[]"));
+        putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
+        setLayout(new MigLayout("insets 16 18 14 18, fillx, hidemode 3", "[grow][]", "[]10[]"));
 
-        JLabel title = new JLabel("Kullanılan Parçalar ve Ücretlendirme");
-        title.setIcon(new Ikon("icons/wrench.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        add(title, "span 2, wrap");
-
-        JLabel subtitle = new JLabel("İşlemler ve Parçalar");
-        subtitle.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-
-        JButton btnAddPart = new JButton("+ Parça / İşlem Ekle");
-        btnAddPart.putClientProperty(FlatClientProperties.STYLE,
-                "background: $Component.accentColor; foreground: #ffffff; arc: 10; font: bold");
+        // Birincil "Parça / İşlem Ekle" kimlik şeridinde; burada aynı işin ikincil kısayolu.
+        JButton btnAddPart = new JButton("Ekle", new Ikon("icons/plus.svg", 14, "Label.foreground"));
+        btnAddPart.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; iconTextGap: 4");
+        btnAddPart.setToolTipText("Parça veya işçilik ekle");
         btnAddPart.addActionListener(e -> openItemAddModal());
-        add(subtitle, "aligny center");
+        add(WorkOrderPanelSupport.createTitle("Parça ve işçilik"), "aligny center");
         add(btnAddPart, "align right, wrap");
 
         // --- Tablo ---
 
+        // Seri no ayrı (çoğunlukla boş) bir kolon değil, kalem adının altında soluk satır.
         List<ColumnDef<WorkOrderItem>> columnDefs = Arrays.asList(
-                new ColumnDef<>("Tür", ItemType.class, WorkOrderItem::getItemType),
-                new ColumnDef<>("İşçilik / Parça Adı", String.class, WorkOrderItem::getItemName),
-                new ColumnDef<>("Seri No", String.class, WorkOrderItem::getUsedSerialNo),
-                new ColumnDef<>("Fiyat", BigDecimal.class, WorkOrderItem::getTotalPrice),
-                new ColumnDef<>("İşlem", WorkOrderItem.class, workOrderItem -> "Detay")
+                new ColumnDef<WorkOrderItem>("Tür", ItemType.class, WorkOrderItem::getItemType).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrderItem>("Kalem", WorkOrderItem.class, item -> item).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrderItem>("Adet", Integer.class, WorkOrderItem::getQuantity).alignment(SwingConstants.CENTER),
+                new ColumnDef<WorkOrderItem>("Tutar", BigDecimal.class, WorkOrderItem::getTotalPrice).alignment(SwingConstants.TRAILING),
+                ColumnDef.<WorkOrderItem>actionColumn("")
         );
 
         itemsTableModel = new GenericTableModel<>(columnDefs);
 
-        JTable itemsTable = new JTable(itemsTableModel);
+        tr.cabro.servicio.application.component.table.ListTable itemsTable = new tr.cabro.servicio.application.component.table.ListTable();
+        itemsTable.setModel(itemsTableModel);
         WorkOrderPanelSupport.styleTable(itemsTable);
-        itemsTable.getColumnModel().getColumn(0).setMaxWidth(85);
+        tr.cabro.servicio.application.component.table.TableColumnConfigurator.applyColumnRenderers(itemsTable, columnDefs);
+        itemsTable.getColumnModel().getColumn(0).setMaxWidth(95);
         itemsTable.getColumnModel().getColumn(0).setMinWidth(85);
-        itemsTable.getColumnModel().getColumn(2).setPreferredWidth(150);
-        itemsTable.getColumnModel().getColumn(3).setPreferredWidth(100);
-        itemsTable.getColumnModel().getColumn(4).setMaxWidth(180);
-        itemsTable.getColumnModel().getColumn(4).setMinWidth(120);
+        itemsTable.getColumnModel().getColumn(1).setPreferredWidth(320);
+        itemsTable.getColumnModel().getColumn(2).setMaxWidth(70);
+        itemsTable.getColumnModel().getColumn(3).setPreferredWidth(120);
+        itemsTable.getColumnModel().getColumn(3).setMinWidth(100);
+        itemsTable.getColumnModel().getColumn(4).setMaxWidth(96);
+        itemsTable.getColumnModel().getColumn(4).setMinWidth(96);
 
-        DefaultTableCellRenderer rightAlign = new DefaultTableCellRenderer();
-        rightAlign.setHorizontalAlignment(SwingConstants.TRAILING);
-        itemsTable.getColumnModel().getColumn(3).setCellRenderer(new CurrencyTableCellRenderer());
         itemsTable.getColumnModel().getColumn(0).setCellRenderer(new ItemTypeBadgeRenderer());
+        itemsTable.getColumnModel().getColumn(1).setCellRenderer(new tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer<WorkOrderItem>(
+                WorkOrderItem::getItemName,
+                item -> item.getUsedSerialNo() != null && !item.getUsedSerialNo().isBlank() ? "SN " + item.getUsedSerialNo() : ""));
+        itemsTable.getColumnModel().getColumn(3).setCellRenderer(
+                new tr.cabro.servicio.application.renderer.MoneyCellRenderer(tr.cabro.servicio.application.renderer.MoneyCellRenderer.Mode.NEUTRAL));
 
-        itemsTable.getColumnModel().getColumn(4).setCellRenderer(new ActionButtonRenderer());
-        itemsTable.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
+                itemsTable.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
             @Override
             public void onEdit(int row) {
                 if (itemsTable.isEditing()) itemsTable.getCellEditor().cancelCellEditing();
@@ -134,7 +133,7 @@ public class WorkOrderItemsPanel extends JPanel {
         itemsTableContainer.add(itemsTable.getTableHeader(), "wrap");
         itemsTableContainer.add(itemsTable);
 
-        itemsEmptyLabel = WorkOrderPanelSupport.createEmptyStatePanel("Henüz işlem veya parça eklenmedi.");
+        itemsEmptyLabel = WorkOrderPanelSupport.createEmptyStatePanel("Henüz parça veya işçilik eklenmedi.");
 
         populateItemsTable();
 
@@ -160,7 +159,8 @@ public class WorkOrderItemsPanel extends JPanel {
 
     // ---- Item CRUD ----
 
-    private void openItemAddModal() {
+    /** Kalem ekleme penceresi; kimlik şeridindeki birincil düğme de bunu açar. */
+    public void openItemAddModal() {
         WorkOrderItemAddPanel addPanel = new WorkOrderItemAddPanel(workOrder);
         SimpleModalBorder.Option[] options = {
                 new SimpleModalBorder.Option("Ekle", SimpleModalBorder.YES_OPTION),
@@ -314,7 +314,7 @@ public class WorkOrderItemsPanel extends JPanel {
                             "border: 1,8,1,8," + partHex + "; foreground: " + partHex + "; arc: 15; font: -1");
                 }
             }
-            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setHorizontalAlignment(SwingConstants.LEADING);
             return label;
         }
     }

@@ -1,5 +1,16 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.component.table.ListSummary;
+import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
+import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
+import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
+import tr.cabro.servicio.application.system.QuickAction;
+import tr.cabro.servicio.application.themes.SemanticColor;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
+import tr.cabro.servicio.util.Format;
+import tr.cabro.servicio.util.PhoneHelper;
+import java.util.Map;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.table.AppPagination;
@@ -43,7 +54,7 @@ public class FormAccounts extends AbstractTableForm {
     private int pageSize = 25;
     private int currentPage = 1;
     private String currentSearchTerm = "";
-    private JPagination pagination;
+    private PaginationBar paginationBar;
 
     public FormAccounts() {
         this.paymentService = ServiceManager.getPaymentService();
@@ -52,47 +63,35 @@ public class FormAccounts extends AbstractTableForm {
 
     @Override
     protected String getNewButtonText() {
-        return "Yeni Satış (POS)";
+        return "Tahsilat Al";
     }
 
     @Override
     protected String getNewButtonIconPath() {
-        return "icons/credit-card.svg";
+        return "icons/hand-coins.svg";
     }
 
     @Override
-    protected String getTableTitleText() {
-        return "Bakiyesi Olan Müşteriler";
+    protected QuickAction getNewQuickAction() {
+        return QuickAction.COLLECT;
     }
 
     @Override
     protected String getSearchPlaceholder() {
-        return "Müşteri ara...";
+        return "Müşteri adı veya telefon ara…";
+    }
+
+    @Override
+    protected List<JComponent> createHeaderActions() {
+        return List.of(secondaryButton("Kasa Raporu", "icons/banknote.svg", QuickAction.CASH_REPORT::run));
     }
 
     @Override
     protected JComponent createPaginationComponent() {
-        pagination = new AppPagination(5, 1, 1);
-        pagination.addChangeListener(e -> {
-            currentPage = pagination.getSelectedPage();
-            refreshTable();
-        });
-
-        JComboBox<Integer> pageSizeCombo = new JComboBox<>(PAGE_SIZE_OPTIONS);
-        pageSizeCombo.setSelectedItem(pageSize);
-        pageSizeCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
-        pageSizeCombo.addActionListener(e -> {
-            pageSize = (Integer) pageSizeCombo.getSelectedItem();
-            currentPage = 1;
-            refreshTable();
-        });
-
-        JPanel panel = new JPanel(new MigLayout("insets 0, gapx 10", "[][]", "[]"));
-        panel.setOpaque(false);
-        panel.add(new JLabel("Sayfa başına:"));
-        panel.add(pageSizeCombo);
-        panel.add(pagination);
-        return panel;
+        paginationBar = new PaginationBar(5, PAGE_SIZE_OPTIONS, pageSize,
+                page -> { currentPage = page; refreshTable(); },
+                newSize -> { pageSize = newSize; currentPage = 1; refreshTable(); });
+        return paginationBar;
     }
 
     @Override
@@ -102,35 +101,100 @@ public class FormAccounts extends AbstractTableForm {
         refreshTable();
     }
 
+    // --- Görünüm sekmeleri: ilki (Borçlu) varsayılan ---
+
+    private static final String VIEW_DEBT = "debt";
+    private static final String VIEW_CREDIT = "credit";
+    private static final String VIEW_ALL = "all";
+
+    @Override
+    protected void initViews() {
+        addView(VIEW_DEBT, "Borçlu");
+        addView(VIEW_CREDIT, "Alacaklı");
+        addView(VIEW_ALL, "Hareketi olan tüm hesaplar");
+    }
+
+    @Override
+    protected Map<String, ColumnFilterValue> viewFilters(String key) {
+        if (VIEW_DEBT.equals(key)) return Map.of("view:debt", ColumnFilterValue.condition("vb.balance > 0.009"));
+        // Eksi bakiye: iade ya da fazla ödeme sonrası dükkân müşteriye borçlu.
+        if (VIEW_CREDIT.equals(key)) return Map.of("view:credit", ColumnFilterValue.condition("vb.balance < -0.009"));
+        return Map.of("view:all", ColumnFilterValue.condition("(vb.total_debt <> 0 OR vb.total_paid <> 0)"));
+    }
+
+    @Override
+    protected CompletableFuture<Long> countMatching(Map<String, ColumnFilterValue> filters) {
+        return paymentService.searchAccountsPaged(currentSearchTerm, filters, 1, 1).thenApply(PageResult::getTotalItems);
+    }
+
+    @Override
+    protected void onViewChanged(String key) {
+        currentPage = 1;
+        super.onViewChanged(key);
+    }
+
+    @Override
+    protected void refreshStats() {
+        Map<String, ColumnFilterValue> debt = viewFilters(VIEW_DEBT);
+        Map<String, ColumnFilterValue> credit = viewFilters(VIEW_CREDIT);
+        CompletableFuture<Long> debtCount = paymentService.searchAccountsPaged(null, debt, 1, 1).thenApply(PageResult::getTotalItems);
+        CompletableFuture<BigDecimal> debtSum = paymentService.sumAccountBalances(debt);
+        CompletableFuture<Long> creditCount = paymentService.searchAccountsPaged(null, credit, 1, 1).thenApply(PageResult::getTotalItems);
+        CompletableFuture<BigDecimal> creditSum = paymentService.sumAccountBalances(credit);
+
+        CompletableFuture.allOf(debtCount, debtSum, creditCount, creditSum).thenRun(() -> SwingUtilities.invokeLater(() -> {
+            long d = debtCount.join();
+            long c = creditCount.join();
+            summary.set(
+                    d > 0 ? ListSummary.Part.strong(d + " borçlu müşteri") : ListSummary.Part.strong("Borçlu müşteri yok"),
+                    d > 0 ? ListSummary.Part.meaning("toplam alacak " + Format.formatPrice(debtSum.join()), "Servicio.warningColor") : null,
+                    c > 0 ? ListSummary.Part.of(c + " müşteriye borçluyuz") : null,
+                    c > 0 ? ListSummary.Part.meaning(Format.formatPrice(creditSum.join().negate()), "Servicio.dangerColor") : null);
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Cari hesap özeti yüklenemedi", ex));
+    }
+
     @Override
     protected void setupTable() {
         List<ColumnDef<CustomerBalanceDto>> columns = Arrays.asList(
-                new ColumnDef<>("Müşteri", String.class, b -> customerName(b.getCustomerId())),
-                new ColumnDef<>("Toplam Borç", BigDecimal.class, CustomerBalanceDto::getTotalDebt),
-                new ColumnDef<>("Toplam Tahsilat", BigDecimal.class, CustomerBalanceDto::getTotalPaid),
-                new ColumnDef<>("Bakiye", BigDecimal.class, CustomerBalanceDto::getBalance),
+                new ColumnDef<CustomerBalanceDto>("Müşteri", CustomerBalanceDto.class, b -> b).alignment(SwingConstants.LEADING),
+                new ColumnDef<CustomerBalanceDto>("Toplam Borçlanma", BigDecimal.class, CustomerBalanceDto::getTotalDebt).alignment(SwingConstants.TRAILING),
+                new ColumnDef<CustomerBalanceDto>("Toplam Tahsilat", BigDecimal.class, CustomerBalanceDto::getTotalPaid).alignment(SwingConstants.TRAILING),
+                new ColumnDef<CustomerBalanceDto>("Bakiye", BigDecimal.class, CustomerBalanceDto::getBalance).alignment(SwingConstants.TRAILING),
                 new ColumnDef<CustomerBalanceDto>("", String.class, b -> "").editable(true)
         );
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
+        TableColumnConfigurator.applyColumnRenderers(table, columns);
 
-        table.getColumnModel().getColumn(1).setCellRenderer(new CurrencyTableCellRenderer());
-        table.getColumnModel().getColumn(2).setCellRenderer(new CurrencyTableCellRenderer());
-        table.getColumnModel().getColumn(3).setCellRenderer(new CurrencyTableCellRenderer());
+        table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<CustomerBalanceDto>(
+                b -> customerName(b.getCustomerId()),
+                b -> {
+                    Customer c = customerCache.get(b.getCustomerId());
+                    return c != null ? PhoneHelper.formatForDisplay(c.getPhoneNumber1()) : "";
+                }));
+        // Borçlanma ve tahsilat zaten sayılmış tutarlar: nötr ve soluk; anlamı bakiye taşır.
+        table.getColumnModel().getColumn(1).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
+        table.getColumnModel().getColumn(2).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
+        table.getColumnModel().getColumn(3).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.BALANCE));
 
         DynamicActionColumnSupport.install(table, 4, tableModel, List.of(
-                DynamicActionColumnSupport.button("icons/hand-coins.svg", new Color(46, 204, 113), "Tahsilat Al",
+                DynamicActionColumnSupport.button("icons/hand-coins.svg", SemanticColor.success(), "Tahsilat al",
                         b -> {
                             Customer c = customerCache.get(b.getCustomerId());
                             if (c != null) CollectionPanel.open(this, c, this::refreshTable);
-                        }),
-                DynamicActionColumnSupport.button("icons/eye.svg", new Color(13, 110, 253), "Müşteri Kartı",
-                        b -> {
-                            Customer c = customerCache.get(b.getCustomerId());
-                            if (c != null) FormManager.showForm(new FormCustomer(c));
                         })
         ));
-        table.getColumnModel().getColumn(4).setMaxWidth(90);
+        openRowsWith(tableModel, b -> {
+            Customer c = customerCache.get(b.getCustomerId());
+            if (c != null) FormManager.showForm(new FormCustomer(c));
+        }, 4);
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(320);
+        table.getColumnModel().getColumn(1).setPreferredWidth(150);
+        table.getColumnModel().getColumn(2).setPreferredWidth(150);
+        table.getColumnModel().getColumn(3).setPreferredWidth(150);
+        table.getColumnModel().getColumn(4).setMinWidth(70);
+        table.getColumnModel().getColumn(4).setMaxWidth(80);
     }
 
     private String customerName(Long customerId) {
@@ -147,7 +211,7 @@ public class FormAccounts extends AbstractTableForm {
     @Override
     protected void loadTableData() {
         CompletableFuture<PageResult<CustomerBalanceDto>> future =
-                paymentService.getCustomersWithBalancePaged(currentSearchTerm, currentPage, pageSize);
+                paymentService.searchAccountsPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize);
 
         future.thenCompose(result -> {
             List<Long> customerIds = result.getItems().stream().map(CustomerBalanceDto::getCustomerId).collect(Collectors.toList());
@@ -157,7 +221,8 @@ public class FormAccounts extends AbstractTableForm {
             });
         }).thenAccept(result -> SwingUtilities.invokeLater(() -> {
             tableModel.setData(result.getItems());
-            if (pagination != null) pagination.setPageRange(result.getPage(), result.getTotalPages());
+            if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
+            setResultCount(result.getTotalItems());
             refreshLayout();
         })).exceptionally(ex -> {
             SwingUtilities.invokeLater(this::resetKeyboardActions);
@@ -167,6 +232,16 @@ public class FormAccounts extends AbstractTableForm {
 
     @Override
     protected void onNew() {
-        FormManager.showForm(tr.cabro.servicio.application.system.AllForms.getForm(FormPos.class));
+        int row = table.getSelectedRow();
+        if (row >= 0) {
+            CustomerBalanceDto b = tableModel.getItemAt(table.convertRowIndexToModel(row));
+            Customer c = b != null ? customerCache.get(b.getCustomerId()) : null;
+            if (c != null) {
+                CollectionPanel.open(this, c, this::refreshTable);
+                return;
+            }
+        }
+        // Seçili satır yoksa pencere müşteri seçiciyle açılır.
+        CollectionPanel.open(this, null, this::refreshTable);
     }
 }

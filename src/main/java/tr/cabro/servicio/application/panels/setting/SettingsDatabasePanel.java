@@ -42,7 +42,7 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
 
     private final AppConfig.Backup backup = AppSettings.get().getBackup();
 
-    private final JButton backupNowButton = new JButton("Şimdi yedekle", new Ikon("icons/database-backup.svg", 16, "Button.default.foreground"));
+    private final JButton backupNowButton = new JButton("Şimdi yedekle", new Ikon("icons/database-backup.svg", 16, "Servicio.onAccentForeground"));
 
     private JLabel statusIcon;
     private JLabel statusTitle;
@@ -64,7 +64,7 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
         add(createPage());
 
         backupNowButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,14,5,14; iconTextGap: 6; font: bold; "
-                + "background: $Component.accentColor; foreground: $Button.default.foreground");
+                + "background: $Component.accentColor; foreground: $Servicio.onAccentForeground");
         backupNowButton.addActionListener(e -> backupNow());
 
         refreshSchedule();

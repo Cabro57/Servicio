@@ -18,6 +18,7 @@ import tr.cabro.servicio.service.exception.ValidationException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -144,6 +145,24 @@ public class PaymentService {
                         tr.cabro.servicio.model.dto.PaymentTypeSumDto::getTotal)));
     }
 
+    /**
+     * Kasa raporu: verilen günün tüm ödemeleri, hangi belgeye (servis/satış) bağlandıklarıyla birlikte
+     * ({@link Payment#getAllocations()} doldurulur), en yeni önce.
+     */
+    public CompletableFuture<List<Payment>> getDayMovements(java.time.LocalDate date) {
+        java.time.LocalDateTime start = date.atStartOfDay();
+        java.time.LocalDateTime end = start.plusDays(1);
+        return CompletableFuture.supplyAsync(() -> {
+            List<Payment> payments = paymentRepository.findByDateRange(start, end, 5000);
+            if (payments.isEmpty()) return payments;
+            List<Long> ids = payments.stream().map(Payment::getId).collect(Collectors.toList());
+            Map<Long, List<PaymentAllocation>> byPayment = allocationRepository.findByPaymentIds(ids).stream()
+                    .collect(Collectors.groupingBy(PaymentAllocation::getPaymentId));
+            for (Payment p : payments) p.setAllocations(new ArrayList<>(byPayment.getOrDefault(p.getId(), List.of())));
+            return payments;
+        });
+    }
+
     /** Ana sayfadaki "Bugünkü hareketler" — verilen günün ödemeleri (en yeni önce, en fazla {@code limit}). */
     public CompletableFuture<List<Payment>> getPaymentsOn(java.time.LocalDate date, int limit) {
         java.time.LocalDateTime start = date.atStartOfDay();
@@ -168,6 +187,18 @@ public class PaymentService {
 
     public CompletableFuture<Optional<CustomerBalanceDto>> getCustomerBalance(Long customerId) {
         return CompletableFuture.supplyAsync(() -> accountRepository.findBalanceByCustomer(customerId));
+    }
+
+    /** Cari hesaplar listesi: görünüm sekmesi koşulu (ör. borçlu/alacaklı) + arama + sayfalama. */
+    public CompletableFuture<PageResult<CustomerBalanceDto>> searchAccountsPaged(String searchTerm,
+            Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize) {
+        return CompletableFuture.supplyAsync(() -> accountRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
+    }
+
+    /** Süzgeçle eşleşen hesapların bakiye toplamı. */
+    public CompletableFuture<BigDecimal> sumAccountBalances(Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters) {
+        return CompletableFuture.supplyAsync(() -> BigDecimal.valueOf(accountRepository.sumBalances(filters))
+                .setScale(2, java.math.RoundingMode.HALF_UP));
     }
 
     public CompletableFuture<PageResult<CustomerBalanceDto>> getCustomersWithBalancePaged(String searchTerm, int page, int pageSize) {

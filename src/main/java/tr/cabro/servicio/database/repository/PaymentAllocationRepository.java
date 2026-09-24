@@ -30,6 +30,10 @@ public interface PaymentAllocationRepository {
     List<PaymentAllocation> findByPaymentId(@Bind("paymentId") Long paymentId);
 
     @SqlQuery("SELECT id, payment_id, target_type, target_id, amount, created_at FROM payment_allocations " +
+            "WHERE payment_id IN (<paymentIds>) ORDER BY id")
+    List<PaymentAllocation> findByPaymentIds(@BindList("paymentIds") List<Long> paymentIds);
+
+    @SqlQuery("SELECT id, payment_id, target_type, target_id, amount, created_at FROM payment_allocations " +
             "WHERE target_type = :targetType AND target_id = :targetId")
     List<PaymentAllocation> findByTarget(@Bind("targetType") AllocationTargetType targetType, @Bind("targetId") Long targetId);
 

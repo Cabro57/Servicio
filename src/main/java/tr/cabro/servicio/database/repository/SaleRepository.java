@@ -1,6 +1,12 @@
 package tr.cabro.servicio.database.repository;
 
+import org.jdbi.v3.sqlobject.SqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
+import tr.cabro.servicio.database.filter.SqlWhereBuilder;
+import tr.cabro.servicio.model.dto.PageResult;
+import java.util.HashMap;
+import java.util.Map;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
@@ -12,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RegisterBeanMapper(Sale.class)
-public interface SaleRepository {
+public interface SaleRepository extends SqlObject {
 
     String COLUMNS = "id, customer_id, type, parent_sale_id, sale_date, subtotal, discount_type, discount_value, " +
             "tax_rate, total_amount, note, is_deleted, created_at, updated_at ";
@@ -64,4 +70,40 @@ public interface SaleRepository {
             "AND sale_date >= :start AND sale_date < :end")
     long countByTypeForDateRange(@Bind("type") tr.cabro.servicio.model.enums.SaleType type,
                                   @Bind("start") java.time.LocalDateTime start, @Bind("end") java.time.LocalDateTime end);
+
+    // =========================================================================
+    // LİSTE SAYFASI (FormSales): arama + görünüm sekmesi/başlık filtresi + sayfalama
+    // =========================================================================
+
+    String FILTER_SEARCH = " AND (CAST(s.id AS TEXT) LIKE :search OR c.first_name LIKE :search OR c.last_name LIKE :search " +
+            "OR c.business_name LIKE :search OR c.phone_number_1 LIKE :search)";
+
+    default PageResult<Sale> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
+                                                 int page, int pageSize) {
+        SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
+        boolean searching = searchTerm != null && !searchTerm.isBlank();
+        String whereClause = "WHERE s.is_deleted = 0" + where.getWhereFragment() + (searching ? FILTER_SEARCH : "");
+
+        Map<String, Object> countParams = new HashMap<>(where.getParams());
+        if (searching) countParams.put("search", "%" + searchTerm.trim() + "%");
+        Map<String, Object> params = new HashMap<>(countParams);
+        params.put("limit", pageSize);
+        params.put("offset", (page - 1) * pageSize);
+
+        List<Sale> items = getHandle().createQuery(SEARCH_SELECT + SEARCH_FROM + whereClause
+                        + " ORDER BY s.sale_date DESC LIMIT :limit OFFSET :offset")
+                .bindMap(params).mapToBean(Sale.class).list();
+        long total = getHandle().createQuery("SELECT COUNT(*) " + SEARCH_FROM + whereClause)
+                .bindMap(countParams).mapTo(Long.class).one();
+        return new PageResult<>(items, page, pageSize, total);
+    }
+
+    /** Aynı süzgeçle eşleşen fişlerin toplam tutarı (iadeler negatif olduğundan net tutar). */
+    default java.math.BigDecimal sumFiltered(Map<String, ColumnFilterValue> filters) {
+        SqlWhereBuilder.Result where = SqlWhereBuilder.build(filters);
+        Double sum = getHandle().createQuery("SELECT COALESCE(SUM(s.total_amount), 0) " + SEARCH_FROM
+                        + "WHERE s.is_deleted = 0" + where.getWhereFragment())
+                .bindMap(where.getParams()).mapTo(Double.class).one();
+        return java.math.BigDecimal.valueOf(sum != null ? sum : 0).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
 }

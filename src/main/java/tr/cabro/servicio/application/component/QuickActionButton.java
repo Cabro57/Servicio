@@ -21,14 +21,15 @@ public class QuickActionButton extends JButton {
         getAccessibleContext().setAccessibleName(action.getLabel());
         addActionListener(e -> action.run());
 
-        String fg = primary ? "Button.default.foreground" : "Label.foreground";
+        String fg = primary ? "Servicio.onAccentForeground" : "Label.foreground";
         JLabel label = new JLabel(action.getLabel(), new Ikon(action.getIconPath(), 16, fg), SwingConstants.LEADING);
         label.setIconTextGap(8);
         label.putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: $" + fg);
 
         key = new JLabel(action.getShortcutText());
         key.putClientProperty(FlatClientProperties.STYLE, primary
-                ? "font: -2; foreground: fade($Button.default.foreground,75%); border: 1,5,1,5,fade($Button.default.foreground,40%),1,6"
+                ? "font: -2; foreground: fade($Servicio.onAccentForeground,85%); background: fade($Servicio.onAccentForeground,12%);"
+                  + " border: 1,5,1,5,fade($Servicio.onAccentForeground,40%),1,6"
                 : "font: -2; foreground: $Label.disabledForeground; border: 1,5,1,5,$Component.borderColor,1,6");
 
         add(label);

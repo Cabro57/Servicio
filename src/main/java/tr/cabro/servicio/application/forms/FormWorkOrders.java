@@ -12,7 +12,12 @@ import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.renderer.*;
+import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.system.QuickAction;
+import tr.cabro.servicio.application.themes.SemanticColor;
+import tr.cabro.servicio.model.dto.PageResult;
+import java.util.concurrent.CompletableFuture;
 import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
@@ -70,13 +75,16 @@ public class FormWorkOrders extends AbstractTableForm {
     // -------------------------------------------------------------------------
 
     @Override
-    protected String getNewButtonText()      { return "Yeni Kayıt Oluştur"; }
+    protected String getNewButtonText()      { return "Yeni Servis"; }
 
     @Override
-    protected String getTableTitleText()     { return "Servis Kayıtları"; }
+    protected String getNewButtonIconPath()  { return "icons/wrench.svg"; }
 
     @Override
-    protected String getSearchPlaceholder()  { return "Müşteri, cihaz veya ID ara..."; }
+    protected QuickAction getNewQuickAction() { return QuickAction.NEW_SERVICE; }
+
+    @Override
+    protected String getSearchPlaceholder()  { return "Müşteri, cihaz, seri no veya SRV no ara…"; }
 
     @Override
     protected JComponent createPaginationComponent() {
@@ -92,26 +100,57 @@ public class FormWorkOrders extends AbstractTableForm {
         return paginationBar;
     }
 
+    // --- Görünüm sekmeleri: durum ön ayarları ---
+
+    private static final String VIEW_ALL = "all";
+    private static final String VIEW_OPEN = "open";
+    private static final String STATUS_KEY = "s.service_status";
+    private static final ServiceStatus[] OPEN_STATUSES = {ServiceStatus.UNDER_REPAIR, ServiceStatus.WAITING_FOR_PART,
+            ServiceStatus.ANOTHER_SERVICE, ServiceStatus.READY};
+
     @Override
-    protected void initCards() {
-        cardBox.addCardItem(new Ikon("icons/sigma.svg",               0.7f), "Toplam Kayıt");
-        cardBox.addCardItem(new Ikon("icons/activity.svg",            0.7f), "Aktif İşlemler");
-        cardBox.addCardItem(new Ikon("icons/check-check.svg",         0.7f), "Tamamlanan");
-        cardBox.addCardItem(new Ikon("icons/badge-turkish-lira.svg",  0.7f), "Toplam Ciro");
+    protected void initViews() {
+        addView(VIEW_ALL, "Tümü");
+        addView(VIEW_OPEN, "Atölyede");
+        addView(ServiceStatus.UNDER_REPAIR.name(), "Tamirde");
+        addView(ServiceStatus.WAITING_FOR_PART.name(), "Parça bekliyor");
+        addView(ServiceStatus.READY.name(), "Teslime hazır");
+        addView(ServiceStatus.DELIVERED.name(), "Teslim edildi");
+    }
+
+    @Override
+    protected Map<String, ColumnFilterValue> viewFilters(String key) {
+        if (key == null || VIEW_ALL.equals(key)) return Collections.emptyMap();
+        if (VIEW_OPEN.equals(key)) {
+            String[] names = Arrays.stream(OPEN_STATUSES).map(Enum::name).toArray(String[]::new);
+            return Map.of(STATUS_KEY, ColumnFilterValue.enumOf(names));
+        }
+        return Map.of(STATUS_KEY, ColumnFilterValue.enumOf(key));
+    }
+
+    @Override
+    protected CompletableFuture<Long> countMatching(Map<String, ColumnFilterValue> filters) {
+        return service.searchFilteredPaged(currentSearchTerm, filters, 1, 1).thenApply(PageResult::getTotalItems);
+    }
+
+    @Override
+    protected void onViewChanged(String key) {
+        currentPage = 1;
+        super.onViewChanged(key);
     }
 
     @Override
     protected void refreshStats() {
-        reportManager.getDashboardSummaryCards("2000-01-01", "2100-01-01").thenAccept(stats ->
-                SwingUtilities.invokeLater(() -> {
-                    int completed = stats.getTotalRecords() - stats.getActiveRecords();
-                    cardBox.setValueAt(0, String.valueOf(stats.getTotalRecords()),   "Tüm zamanların toplam kaydı",         "", true);
-                    cardBox.setValueAt(1, String.valueOf(stats.getActiveRecords()),  "Şu an atölyede bekleyen cihazlar",    "", true);
-                    cardBox.setValueAt(2, String.valueOf(completed),                 "Teslim edilen veya iptal edilenler",  "", true);
-                    cardBox.setValueAt(3, Format.formatPrice(stats.getTotalRevenue()), "Sistemdeki brüt toplam ciro",       "", true);
-                })
-        ).exceptionally(ex -> {
-            Servicio.getLogger().error("Servis istatistikleri yüklenirken hata oluştu", ex);
+        service.getOpenStatusCounts().thenAccept(counts -> SwingUtilities.invokeLater(() -> {
+            long open = counts.values().stream().mapToLong(Long::longValue).sum();
+            long ready = counts.getOrDefault(ServiceStatus.READY, 0L);
+            long waiting = counts.getOrDefault(ServiceStatus.WAITING_FOR_PART, 0L);
+            summary.set(
+                    ListSummary.Part.strong(open + " cihaz atölyede"),
+                    ready > 0 ? ListSummary.Part.meaning(ready + " teslime hazır", "Servicio.actionColor") : null,
+                    waiting > 0 ? ListSummary.Part.meaning(waiting + " parça bekliyor", "Servicio.warningColor") : null);
+        })).exceptionally(ex -> {
+            Servicio.getLogger().error("Servis özeti yüklenirken hata oluştu", ex);
             return null;
         });
     }
@@ -119,14 +158,14 @@ public class FormWorkOrders extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<WorkOrder>> columns = Arrays.asList(
-                new ColumnDef<WorkOrder>("Kayıt No",        Long.class,          WorkOrder::getId).alignment(SwingConstants.CENTER),
-                new ColumnDef<WorkOrder>("Müşteri Bilgisi", Customer.class,      WorkOrder::getCustomer).alignment(SwingConstants.LEADING),
-                new ColumnDef<WorkOrder>("Cihaz Bilgisi",   Device.class,        WorkOrder::getDevice).alignment(SwingConstants.LEADING),
-                new ColumnDef<WorkOrder>("Şikayet",         String.class,        WorkOrder::getReportedFault).alignment(SwingConstants.LEADING),
-                new ColumnDef<WorkOrder>("Tarih",           WorkOrder.class,     s -> s).alignment(SwingConstants.LEADING).dateRangeFilter("s.created_at"),
-                ColumnDef.<WorkOrder>currency("Kalan Ücret", WorkOrder::getRemainingAmount),
+                new ColumnDef<WorkOrder>("No",       Long.class,          WorkOrder::getId).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrder>("Müşteri",  Customer.class,      WorkOrder::getCustomer).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrder>("Cihaz",    Device.class,        WorkOrder::getDevice).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrder>("Şikâyet",  String.class,        WorkOrder::getReportedFault).alignment(SwingConstants.LEADING),
+                new ColumnDef<WorkOrder>("Geliş",    WorkOrder.class,     s -> s).alignment(SwingConstants.LEADING).dateRangeFilter("s.created_at"),
+                ColumnDef.<WorkOrder>currency("Kalan", WorkOrder::getRemainingAmount),
                 ColumnDef.<WorkOrder>badge("Durum", ServiceStatus.class, WorkOrder::getServiceStatus).enumFilter("s.service_status", ServiceStatus.class),
-                ColumnDef.<WorkOrder>actionColumn("İşlem")
+                ColumnDef.<WorkOrder>actionColumn("")
         );
         tableModal = new GenericTableModel<>(columns);
         setTableModel(tableModal);
@@ -158,32 +197,27 @@ public class FormWorkOrders extends AbstractTableForm {
         sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(4, SortOrder.DESCENDING)));
     }
 
-    /** Durum kolonunun indeksi (setupTable'daki kolon sırası). */
-    private static final int STATUS_COLUMN = 6;
+    /** Tarih kolonunun indeksi (setupTable'daki kolon sırası). */
+    private static final int DATE_COLUMN = 4;
 
     /**
-     * Listeyi tek bir duruma süzerek gösterir (ana sayfadaki servis hattı ve dikkat kuyruğu
-     * buradan açılır). Argümansız çağrı tüm filtreleri kaldırır. Form ilk kez açılıyorsa
-     * formInit() EDT kuyruğunda olduğu için çağrı bir sonraki döngüye ertelenir.
+     * Listeyi durum(lar)a süzerek gösterir (ana sayfadaki servis hattı, dikkat kuyruğu ve alt
+     * çubuk buradan açılır). Eşleşen görünüm sekmesi seçilir; argümansız çağrı tümünü gösterir.
+     * Form ilk kez açılıyorsa formInit() EDT kuyruğunda olduğu için çağrı ertelenir.
      */
     public void showStatus(ServiceStatus... statuses) {
         SwingUtilities.invokeLater(() -> {
             if (headerFilters == null) return;
             if (searchField != null && !searchField.getText().isEmpty()) searchField.setText("");
-            currentPage = 1;
-            ColumnFilterValue value = null;
-            Set<String> names = new HashSet<>();
-            for (ServiceStatus status : statuses) if (status != null) names.add(status.name());
-            if (!names.isEmpty()) {
-                value = new ColumnFilterValue();
-                value.setEnumValues(names);
-            }
-            headerFilters.applyOnly(STATUS_COLUMN, value);
+            headerFilters.clearAll();
+            Set<ServiceStatus> set = new HashSet<>();
+            for (ServiceStatus status : statuses) if (status != null) set.add(status);
+            String view = VIEW_ALL;
+            if (set.size() == 1) view = set.iterator().next().name();
+            else if (set.equals(new HashSet<>(Arrays.asList(OPEN_STATUSES)))) view = VIEW_OPEN;
+            selectView(view);
         });
     }
-
-    /** Tarih kolonunun indeksi (setupTable'daki kolon sırası). */
-    private static final int DATE_COLUMN = 4;
 
     /** Belirli bir günde açılan servisleri gösterir (ana sayfadaki "Bugün alınan"). */
     public void showCreatedOn(java.time.LocalDate date) {
@@ -191,6 +225,7 @@ public class FormWorkOrders extends AbstractTableForm {
             if (headerFilters == null) return;
             if (searchField != null && !searchField.getText().isEmpty()) searchField.setText("");
             currentPage = 1;
+            views.select(VIEW_ALL, false);
             ColumnFilterValue value = new ColumnFilterValue();
             value.setDateFrom(date);
             value.setDateTo(date);
@@ -200,8 +235,7 @@ public class FormWorkOrders extends AbstractTableForm {
 
     /** Atölyede olan (teslim/iade edilmemiş) servisleri gösterir. */
     public void showOpen() {
-        showStatus(ServiceStatus.UNDER_REPAIR, ServiceStatus.WAITING_FOR_PART,
-                ServiceStatus.ANOTHER_SERVICE, ServiceStatus.READY);
+        showStatus(OPEN_STATUSES);
     }
 
     @Override
@@ -214,14 +248,11 @@ public class FormWorkOrders extends AbstractTableForm {
     protected void loadTableData() {
         if (tableModal == null) return;
 
-        Map<String, ColumnFilterValue> filters =
-                headerFilters != null ? headerFilters.getActiveFilters() : Collections.emptyMap();
-
-        service.searchFilteredPaged(currentSearchTerm, filters, currentPage, pageSize)
+        service.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize)
                 .thenAccept(result -> SwingUtilities.invokeLater(() -> {
                     tableModal.setData(result.getItems());
                     if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
-                    refreshStats();
+                    setResultCount(result.getTotalItems());
                     refreshLayout();
                 }))
                 .exceptionally(ex -> ErrorHandler.handle(this, "Servis tablosu yenilenemedi", ex));
@@ -241,6 +272,21 @@ public class FormWorkOrders extends AbstractTableForm {
     @Override
     protected void onNew() {
         showIntakeModal(new WorkOrder(), "Servis Kaydı", false);
+    }
+
+    /**
+     * Yeni servis kaydını müşteri ve/veya cihaz önceden seçili açar (cihaz ya da müşteri detayından).
+     * Form ilk kez açılıyorsa formInit() beklensin diye çağrı ertelenir.
+     */
+    public void startNewFor(Customer customer, Device device) {
+        SwingUtilities.invokeLater(() -> {
+            WorkOrder wo = new WorkOrder();
+            wo.setCustomer(customer);
+            if (customer != null) wo.setCustomerId(customer.getId());
+            wo.setDevice(device);
+            if (device != null) wo.setDeviceId(device.getId());
+            showIntakeModal(wo, "Servis Kaydı", false);
+        });
     }
 
     private void openEditModal(WorkOrder workOrder) {
@@ -321,80 +367,51 @@ public class FormWorkOrders extends AbstractTableForm {
     // -------------------------------------------------------------------------
 
     private void configureTableColumns() {
-        // Not: hizalama artık ColumnDef.alignment(...) üzerinden geliyor; para/rozet/işlem
-        // kolonlarının renderer'ı TableColumnConfigurator.applyColumnRenderers(...) ile atandı
-        // (bkz. setupTable()). Burada sadece bu forma özel (bespoke) renderer'lar kalıyor.
-
+        // Hizalama ColumnDef.alignment(...) üzerinden; burada yalnızca bu forma özel renderer'lar var.
         table.getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
-                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
-                label.putClientProperty(FlatClientProperties.STYLE, "font: $h3.font");
-                label.setHorizontalAlignment(SwingConstants.CENTER);
-                if (value instanceof Long) {
-                    Long id = (Long) value;
-                    label.setText("SRV-" + id);
-                }
+                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, false, row, col);
+                label.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 4));
+                label.setForeground(UIManager.getColor("Label.disabledForeground"));
+                if (value instanceof Long) label.setText("SRV-" + value);
                 return label;
             }
         });
 
         table.getColumnModel().getColumn(1).setCellRenderer(
                 new MultiLineTableCellRenderer<Customer>(
-                        c -> c != null ? c.getFullName() : "Bilinmeyen Müşteri",
+                        c -> c != null ? c.getFullName() : "Müşterisiz kayıt",
                         c -> c != null ? PhoneHelper.formatForDisplay(c.getPhoneNumber1()) : ""
                 )
         );
         table.getColumnModel().getColumn(2).setCellRenderer(
                 new MultiLineTableCellRenderer<Device>(
-                        d -> d != null ? d.getBrand() + " " + d.getModel() : "Bilinmeyen Cihaz",
-                        d -> "SN: " + (d != null && d.getSerialNo() != null ? d.getSerialNo() : "Bilinmiyor")
+                        d -> d != null ? d.getBrand() + " " + d.getModel() : "Bilinmeyen cihaz",
+                        d -> d != null && d.getSerialNo() != null && !d.getSerialNo().isBlank() ? "SN " + d.getSerialNo() : "Seri no yok"
                 )
         );
         table.getColumnModel().getColumn(3).setCellRenderer(new TooltipCellRenderer());
 
+        // Geliş tarihi + ne zamandır serviste / ne zaman teslim edildi.
         table.getColumnModel().getColumn(4).setCellRenderer(
                 new MultiLineTableCellRenderer<WorkOrder>(
-                        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(DateFormats.dateTime()) : "Tarih Yok",
+                        s -> s.getCreatedAt() != null ? s.getCreatedAt().format(DateFormats.dateTime()) : "Tarih yok",
                         s -> {
-                            String dateStr = s.getDeliveryDate() != null ? s.getDeliveryDate().format(DateFormats.dateTime()) : "-";
-                            if (s.getServiceStatus() == ServiceStatus.RETURN) {
-                                return "İade: " + dateStr;
-                            }
-                            if (s.getServiceStatus() == ServiceStatus.DELIVERED) {
-                                return "Teslim: " + dateStr;
-                            }
-                            LocalDateTime est = s.getCreatedAt() != null ? s.getCreatedAt().plusDays(3) : null;
-                            return "Tahmini: " + (est != null ? est.format(DateFormats.dateTime()) : "-");
+                            String deliv = s.getDeliveryDate() != null ? Format.formatDate(s.getDeliveryDate()) : "-";
+                            if (s.getServiceStatus() == ServiceStatus.RETURN) return "İade: " + deliv;
+                            if (s.getServiceStatus() == ServiceStatus.DELIVERED) return "Teslim: " + deliv;
+                            if (s.getCreatedAt() == null) return "";
+                            long days = java.time.temporal.ChronoUnit.DAYS.between(s.getCreatedAt().toLocalDate(), java.time.LocalDate.now());
+                            return days <= 0 ? "Bugün geldi" : days + " gündür serviste";
                         },
                         s -> null,
-                        s -> {
-                            if (s.getServiceStatus() == ServiceStatus.RETURN) return new Color(220, 53, 69);
-                            if (s.getServiceStatus() == ServiceStatus.DELIVERED) return new Color(46, 204, 113);
-                            return null;
-                        }
+                        s -> s.getServiceStatus() == ServiceStatus.RETURN ? SemanticColor.danger() : null
                 )
         );
 
-        // Kalan ücret 0 ise para birimi yerine "Borç Yok" yeşil metniyle gösterilir.
-        // NOT: DefaultTableCellRenderer.setForeground(...) çağrılan rengi "unselectedForeground"
-        // alanında kalıcı olarak saklar (JTable render sırasında bu alanı bir dahaki satırda da
-        // kullanır) — bu yüzden yeşili SADECE sıfır satırda değil, her çağrıda (else dalında da)
-        // açıkça sıfırlamak gerekiyor; aksi halde bir kez yeşile boyanan renderer diğer tüm
-        // satırlarda da yeşil kalır.
-        table.getColumnModel().getColumn(5).setCellRenderer(new CurrencyTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                if (value instanceof BigDecimal && ((BigDecimal) value).compareTo(BigDecimal.ZERO) == 0) {
-                    setText("Borç Yok");
-                    setForeground(new Color(46, 204, 113));
-                } else {
-                    setForeground(isSelected ? table.getSelectionForeground() : table.getForeground());
-                }
-                return c;
-            }
-        });
+        // Kalan ücret: dükkâna ödenecek tutar uyarı renginde, ödenmişse soluk "Ödendi".
+        table.getColumnModel().getColumn(5).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.OWED, "Ödendi"));
 
         TableActionColumnSupport.install(table, 7, tableModal, new TableActionColumnSupport.Handlers<WorkOrder>() {
             @Override
@@ -431,13 +448,20 @@ public class FormWorkOrders extends AbstractTableForm {
             }
         });
 
-        table.getColumnModel().getColumn(0).setMaxWidth(100);
-        table.getColumnModel().getColumn(0).setPreferredWidth(90);
-        table.getColumnModel().getColumn(1).setPreferredWidth(180);
-        table.getColumnModel().getColumn(2).setPreferredWidth(180);
-        table.getColumnModel().getColumn(3).setPreferredWidth(200);
-        table.getColumnModel().getColumn(4).setPreferredWidth(120);
-        table.getColumnModel().getColumn(5).setPreferredWidth(100);
-        table.getColumnModel().getColumn(6).setPreferredWidth(120);
+        table.getColumnModel().getColumn(0).setMaxWidth(90);
+        table.getColumnModel().getColumn(0).setPreferredWidth(80);
+        table.getColumnModel().getColumn(1).setPreferredWidth(190);
+        table.getColumnModel().getColumn(2).setPreferredWidth(190);
+        table.getColumnModel().getColumn(2).setMinWidth(170);
+        table.getColumnModel().getColumn(3).setMinWidth(90);
+        table.getColumnModel().getColumn(3).setPreferredWidth(230);
+        table.getColumnModel().getColumn(4).setPreferredWidth(150);
+        table.getColumnModel().getColumn(4).setMinWidth(135);
+        table.getColumnModel().getColumn(5).setPreferredWidth(110);
+        table.getColumnModel().getColumn(5).setMinWidth(95);
+        table.getColumnModel().getColumn(6).setPreferredWidth(150);
+        table.getColumnModel().getColumn(6).setMinWidth(145);
+        table.getColumnModel().getColumn(7).setMinWidth(96);
+        table.getColumnModel().getColumn(7).setMaxWidth(96);
     }
 }

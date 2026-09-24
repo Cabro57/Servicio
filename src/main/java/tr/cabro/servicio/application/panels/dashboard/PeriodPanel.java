@@ -73,7 +73,7 @@ public class PeriodPanel extends JPanel {
                 TimeFilter.MONTH_3, TimeFilter.YEAR_1, TimeFilter.ALL_TIME}) {
             JToggleButton b = new JToggleButton(f.getLabel());
             b.putClientProperty(FlatClientProperties.STYLE, "toolbar.margin: 2,6,2,6; arc: 8;"
-                    + " toolbar.selectedBackground: $Component.accentColor; toolbar.selectedForeground: $Button.default.foreground");
+                    + " toolbar.selectedBackground: $Component.accentColor; toolbar.selectedForeground: $Servicio.onAccentForeground");
             b.setSelected(f == initial);
             b.addActionListener(e -> onChange.accept(f));
             group.add(b);

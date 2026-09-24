@@ -702,9 +702,9 @@ public class DeviceFormPanel extends JPanel {
         b.putClientProperty(FlatClientProperties.STYLE,
                 "arc: 999; margin: 2,10,2,10; font: -1; focusWidth: 0; iconTextGap: 4; "
                         + "selectedBackground: $Component.accentColor; "
-                        + "selectedForeground: $Button.default.foreground; "
+                        + "selectedForeground: $Servicio.onAccentForeground; "
                         + "borderColor: $Component.borderColor");
-        Icon check = new Ikon("icons/check-check.svg", 0.7f, "Button.default.foreground");
+        Icon check = new Ikon("icons/check-check.svg", 0.7f, "Servicio.onAccentForeground");
         b.addItemListener(e -> b.setIcon(b.isSelected() ? check : null));
         return b;
     }

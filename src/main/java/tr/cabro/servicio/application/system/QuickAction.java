@@ -73,14 +73,10 @@ public enum QuickAction {
             case QUICK_SALE:
                 FormManager.showForm(AllForms.getForm(FormPos.class));
                 break;
-            case COLLECT: {
-                // Tahsilat bir müşteriye bağlı: cari hesaplar listesi açılır, arama kutusu odaklanır,
-                // satırdaki "Tahsilat Al" düğmesi ödeme penceresini açar.
-                AbstractTableForm form = (AbstractTableForm) AllForms.getForm(FormAccounts.class);
-                FormManager.showForm(form);
-                form.focusSearch();
+            case COLLECT:
+                // Tahsilat penceresi müşteri seçiciyle açılır; hangi ekranda olunursa olunsun iş bölünmez.
+                tr.cabro.servicio.application.panels.CollectionPanel.open(FormManager.getMainForm(), null, FormManager::refresh);
                 break;
-            }
             case NEW_CUSTOMER:
                 startNew(FormCustomers.class);
                 break;

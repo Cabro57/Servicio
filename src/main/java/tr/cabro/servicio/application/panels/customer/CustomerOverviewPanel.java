@@ -96,7 +96,7 @@ public class CustomerOverviewPanel extends JPanel {
     private JPanel createStatStrip() {
         JPanel strip = new JPanel(new MigLayout("insets 14 20 14 20, fillx, gapx 0",
                 "[grow, sg s]20[]20[grow, sg s]20[]20[grow, sg s]20[]20[grow, sg s]", "[]"));
-        strip.putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");
+        strip.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
 
         strip.add(stat("icons/activity.svg", "Serviste", valActive), "wmin 0");
         strip.add(new JSeparator(SwingConstants.VERTICAL), "growy");

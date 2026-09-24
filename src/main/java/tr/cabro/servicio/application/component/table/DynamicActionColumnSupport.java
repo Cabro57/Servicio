@@ -23,6 +23,16 @@ public final class DynamicActionColumnSupport {
     }
 
     public static <T> void install(JTable table, int columnIndex, GenericTableModel<T> tableModel, List<ButtonSpec<T>> buttons) {
+        // Liste sayfalarında düğmeler ayrı kolonda değil, satırın üstüne binen şeritte (ListTable).
+        if (table instanceof ListTable) {
+            java.util.List<ListTable.RowAction> actions = new java.util.ArrayList<>();
+            for (ButtonSpec<T> spec : buttons) {
+                actions.add(new ListTable.RowAction(spec.iconPath, spec.hoverColor, spec.tooltip,
+                        row -> spec.onClick.accept(tableModel.getItemAt(table.convertRowIndexToModel(row)))));
+            }
+            ((ListTable) table).setRowActions(columnIndex, actions);
+            return;
+        }
         table.getColumnModel().getColumn(columnIndex).setCellRenderer(new BarRenderer<>(buttons));
         table.getColumnModel().getColumn(columnIndex).setCellEditor(new BarEditor<>(tableModel, buttons));
     }
@@ -64,6 +74,7 @@ public final class DynamicActionColumnSupport {
 
     private static class BarRenderer<T> extends DefaultTableCellRenderer {
         private final JPanel panel;
+        private final JPanel blank = new JPanel();
 
         BarRenderer(List<ButtonSpec<T>> buttons) {
             panel = new JPanel(new MigLayout("insets 0, fill", columnTemplate(buttons.size()), "[center]"));
@@ -79,6 +90,11 @@ public final class DynamicActionColumnSupport {
             setVerticalAlignment(SwingConstants.CENTER);
             setFocusable(false);
             panel.setBackground(com.getBackground());
+            // Liste sayfalarında işlemler yalnızca fare üstündeki ya da seçili satırda görünür.
+            if (table instanceof ListTable && !((ListTable) table).isRowActive(row)) {
+                blank.setBackground(com.getBackground());
+                return blank;
+            }
             return panel;
         }
     }

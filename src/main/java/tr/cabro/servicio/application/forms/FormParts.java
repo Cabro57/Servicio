@@ -1,5 +1,19 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.component.table.ListSummary;
+import tr.cabro.servicio.application.component.table.PaginationBar;
+import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
+import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
+import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
+import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
+import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
+import tr.cabro.servicio.application.system.QuickAction;
+import tr.cabro.servicio.application.themes.SemanticColor;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
+import tr.cabro.servicio.model.dto.PageResult;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import com.formdev.flatlaf.FlatClientProperties;
 import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
@@ -52,7 +66,7 @@ public class FormParts extends AbstractTableForm {
     private int pageSize = AppSettings.get().getTables().getPartPageSize();
     private int currentPage = 1;
     private String currentSearchTerm = "";
-    private JPagination pagination;
+    private PaginationBar paginationBar;
 
     public FormParts() {
         this.partService = ServiceManager.getPartService();
@@ -60,67 +74,81 @@ public class FormParts extends AbstractTableForm {
 
     @Override
     protected String getNewButtonText() {
-       return "Yeni Parça Ekle";
+        return "Yeni Parça";
     }
 
     @Override
     protected String getNewButtonIconPath() {
-       return "icons/package-plus.svg";
+        return "icons/package-plus.svg";
     }
 
     @Override
-    protected String getTableTitleText() {
-       return "Envanter Listesi";
+    protected QuickAction getNewQuickAction() {
+        return QuickAction.NEW_PART;
     }
 
     @Override
     protected String getSearchPlaceholder() {
-        return "Parça adı, SKU veya Kategori ara...";
+        return "Parça adı, SKU, model, kategori veya tedarikçi ara…";
+    }
+
+    // --- Görünüm sekmeleri: stok durumu ---
+
+    private static final String VIEW_ALL = "all";
+    private static final String VIEW_CRITICAL = "critical";
+    private static final String VIEW_OUT = "out";
+
+    @Override
+    protected void initViews() {
+        addView(VIEW_ALL, "Tümü");
+        addView(VIEW_CRITICAL, "Kritik stok");
+        addView(VIEW_OUT, "Tükendi");
+    }
+
+    /** "Kritik" ölçütü getStats() ile aynı: stok &lt; minimum (0 dahil). */
+    @Override
+    protected Map<String, ColumnFilterValue> viewFilters(String key) {
+        if (VIEW_CRITICAL.equals(key)) return Map.of("view:critical",
+                ColumnFilterValue.condition("p.stock_quantity < p.min_stock_level"));
+        if (VIEW_OUT.equals(key)) return Map.of("view:out", ColumnFilterValue.condition("p.stock_quantity <= 0"));
+        return Collections.emptyMap();
     }
 
     @Override
-    protected void initCards() {
-        cardBox.addCardItem(new Ikon("icons/package-check.svg", 0.7f), "Parça Çeşidi");
-        cardBox.addCardItem(new Ikon("icons/sigma.svg", 0.7f), "Toplam Stok");
-        cardBox.addCardItem(new Ikon("icons/circle-alert.svg", 0.7f), "Kritik Stok");
-        cardBox.addCardItem(new Ikon("icons/turkish-lira.svg", 0.7f), "Envanter Değeri");
+    protected CompletableFuture<Long> countMatching(Map<String, ColumnFilterValue> filters) {
+        return partService.searchFilteredPaged(currentSearchTerm, filters, 1, 1).thenApply(PageResult::getTotalItems);
+    }
+
+    @Override
+    protected void onViewChanged(String key) {
+        currentPage = 1;
+        super.onViewChanged(key);
     }
 
     @Override
     protected void refreshStats() {
         partService.getStats().thenAccept(stats -> SwingUtilities.invokeLater(() -> {
-            cardBox.setValueAt(0, String.valueOf(stats.getPartVarietyCount()), "Parça Çeşidi", "", true);
-            cardBox.setValueAt(1, String.valueOf(stats.getTotalStock()), "Toplam Stok", "", true);
-            cardBox.setValueAt(2, String.valueOf(stats.getCriticalStockCount()), "Kritik Stok", "", true);
-            cardBox.setValueAt(3, Format.formatPrice(stats.getTotalInventoryValue()), "Envanter Değeri", "", true);
-        })).exceptionally(ex -> ErrorHandler.handle(this, "Parça istatistikleri yüklenemedi", ex));
+            long critical = stats.getCriticalStockCount();
+            summary.set(
+                    ListSummary.Part.strong(stats.getPartVarietyCount() + " parça çeşidi"),
+                    ListSummary.Part.of(stats.getTotalStock() + " adet stokta"),
+                    critical > 0 ? ListSummary.Part.meaning(critical + " kritik stokta", "Servicio.dangerColor") : null,
+                    ListSummary.Part.of("envanter değeri " + Format.formatPrice(stats.getTotalInventoryValue())));
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Parça özeti yüklenemedi", ex));
     }
 
     @Override
     protected JComponent createPaginationComponent() {
-        pagination = new AppPagination(5, 1, 1);
-        pagination.addChangeListener(e -> {
-            currentPage = pagination.getSelectedPage();
-            refreshTable();
-        });
-
-        JComboBox<Integer> pageSizeCombo = new JComboBox<>(PAGE_SIZE_OPTIONS);
-        pageSizeCombo.setSelectedItem(pageSize);
-        pageSizeCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
-        pageSizeCombo.addActionListener(e -> {
-            pageSize = (Integer) pageSizeCombo.getSelectedItem();
-            currentPage = 1;
-            AppSettings.get().getTables().setPartPageSize(pageSize);
-            AppSettings.save();
-            refreshTable();
-        });
-
-        JPanel panel = new JPanel(new net.miginfocom.swing.MigLayout("insets 0, gapx 10", "[][]", "[]"));
-        panel.setOpaque(false);
-        panel.add(new JLabel("Sayfa başına:"));
-        panel.add(pageSizeCombo);
-        panel.add(pagination);
-        return panel;
+        paginationBar = new PaginationBar(5, PAGE_SIZE_OPTIONS, pageSize,
+                page -> { currentPage = page; refreshTable(); },
+                newSize -> {
+                    pageSize = newSize;
+                    currentPage = 1;
+                    AppSettings.get().getTables().setPartPageSize(pageSize);
+                    AppSettings.save();
+                    refreshTable();
+                });
+        return paginationBar;
     }
 
     @Override
@@ -133,95 +161,77 @@ public class FormParts extends AbstractTableForm {
     @Override
     protected void setupTable() {
         List<ColumnDef<Part>> columns = Arrays.asList(
-                new ColumnDef<>("SKU", String.class, Part::getBarcode),
-                new ColumnDef<>("Parça Adı", String.class, Part::getName),
-                new ColumnDef<>("Kategori",  String.class, p -> p.getCategory() != null ? p.getCategory().getName() : "-"),
-                new ColumnDef<>("Uyumlu Model", String.class, Part::getModelCompatibility),
-                new ColumnDef<>("Tedarikçi",  Supplier.class, Part::getSupplier),
-                new ColumnDef<>("Stok", Integer.class, Part::getStockQuantity),
-                new ColumnDef<>("Birim Fiyat", BigDecimal.class, Part::getSalePrice),
-                new ColumnDef<>("İşlem", String.class, p -> "Detay")
+                new ColumnDef<Part>("SKU", String.class, Part::getBarcode).alignment(SwingConstants.LEADING),
+                new ColumnDef<Part>("Parça", Part.class, p -> p).alignment(SwingConstants.LEADING),
+                new ColumnDef<Part>("Tedarikçi", String.class, p -> p.getSupplier() != null ? (p.getSupplier().getBusinessName() != null && !p.getSupplier().getBusinessName().isBlank() ? p.getSupplier().getBusinessName() : p.getSupplier().getName()) : "—").alignment(SwingConstants.LEADING),
+                new ColumnDef<Part>("Stok", Part.class, p -> p).alignment(SwingConstants.CENTER),
+                new ColumnDef<Part>("Satış Fiyatı", BigDecimal.class, Part::getSalePrice).alignment(SwingConstants.TRAILING),
+                ColumnDef.<Part>actionColumn("")
         );
         tableModel = new GenericTableModel<>(columns);
         setTableModel(tableModel);
-
+        TableColumnConfigurator.applyColumnRenderers(table, columns);
         configureTableColumns();
     }
 
     /**
-     * "Kritik Stok" kartıyla aynı ölçüt: {@code stock_quantity < min_stock_level}
-     * (bkz. {@code PartRepository.getStats()}). Ölçüt ayrışırsa kart bir sayı, tablo
-     * başka bir sayı gösterir.
+     * "Kritik stok" sekmesi/özetiyle aynı ölçüt: {@code stock_quantity < min_stock_level}.
+     * Ölçüt ayrışırsa özet bir sayı, tablo başka bir sayı gösterir.
      */
-    private boolean isCriticalStock(Part part) {
-        return part != null
-                && part.getStockQuantity() != null
-                && part.getMinStockLevel() != null
-                && part.getStockQuantity() < part.getMinStockLevel();
+    private static boolean isCriticalStock(Part item) {
+        return item != null && item.getStockQuantity() != null && item.getMinStockLevel() != null
+                && item.getStockQuantity() < item.getMinStockLevel();
     }
 
     private void configureTableColumns() {
-        Integer[] columnAlignments = {
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.LEADING,
-                SwingConstants.CENTER,
-                SwingConstants.TRAILING,
-                SwingConstants.CENTER
-        };
-
-        table.getTableHeader().setDefaultRenderer(new TableHeaderAlignment(table, columnAlignments));
-
         table.getColumnModel().getColumn(0).setCellRenderer(
-                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: +1"));
+                StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground; font: -1", 12));
+
+        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Part>(
+                Part::getName,
+                p -> {
+                    String category = p.getCategory() != null ? p.getCategory().getName() : null;
+                    String extra = p.getModelCompatibility();
+                    if (category != null && extra != null && !extra.isBlank()) return category + "  ·  " + extra;
+                    return category != null ? category : (extra != null && !extra.isBlank() ? extra : "Kategorisiz");
+                }));
 
         table.getColumnModel().getColumn(2).setCellRenderer(new TooltipCellRenderer());
 
-        // Stok kolonu kritik seviyeyi satırda işaretler: üstteki "Kritik Stok" kartı bir sayı
-        // veriyordu ama hangi satırların kritik olduğunu göz taramasına bırakıyordu.
-        // Uyarı metinle de yazılır, yalnızca renge bırakılmaz.
-        table.getColumnModel().getColumn(5).setCellRenderer(new DefaultTableCellRenderer() {
+        // Stok: kritik seviye metinle de yazılır, yalnızca renge bırakılmaz.
+        table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, false, row, column);
                 label.setHorizontalAlignment(SwingConstants.CENTER);
-                label.setFont(label.getFont().deriveFont(Font.BOLD));
-                label.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
-
-                Part part = tableModel.getItemAt(table.convertRowIndexToModel(row));
-                boolean critical = isCriticalStock(part);
-                label.setText(critical ? part.getStockQuantity() + " · kritik" : String.valueOf(value));
-                // else dalı şart: DefaultTableCellRenderer son rengi saklar, sıfırlanmazsa
-                // kritik bir satırdan sonraki tüm satırlar da kırmızı boyanır.
-                if (!isSelected) {
-                    label.setForeground(critical ? SemanticColor.danger() : table.getForeground());
-                }
-                label.setToolTipText(critical
-                        ? "Stok, belirlenen minimum seviyenin altında."
-                        : null);
+                label.setFont(table.getFont().deriveFont(Font.BOLD));
+                Part item = (Part) value;
+                int stock = item != null && item.getStockQuantity() != null ? item.getStockQuantity() : 0;
+                boolean critical = isCriticalStock(item);
+                label.setText(stock <= 0 ? "Tükendi" : critical ? stock + "  ·  kritik" : String.valueOf(stock));
+                // else dalı şart: DefaultTableCellRenderer son rengi saklar.
+                label.setForeground(critical || stock <= 0 ? SemanticColor.danger() : table.getForeground());
+                label.setToolTipText(critical ? "Stok, belirlenen minimum seviyenin (" + item.getMinStockLevel() + ") altında." : null);
                 return label;
             }
         });
 
-        table.getColumnModel().getColumn(6).setCellRenderer(new CurrencyTableCellRenderer());
+        table.getColumnModel().getColumn(4).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEUTRAL));
 
-        table.getColumnModel().getColumn(7).setCellRenderer(new ActionButtonRenderer());
-        TableActionColumnSupport.install(table, 7, tableModel, new TableActionColumnSupport.Handlers<Part>() {
+        TableActionColumnSupport.install(table, 5, tableModel, new TableActionColumnSupport.Handlers<Part>() {
             @Override
-            public void onEdit(Part part) {
-                openEditModal(part);
+            public void onEdit(Part item) {
+                openEditModal(item);
             }
 
             @Override
-            public void onDelete(Part selectedPart) {
+            public void onDelete(Part selected) {
                 ModalDialog.showModal(FormParts.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
                         Messages.get("confirm.delete.part"), Messages.get("confirm.delete.title"),
                         SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
 
                     if (action == SimpleModalBorder.YES_OPTION) {
-                        partService.delete(selectedPart.getId()).thenAccept(v -> {
+                        partService.delete(selected.getId()).thenAccept(v -> {
                             SwingUtilities.invokeLater(() -> {
                                 Toast.show(FormParts.this, Toast.Type.SUCCESS, Messages.get("toast.part.deleted"));
                                 refreshTable();
@@ -232,17 +242,20 @@ public class FormParts extends AbstractTableForm {
             }
 
             @Override
-            public void onView(Part part) {
-                if (part != null) FormManager.showForm(new FormPart(part));
+            public void onView(Part item) {
+                if (item != null) FormManager.showForm(new FormPart(item));
             }
         });
 
-        // Genişlik Ayarları
-        table.getColumnModel().getColumn(0).setMinWidth(150); // Barkod
-        table.getColumnModel().getColumn(1).setPreferredWidth(120);
-        table.getColumnModel().getColumn(5).setMaxWidth(70);
-        table.getColumnModel().getColumn(7).setMaxWidth(180);
-        table.getColumnModel().getColumn(7).setMinWidth(120);
+        table.getColumnModel().getColumn(0).setPreferredWidth(110);
+        table.getColumnModel().getColumn(0).setMaxWidth(150);
+        table.getColumnModel().getColumn(1).setPreferredWidth(320);
+        table.getColumnModel().getColumn(2).setPreferredWidth(180);
+        table.getColumnModel().getColumn(3).setPreferredWidth(110);
+        table.getColumnModel().getColumn(3).setMaxWidth(140);
+        table.getColumnModel().getColumn(4).setPreferredWidth(130);
+        table.getColumnModel().getColumn(5).setMinWidth(96);
+        table.getColumnModel().getColumn(5).setMaxWidth(96);
     }
 
     @Override
@@ -253,22 +266,13 @@ public class FormParts extends AbstractTableForm {
 
     @Override
     protected void loadTableData() {
-        java.util.concurrent.CompletableFuture<PageResult<Part>> future = currentSearchTerm.isEmpty()
-                ? partService.getAllPaged(currentPage, pageSize)
-                : partService.searchPaged(currentSearchTerm, currentPage, pageSize);
-
-        future.thenAccept(result -> {
-            SwingUtilities.invokeLater(() -> {
-                tableModel.setData(result.getItems());
-                if (pagination != null) pagination.setPageRange(result.getPage(), result.getTotalPages());
-                refreshStats();
-                refreshLayout();
-            });
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(this::resetKeyboardActions);
-            return ErrorHandler.handle(this, "Parça tablosu yenilenemedi", ex);
-        });
-
+        partService.searchFilteredPaged(currentSearchTerm, effectiveFilters(), currentPage, pageSize).thenAccept(result ->
+                SwingUtilities.invokeLater(() -> {
+                    tableModel.setData(result.getItems());
+                    if (paginationBar != null) paginationBar.setPageRange(result.getPage(), result.getTotalPages());
+                    setResultCount(result.getTotalItems());
+                    refreshLayout();
+                })).exceptionally(ex -> ErrorHandler.handle(this, "Parça tablosu yenilenemedi", ex));
     }
 
     @Override

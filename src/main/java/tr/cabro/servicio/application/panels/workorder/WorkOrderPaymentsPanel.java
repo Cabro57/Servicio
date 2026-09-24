@@ -59,6 +59,13 @@ public class WorkOrderPaymentsPanel extends JPanel {
     private JLabel lblRemainVal;
     private JLabel lblPaymentBadge;
 
+    /** Ödeme eklenip silinince (ve {@link #refresh()} ile) çağrılır; kimlik şeridi tutarları tazeler. */
+    private Runnable onChanged;
+
+    public void setOnChanged(Runnable onChanged) {
+        this.onChanged = onChanged;
+    }
+
     public WorkOrderPaymentsPanel(WorkOrder workOrder) {
         this.workOrder = workOrder;
         this.workOrderService = ServiceManager.getWorkOrderService();
@@ -66,32 +73,37 @@ public class WorkOrderPaymentsPanel extends JPanel {
     }
 
     private void build() {
-        putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); arc: 15;");
-        setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[][]20[]"));
+        putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
+        setLayout(new MigLayout("insets 16 18 14 18, fillx, hidemode 3", "[grow][]", "[]10[][]12[]"));
 
-        JLabel title = new JLabel("Ödemeler (Ön Muhasebe)");
-        title.setIcon(new Ikon("icons/credit-card.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        add(title, "wrap");
+        lblPaymentBadge = new JLabel();
+        add(WorkOrderPanelSupport.createTitle("Ödemeler"), "aligny center");
+        add(lblPaymentBadge, "align right, wrap");
 
         List<ColumnDef<Payment>> columnDefs = Arrays.asList(
-                new ColumnDef<>("Tarih", LocalDateTime.class, Payment::getPaymentDate),
-                new ColumnDef<>("Yöntem", PaymentType.class, Payment::getPaymentType),
-                new ColumnDef<>("Tutar", BigDecimal.class, Payment::getAmount),
-                new ColumnDef<>("İşlem", Payment.class, payment -> "Detay")
+                new ColumnDef<Payment>("Tarih", LocalDateTime.class, Payment::getPaymentDate).alignment(SwingConstants.LEADING),
+                new ColumnDef<Payment>("Yöntem", PaymentType.class, Payment::getPaymentType).alignment(SwingConstants.LEADING),
+                new ColumnDef<Payment>("Tutar", BigDecimal.class, Payment::getAmount).alignment(SwingConstants.TRAILING),
+                new ColumnDef<Payment>("", Payment.class, payment -> "Detay").editable(true)
         );
 
         paymentsTableModel = new GenericTableModel<>(columnDefs);
 
-        JTable paymentsTable = new JTable(paymentsTableModel);
+        // Fiş/sil düğmeleri yalnızca fare üstündeki satırda (ListTable) görünür.
+        tr.cabro.servicio.application.component.table.ListTable paymentsTable = new tr.cabro.servicio.application.component.table.ListTable();
+        paymentsTable.setModel(paymentsTableModel);
         WorkOrderPanelSupport.styleTable(paymentsTable);
-        paymentsTable.getColumnModel().getColumn(0).setPreferredWidth(150);
-        paymentsTable.getColumnModel().getColumn(1).setPreferredWidth(160);
-        paymentsTable.getColumnModel().getColumn(2).setPreferredWidth(100);
-        paymentsTable.getColumnModel().getColumn(3).setMaxWidth(50);
-        paymentsTable.getColumnModel().getColumn(3).setMinWidth(50);
+        tr.cabro.servicio.application.component.table.TableColumnConfigurator.applyColumnRenderers(paymentsTable, columnDefs);
+        paymentsTable.getColumnModel().getColumn(0).setPreferredWidth(170);
+        paymentsTable.getColumnModel().getColumn(1).setPreferredWidth(180);
+        paymentsTable.getColumnModel().getColumn(2).setPreferredWidth(120);
+        paymentsTable.getColumnModel().getColumn(3).setMaxWidth(80);
+        paymentsTable.getColumnModel().getColumn(3).setMinWidth(80);
         paymentsTable.getColumnModel().getColumn(0).setCellRenderer(new DateTimeCellRenderer());
-        paymentsTable.getColumnModel().getColumn(2).setCellRenderer(new GreenAmountRenderer());
+        paymentsTable.getColumnModel().getColumn(1).setCellRenderer(
+                new tr.cabro.servicio.application.renderer.UniversalVisualizableRenderer(SwingConstants.LEADING));
+        paymentsTable.getColumnModel().getColumn(2).setCellRenderer(
+                new tr.cabro.servicio.application.renderer.MoneyCellRenderer(tr.cabro.servicio.application.renderer.MoneyCellRenderer.Mode.NEGATIVE));
 
         DynamicActionColumnSupport.install(paymentsTable, 3, paymentsTableModel, List.of(
                 DynamicActionColumnSupport.button("icons/file-text.svg", SemanticColor.info(), "Tahsilat fişi yazdır",
@@ -111,10 +123,11 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
         populatePaymentsTable();
 
-        add(paymentsEmptyLabel, "growx, wrap");
-        add(paymentsTableContainer, "growx, wrap");
-        add(buildPaymentInputRow(), "growx, wrap");
-        add(buildPaymentSummaryBox(), "align right, w 350!");
+        add(paymentsEmptyLabel, "span 2, growx, wrap");
+        add(paymentsTableContainer, "span 2, growx, wrap");
+        add(buildPaymentInputRow(), "span 2, growx, wrap");
+        buildPaymentSummaryBox();
+        refreshPaymentBadge(lblPaymentBadge);
     }
 
     private void populatePaymentsTable() {
@@ -135,12 +148,10 @@ public class WorkOrderPaymentsPanel extends JPanel {
     }
 
     private JPanel buildPaymentInputRow() {
-        JPanel inputRow = new JPanel(new MigLayout("insets 10, fillx", "[150!][grow][]", "[]5[]"));
-        inputRow.putClientProperty(FlatClientProperties.STYLE,
-                "background: lighten($Panel.background, 2%); arc: 10; border: 1,1,1,1,$Component.borderColor");
-
-        inputRow.add(WorkOrderPanelSupport.createMutedLabel("Ödeme Yöntemi"));
-        inputRow.add(WorkOrderPanelSupport.createMutedLabel("Tutar (TL)"), "wrap");
+        // Tahsilat satırı: yöntem + tutar (kalan tutarla dolu gelir) + ekle — tek satırda, kart içinde kart yok.
+        JPanel inputRow = new JPanel(new MigLayout("insets 0, fillx, gap 8", "[][170!][grow, fill][]", "[center]"));
+        inputRow.setOpaque(false);
+        inputRow.add(WorkOrderPanelSupport.createMutedLabel("Tahsilat"));
 
         JComboBox<PaymentType> cmbMethod = new JComboBox<>(PaymentType.values());
         cmbMethod.setRenderer(new DefaultListCellRenderer() {
@@ -155,9 +166,8 @@ public class WorkOrderPaymentsPanel extends JPanel {
         JFormattedTextField txtAmount = new CurrencyField();
         txtAmount.setValue(workOrder.getRemainingAmount());
 
-        JButton btnAddPayment = new JButton("+ Tahsilat Ekle");
-        btnAddPayment.putClientProperty(FlatClientProperties.STYLE,
-                BadgePalette.style(BadgeColor.GREEN, "arc: 8"));
+        JButton btnAddPayment = new JButton("Tahsilat Ekle", new Ikon("icons/hand-coins.svg", 16, "Label.foreground"));
+        btnAddPayment.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 6,12,6,12; iconTextGap: 6");
 
         btnAddPayment.addActionListener(e -> {
             BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
@@ -220,6 +230,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
         }).exceptionally(ex -> ErrorHandler.handle(this, "Tahsilat fişi oluşturulamadı", ex));
     }
 
+    /** Eski özet kutusu; tutarlar artık kimlik şeridinde. Etiketler refresh() için tutulur, eklenmez. */
     private JPanel buildPaymentSummaryBox() {
         JPanel summaryBox = new JPanel(new MigLayout("insets 15, fillx", "[grow][pref!]", "[]10[]15[]10[]"));
         summaryBox.putClientProperty(FlatClientProperties.STYLE, "background: darken($Panel.background, 2%); arc: 15");
@@ -247,10 +258,6 @@ public class WorkOrderPaymentsPanel extends JPanel {
         lblRemainVal.putClientProperty(FlatClientProperties.STYLE, "font: bold +4; foreground: " + remainColor);
         summaryBox.add(lblRemainVal, "align right, wrap");
 
-        lblPaymentBadge = new JLabel();
-        refreshPaymentBadge(lblPaymentBadge);
-        summaryBox.add(lblPaymentBadge, "span 2, align right");
-
         return summaryBox;
     }
 
@@ -269,6 +276,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
         lblRemainVal.repaint();
         lblPaymentBadge.repaint();
+        if (onChanged != null) onChanged.run();
     }
 
     /**

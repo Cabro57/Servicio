@@ -41,11 +41,11 @@ public class MultiLineTableCellRenderer<T> extends JPanel implements TableCellRe
         setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
 
         topLabel = new JLabel();
-        topLabel.putClientProperty(FlatClientProperties.STYLE, "font: $h3.font");
+        topLabel.putClientProperty(FlatClientProperties.STYLE, "font: bold");
         topLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         bottomLabel = new JLabel();
-        bottomLabel.putClientProperty(FlatClientProperties.STYLE, "font: $medium.font");
+        bottomLabel.putClientProperty(FlatClientProperties.STYLE, "font: -1");
         bottomLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -61,6 +61,12 @@ public class MultiLineTableCellRenderer<T> extends JPanel implements TableCellRe
         gbc.gridy = 1;
         gbc.anchor = GridBagConstraints.NORTH;
         add(bottomLabel, gbc);
+    }
+
+    /** Üst satır kalın değil, normal ağırlıkta (ör. iletişim kolonu: telefon + soluk e-posta). */
+    public MultiLineTableCellRenderer<T> plainTop() {
+        topLabel.putClientProperty(FlatClientProperties.STYLE, "font: plain");
+        return this;
     }
 
     @Override

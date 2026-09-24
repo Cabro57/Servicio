@@ -21,7 +21,27 @@ public class ColumnFilterValue {
     private LocalDate dateFrom;
     private LocalDate dateTo;
 
+    /**
+     * Liste sayfası görünüm sekmelerinin hazır koşulu (ör. {@code p.stock_quantity <= p.min_stock_level}).
+     * YALNIZCA kod içinde sabit yazılmış SQL için; kullanıcı girdisi asla buraya konmaz. Anahtar
+     * (map key) bu durumda kolon değil, koşulun adıdır ve SQL'e eklenmez.
+     */
+    private String condition;
+
+    public static ColumnFilterValue condition(String trustedSql) {
+        ColumnFilterValue v = new ColumnFilterValue();
+        v.condition = trustedSql;
+        return v;
+    }
+
+    public static ColumnFilterValue enumOf(String... names) {
+        ColumnFilterValue v = new ColumnFilterValue();
+        v.enumValues = new java.util.LinkedHashSet<>(java.util.Arrays.asList(names));
+        return v;
+    }
+
     public boolean isActive() {
-        return (enumValues != null && !enumValues.isEmpty()) || dateFrom != null || dateTo != null;
+        return (enumValues != null && !enumValues.isEmpty()) || dateFrom != null || dateTo != null
+                || (condition != null && !condition.isBlank());
     }
 }

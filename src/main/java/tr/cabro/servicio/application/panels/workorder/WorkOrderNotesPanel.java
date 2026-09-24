@@ -44,13 +44,10 @@ public class WorkOrderNotesPanel extends JPanel {
     }
 
     private void build() {
-        putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); arc: 15;");
+        putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
         setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[]15[]"));
 
-        JLabel title = new JLabel("Teknisyen Notları");
-        title.setIcon(new Ikon("icons/file-text.svg", 1f));
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-        add(title, "wrap");
+        add(WorkOrderPanelSupport.createTitle("Teknisyen notları"), "wrap");
 
         notesListPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow]", "[]"));
         notesListPanel.setOpaque(false);

@@ -2,14 +2,19 @@ package tr.cabro.servicio.application.forms.base;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.component.dashboard.CardBox;
+import tr.cabro.servicio.application.component.table.ListSummary;
+import tr.cabro.servicio.application.component.table.ListTable;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.component.table.TableStatePanel;
 import tr.cabro.servicio.application.component.table.TableStyler;
+import tr.cabro.servicio.application.component.table.ViewTabs;
 import tr.cabro.servicio.application.system.Form;
+import tr.cabro.servicio.application.system.QuickAction;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
+import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.SystemForm;
+import tr.cabro.servicio.database.filter.ColumnFilterValue;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -17,17 +22,40 @@ import javax.swing.event.DocumentListener;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+/**
+ * Liste sayfalarının ortak iskeleti (Müşteriler, Servis Kayıtları, Parçalar …).
+ * <pre>
+ *  Başlık                                     [ikincil işlemler] [Yeni … Alt+X]
+ *  43 müşteri · 6 kurumsal · 31 borçlu
+ *  ┌──────────────────────────────────────────────────────────────────────┐
+ *  │ [Tümü 43] [Borçlu 31] [Kurumsal 6]                   [ Ara…        ] │
+ *  │ tablo — satırın tamamı kaydı açar, işlemler üstüne gelince görünür   │
+ *  │ 43 kayıt                                             ‹ 1 2 3 ›       │
+ *  └──────────────────────────────────────────────────────────────────────┘
+ * </pre>
+ * Özet cümlesi dört istatistik kutusunun, sayılı görünüm sekmeleri filtre açılır kutularının yerini
+ * alır. Sekmeler başlık filtrelerinin hazır ön ayarlarıdır ({@link #viewFilters(String)}); sayıları
+ * alt sınıfın {@link #countMatching(Map)} sorgusuyla, o anki arama da hesaba katılarak doldurulur.
+ */
 public abstract class AbstractTableForm extends Form {
 
     protected JTextField searchField;
-    protected JTable table;
+    protected ListTable table;
     protected JButton btnNew;
-    protected CardBox cardBox;
+    protected ListSummary summary;
+    protected ViewTabs views;
     protected JComboBox<Object> filterCombo;
     protected TableRowSorter<? extends TableModel> sorter;
 
@@ -37,6 +65,7 @@ public abstract class AbstractTableForm extends Form {
     private JPanel tableArea;
     private TableStatePanel statePanel;
     private TableHeaderFilterSupport<?> headerFilterSupport;
+    private JLabel resultCount;
 
     public AbstractTableForm() {
         // init formInit() üzerinden çağrılır.
@@ -47,108 +76,86 @@ public abstract class AbstractTableForm extends Form {
         initComponent();
         setupTable();
         refreshTable();
-        refreshStats();   // Alt sınıfların kart verilerini güncellemesi için
     }
 
     @Override
     public void formRefresh() {
         refreshTable();
-        refreshStats();
     }
 
     @Override
     public void formOpen() {
         refreshTable();
-        refreshStats();
     }
 
     private void initComponent() {
-        // FormServices ile aynı ana layout
-        setLayout(new MigLayout("fill, insets 15, gap 10, wrap", "[grow]", "[pref][pref][grow, fill]"));
+        setLayout(new MigLayout("fill, insets 14 18 16 18, gap 0", "[grow, fill]", "[pref]12[grow, fill]"));
 
-        // 1. Üst Kısım (Header Panel)
-        JPanel headerPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow][]", "[][]"));
-        headerPanel.setOpaque(false);
+        // --- 1. Başlık şeridi: başlık + özet cümlesi solda, işlemler sağda ---
+        JPanel header = new JPanel(new MigLayout("insets 0, fillx, gap 8 2, hidemode 3", "[grow, fill]", "[][]"));
+        header.setOpaque(false);
 
-        SystemForm sysForm = this.getClass().getAnnotation(SystemForm.class);
-        String titleText = sysForm != null ? sysForm.name() : "Başlık";
-        String subtitleText = sysForm != null ? sysForm.description() : "Açıklama";
+        SystemForm sysForm = getClass().getAnnotation(SystemForm.class);
+        JLabel title = new JLabel(sysForm != null ? sysForm.name() : "Liste");
+        title.putClientProperty(FlatClientProperties.STYLE, "font: bold +5");
+        if (sysForm != null) title.setToolTipText(sysForm.description());
 
-        JLabel title = new JLabel(titleText);
-        title.putClientProperty(FlatClientProperties.STYLE, "font: bold $h1.font");
+        JPanel actions = new JPanel(new MigLayout("insets 0, gap 8", "", "[center]"));
+        actions.setOpaque(false);
+        for (JComponent c : createHeaderActions()) actions.add(c);
+        btnNew = createPrimaryButton();
+        actions.add(btnNew);
 
-        JLabel subtitle = new JLabel(subtitleText);
-        subtitle.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        summary = new ListSummary();
 
-        btnNew = new JButton(getNewButtonText());
-        btnNew.putClientProperty(FlatClientProperties.STYLE, "background: $Component.accentColor; foreground: #ffffff; arc: 10; margin: 5,10,5,10; iconTextGap: 23;");
-        btnNew.setIcon(new Ikon(getNewButtonIconPath(), btnNew.getFont().getSize()));
-        btnNew.addActionListener(e -> onNew());
+        header.add(title);
+        header.add(actions, "gapleft push, spany 2, aligny center, wrap");
+        header.add(summary, "wmin 0");
+        add(header, "wrap");
 
-        headerPanel.add(title, "cell 0 0");
-        headerPanel.add(btnNew, "cell 1 0 1 2, aligny center"); // Butonu sağa yasla ve ortala
-        headerPanel.add(subtitle, "cell 0 1");
+        // --- 2. Liste kartı: sekmeler + arama, tablo, alt bilgi ---
+        JPanel card = new JPanel(new MigLayout("fill, insets 10 14 8 14, gap 0, hidemode 3",
+                "[grow, fill]", "[pref]8[grow, fill]6[pref]"));
+        card.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
 
-        add(headerPanel, "wrap, growx");
+        views = new ViewTabs();
+        initViews();
+        views.setOnChange(key -> onViewChanged(key));
 
-        // 2. İstatistik Kartları (Stats Panel)
-        JPanel statsPanel = new JPanel(new MigLayout("insets 0, gapx 15, fillx", "[fill]", "[fill]"));
-        statsPanel.setOpaque(false);
-
-        cardBox = new CardBox();
-
-        // Alt sınıfların kart şablonlarını oluşturması için boş çağrı
-        initCards();
-
-        // Eğer alt sınıf kart eklemişse paneli görünüme dahil et
-        if (cardBox.getComponentCount() > 0) {
-            statsPanel.add(cardBox);
-            add(statsPanel, "wrap, growx");
-        }
-
-        // 3. Tablo Konteyneri
-        JPanel tableContainer = new JPanel(new MigLayout("fill, insets 15, gapy 15", "[grow]", "[pref][grow][pref!]"));
-        tableContainer.putClientProperty(FlatClientProperties.STYLE, "arc: 16; background: lighten($Panel.background, 3%);");
-
-        JLabel tableTitle = new JLabel(getTableTitleText());
-        tableTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
-
-        searchField = new JTextField(20);
+        searchField = new JTextField(22);
         searchField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, getSearchPlaceholder());
-        searchField.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10");
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 1f));
-
+        searchField.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
+        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
+                new Ikon("icons/search.svg", 16, "Label.disabledForeground"));
+        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        searchField.setToolTipText("Ara (Ctrl+F)");
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { applyFilter(); }
             public void removeUpdate(DocumentEvent e) { applyFilter(); }
             public void changedUpdate(DocumentEvent e) { applyFilter(); }
         });
 
-        JPanel toolbar = new JPanel(new MigLayout("insets 0, gapx 10", "[][grow][][][]"));
+        JPanel toolbar = new JPanel(new MigLayout("insets 0, gap 8, hidemode 3", "[]push[][][]", "[center]"));
         toolbar.setOpaque(false);
-        toolbar.add(tableTitle);
-        toolbar.add(searchField, "cell 2 0");
-
+        toolbar.add(views, "wmin 0");
         if (hasFilterCombo()) {
             filterCombo = createFilterCombo();
             if (filterCombo != null) {
                 filterCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
-                toolbar.add(filterCombo, "cell 3 0");
+                toolbar.add(filterCombo);
             }
         }
+        JComponent extra = createExtraToolbarComponent();
+        if (extra != null) toolbar.add(extra);
+        toolbar.add(searchField, "w 200:280:340");
+        card.add(toolbar, "wrap");
 
-        JComponent extraToolbarComponent = createExtraToolbarComponent();
-        if (extraToolbarComponent != null) {
-            toolbar.add(extraToolbarComponent, "cell 4 0");
-        }
-
-        table = new JTable();
-
-        // Modern Tablo Stili
+        table = new ListTable();
         TableStyler.applyStandardStyle(table);
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "width: 8");
 
         // Tablo ile durum paneli aynı yeri paylaşır: veri varken tablo, yokken
         // "yükleniyor / eşleşme yok / hiç kayıt yok" paneli görünür.
@@ -157,21 +164,83 @@ public abstract class AbstractTableForm extends Form {
         tableArea.setOpaque(false);
         tableArea.add(scrollPane, CARD_DATA);
         tableArea.add(statePanel, CARD_STATE);
+        card.add(tableArea, "wrap");
 
-        tableContainer.add(toolbar, "wrap, growx, pushx");
-        tableContainer.add(tableArea, "grow, push, wrap");
+        JPanel footer = new JPanel(new MigLayout("insets 0, fillx, gap 8", "[]push[]", "[center]"));
+        footer.setOpaque(false);
+        resultCount = new JLabel(" ");
+        resultCount.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
+        footer.add(resultCount);
+        JComponent pagination = createPaginationComponent();
+        if (pagination != null) footer.add(pagination);
+        card.add(footer);
 
-        // Alt sınıflar DB-tabanlı sayfalama bileşeni (örn. JPagination) döndürebilir.
-        JComponent paginationComponent = createPaginationComponent();
-        if (paginationComponent != null) {
-            tableContainer.add(paginationComponent, "align center");
-        }
+        add(card);
 
-        add(tableContainer, "grow");
+        getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK), "servicio.focusSearch");
+        getInputMap(WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.CTRL_DOWN_MASK), "servicio.focusSearch");
+        getActionMap().put("servicio.focusSearch", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (isShowing()) focusSearch();
+            }
+        });
     }
 
-    /** Alt sınıflar DB-tabanlı sayfalama için bir bileşen (örn. JPagination) döndürebilir. */
-    protected JComponent createPaginationComponent() {
+    /** Sayfanın tek vurgu dolgulu düğmesi: "Yeni …" + (varsa) Alt+harf kısayolu. */
+    private JButton createPrimaryButton() {
+        // İçerik alt etiketlerde olduğundan boyut BasicButtonUI'dan değil yerleşimden alınır.
+        JButton b = new JButton() {
+            @Override
+            public Dimension getPreferredSize() {
+                return getLayout().preferredLayoutSize(this);
+            }
+
+            @Override
+            public Dimension getMinimumSize() {
+                return getLayout().minimumLayoutSize(this);
+            }
+        };
+        b.setLayout(new MigLayout("insets 0, gap 8, hidemode 3", "[][]", "[center]"));
+        JLabel label = new JLabel(getNewButtonText(),
+                new Ikon(getNewButtonIconPath(), 16, "Servicio.onAccentForeground"), SwingConstants.LEADING);
+        label.setIconTextGap(8);
+        label.putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: $Servicio.onAccentForeground");
+        b.add(label);
+        QuickAction qa = getNewQuickAction();
+        if (qa != null) {
+            JLabel key = new JLabel(qa.getShortcutText());
+            key.putClientProperty(FlatClientProperties.STYLE, "font: -2; foreground: fade($Servicio.onAccentForeground,85%);"
+                    + " background: fade($Servicio.onAccentForeground,12%);"
+                    + " border: 1,5,1,5,fade($Servicio.onAccentForeground,40%),1,6");
+            b.add(key);
+            b.setToolTipText(getNewButtonText() + " (" + qa.getShortcutText() + ")");
+        }
+        b.getAccessibleContext().setAccessibleName(getNewButtonText());
+        b.putClientProperty(FlatClientProperties.STYLE, "arc: 12; margin: 8,14,8,12; borderWidth: 0; focusWidth: 0;"
+                + " innerFocusWidth: 1; background: $Component.accentColor;"
+                + " hoverBackground: darken($Component.accentColor,6%); pressedBackground: darken($Component.accentColor,12%)");
+        b.addActionListener(e -> onNew());
+        return b;
+    }
+
+    /** Başlıkta birincil düğmenin soluna konan ikincil işlemler (ör. "Kasa Raporu"). */
+    protected List<JComponent> createHeaderActions() {
+        return Collections.emptyList();
+    }
+
+    /** İkincil başlık düğmesi: ikonlu, çerçeveli, arc 10. */
+    protected static JButton secondaryButton(String text, String iconPath, Runnable action) {
+        JButton b = new JButton(text, new Ikon(iconPath, 16, "Label.foreground"));
+        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,12,7,12; iconTextGap: 6");
+        b.addActionListener(e -> action.run());
+        return b;
+    }
+
+    /** Birincil düğmenin kısayolu gösterilecekse ilgili {@link QuickAction}. */
+    protected QuickAction getNewQuickAction() {
         return null;
     }
 
@@ -188,9 +257,19 @@ public abstract class AbstractTableForm extends Form {
     }
 
     /**
+     * Satır tıklamasıyla (ve Enter ile) kaydı açar. {@code TableActionColumnSupport} kullanan
+     * formlar bunu otomatik alır; özel işlem kolonu kuranlar kendileri çağırır.
+     */
+    protected <T> void openRowsWith(GenericTableModel<T> model, Consumer<T> open, int actionColumn) {
+        table.setRowOpener(row -> {
+            T item = model.getItemAt(table.convertRowIndexToModel(row));
+            if (item != null) open.accept(item);
+        }, actionColumn);
+    }
+
+    /**
      * Veri yüklemenin girişi. {@code final}: her çağrı önce "yükleniyor" durumunu gösterir,
-     * asıl yükleme {@link #loadTableData()} içinde yapılır. Böylece alt sınıfların onlarca
-     * {@code refreshTable()} çağrısının tamamı tek yerden durum bildirimi kazanır.
+     * asıl yükleme {@link #loadTableData()} içinde yapılır; sekme sayıları da buradan tazelenir.
      */
     protected final void refreshTable() {
         if (statePanel != null) {
@@ -198,6 +277,16 @@ public abstract class AbstractTableForm extends Form {
             showCard(CARD_STATE);
         }
         loadTableData();
+        refreshViewCounts();
+        // Özet cümlesi aramadan bağımsızdır: her tuş vuruşunda değil, arama boşken (açılış,
+        // kayıt ekleme/silme sonrası yenileme) tazelenir.
+        if (searchField == null || searchField.getText().trim().isEmpty()) refreshStats();
+    }
+
+    /** Alt bilgi satırındaki toplam kayıt adedi (sayfalamadan bağımsız). */
+    protected void setResultCount(long total) {
+        if (resultCount == null) return;
+        resultCount.setText(total == 0 ? " " : total + " kayıt");
     }
 
     /**
@@ -225,20 +314,22 @@ public abstract class AbstractTableForm extends Form {
         ((CardLayout) tableArea.getLayout()).show(tableArea, card);
     }
 
-    /** Arama kutusu veya filtre combo'su bir ölçüt taşıyor mu? */
+    /** Arama kutusu, sekme veya filtre bir ölçüt taşıyor mu? */
     protected boolean isFilterActive() {
         boolean hasSearch = searchField != null && !searchField.getText().trim().isEmpty();
         boolean hasCombo = filterCombo != null && filterCombo.getSelectedIndex() > 0;
         boolean hasHeaderFilter = headerFilterSupport != null && headerFilterSupport.hasActiveFilters();
-        return hasSearch || hasCombo || hasHeaderFilter;
+        boolean hasView = views != null && !views.isEmpty() && !viewFilters(views.getSelected()).isEmpty();
+        return hasSearch || hasCombo || hasHeaderFilter || hasView;
     }
 
-    /** "Filtreyi temizle" eylemi — arama metnini ve varsa combo seçimini sıfırlar. */
+    /** "Filtreyi temizle" eylemi — arama, sekme, combo ve başlık filtrelerini sıfırlar. */
     protected void clearFilters() {
-        if (searchField != null) searchField.setText("");
+        if (views != null && !views.isEmpty()) views.select(firstViewKey(), false);
         if (filterCombo != null && filterCombo.getItemCount() > 0) filterCombo.setSelectedIndex(0);
         if (headerFilterSupport != null) headerFilterSupport.clearAll();
-        applyFilter();
+        if (searchField != null && !searchField.getText().isEmpty()) searchField.setText("");
+        else applyFilter();
     }
 
     protected String getEmptyStateTitle() {
@@ -252,19 +343,82 @@ public abstract class AbstractTableForm extends Form {
     /**
      * Tablo başlığından kolon filtresi (ör. durum/tip enum'u, tarih aralığı) kurmak isteyen alt
      * sınıflar, {@code setupTable()} içinde kolonları/{@code TableColumnConfigurator}'ı uyguladıktan
-     * SONRA bunu çağırır. Filtre değiştiğinde otomatik olarak {@link #refreshTable()} tetiklenir
-     * (sunucu tarafı filtreleme — bkz. ilgili servis/repository metotları).
-     * <p>
-     * {@link TableHeaderFilterSupport} bilinçli olarak bu sınıfın iç yapısını bilmez; sadece
-     * {@code table} ve {@code columns} ile çalışır, taşınabilir kalır.
+     * SONRA bunu çağırır. Filtre değiştiğinde otomatik olarak {@link #refreshTable()} tetiklenir.
      */
     protected <T> TableHeaderFilterSupport<T> installHeaderFilters(List<ColumnDef<T>> columns) {
         TableHeaderFilterSupport<T> support = new TableHeaderFilterSupport<>(table, columns);
         support.setOnFilterChanged(this::refreshTable);
-        // Boş sonuç panelinin doğru soruyu sorabilmesi ve "Filtreyi temizle"nin başlık
-        // filtrelerini de kaldırabilmesi için referans burada tutulur.
         this.headerFilterSupport = support;
         return support;
+    }
+
+    // --- Görünüm sekmeleri ---
+
+    /** Alt sınıflar {@link #addView(String, String)} ile sekmelerini ekler; ilk eklenen varsayılandır. */
+    protected void initViews() {
+    }
+
+    /** Sekmenin sunucu tarafı ön ayarı (başlık filtreleriyle birleştirilir). Boş = süzgeçsiz. */
+    protected Map<String, ColumnFilterValue> viewFilters(String viewKey) {
+        return Collections.emptyMap();
+    }
+
+    /** Sekmeler için eşleşen kayıt sayısı; {@code null} dönerse sekmeler sayısız görünür. */
+    protected CompletableFuture<Long> countMatching(Map<String, ColumnFilterValue> filters) {
+        return null;
+    }
+
+    /** Sekme değişince çağrılır. Sayfalı formlar sayfayı başa alıp {@code super}'i çağırmalıdır. */
+    protected void onViewChanged(String viewKey) {
+        refreshTable();
+    }
+
+    /** Başlık filtreleri + seçili sekmenin ön ayarı; alt sınıfın sorgusuna bu verilir. */
+    protected Map<String, ColumnFilterValue> effectiveFilters() {
+        Map<String, ColumnFilterValue> filters = new LinkedHashMap<>();
+        if (headerFilterSupport != null) filters.putAll(headerFilterSupport.getActiveFilters());
+        if (views != null && !views.isEmpty()) filters.putAll(viewFilters(views.getSelected()));
+        return filters;
+    }
+
+    /** Sekmeyi dışarıdan seçer (ör. ana sayfadan "Hazır" listesine gelmek). */
+    protected void selectView(String key) {
+        if (views != null) {
+            if (key.equals(views.getSelected())) onViewChanged(key);
+            else views.select(key, true);
+        }
+    }
+
+    private String firstViewKey() {
+        return viewKeys().isEmpty() ? null : viewKeys().get(0);
+    }
+
+    private final List<String> viewKeyOrder = new ArrayList<>();
+
+    private List<String> viewKeys() {
+        return viewKeyOrder;
+    }
+
+    /** {@link #initViews} içinden çağrılır: sekmeyi ekler ve sırasını tutar. */
+    protected void addView(String key, String label) {
+        views.addView(key, label);
+        viewKeyOrder.add(key);
+        views.revalidate();
+    }
+
+    /** Sekme sayılarını tazeler (sekmeler sonradan, ör. veritabanından okunarak eklendiyse). */
+    protected void refreshViewCounts() {
+        if (views == null || views.isEmpty()) return;
+        Map<String, ColumnFilterValue> header = headerFilterSupport != null
+                ? headerFilterSupport.getActiveFilters() : Collections.emptyMap();
+        for (String key : viewKeys()) {
+            Map<String, ColumnFilterValue> filters = new LinkedHashMap<>(header);
+            filters.putAll(viewFilters(key));
+            CompletableFuture<Long> count = countMatching(filters);
+            if (count == null) return;
+            count.thenAccept(n -> SwingUtilities.invokeLater(() -> views.setCount(key, n)))
+                    .exceptionally(ex -> null);
+        }
     }
 
     protected void applyFilter() {
@@ -274,7 +428,6 @@ public abstract class AbstractTableForm extends Form {
 
         if (!text.isEmpty()) {
             try {
-                // Her kolonda kelime arayabilmek için regex
                 filters.add(RowFilter.regexFilter("(?iu)" + Pattern.quote(text)));
             } catch (PatternSyntaxException e) {
                 // Regex syntax hatalarını yok say
@@ -303,12 +456,8 @@ public abstract class AbstractTableForm extends Form {
         return "icons/plus.svg";
     }
 
-    protected String getTableTitleText() {
-        return "Tüm Kayıtlar";
-    }
-
     protected String getSearchPlaceholder() {
-        return "Ara...";
+        return "Ara…";
     }
 
     // --- Filtre (ComboBox) Ayarları ---
@@ -322,22 +471,21 @@ public abstract class AbstractTableForm extends Form {
     }
 
     protected RowFilter<TableModel, Object> getCustomFilter() {
-        return null; // Eğer combobox tabanlı özel filtre lazımsa ezilir
+        return null;
     }
 
-    /** Alt sınıflar toolbar'a filtreCombo'nun yanına ek bir bileşen (ör. toplu işlem butonu) koymak için ezer. */
+    /** Alt sınıflar araç çubuğuna arama kutusunun soluna ek bir bileşen koymak için ezer. */
     protected JComponent createExtraToolbarComponent() {
         return null;
     }
 
-    // --- İstatistik (CardBox) Ayarları ---
-
-    protected void initCards() {
-        // Alt sınıflar cardBox.addCardItem(...) ile kart eklemek için bu metodu ezer
+    /** Sayfalı formlar DB-tabanlı sayfalama bileşeni döndürür; alt bilgi satırının sağına konur. */
+    protected JComponent createPaginationComponent() {
+        return null;
     }
 
+    /** Özet cümlesini ({@link #summary}) tazeler. */
     protected void refreshStats() {
-        // Alt sınıflar cardBox.setValueAt(...) ile kart verilerini güncellemek için bu metodu ezer
     }
 
     protected void initTableFilter(TableModel model) {
@@ -345,11 +493,8 @@ public abstract class AbstractTableForm extends Form {
     }
 
     /**
-     * Sayfalanmış veri asenkron geldikten sonra çağrılmalı. JTable'ın kendi iç
-     * revalidate'i sadece en yakın JViewport'a kadar yayılır (JViewport bir
-     * "validate root"tur) — dıştaki tableContainer MigLayout'unun "[grow]" satırı
-     * bu olmadan yeniden hesaplanmaz ve tablo ilk açılışta sadece birkaç satırlık
-     * yer kaplar (başka forma geçip dönünce MainForm'un genel revalidate'i düzeltir).
+     * Sayfalanmış veri asenkron geldikten sonra çağrılmalı. JTable'ın kendi iç revalidate'i
+     * sadece en yakın JViewport'a kadar yayılır; dış yerleşim bu olmadan yeniden hesaplanmaz.
      */
     protected void refreshLayout() {
         revalidate();
