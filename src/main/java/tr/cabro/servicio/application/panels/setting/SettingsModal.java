@@ -81,6 +81,10 @@ public class SettingsModal extends JPanel {
                 "tema koyu açık oled siyah renk vurgu yazı boyutu font büyük küçük",
                 AppearancePanel::new);
 
+        page("Uygulama", "Ses", "Bildirim seslerini aç/kapat, seviyesini ayarla ve dinle.", "volume-2.svg",
+                "ses bildirim sessiz zil hoparlör seviye volume tahsilat uyarı",
+                SettingsSoundPanel::new);
+
         page("İşletme", "İşletme Bilgileri", "Belgelerin antedinde ve fişlerde görünen işletme bilgileri.", "store.svg",
                 "ad telefon adres logo antet firma şirket işletme",
                 SettingsBusinessPanel::new);

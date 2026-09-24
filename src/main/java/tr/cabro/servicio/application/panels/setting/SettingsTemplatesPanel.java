@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -257,7 +258,7 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
         String name = nameField.getText().trim();
         String body = bodyArea.getText().trim();
         if (name.isEmpty() || body.isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.template.missing"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.template.missing"));
             (name.isEmpty() ? nameField : bodyArea).requestFocusInWindow();
             return;
         }
@@ -283,7 +284,7 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
         DocumentTemplate t = current;
         DialogHelper.confirmDelete(this, "confirm.delete.template", () ->
                         templateService.delete(t.getId()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.template.deleted"));
+                            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.template.deleted"));
                             current = null;
                             refreshList(null);
                         })).exceptionally(ex -> ErrorHandler.handle(this, "Şablon silinemedi", ex)),

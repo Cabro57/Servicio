@@ -33,6 +33,7 @@ public class AppConfig {
     private Backup backup = new Backup();
     private Update update = new Update();
     private Printing printing = new Printing();
+    private Sound sound = new Sound();
 
     /**
      * Elle düzenlenmiş ya da eksik bir dosyadan sonra {@code null} kalan blokları varsayılana çeker.
@@ -44,9 +45,11 @@ public class AppConfig {
         if (backup == null) backup = new Backup();
         if (update == null) update = new Update();
         if (printing == null) printing = new Printing();
+        if (sound == null) sound = new Sound();
         ui.normalize();
         backup.normalize();
         printing.normalize();
+        sound.normalize();
     }
 
     /** Arayüz tercihleri — pencere, tema, arama geçmişi. */
@@ -139,6 +142,22 @@ public class AppConfig {
 
         void normalize() {
             if (receiptPaperWidth == null) receiptPaperWidth = ReceiptPaperWidth.MM_80;
+        }
+    }
+
+    /** Bildirim sesleri: makineye bağlı (her bilgisayarın hoparlörü/ortamı farklı). */
+    @Getter
+    @Setter
+    public static class Sound {
+
+        /** Kapalıysa hiçbir bildirim sesi çalmaz (POS sesleri dahil). */
+        private boolean enabled = true;
+
+        /** Ses seviyesi, 0-100. */
+        private int volume = 70;
+
+        void normalize() {
+            volume = Math.max(0, Math.min(100, volume));
         }
     }
 }

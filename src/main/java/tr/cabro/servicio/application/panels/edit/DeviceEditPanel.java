@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import lombok.NonNull;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
@@ -61,7 +62,7 @@ public class DeviceEditPanel extends AbstractEditPanel<Device> {
             boolean update = data.getId() != null;
             if (!update) data.setCreatedAt(LocalDateTime.now());
             ServiceManager.getDeviceService().save(data, update).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(owner, Toast.Type.SUCCESS,
+                Toasts.show(owner, Toast.Type.SUCCESS,
                         Messages.get(update ? "toast.entity.updated" : "toast.entity.added", saved.getDisplayName()));
                 if (onSaved != null) onSaved.run();
             })).exceptionally(ex -> {

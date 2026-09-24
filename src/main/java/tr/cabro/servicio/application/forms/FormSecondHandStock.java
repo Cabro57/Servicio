@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import java.util.ArrayList;
 import tr.cabro.servicio.application.component.table.Lookups;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
@@ -262,7 +263,7 @@ public class FormSecondHandStock extends AbstractTableForm {
             });
         }).exceptionally(e -> {
             Servicio.getLogger().error("2.el alım-satım listesi alınamadı: ", e);
-            SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, Messages.get("toast.list.loadFailed")));
+            SwingUtilities.invokeLater(() -> Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.list.loadFailed")));
             return null;
         });
     }
@@ -303,7 +304,7 @@ public class FormSecondHandStock extends AbstractTableForm {
                     savedDevice.getId(), seller.getId(), panel.getPrice(), panel.getTransactionDate(),
                     panel.getExpertiseNotes(), null)
             ).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.secondhand.purchaseCreated"));
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.secondhand.purchaseCreated"));
                 refreshTable();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);
@@ -318,7 +319,7 @@ public class FormSecondHandStock extends AbstractTableForm {
 
     private void openSaleModal(DeviceTransaction purchase) {
         if (purchase.getType() != DeviceTransactionType.PURCHASE) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.onlyPurchaseCanSell"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.secondhand.onlyPurchaseCanSell"));
             return;
         }
         final String MODAL_ID = "secondhand_sale_modal";
@@ -345,7 +346,7 @@ public class FormSecondHandStock extends AbstractTableForm {
             transactionService.recordSale(purchase.getDeviceId(), buyer.getId(), panel.getPrice(),
                     panel.getTransactionDate(), panel.getWarrantyMonths(), panel.getNote()
             ).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.secondhand.saleRecorded"));
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.secondhand.saleRecorded"));
                 refreshTable();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);
@@ -394,7 +395,7 @@ public class FormSecondHandStock extends AbstractTableForm {
                 SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
             if (action == SimpleModalBorder.YES_OPTION) {
                 transactionService.delete(transaction.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.record.deletedShort"));
+                    Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.record.deletedShort"));
                     refreshTable();
                 })).exceptionally(ex -> ErrorHandler.handle(this, "2.el kaydı silinemedi", ex));
             }

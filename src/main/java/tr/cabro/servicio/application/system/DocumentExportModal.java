@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.system;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -113,16 +114,16 @@ public final class DocumentExportModal {
                 File result = producer.produce(request, format, out);
                 SwingUtilities.invokeLater(() -> {
                     if (target != null) {
-                        Toast.show(owner, Toast.Type.SUCCESS, Messages.get("toast.document.saved", result.getAbsolutePath()));
+                        Toasts.show(owner, Toast.Type.SUCCESS, Messages.get("toast.document.saved", result.getAbsolutePath()));
                     } else if (DesktopHelper.openFile(result)) {
-                        Toast.show(owner, Toast.Type.SUCCESS, Messages.get("toast.document.created"));
+                        Toasts.show(owner, Toast.Type.SUCCESS, Messages.get("toast.document.created"));
                     } else {
-                        Toast.show(owner, Toast.Type.WARNING, Messages.get("toast.document.created.openFailed", result.getAbsolutePath()));
+                        Toasts.show(owner, Toast.Type.WARNING, Messages.get("toast.document.created.openFailed", result.getAbsolutePath()));
                     }
                 });
             } catch (Exception ex) {
                 Servicio.getLogger().error("Belge oluşturma hatası", ex);
-                SwingUtilities.invokeLater(() -> Toast.show(owner, Toast.Type.ERROR,
+                SwingUtilities.invokeLater(() -> Toasts.show(owner, Toast.Type.ERROR,
                         Messages.get("toast.document.failed", String.valueOf(ex.getMessage()))));
             }
         });
@@ -323,7 +324,7 @@ public final class DocumentExportModal {
                     }
                 }
             }
-            Toast.show(this, Toast.Type.INFO, Messages.get("toast.document.textsSaved"));
+            Toasts.show(this, Toast.Type.INFO, Messages.get("toast.document.textsSaved"));
         }
 
         private static JLabel label(String text) {

@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -338,7 +339,7 @@ public class FormSale extends Form {
                         SwingUtilities.invokeLater(() -> DesktopHelper.openFile(outFile));
                     } catch (Exception ex) {
                         Servicio.getLogger().error("Satış fişi oluşturma hatası", ex);
-                        SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.WARNING, Messages.get("toast.receipt.failed", ex.getMessage())));
+                        SwingUtilities.invokeLater(() -> Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.receipt.failed", ex.getMessage())));
                     }
                 })).exceptionally(ex -> ErrorHandler.handle(this, "Fiş oluşturulamadı", ex));
     }

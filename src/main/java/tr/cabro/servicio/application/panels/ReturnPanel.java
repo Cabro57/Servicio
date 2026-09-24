@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -175,20 +176,20 @@ public class ReturnPanel extends JPanel {
             total = total.add(row.amount());
         }
         if (lines.isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.return.noItemsSelected"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.return.noItemsSelected"));
             return;
         }
 
         BigDecimal refundAmount = toBigDecimal(refundAmountField.getValue());
         if (refundAmount.compareTo(total) > 0) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.return.refundExceedsTotal"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.return.refundExceedsTotal"));
             return;
         }
 
         btnSave.setEnabled(false);
         saleService.recordReturn(sale.getId(), lines, (PaymentType) refundTypeCombo.getSelectedItem(), refundAmount)
                 .thenAccept(returned -> SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.return.completed"));
+                    Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.return.completed"));
                     AppModal.closeModal(modalId);
                     if (onSuccess != null) onSuccess.run();
                 })).exceptionally(ex -> {

@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import tr.cabro.servicio.application.component.table.Lookups;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
@@ -271,7 +272,7 @@ public class FormCustomers extends AbstractTableForm {
                 DialogHelper.confirmDelete(FormCustomers.this, "confirm.delete.customer", () ->
                         customerService.delete(selectedCustomer.getId()).thenAccept(v -> {
                             SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormCustomers.this, Toast.Type.SUCCESS, Messages.get("toast.customer.deleted"));
+                                Toasts.show(FormCustomers.this, Toast.Type.SUCCESS, Messages.get("toast.customer.deleted"));
                                 refreshTable();
                             });
                         }),
@@ -303,7 +304,7 @@ public class FormCustomers extends AbstractTableForm {
 
                 customerService.save(updated, false).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.added", updated.getFullName()));
+                        Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.added", updated.getFullName()));
                         refreshTable();
                     });
                 }).exceptionally(ex -> {
@@ -336,7 +337,7 @@ public class FormCustomers extends AbstractTableForm {
 
                 customerService.save(updated, true).thenAccept(saved -> {
                     SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getFullName()));
+                        Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getFullName()));
                         refreshTable();
                     });
                 }).exceptionally(ex -> {

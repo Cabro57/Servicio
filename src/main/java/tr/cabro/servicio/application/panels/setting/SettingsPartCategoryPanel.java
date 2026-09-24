@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -47,7 +48,7 @@ public class SettingsPartCategoryPanel extends JPanel {
         }
 
         partCategoryService.add(name).thenAccept(id -> SwingUtilities.invokeLater(() -> {
-            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.added", name));
+            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.added", name));
             refreshList();
         })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori eklenemedi", ex));
 
@@ -61,7 +62,7 @@ public class SettingsPartCategoryPanel extends JPanel {
             }
 
             partCategoryService.rename(category.getId(), newName.trim()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.updated", newName.trim()));
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.updated", newName.trim()));
                 refreshList();
             })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori güncellenemedi", ex));
         });
@@ -69,7 +70,7 @@ public class SettingsPartCategoryPanel extends JPanel {
 
     private void onDelete(PartCategory category) {
         Runnable doDelete = () -> partCategoryService.delete(category.getId()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
-            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.deleted", category.getName()));
+            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.category.deleted", category.getName()));
             refreshList();
         })).exceptionally(ex -> ErrorHandler.handle(this, "Kategori silinemedi", ex));
 

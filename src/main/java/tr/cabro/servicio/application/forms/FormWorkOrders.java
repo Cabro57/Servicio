@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import java.util.ArrayList;
 import tr.cabro.servicio.application.component.table.Lookups;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
@@ -452,7 +453,7 @@ public class FormWorkOrders extends AbstractTableForm {
             ).thenAccept(saved ->
                     SwingUtilities.invokeLater(() -> {
                         String msg = isEdit ? Messages.get("toast.workorder.updated") : Messages.get("toast.workorder.created");
-                        Toast.show(this, Toast.Type.SUCCESS, msg);
+                        Toasts.show(this, Toast.Type.SUCCESS, msg);
                         refreshTable();
                         if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
                     })
@@ -529,7 +530,7 @@ public class FormWorkOrders extends AbstractTableForm {
                 DialogHelper.confirmDelete(FormWorkOrders.this, "confirm.delete.workorder", () ->
                         service.delete(wo.getId())
                                 .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                                    Toast.show(FormWorkOrders.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
+                                    Toasts.show(FormWorkOrders.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
                                     refreshTable();
                                 }))
                                 .exceptionally(ex -> ErrorHandler.handle(FormWorkOrders.this, "Servis kaydı silinemedi", ex)),
@@ -539,13 +540,13 @@ public class FormWorkOrders extends AbstractTableForm {
             @Override
             public void onView(WorkOrder wo) {
                 if (wo == null) {
-                    Toast.show(FormWorkOrders.this, Toast.Type.WARNING, Messages.get("toast.workorder.notFound"));
+                    Toasts.show(FormWorkOrders.this, Toast.Type.WARNING, Messages.get("toast.workorder.notFound"));
                     return;
                 }
                 service.get(wo.getId()).thenAccept(opt ->
                         SwingUtilities.invokeLater(() -> {
                             if (opt.isPresent()) FormManager.showForm(new FormWorkOrder(opt.get()));
-                            else Toast.show(FormWorkOrders.this, Toast.Type.WARNING, Messages.get("toast.workorder.notFound"));
+                            else Toasts.show(FormWorkOrders.this, Toast.Type.WARNING, Messages.get("toast.workorder.notFound"));
                         })
                 ).exceptionally(ex -> ErrorHandler.handle(FormWorkOrders.this, "Servis detayı açılamadı", ex));
             }

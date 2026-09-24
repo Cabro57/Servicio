@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -215,7 +216,7 @@ public class FormCustomer extends Form {
                 DialogHelper.confirmDelete(FormCustomer.this, "confirm.delete.workorder", () ->
                                 workOrderService.delete(s.getId())
                                         .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                                            Toast.show(FormCustomer.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
+                                            Toasts.show(FormCustomer.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
                                             refreshData();
                                         }))
                                         .exceptionally(ex -> ErrorHandler.handle(FormCustomer.this, "Servis kaydı silinemedi", ex)),
@@ -468,11 +469,11 @@ public class FormCustomer extends Form {
     private void openWhatsApp() {
         String digits = PhoneHelper.toWhatsAppDigits(customer.getPhoneNumber1());
         if (digits == null) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noPhone"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noPhone"));
             return;
         }
         if (!DesktopHelper.browseUrl("https://wa.me/" + digits)) {
-            Toast.show(this, Toast.Type.ERROR, Messages.get("toast.generic.error", "WhatsApp açılamadı"));
+            Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.generic.error", "WhatsApp açılamadı"));
         }
     }
 
@@ -500,7 +501,7 @@ public class FormCustomer extends Form {
             updated.setCreatedAt(customer.getCreatedAt());
 
             customerService.save(updated, true).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getFullName()));
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getFullName()));
                 formRefresh();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);
@@ -578,7 +579,7 @@ public class FormCustomer extends Form {
             workOrderService.save(formData, isEdit).thenAccept(saved ->
                     SwingUtilities.invokeLater(() -> {
                         String msg = isEdit ? Messages.get("toast.workorder.updated") : Messages.get("toast.workorder.created");
-                        Toast.show(this, Toast.Type.SUCCESS, msg);
+                        Toasts.show(this, Toast.Type.SUCCESS, msg);
                         refreshData();
                         if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
                     })
@@ -586,7 +587,7 @@ public class FormCustomer extends Form {
                 SwingUtilities.invokeLater(() -> {
                     controller.consume();
                     String cause = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
-                    Toast.show(this, Toast.Type.ERROR, Messages.get("toast.generic.error", cause));
+                    Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.generic.error", cause));
                 });
                 Servicio.getLogger().error("Servis kayıt hatası", ex);
                 return null;

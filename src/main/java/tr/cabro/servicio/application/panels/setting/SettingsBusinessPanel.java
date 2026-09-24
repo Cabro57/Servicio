@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
@@ -161,7 +162,7 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
                     this, "İşletme Logosu Seç", ProfileImageStore.LOGOS_DIR);
             if (stored != null) setLogo(stored);
         } catch (Exception ex) {
-            Toast.show(this, Toast.Type.ERROR, Messages.get("toast.logo.copyFailed", ex.getMessage()));
+            Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.logo.copyFailed", ex.getMessage()));
         }
     }
 

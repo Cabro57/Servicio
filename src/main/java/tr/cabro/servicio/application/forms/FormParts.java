@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.application.component.table.Lookups;
 import tr.cabro.servicio.application.renderer.AmountChipCellRenderer;
@@ -249,7 +250,7 @@ public class FormParts extends AbstractTableForm {
                     if (action == SimpleModalBorder.YES_OPTION) {
                         partService.delete(selected.getId()).thenAccept(v -> {
                             SwingUtilities.invokeLater(() -> {
-                                Toast.show(FormParts.this, Toast.Type.SUCCESS, Messages.get("toast.part.deleted"));
+                                Toasts.show(FormParts.this, Toast.Type.SUCCESS, Messages.get("toast.part.deleted"));
                                 refreshTable();
                             });
                         }).exceptionally(ex -> ErrorHandler.handle(FormParts.this, "Parça silinemedi", ex));
@@ -310,7 +311,7 @@ public class FormParts extends AbstractTableForm {
                     updated.setCreatedAt(LocalDateTime.now());
                     partService.save(updated, false).thenAccept(part -> {
                         SwingUtilities.invokeLater(() -> {
-                            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.added", updated.getName()));
+                            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.added", updated.getName()));
                             refreshTable();
                         });
                     }).exceptionally(ex -> {
@@ -342,7 +343,7 @@ public class FormParts extends AbstractTableForm {
 
                     partService.save(updated, true).thenAccept(upgrade -> {
                         SwingUtilities.invokeLater(() -> {
-                            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getName()));
+                            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getName()));
                             refreshTable();
                         });
                     }).exceptionally(ex -> {

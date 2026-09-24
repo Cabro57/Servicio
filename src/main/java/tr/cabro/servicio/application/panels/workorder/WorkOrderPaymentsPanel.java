@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.workorder;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -58,6 +59,9 @@ public class WorkOrderPaymentsPanel extends JPanel {
     private JLabel lblTotalPaid;
     private JLabel lblRemainVal;
     private JLabel lblPaymentBadge;
+    private JFormattedTextField txtAmount;
+    private final WorkOrderPanelSupport.StepMarker stepMarker =
+            new WorkOrderPanelSupport.StepMarker(3, "Ödeme tamamlandı", "Kalan tutar tahsil edilmedi");
 
     /** Ödeme eklenip silinince (ve {@link #refresh()} ile) çağrılır; kimlik şeridi tutarları tazeler. */
     private Runnable onChanged;
@@ -74,11 +78,10 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
     private void build() {
         putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
-        setLayout(new MigLayout("insets 16 18 14 18, fillx, hidemode 3", "[grow][]", "[]10[][]12[]"));
+        setLayout(new MigLayout("insets 14 16 14 16, fillx, hidemode 3", "[grow][]", "[]10[][]12[]"));
 
         lblPaymentBadge = new JLabel();
-        add(WorkOrderPanelSupport.createTitle("Ödemeler"), "aligny center");
-        add(lblPaymentBadge, "align right, wrap");
+        add(WorkOrderPanelSupport.createStepHeader(stepMarker, "Ödemeler", lblPaymentBadge), "span 2, growx, wrap");
 
         List<ColumnDef<Payment>> columnDefs = Arrays.asList(
                 new ColumnDef<Payment>("Tarih", LocalDateTime.class, Payment::getPaymentDate).alignment(SwingConstants.LEADING),
@@ -163,7 +166,8 @@ public class WorkOrderPaymentsPanel extends JPanel {
             }
         });
 
-        JFormattedTextField txtAmount = new CurrencyField();
+        txtAmount = new CurrencyField();
+        txtAmount.getAccessibleContext().setAccessibleName("Tahsilat tutarı");
         txtAmount.setValue(workOrder.getRemainingAmount());
 
         JButton btnAddPayment = new JButton("Tahsilat Ekle", new Ikon("icons/hand-coins.svg", 16, "Label.foreground"));
@@ -172,7 +176,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
         btnAddPayment.addActionListener(e -> {
             BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());
             if (amt.compareTo(BigDecimal.ZERO) <= 0) {
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.payment.invalidAmount"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.payment.invalidAmount"));
                 return;
             }
 
@@ -187,7 +191,8 @@ public class WorkOrderPaymentsPanel extends JPanel {
                 txtAmount.setValue(workOrder.getRemainingAmount());
 
                 refresh();
-                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.payment.added"));
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.payment.added"));
+                tr.cabro.servicio.util.SoundPlayer.payment();
             })).exceptionally(ex -> ErrorHandler.handle(this, "Tahsilat eklenemedi", ex));
         });
 
@@ -206,7 +211,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
                     populatePaymentsTable();
 
                     refresh();
-                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.payment.deleted"));
+                    Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.payment.deleted"));
                 })).exceptionally(ex -> ErrorHandler.handle(this, "Ödeme silinemedi", ex)),
                 Format.formatPrice(payment.getAmount()));
     }
@@ -218,13 +223,13 @@ public class WorkOrderPaymentsPanel extends JPanel {
                 File pdf = new PaymentReceiptFormGenerator().generate(workOrder, payment, shop);
                 SwingUtilities.invokeLater(() -> {
                     if (DesktopHelper.openFile(pdf)) {
-                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.receipt.created"));
+                        Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.receipt.created"));
                     } else {
-                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.receipt.created.openFailed", pdf.getAbsolutePath()));
+                        Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.receipt.created.openFailed", pdf.getAbsolutePath()));
                     }
                 });
             } catch (Exception ex) {
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, Messages.get("toast.receipt.failed", ex.getMessage())));
+                SwingUtilities.invokeLater(() -> Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.receipt.failed", ex.getMessage())));
                 Servicio.getLogger().error("Tahsilat fişi oluşturma hatası", ex);
             }
         }).exceptionally(ex -> ErrorHandler.handle(this, "Tahsilat fişi oluşturulamadı", ex));
@@ -261,8 +266,21 @@ public class WorkOrderPaymentsPanel extends JPanel {
         return summaryBox;
     }
 
+    public WorkOrderPanelSupport.StepMarker getStepMarker() {
+        return stepMarker;
+    }
+
+    /** Sağ raydaki "Tahsilat Al": tutar alanını görünür yapıp odaklar, içeriği seçili gelir. */
+    public void focusAmount() {
+        scrollRectToVisible(new Rectangle(0, 0, getWidth(), getHeight()));
+        txtAmount.requestFocusInWindow();
+        SwingUtilities.invokeLater(txtAmount::selectAll);
+    }
+
     /** Kalem/ödeme değişikliği sonrası özet kutusunu ve rozeti günceller. */
     public void refresh() {
+        // Kalem eklenip silinince önerilen tahsilat tutarı da kalan tutarı izlesin.
+        if (!txtAmount.hasFocus()) txtAmount.setValue(workOrder.getRemainingAmount().max(BigDecimal.ZERO));
         lblTotalService.setText(Format.formatPrice(workOrder.getTotalServiceAmount()));
         lblTotalPaid.setText("- " + Format.formatPrice(workOrder.getTotalPaid()));
 

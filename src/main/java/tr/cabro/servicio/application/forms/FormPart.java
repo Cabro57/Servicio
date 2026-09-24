@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.component.Badge;
@@ -239,12 +240,12 @@ public class FormPart extends Form {
             try {
                 amount = Integer.parseInt(input.trim());
             } catch (NumberFormatException ex) {
-                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.stock.invalidNumber"));
+                Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.stock.invalidNumber"));
                 return;
             }
 
             if (amount <= 0) {
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.stock.mustBePositive"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.stock.mustBePositive"));
                 return;
             }
 
@@ -256,7 +257,7 @@ public class FormPart extends Form {
                             this.part = updated;
                             refreshData();
                         });
-                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.stock.added", finalAmount));
+                        Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.stock.added", finalAmount));
                     }))
                     .exceptionally(ex -> ErrorHandler.handle(this, "Stok eklenemedi", ex));
         });

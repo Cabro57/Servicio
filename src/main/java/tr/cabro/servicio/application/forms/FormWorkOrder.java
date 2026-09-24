@@ -1,20 +1,24 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
+import tr.cabro.servicio.application.panels.QuickIntakePanel;
+import tr.cabro.servicio.application.panels.workorder.WorkOrderDiagnosisPanel;
 import tr.cabro.servicio.application.panels.workorder.WorkOrderInfoPanel;
 import tr.cabro.servicio.application.panels.workorder.WorkOrderItemsPanel;
-import tr.cabro.servicio.application.panels.workorder.WorkOrderNotesPanel;
 import tr.cabro.servicio.application.panels.workorder.WorkOrderPaymentsPanel;
 import tr.cabro.servicio.application.system.AllForms;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.DocumentExportModal;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
+import tr.cabro.servicio.application.system.NewCustomerModal;
 import tr.cabro.servicio.application.component.Badge;
+import tr.cabro.servicio.application.themes.BadgePalette;
 import tr.cabro.servicio.application.component.detail.DetailHeader;
 import tr.cabro.servicio.application.component.detail.DetailKit;
 import tr.cabro.servicio.application.utils.ErrorHandler;
@@ -28,12 +32,12 @@ import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.model.enums.TemplateType;
 import tr.cabro.servicio.service.*;
 import tr.cabro.servicio.util.DesktopHelper;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.util.TemplateEngine;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
@@ -44,12 +48,11 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * İş emri detay ekranı — orkestratör. Eskiden 1254 satırlık tek bir sınıftı; parça/ödeme/not/
- * müşteri-cihaz-zaman-çizelgesi kartları artık {@code application.panels.workorder} paketindeki
- * ayrı panellere taşındı (bkz. {@link WorkOrderItemsPanel}, {@link WorkOrderPaymentsPanel},
- * {@link WorkOrderNotesPanel}, {@link WorkOrderInfoPanel}). Burada sadece başlık/durum çubuğu,
- * PDF belge üretimi ve WhatsApp mesaj gönderimi (form-seviyesi aksiyonlar) ile panellerin
- * kuruluşu/bağlanması kalıyor.
+ * İş emri detay ekranı — orkestratör. Düzen "tezgâh": solda geniş sütun işin sırasını izler
+ * (1 arıza ve tespit, 2 parça ve işçilik, 3 ödemeler; her adımın numarası adım bitince onaya
+ * döner), sağda gövdeyle kaymayan ince ray tutarı ve dosyayı (müşteri, cihaz, zaman) hep
+ * gösterir. Paneller {@code application.panels.workorder} paketinde; burada kimlik şeridi,
+ * PDF belge üretimi, WhatsApp mesajı ve panellerin kuruluşu/bağlanması kalıyor.
  */
 public class FormWorkOrder extends Form {
 
@@ -58,16 +61,16 @@ public class FormWorkOrder extends Form {
 
     // --- Kimlik şeridi ---
     private DetailHeader header;
-    private Badge statusBadge;
+    private StatusButton statusButton;
     private Badge urgentBadge;
-    private JComboBox<ServiceStatus> statusComboBox;
     private JButton btnWhatsApp;
 
-    // --- Gövde: solda çalışma alanı (kalemler + ödemeler), sağda dosya (müşteri, cihaz, notlar) ---
+    // --- Gövde: solda adımlar (arıza/tespit, kalemler, ödemeler), sağda sabit ray (tutar, dosya, zaman) ---
     private WorkOrderInfoPanel infoPanel;
     private JPanel workColumn;
-    private JPanel notesHolder;
+    private WorkOrderDiagnosisPanel diagnosisPanel;
     private WorkOrderItemsPanel itemsPanel;
+    private WorkOrderPaymentsPanel paymentsPanel;
 
     // =========================================================================
     // CONSTRUCTOR
@@ -91,7 +94,7 @@ public class FormWorkOrder extends Form {
         workOrderService.get(workOrder.getId()).thenAccept(woOpt -> {
             if (!woOpt.isPresent()) {
                 SwingUtilities.invokeLater(() ->
-                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.workorder.refreshFailedNotFound")));
+                        Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.workorder.refreshFailedNotFound")));
                 return;
             }
             workOrder = woOpt.get();
@@ -114,19 +117,16 @@ public class FormWorkOrder extends Form {
         workColumn = new JPanel(new MigLayout("insets 0, wrap, fillx, gapy 16", "[grow, fill]", ""));
         workColumn.setOpaque(false);
 
-        infoPanel = new WorkOrderInfoPanel(initialWorkOrder, this::openWhatsAppModal);
-        notesHolder = new JPanel(new MigLayout("insets 0, fill", "[grow, fill]", "[]"));
-        notesHolder.setOpaque(false);
-        JPanel side = new JPanel(new MigLayout("insets 0, wrap, fillx, gapy 16", "[grow, fill]", ""));
-        side.setOpaque(false);
-        side.add(infoPanel);
-        side.add(notesHolder);
+        // Ray gövdeyle kaymaz: tutar ve dosya, iş aşağıda sürerken de görünür kalır.
+        infoPanel = new WorkOrderInfoPanel(initialWorkOrder, () -> {
+            if (paymentsPanel != null) paymentsPanel.focusAmount();
+        });
 
-        JPanel content = new JPanel(new MigLayout("insets 0, fillx, gap 16", "[grow, fill][360!, fill]", "[top]"));
+        JPanel content = new JPanel(new MigLayout("insets 0, fill, gap 16", "[grow, fill][320!, fill]", "[grow, fill]"));
         content.setOpaque(false);
-        content.add(workColumn, "wmin 0");
-        content.add(side);
-        add(DetailKit.scroll(content), "grow, hmin 0");
+        content.add(DetailKit.scroll(workColumn), "wmin 0, hmin 0");
+        content.add(DetailKit.scroll(infoPanel), "hmin 0");
+        add(content, "grow, hmin 0");
     }
 
     // =========================================================================
@@ -136,60 +136,21 @@ public class FormWorkOrder extends Form {
     private void createHeaderPanel() {
         header = new DetailHeader(() -> FormManager.showForm(AllForms.getForm(FormWorkOrders.class)));
 
-        statusBadge = new Badge(ServiceStatus.UNDER_REPAIR);
-        statusBadge.setShowIcon(true);
+        statusButton = new StatusButton(this::changeStatus);
         urgentBadge = new Badge(new tr.cabro.servicio.model.contract.Visualizable() {
             @Override public String getDisplayName() { return "Acil"; }
             @Override public String getIconPath() { return "icons/triangle-alert.svg"; }
             @Override public tr.cabro.servicio.model.enums.BadgeColor getBadgeColor() { return tr.cabro.servicio.model.enums.BadgeColor.RED; }
         }).setShowIcon(true);
-        header.addBadge(statusBadge);
+        header.addBadge(statusButton);
         header.addBadge(urgentBadge);
-
-        header.addStat("total", "Toplam");
-        header.addStat("paid", "Ödenen");
-        header.addStat("remaining", "Kalan");
-
-        statusComboBox = new JComboBox<>(ServiceStatus.values());
-        statusComboBox.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
-        statusComboBox.setToolTipText("Servis durumunu değiştir");
-        statusComboBox.getAccessibleContext().setAccessibleName("Servis durumu");
-        statusComboBox.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof ServiceStatus) setText(((ServiceStatus) value).getDisplayName());
-                return this;
-            }
-        });
-        statusComboBox.addActionListener(e -> {
-            ServiceStatus newStatus = (ServiceStatus) statusComboBox.getSelectedItem();
-            if (newStatus == null || workOrder == null || workOrder.getServiceStatus() == newStatus) return;
-
-            ServiceStatus oldStatus = workOrder.getServiceStatus();
-
-            workOrderService.updateStatus(workOrder.getId(), newStatus)
-                    .thenAccept(unused -> {
-                        SwingUtilities.invokeLater(() -> statusBadge.setVisualizable(newStatus));
-                        workOrder.setServiceStatus(newStatus);
-                        workOrder.setStatusChangedAt(java.time.LocalDateTime.now());
-                        SwingUtilities.invokeLater(() -> infoPanel.refresh(workOrder));
-                    }).exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> {
-                            ActionListener[] ls = statusComboBox.getActionListeners();
-                            for (ActionListener l : ls) statusComboBox.removeActionListener(l);
-                            statusComboBox.setSelectedItem(oldStatus);
-                            for (ActionListener l : ls) statusComboBox.addActionListener(l);
-                        });
-                        return ErrorHandler.handle(this, "Servis durumu güncellenemedi", ex);
-                    });
-        });
-        header.addActionComponent(statusComboBox);
 
         JButton btnGenerateDoc = header.addAction("Belge", "icons/file-text.svg", null);
         btnGenerateDoc.setToolTipText("Servis formu, teklif, fiş…");
         btnGenerateDoc.addActionListener(e -> showDocumentMenu(btnGenerateDoc));
         btnWhatsApp = header.addAction("WhatsApp", "icons/message-circle.svg", this::openWhatsAppModal);
+        header.addAction("Düzenle", "icons/pencil.svg", this::openEditModal);
+        header.addActionComponent(buildDeleteButton());
         header.setPrimary("Parça / İşçilik Ekle", "icons/plus.svg", () -> {
             if (itemsPanel != null) itemsPanel.openItemAddModal();
         });
@@ -197,12 +158,80 @@ public class FormWorkOrder extends Form {
         add(header, "growx, wmin 0, wrap");
     }
 
+    /** Yalnızca ikon: silme sık bir işlem değil, adı ipucunda; ikon tehlike renginde. */
+    private JButton buildDeleteButton() {
+        JButton b = new JButton(new Ikon("icons/trash-2.svg", 16, "Servicio.dangerColor"));
+        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,10,7,10");
+        b.setToolTipText("Servis kaydını sil");
+        b.getAccessibleContext().setAccessibleName("Servis kaydını sil");
+        b.addActionListener(e -> confirmDelete());
+        return b;
+    }
+
+    /** Listedeki "Düzenle" ile aynı kayıt formu ({@link QuickIntakePanel}); kaydedince sayfa yenilenir. */
+    private void openEditModal() {
+        final String modalId = "service_edit_modal";
+        QuickIntakePanel[] ref = new QuickIntakePanel[1];
+        ref[0] = new QuickIntakePanel(workOrder, () -> NewCustomerModal.push(modalId, c -> ref[0].appendNewCustomer(c)));
+        QuickIntakePanel panel = ref[0];
+        panel.setPrimaryModalAction(SimpleModalBorder.YES_OPTION);
+        SimpleModalBorder.Option[] options = {
+                new SimpleModalBorder.Option("Değişiklikleri Kaydet", SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
+        };
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Kayıt Düzenle (SRV-" + workOrder.getId() + ")", options, (controller, action) -> {
+            if (action == SimpleModalBorder.OPENED) {
+                panel.requestInitialFocus();
+                return;
+            }
+            if (action != SimpleModalBorder.YES_OPTION) return;
+            WorkOrder formData = panel.getData();
+            if (formData == null) { controller.consume(); return; }
+            workOrderService.save(formData, true).thenCompose(saved ->
+                    ServiceManager.getDeviceAccessCredentialService()
+                            .save(saved.getId(), panel.getDeviceAccessType(), panel.getDeviceAccessSecret())
+                            .thenApply(v -> saved)
+            ).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.workorder.updated"));
+                formRefresh();
+            })).exceptionally(ex -> {
+                SwingUtilities.invokeLater(controller::consume);
+                return ErrorHandler.handle(this, "Servis kaydı kaydedilemedi", ex);
+            });
+        }), modalId);
+    }
+
+    private void confirmDelete() {
+        DialogHelper.confirmDelete(this, "confirm.delete.workorder", () ->
+                workOrderService.delete(workOrder.getId())
+                        .thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
+                            FormManager.showForm(AllForms.getForm(FormWorkOrders.class));
+                        }))
+                        .exceptionally(ex -> ErrorHandler.handle(this, "Servis kaydı silinemedi", ex)),
+                workOrder.getId());
+    }
+
+    /** Durum menüsünden seçilen yeni durumu kaydeder; hata olursa rozet eski durumda kalır. */
+    private void changeStatus(ServiceStatus newStatus) {
+        if (newStatus == null || workOrder == null || workOrder.getServiceStatus() == newStatus) return;
+        workOrderService.updateStatus(workOrder.getId(), newStatus)
+                .thenAccept(unused -> SwingUtilities.invokeLater(() -> {
+                    workOrder.setServiceStatus(newStatus);
+                    workOrder.setStatusChangedAt(java.time.LocalDateTime.now());
+                    statusButton.setStatus(newStatus);
+                    infoPanel.refresh(workOrder);
+                    tr.cabro.servicio.util.SoundPlayer.statusChanged();
+                }))
+                .exceptionally(ex -> ErrorHandler.handle(this, "Servis durumu güncellenemedi", ex));
+    }
+
     private void hydrateHeader() {
         header.setTitle("SRV-" + workOrder.getId());
 
         ServiceStatus currentStatus = workOrder.getServiceStatus() != null
                 ? workOrder.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
-        statusBadge.setVisualizable(currentStatus);
+        statusButton.setStatus(currentStatus);
         urgentBadge.setVisible("URGENT".equalsIgnoreCase(workOrder.getUrgencyStatus()));
 
         Customer c = workOrder.getCustomer();
@@ -211,9 +240,10 @@ public class FormWorkOrder extends Form {
         if (workOrder.getCreatedAt() != null) {
             long days = java.time.temporal.ChronoUnit.DAYS.between(workOrder.getCreatedAt().toLocalDate(),
                     workOrder.getDeliveryDate() != null ? workOrder.getDeliveryDate().toLocalDate() : java.time.LocalDate.now());
-            since = "Geliş " + workOrder.getCreatedAt().format(DateFormats.shortDate())
-                    + (workOrder.getDeliveryDate() != null ? ", teslim " + workOrder.getDeliveryDate().format(DateFormats.shortDate())
-                    : (days <= 0 ? ", bugün geldi" : ", " + days + " gündür serviste"));
+            // Tarihlerin tamamı raydaki zaman kartında; şeritte kısa özet kalır ki tek satıra sığsın.
+            since = workOrder.getDeliveryDate() != null
+                    ? "Teslim " + workOrder.getDeliveryDate().format(DateFormats.shortDate())
+                    : (days <= 0 ? "Bugün geldi" : days + " gündür serviste");
         }
         header.setMeta(c != null ? c.getFullName() : "Müşterisiz kayıt",
                 d != null ? d.getBrand() + " " + d.getModel() : null,
@@ -222,25 +252,27 @@ public class FormWorkOrder extends Form {
         boolean hasPhone = c != null && c.getPhoneNumber1() != null && !c.getPhoneNumber1().isBlank();
         btnWhatsApp.setEnabled(hasPhone);
         btnWhatsApp.setToolTipText(hasPhone ? "Müşteriye şablonlu WhatsApp mesajı gönder" : "Müşterinin telefonu kayıtlı değil");
-
-        ActionListener[] listeners = statusComboBox.getActionListeners();
-        for (ActionListener l : listeners) statusComboBox.removeActionListener(l);
-        statusComboBox.setSelectedItem(currentStatus);
-        for (ActionListener l : listeners) statusComboBox.addActionListener(l);
-
-        hydrateMoney();
     }
 
-    /** Toplam / ödenen / kalan: kalem ya da ödeme değişince yeniden okunur. */
+    /** Kalem ya da ödeme değişince: raydaki tutarlar ve adım işaretleri yeniden okunur. */
     private void hydrateMoney() {
-        java.math.BigDecimal total = workOrder.getTotalServiceAmount();
-        java.math.BigDecimal paid = workOrder.getTotalPaid();
-        java.math.BigDecimal remaining = workOrder.getRemainingAmount();
-        header.setStat("total", tr.cabro.servicio.util.Format.formatPrice(total), null);
-        header.setStat("paid", tr.cabro.servicio.util.Format.formatPrice(paid), paid.signum() > 0 ? "Servicio.successColor" : null);
-        header.setStat("remaining", remaining.signum() > 0 ? tr.cabro.servicio.util.Format.formatPrice(remaining)
-                        : (total.signum() > 0 ? "Ödendi" : "—"),
-                remaining.signum() > 0 ? "Servicio.warningColor" : "Label.disabledForeground");
+        infoPanel.refreshMoney();
+        refreshSteps();
+    }
+
+    /** Adım işaretleri: tespit yazıldıysa 1, kalem varsa 2, ücret tamamen tahsil edildiyse 3 biter. */
+    private void refreshSteps() {
+        if (diagnosisPanel != null) {
+            String detected = workOrder.getDetectedFault();
+            diagnosisPanel.getStepMarker().setDone(detected != null && !detected.isBlank());
+        }
+        if (itemsPanel != null) {
+            itemsPanel.getStepMarker().setDone(workOrder.getItems() != null && !workOrder.getItems().isEmpty());
+        }
+        if (paymentsPanel != null) {
+            paymentsPanel.getStepMarker().setDone(workOrder.getTotalServiceAmount().signum() > 0
+                    && workOrder.getRemainingAmount().signum() <= 0);
+        }
     }
 
     // =========================================================================
@@ -314,7 +346,7 @@ public class FormWorkOrder extends Form {
 
             SwingUtilities.invokeLater(() -> {
                 if (templates.isEmpty()) {
-                    Toast.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noTemplate"));
+                    Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noTemplate"));
                     return;
                 }
 
@@ -347,13 +379,13 @@ public class FormWorkOrder extends Form {
                     String digits = PhoneHelper.toWhatsAppDigits(workOrder.getCustomer().getPhoneNumber1());
                     if (digits == null) {
                         controller.consume();
-                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noPhone"));
+                        Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.whatsapp.noPhone"));
                         return;
                     }
 
                     String url = "https://wa.me/" + digits + "?text=" + URLEncoder.encode(txtMessage.getText(), StandardCharsets.UTF_8);
                     if (!DesktopHelper.browseUrl(url)) {
-                        Toast.show(this, Toast.Type.ERROR, Messages.get("toast.whatsapp.openFailed"));
+                        Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.whatsapp.openFailed"));
                     }
                 }), "whatsapp_message_modal");
             });
@@ -361,23 +393,95 @@ public class FormWorkOrder extends Form {
     }
 
     // =========================================================================
-    // ÇALIŞMA ALANI (Parça/Ödeme/Not panelleri)
+    // ÇALIŞMA ALANI (1 arıza/tespit, 2 kalemler, 3 ödemeler)
     // =========================================================================
 
     private void buildWorkArea() {
         workColumn.removeAll();
-        notesHolder.removeAll();
 
-        WorkOrderPaymentsPanel paymentsPanel = new WorkOrderPaymentsPanel(workOrder);
+        diagnosisPanel = new WorkOrderDiagnosisPanel(workOrder, this::refreshSteps);
+        paymentsPanel = new WorkOrderPaymentsPanel(workOrder);
         paymentsPanel.setOnChanged(this::hydrateMoney);
         itemsPanel = new WorkOrderItemsPanel(workOrder, paymentsPanel::refresh);
-        WorkOrderNotesPanel notesPanel = new WorkOrderNotesPanel(workOrder);
 
+        workColumn.add(diagnosisPanel, "growx");
         workColumn.add(itemsPanel, "growx");
         workColumn.add(paymentsPanel, "growx");
-        notesHolder.add(notesPanel, "growx");
+        refreshSteps();
         workColumn.revalidate();
         workColumn.repaint();
-        notesHolder.revalidate();
+    }
+
+    // =========================================================================
+    // DURUM ROZETİ (tıklanınca durum menüsü)
+    // =========================================================================
+
+    /**
+     * Kimlik şeridindeki durum: rozet görünümünde düğme (durum ikonu + ad + aşağı ok). Tıklanınca
+     * durum listesini açar; eskiden ayrı bir açılır kutu şeridi genişletip işlemleri ikinci satıra
+     * itiyordu. Renkler {@link BadgePalette}'ten; tema değişince {@link #updateUI()} yeniden okur.
+     */
+    private static final class StatusButton extends JButton {
+        private static final int CHEVRON = 12;
+        private ServiceStatus status = ServiceStatus.UNDER_REPAIR;
+
+        StatusButton(java.util.function.Consumer<ServiceStatus> onSelect) {
+            setToolTipText("Servis durumunu değiştir");
+            getAccessibleContext().setAccessibleName("Servis durumu");
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setFocusPainted(false);
+            addActionListener(e -> {
+                JPopupMenu menu = new JPopupMenu();
+                for (ServiceStatus st : ServiceStatus.values()) {
+                    JMenuItem item = new JMenuItem(st.getDisplayName(), badgeIcon(st, 16));
+                    if (st == status) item.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+                    item.addActionListener(ev -> onSelect.accept(st));
+                    menu.add(item);
+                }
+                menu.show(this, 0, getHeight() + 4);
+            });
+            applyStyle();
+        }
+
+        void setStatus(ServiceStatus status) {
+            this.status = status;
+            applyStyle();
+        }
+
+        @Override
+        public void updateUI() {
+            super.updateUI();
+            if (status != null) applyStyle();
+        }
+
+        private void applyStyle() {
+            String bg = BadgePalette.backgroundHex(status.getBadgeColor());
+            setText(status.getDisplayName());
+            setIcon(badgeIcon(status, 14));
+            setIconTextGap(6);
+            // Yandaki "Acil" rozetiyle aynı boy ve yuvarlaklık; sağda ok için yer bırakılır.
+            putClientProperty(FlatClientProperties.STYLE, BadgePalette.style(status.getBadgeColor(),
+                    "arc: 999; border: 2,10,2," + (CHEVRON + 16) + "; font: bold +0;"
+                            + " hoverBackground: darken(" + bg + ",5%); pressedBackground: darken(" + bg + ",10%)"));
+            revalidate();
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (status == null) return;
+            Ikon chevron = new Ikon("icons/chevron-down.svg", CHEVRON);
+            chevron.setColorFilter(new com.formdev.flatlaf.extras.FlatSVGIcon.ColorFilter(
+                    col -> BadgePalette.foreground(status.getBadgeColor())));
+            chevron.paintIcon(this, g, getWidth() - CHEVRON - 10, (getHeight() - CHEVRON) / 2);
+        }
+
+        private static Icon badgeIcon(ServiceStatus st, int size) {
+            Ikon icon = new Ikon(st.getIconPath(), size);
+            icon.setColorFilter(new com.formdev.flatlaf.extras.FlatSVGIcon.ColorFilter(
+                    col -> BadgePalette.foreground(st.getBadgeColor())));
+            return icon;
+        }
     }
 }

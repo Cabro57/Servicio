@@ -119,7 +119,8 @@ public final class DetailKit {
     public static JButton link(String text, Runnable action) {
         JButton b = new JButton(text);
         b.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
-        b.putClientProperty(FlatClientProperties.STYLE, "foreground: $Component.accentColor; margin: 2,6,2,6");
+        // Metin olarak vurgu rengi koyu temada kart zemininde okunmuyordu; bağlantı rengi iki temada da okunur.
+        b.putClientProperty(FlatClientProperties.STYLE, "foreground: $Component.linkColor; margin: 2,6,2,6");
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         b.addActionListener(e -> action.run());
         return b;

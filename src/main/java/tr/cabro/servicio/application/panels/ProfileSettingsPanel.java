@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -152,21 +153,21 @@ public class ProfileSettingsPanel extends JPanel {
 
         if (changingPin) {
             if (!PasswordUtil.verify(curPin, currentUser.getPassword())) {
-                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.pin.currentInvalid"));
+                Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.pin.currentInvalid"));
                 return;
             }
             if (newPin.length() != 6 || !newPin.matches("\\d+")) {
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.pin.newMustBe6Digits"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.pin.newMustBe6Digits"));
                 return;
             }
             if (!newPin.equals(newPin2)) {
-                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.pin.newMismatch"));
+                Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.pin.newMismatch"));
                 return;
             }
         }
 
         if (txtEmail.getText().trim().isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.email.required"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.email.required"));
             return;
         }
 
@@ -180,7 +181,7 @@ public class ProfileSettingsPanel extends JPanel {
         UserService us = ServiceManager.getUserService();
         us.save(currentUser, true).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
             MyDrawerBuilder.getInstance().setUser(saved);
-            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.profile.updated"));
+            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.profile.updated"));
             AppModal.closeModal(MODAL_ID);
         })).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> btnSave.setEnabled(true));
@@ -197,7 +198,7 @@ public class ProfileSettingsPanel extends JPanel {
                 lblPhotoName.setText(stored);
             }
         } catch (Exception ex) {
-            Toast.show(this, Toast.Type.ERROR, Messages.get("toast.photo.copyFailed", ex.getMessage()));
+            Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.photo.copyFailed", ex.getMessage()));
         }
     }
 

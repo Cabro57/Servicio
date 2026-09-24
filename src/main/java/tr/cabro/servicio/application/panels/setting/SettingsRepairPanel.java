@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
@@ -111,7 +112,7 @@ public class SettingsRepairPanel extends JPanel implements SettingsModal.HeaderA
     private void delete(Labor l) {
         DialogHelper.confirmDelete(this, "confirm.delete.labor", () ->
                         laborService.delete(l.getId()).thenAccept(response -> SwingUtilities.invokeLater(() -> {
-                            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.labor.deleted"));
+                            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.labor.deleted"));
                             refreshTable();
                         })).exceptionally(ex -> ErrorHandler.handle(this, "İşçilik silinemedi", ex)),
                 l.getName());

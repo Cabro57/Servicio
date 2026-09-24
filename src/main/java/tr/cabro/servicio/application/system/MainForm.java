@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.system;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
@@ -332,7 +333,7 @@ public class MainForm extends JPanel {
                 ? Messages.get("toast.update.critical", manifest.getVersion())
                 : Messages.get("toast.update.ready", manifest.getVersion());
 
-        Toast.show(this, isHotfix ? Toast.Type.WARNING : Toast.Type.INFO, msg, option);
+        Toasts.show(this, isHotfix ? Toast.Type.WARNING : Toast.Type.INFO, msg, option);
     }
 
     // ─── Badge Yönetimi ───────────────────────────────────────────────────────

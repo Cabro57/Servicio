@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -89,12 +90,12 @@ public class SettingsPrintingPanel extends JPanel {
                         PdfDocumentBuilder.tempFile("deneme-fisi"));
                 SwingUtilities.invokeLater(() -> {
                     if (!DesktopHelper.openFile(pdf)) {
-                        Toast.show(this, Toast.Type.WARNING, "Fiş oluşturuldu ama açılamadı: " + pdf.getAbsolutePath());
+                        Toasts.show(this, Toast.Type.WARNING, "Fiş oluşturuldu ama açılamadı: " + pdf.getAbsolutePath());
                     }
                 });
             } catch (Exception ex) {
                 Servicio.getLogger().error("Deneme fişi oluşturulamadı", ex);
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.ERROR, "Deneme fişi oluşturulamadı."));
+                SwingUtilities.invokeLater(() -> Toasts.show(this, Toast.Type.ERROR, "Deneme fişi oluşturulamadı."));
             }
         }).exceptionally(ex -> ErrorHandler.handle(this, "Deneme fişi için işletme bilgisi alınamadı", ex));
     }

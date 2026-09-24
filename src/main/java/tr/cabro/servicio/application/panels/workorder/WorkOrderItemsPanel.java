@@ -1,14 +1,15 @@
 package tr.cabro.servicio.application.panels.workorder;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.simple.SimpleMessageModal;
-import tr.cabro.servicio.application.component.table.ActionButtonEditor;
+import tr.cabro.servicio.application.component.table.DynamicActionColumnSupport;
+import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.application.component.table.TableActionEvent;
-import tr.cabro.servicio.application.panels.WorkOrderItemAddPanel;
 import tr.cabro.servicio.application.panels.WorkOrderItemEditPanel;
 import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
@@ -50,6 +51,8 @@ public class WorkOrderItemsPanel extends JPanel {
     private GenericTableModel<WorkOrderItem> itemsTableModel;
     private JPanel itemsTableContainer;
     private JPanel itemsEmptyLabel;
+    private final WorkOrderPanelSupport.StepMarker stepMarker =
+            new WorkOrderPanelSupport.StepMarker(2, "Kalemler girildi", "Henüz parça veya işçilik yok");
 
     public WorkOrderItemsPanel(WorkOrder workOrder, Runnable onItemsChanged) {
         this.workOrder = workOrder;
@@ -60,15 +63,13 @@ public class WorkOrderItemsPanel extends JPanel {
 
     private void build() {
         putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
-        setLayout(new MigLayout("insets 16 18 14 18, fillx, hidemode 3", "[grow][]", "[]10[]"));
-
-        // Birincil "Parça / İşlem Ekle" kimlik şeridinde; burada aynı işin ikincil kısayolu.
+        setLayout(new MigLayout("insets 14 16 12 16, fillx, hidemode 3", "[grow][]", "[]10[]"));
+        // Birincil "Parça / İşçilik Ekle" kimlik şeridinde; burada aynı işin ikincil kısayolu.
         JButton btnAddPart = new JButton("Ekle", new Ikon("icons/plus.svg", 14, "Label.foreground"));
         btnAddPart.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; iconTextGap: 4");
         btnAddPart.setToolTipText("Parça veya işçilik ekle");
         btnAddPart.addActionListener(e -> openItemAddModal());
-        add(WorkOrderPanelSupport.createTitle("Parça ve işçilik"), "aligny center");
-        add(btnAddPart, "align right, wrap");
+        add(WorkOrderPanelSupport.createStepHeader(stepMarker, "Parça ve işçilik", btnAddPart), "span 2, growx, wrap");
 
         // --- Tablo ---
 
@@ -83,7 +84,8 @@ public class WorkOrderItemsPanel extends JPanel {
 
         itemsTableModel = new GenericTableModel<>(columnDefs);
 
-        tr.cabro.servicio.application.component.table.ListTable itemsTable = new tr.cabro.servicio.application.component.table.ListTable();
+        // Düz JTable: düzenle/sil düğmeleri ListTable gibi yalnızca hover satırında değil, her satırda görünür.
+        JTable itemsTable = new JTable();
         itemsTable.setModel(itemsTableModel);
         WorkOrderPanelSupport.styleTable(itemsTable);
         tr.cabro.servicio.application.component.table.TableColumnConfigurator.applyColumnRenderers(itemsTable, columnDefs);
@@ -93,8 +95,6 @@ public class WorkOrderItemsPanel extends JPanel {
         itemsTable.getColumnModel().getColumn(2).setMaxWidth(70);
         itemsTable.getColumnModel().getColumn(3).setPreferredWidth(120);
         itemsTable.getColumnModel().getColumn(3).setMinWidth(100);
-        itemsTable.getColumnModel().getColumn(4).setMaxWidth(96);
-        itemsTable.getColumnModel().getColumn(4).setMinWidth(96);
 
         itemsTable.getColumnModel().getColumn(0).setCellRenderer(new ItemTypeBadgeRenderer());
         itemsTable.getColumnModel().getColumn(1).setCellRenderer(new tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer<WorkOrderItem>(
@@ -103,28 +103,15 @@ public class WorkOrderItemsPanel extends JPanel {
         itemsTable.getColumnModel().getColumn(3).setCellRenderer(
                 new tr.cabro.servicio.application.renderer.MoneyCellRenderer(tr.cabro.servicio.application.renderer.MoneyCellRenderer.Mode.NEUTRAL));
 
-                itemsTable.getColumnModel().getColumn(4).setCellEditor(new ActionButtonEditor(new TableActionEvent() {
-            @Override
-            public void onEdit(int row) {
-                if (itemsTable.isEditing()) itemsTable.getCellEditor().cancelCellEditing();
-                int modelRow = itemsTable.convertRowIndexToModel(row);
-                WorkOrderItem selectedWoItem = itemsTableModel.getItemAt(modelRow);
-                openItemEditModal(selectedWoItem);
-            }
-
-            @Override
-            public void onDelete(int row) {
-                if (itemsTable.isEditing()) itemsTable.getCellEditor().cancelCellEditing();
-                int modelRow = itemsTable.convertRowIndexToModel(row);
-                WorkOrderItem selectedWoItem = itemsTableModel.getItemAt(modelRow);
-                confirmDeleteItem(selectedWoItem);
-            }
-
-            @Override
-            public void onView(int row) {
-
-            }
-        }));
+        // Düzenle/sil düğmeleri her satırda görünür (kalem işlemi sık ve hedefli).
+        itemsTable.getColumnModel().getColumn(4).setMaxWidth(96);
+        itemsTable.getColumnModel().getColumn(4).setMinWidth(96);
+        DynamicActionColumnSupport.install(itemsTable, 4, itemsTableModel, List.of(
+                DynamicActionColumnSupport.button("icons/pencil.svg", SemanticColor.info(), "Kalemi düzenle",
+                        this::openItemEditModal),
+                DynamicActionColumnSupport.button("icons/trash-2.svg", SemanticColor.danger(), "Kalemi sil",
+                        this::confirmDeleteItem)
+        ));
 
         // JScrollPane KALDILIRDI. Yerine normal JPanel kullanıyoruz.
         itemsTableContainer = new JPanel(new MigLayout("insets 0, gap 0", "[grow, fill]", "[]0[]"));
@@ -139,6 +126,10 @@ public class WorkOrderItemsPanel extends JPanel {
 
         add(itemsEmptyLabel, "span 2, growx, wrap");
         add(itemsTableContainer, "span 2, growx, wrap");
+    }
+
+    public WorkOrderPanelSupport.StepMarker getStepMarker() {
+        return stepMarker;
     }
 
     private void populateItemsTable() {
@@ -161,64 +152,14 @@ public class WorkOrderItemsPanel extends JPanel {
 
     /** Kalem ekleme penceresi; kimlik şeridindeki birincil düğme de bunu açar. */
     public void openItemAddModal() {
-        WorkOrderItemAddPanel addPanel = new WorkOrderItemAddPanel(workOrder);
-        SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option("Ekle", SimpleModalBorder.YES_OPTION),
-                new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
-        };
-        AppModal.showModal(this, new SimpleModalBorder(addPanel, "Parça veya İşlem Ekle", null, (controller, action) -> {
-
-            if (action == WorkOrderItemAddPanel.CREAT_ITEM) {
-                WorkOrderItem newItem = addPanel.getItem();
-                if (newItem == null) {
-                    Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.invalidInput"));
-                    controller.consume();
-                    return;
-                }
-
-                workOrderService.addItem(newItem).thenAccept(saved -> {
-                    workOrder.getItems().add(saved);
-
-                    SwingUtilities.invokeLater(() -> {
-                        populateItemsTable();
-
-                        onItemsChanged.run();
-                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.added"));
-                    });
-                }).exceptionally(ex -> ErrorHandler.handle(this, "Kalem eklenemedi", ex));
-
-            }
-            else if (action == WorkOrderItemAddPanel.SELECTED_ITEM) {
-                WorkOrderItem newItem = addPanel.getItem();
-                if (newItem == null) {
-                    Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.invalidInput"));
-                    controller.consume();
-                    return;
-                }
-
-                controller.consume();
-
-                AppModal.pushModalDeferred(() -> {
-                    WorkOrderItemEditPanel editPanel = new WorkOrderItemEditPanel(newItem);
-                    return new SimpleModalBorder(editPanel, "Kalem Ekle", options, (controller1, action1) -> {
-                        if (action1 != SimpleModalBorder.YES_OPTION) return;
-
-                        WorkOrderItem updated = editPanel.getUpdatedItem();
-
-                        workOrderService.addItem(updated).thenAccept(saved -> {
-                            workOrder.getItems().add(saved);
-
-                            SwingUtilities.invokeLater(() -> {
-                                populateItemsTable();
-
-                                onItemsChanged.run();
-                                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.added"));
-                            });
-                        }).exceptionally(ex -> ErrorHandler.handle(this, "Kalem eklenemedi", ex));
-                    });
-                }, "itemAddModal");
-            }
-        }), "itemAddModal");
+        WorkOrderItemModal.open(this, workOrder, saved -> {
+            workOrder.getItems().addAll(saved);
+            populateItemsTable();
+            onItemsChanged.run();
+            tr.cabro.servicio.util.SoundPlayer.added();
+            Toasts.show(this, Toast.Type.SUCCESS, saved.size() == 1
+                    ? Messages.get("toast.item.added") : Messages.get("toast.items.added", String.valueOf(saved.size())));
+        });
     }
 
     private void openItemEditModal(WorkOrderItem item) {
@@ -233,7 +174,7 @@ public class WorkOrderItemsPanel extends JPanel {
 
             WorkOrderItem updated = editPanel.getUpdatedItem();
             if (updated == null) {
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.item.nameInvalid"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.item.nameInvalid"));
                 controller.consume();
                 return;
             }
@@ -251,7 +192,7 @@ public class WorkOrderItemsPanel extends JPanel {
                 populateItemsTable();
 
                 onItemsChanged.run();
-                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.updated"));
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.updated"));
             })).exceptionally(ex -> ErrorHandler.handle(this, "Kalem güncellenemedi", ex));
         }), "itemEditModal");
     }
@@ -290,7 +231,8 @@ public class WorkOrderItemsPanel extends JPanel {
                 populateItemsTable();
                 onItemsChanged.run();
 
-                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.deleted"));
+                tr.cabro.servicio.util.SoundPlayer.removed();
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.deleted"));
             })).exceptionally(ex -> ErrorHandler.handle(this, "Kalem silinemedi", ex));
         }));
     }

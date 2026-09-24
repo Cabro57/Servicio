@@ -16,6 +16,7 @@ public class WorkOrderItemEditPanel extends JPanel {
     private JFormattedTextField txtPurchasePrice;
     private JFormattedTextField txtSalePrice;
     private JTextField txtSerialNo;
+    private JSpinner spnQuantity;
 
     public WorkOrderItemEditPanel(WorkOrderItem item) {
         this.item = item;
@@ -39,7 +40,10 @@ public class WorkOrderItemEditPanel extends JPanel {
             txtSerialNo.setEnabled(false);
         }
 
+        spnQuantity = new JSpinner(new SpinnerNumberModel(item.getQuantity() != null ? item.getQuantity().intValue() : 1, 1, 999, 1));
+
         add(new JLabel("Adı:")); add(txtName, "growx, wrap");
+        add(new JLabel("Adet:")); add(spnQuantity, "w 90!, wrap");
         add(new JLabel("Alış Fiyatı:")); add(txtPurchasePrice, "growx, wrap");
         add(new JLabel("Satış Fiyatı:")); add(txtSalePrice, "growx, wrap");
         add(new JLabel("Seri No:")); add(txtSerialNo, "growx, wrap");
@@ -49,6 +53,7 @@ public class WorkOrderItemEditPanel extends JPanel {
         if (txtName.getText().trim().isEmpty()) return null;
 
         item.setItemName(txtName.getText().trim());
+        item.setQuantity((Integer) spnQuantity.getValue());
         item.setPurchasePrice(new BigDecimal(txtPurchasePrice.getValue().toString()));
         item.setUnitPrice(new BigDecimal(txtSalePrice.getValue().toString()));
         item.setUsedSerialNo(txtSerialNo.getText().trim());

@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -140,7 +141,7 @@ public class SetupPanel extends Form {
                     lblPhotoPath.setText(stored);
                 }
             } catch (Exception ex) {
-                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.photo.copyFailed", ex.getMessage()));
+                Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.photo.copyFailed", ex.getMessage()));
             }
         });
 
@@ -149,11 +150,11 @@ public class SetupPanel extends Form {
             String pinConfirm = new String(txtPinCodeConfirm.getPassword());
 
             if (pin.length() != 6 || !pin.matches("\\d+")) {
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.pin.mustBe6Digits"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.pin.mustBe6Digits"));
                 return;
             }
             if (!pin.equals(pinConfirm)) {
-                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.pin.mismatch"));
+                Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.pin.mismatch"));
                 return;
             }
 
@@ -165,7 +166,7 @@ public class SetupPanel extends Form {
 
             userService.save(newUser, false).thenAccept(savedUser -> {
                 SwingUtilities.invokeLater(() -> {
-                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.setup.completed"));
+                    Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.setup.completed"));
                     // Doğrudan sisteme al ve inaktif monitörü başlat
                     FormManager.login();
                 });

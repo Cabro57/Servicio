@@ -1,12 +1,11 @@
 package tr.cabro.servicio.application.panels.workorder;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.utils.ErrorHandler;
-import tr.cabro.servicio.application.themes.BadgePalette;
 import tr.cabro.servicio.application.utils.Ikon;
-import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderNote;
 import tr.cabro.servicio.service.ServiceManager;
@@ -24,7 +23,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * `FormWorkOrder`'ın sağ kolonundaki "Teknisyen Notları" kartı — eskiden
+ * İş emri "1 Arıza ve tespit" adımının sağ yarısındaki teknisyen notları (kendi kartı yok; adım
+ * kartının içinde durur, kart içinde kart olmasın diye). Eskiden
  * {@code FormWorkOrder.buildNotesCard()}/{@code populateNotesList()}/{@code appendNoteRow()}/
  * {@code addNoteRowToPanel()}/{@code confirmDeleteNote()} olarak tek sınıfta duruyordu. Notlar
  * kalan bakiyeyi etkilemediği için (item/payment panellerinin aksine) dışa açık bir refresh
@@ -44,32 +44,32 @@ public class WorkOrderNotesPanel extends JPanel {
     }
 
     private void build() {
-        putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
-        setLayout(new MigLayout("insets 20, fillx", "[grow]", "[]15[]15[]"));
+        setOpaque(false);
+        setLayout(new MigLayout("insets 0, fillx, wrap, hidemode 3", "[grow, fill]", "[]6[]8[]8[]"));
 
-        add(WorkOrderPanelSupport.createTitle("Teknisyen notları"), "wrap");
+        add(WorkOrderPanelSupport.createCaption("Teknisyen notları"));
 
-        notesListPanel = new JPanel(new MigLayout("insets 0, fillx", "[grow]", "[]"));
+        notesListPanel = new JPanel(new MigLayout("insets 0, fillx, wrap, gap 0", "[grow, fill]", ""));
         notesListPanel.setOpaque(false);
         populateNotesList();
-        add(notesListPanel, "growx, wrap");
+        add(notesListPanel, "wmin 0");
 
-        JTextArea txtNewNote = new JTextArea(3, 20);
+        JTextArea txtNewNote = WorkOrderPanelSupport.createHintArea("Not yazın…");
         txtNewNote.setLineWrap(true);
         txtNewNote.setWrapStyleWord(true);
-        txtNewNote.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Servis süreciyle ilgili notlarınızı buraya yazın...");
-        txtNewNote.putClientProperty(FlatClientProperties.STYLE, "background: lighten($Panel.background, 2%); border: 10,10,10,10;");
+        txtNewNote.putClientProperty(FlatClientProperties.STYLE, "border: 8,10,8,10");
+        txtNewNote.getAccessibleContext().setAccessibleName("Yeni teknisyen notu");
 
-        JScrollPane scrollNote = new JScrollPane(txtNewNote);
-        add(scrollNote, "wrap, growx, h 80!");
+        JScrollPane inputBox = new JScrollPane(txtNewNote);
+        inputBox.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
+        add(inputBox, "h 84!, wmin 0");
 
-        JButton btnAddNote = new JButton("+ Not Ekle");
-        btnAddNote.putClientProperty(FlatClientProperties.STYLE,
-                BadgePalette.style(BadgeColor.BLUE, "arc: 10"));
+        JButton btnAddNote = new JButton("Not ekle", new Ikon("icons/plus.svg", 14, "Label.foreground"));
+        btnAddNote.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; iconTextGap: 4");
         btnAddNote.addActionListener(e -> {
             String text = txtNewNote.getText().trim();
             if (text.isEmpty()) {
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.note.empty"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.note.empty"));
                 return;
             }
             WorkOrderNote n = new WorkOrderNote();
@@ -81,18 +81,18 @@ public class WorkOrderNotesPanel extends JPanel {
                 workOrder.getTechnicianNotes().add(saved);
                 txtNewNote.setText("");
                 appendNoteRow(saved);
-                Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.note.added"));
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.note.added"));
             })).exceptionally(ex -> ErrorHandler.handle(this, "Not eklenemedi", ex));
         });
 
-        add(btnAddNote, "align right");
+        add(btnAddNote, "growx 0, al right");
     }
 
     private void populateNotesList() {
         notesListPanel.removeAll();
         List<WorkOrderNote> notes = workOrder.getTechnicianNotes();
         if (notes == null || notes.isEmpty()) {
-            notesListPanel.add(WorkOrderPanelSupport.createMutedLabel("Henüz teknisyen notu eklenmedi."), "wrap");
+            notesListPanel.add(emptyLabel());
         } else {
             for (WorkOrderNote n : notes) {
                 addNoteRowToPanel(n);
@@ -112,12 +112,26 @@ public class WorkOrderNotesPanel extends JPanel {
         notesListPanel.repaint();
     }
 
+    private static JLabel emptyLabel() {
+        JLabel l = WorkOrderPanelSupport.createMutedLabel("Henüz not yok.");
+        l.setBorder(BorderFactory.createEmptyBorder(2, 0, 4, 0));
+        return l;
+    }
+
+    /** Not satırı: metin, altında soluk "Teknisyen · tarih", sağda sil; satırlar ince çizgiyle ayrılır. */
     private void addNoteRowToPanel(WorkOrderNote note) {
         DateTimeFormatter df = DateFormats.dateTime();
 
-        JPanel noteRow = new JPanel(new MigLayout("insets 10 12 10 12, fillx", "[grow][]", "[]6[]"));
-        noteRow.putClientProperty(FlatClientProperties.STYLE,
-                "background: lighten($Panel.background, 4%); arc: 12; border: 1,1,1,1,$Component.borderColor");
+        // Üst ayraç çizimde okunur ki tema değişince renk de değişsin.
+        JPanel noteRow = new JPanel(new MigLayout("insets 8 0 8 0, fillx, gap 8 2", "[grow][]", "[][]")) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.setColor(UIManager.getColor("Component.borderColor"));
+                g.fillRect(0, 0, getWidth(), 1);
+            }
+        };
+        noteRow.setOpaque(false);
 
         JTextArea lblNote = new JTextArea(note.getNote());
         lblNote.setEditable(false);
@@ -125,23 +139,24 @@ public class WorkOrderNotesPanel extends JPanel {
         lblNote.setLineWrap(true);
         lblNote.setWrapStyleWord(true);
         lblNote.setFocusable(false);
-        lblNote.putClientProperty(FlatClientProperties.STYLE, "font: +1; border: 0,0,0,0");
+        lblNote.putClientProperty(FlatClientProperties.STYLE, "border: 0,0,0,0");
 
-        JButton btnDeleteNote = new JButton(new Ikon("icons/x.svg", 0.75f));
-        btnDeleteNote.putClientProperty(FlatClientProperties.BUTTON_TYPE, "toolBarButton");
+        JButton btnDeleteNote = new JButton(new Ikon("icons/x.svg", 14, "Label.disabledForeground"));
+        btnDeleteNote.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+        btnDeleteNote.putClientProperty(FlatClientProperties.STYLE, "arc: 8; margin: 3,3,3,3");
         btnDeleteNote.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnDeleteNote.setToolTipText("Notu Sil");
+        btnDeleteNote.setToolTipText("Notu sil");
+        btnDeleteNote.getAccessibleContext().setAccessibleName("Notu sil");
         btnDeleteNote.addActionListener(e -> confirmDeleteNote(note, noteRow));
 
-        JLabel lblAuthor = WorkOrderPanelSupport.createMutedLabel(note.getTechnicianId() == null ? "Sistem" : "Teknisyen");
-        JLabel lblDate = WorkOrderPanelSupport.createMutedLabel(note.getCreatedAt() != null ? note.getCreatedAt().format(df) : "-");
+        String author = note.getTechnicianId() == null ? "Sistem" : "Teknisyen";
+        String when = note.getCreatedAt() != null ? note.getCreatedAt().format(df) : "—";
 
         noteRow.add(lblNote, "growx, wmin 0, aligny top");
-        noteRow.add(btnDeleteNote, "top, right, w 28!, h 28!, wrap");
-        noteRow.add(lblAuthor, "aligny bottom");
-        noteRow.add(lblDate, "align right, aligny bottom");
+        noteRow.add(btnDeleteNote, "top, spany 2, wrap");
+        noteRow.add(WorkOrderPanelSupport.createCaption(author + "  ·  " + when), "wmin 0");
 
-        notesListPanel.add(noteRow, "wrap, growx, gapy 0 8");
+        notesListPanel.add(noteRow, "growx, wmin 0");
     }
 
     private void confirmDeleteNote(WorkOrderNote note, JPanel noteRow) {
@@ -151,11 +166,11 @@ public class WorkOrderNotesPanel extends JPanel {
                     notesListPanel.remove(noteRow);
                     if (workOrder.getTechnicianNotes().isEmpty()) {
                         notesListPanel.removeAll();
-                        notesListPanel.add(WorkOrderPanelSupport.createMutedLabel("Henüz teknisyen notu eklenmedi."), "wrap");
+                        notesListPanel.add(emptyLabel());
                     }
                     notesListPanel.revalidate();
                     notesListPanel.repaint();
-                    Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.note.deleted"));
+                    Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.note.deleted"));
                 })).exceptionally(ex -> ErrorHandler.handle(this, "Not silinemedi", ex)));
     }
 }

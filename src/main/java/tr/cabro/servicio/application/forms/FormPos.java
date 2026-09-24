@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.ModalDialog;
@@ -1428,7 +1429,7 @@ public class FormPos extends Form {
         productService.get(barcode).thenAccept(opt -> SwingUtilities.invokeLater(() -> {
             if (opt.isEmpty()) {
                 SoundPlayer.error();
-                Toast.show(this, Toast.Type.ERROR, Messages.get("toast.sale.itemNotFound"));
+                Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.sale.itemNotFound"));
                 return;
             }
             addToCart(opt.get());
@@ -1567,7 +1568,7 @@ public class FormPos extends Form {
     private boolean canTakePayment() {
         if (submitting) return false;
         if (cart().items.isEmpty()) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.sale.emptyCart"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.sale.emptyCart"));
             barcodeField.requestFocusInWindow();
             return false;
         }
@@ -1586,7 +1587,7 @@ public class FormPos extends Form {
         BigDecimal tendered = cart.tendered;
         if (tendered.signum() > 0 && tendered.compareTo(total) < 0) {
             SoundPlayer.error();
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.sale.tenderedInsufficient",
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.sale.tenderedInsufficient",
                     Format.formatPrice(total.subtract(tendered))));
             tenderedField.requestFocusInWindow();
             return;
@@ -1607,7 +1608,7 @@ public class FormPos extends Form {
         if (!canTakePayment()) return;
         Cart cart = cart();
         if (computeTotal(cart).signum() > 0 && cart.customer == null) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.sale.creditRequiresCustomer"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.sale.creditRequiresCustomer"));
             customerCombo.requestFocusInWindow();
             return;
         }
@@ -1722,13 +1723,13 @@ public class FormPos extends Form {
             }
             if (total.subtract(assigned.get()).signum() != 0) {
                 SoundPlayer.error();
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.sale.splitMismatch"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.sale.splitMismatch"));
                 controller.consume();
                 return;
             }
             BigDecimal onAccount = toBigDecimal(fields.get(null).getValue());
             if (onAccount.signum() > 0 && cart.customer == null) {
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.sale.creditRequiresCustomer"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.sale.creditRequiresCustomer"));
                 controller.consume();
                 return;
             }
@@ -1834,7 +1835,7 @@ public class FormPos extends Form {
 
         BigDecimal paid = payments.stream().map(Payment::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (computeTotal(cart).subtract(paid).signum() > 0 && cart.customer == null) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.sale.creditRequiresCustomer"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.sale.creditRequiresCustomer"));
             customerCombo.requestFocusInWindow();
             return;
         }
@@ -1872,7 +1873,7 @@ public class FormPos extends Form {
             saleService.checkout(sale, payments).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
                 setSubmitting(false);
                 SoundPlayer.success();
-                Toast.show(this, Toast.Type.SUCCESS, cashChange.signum() > 0
+                Toasts.show(this, Toast.Type.SUCCESS, cashChange.signum() > 0
                         ? Messages.get("toast.sale.completedWithChange", Format.formatPrice(cashChange))
                         : Messages.get("toast.sale.completed"));
                 printReceipt(saved, payments, cashChange);
@@ -1908,7 +1909,7 @@ public class FormPos extends Form {
                 SwingUtilities.invokeLater(() -> DesktopHelper.openFile(outFile));
             } catch (Exception ex) {
                 Servicio.getLogger().error("Satış fişi oluşturma hatası", ex);
-                SwingUtilities.invokeLater(() -> Toast.show(this, Toast.Type.WARNING, Messages.get("toast.sale.receiptFailed")));
+                SwingUtilities.invokeLater(() -> Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.sale.receiptFailed")));
             }
         }).exceptionally(ex -> ErrorHandler.handle(this, "Fiş için işletme bilgisi alınamadı", ex));
     }

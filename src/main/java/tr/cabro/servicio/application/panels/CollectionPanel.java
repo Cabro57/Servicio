@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -400,7 +401,7 @@ public class CollectionPanel extends JPanel {
                     try {
                         value = new BigDecimal(text.trim().replace(",", "."));
                     } catch (Exception ex) {
-                        Toast.show(this, Toast.Type.WARNING, Messages.get("toast.collection.invalidAmount"));
+                        Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.collection.invalidAmount"));
                         return;
                     }
                     if (value.signum() < 0) value = BigDecimal.ZERO;
@@ -420,7 +421,7 @@ public class CollectionPanel extends JPanel {
         }
         BigDecimal amount = toBigDecimal(amountField.getValue());
         if (amount.signum() <= 0) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.collection.invalidAmount"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.collection.invalidAmount"));
             return;
         }
 
@@ -436,7 +437,7 @@ public class CollectionPanel extends JPanel {
             allocations.add(allocation);
         }
         if (allocatedTotal.compareTo(amount) > 0) {
-            Toast.show(this, Toast.Type.WARNING, Messages.get("toast.collection.overAllocated"));
+            Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.collection.overAllocated"));
             return;
         }
 
@@ -445,7 +446,8 @@ public class CollectionPanel extends JPanel {
             paymentService.recordCollection(customer.getId(), amount, methods.getSelected(),
                             null, LocalDateTime.now(), allocations)
                     .thenAccept(payment -> SwingUtilities.invokeLater(() -> {
-                        Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.collection.completed"));
+                        Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.collection.completed"));
+                        tr.cabro.servicio.util.SoundPlayer.payment();
                         AppModal.closeModal(modalId);
                         if (onSuccess != null) onSuccess.run();
                     })).exceptionally(ex -> {

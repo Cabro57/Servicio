@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.handlers;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.i18n.Messages;
@@ -53,7 +54,7 @@ public class TypeImportHandler extends TransferHandler {
                             .anyMatch(b -> b.getId().equals(brand.getId()));
 
                     if (alreadyInTarget) {
-                        SwingUtilities.invokeLater(() -> Toast.show(panel, Toast.Type.WARNING,
+                        SwingUtilities.invokeLater(() -> Toasts.show(panel, Toast.Type.WARNING,
                                 Messages.get("toast.brand.alreadyInType", brand.getName(), targetType.getName())));
                         return;
                     }
@@ -64,7 +65,7 @@ public class TypeImportHandler extends TransferHandler {
                                 panel.loadBrands(sourceType);
                                 panel.loadBrands(targetType);
 
-                                Toast.show(panel, Toast.Type.INFO,
+                                Toasts.show(panel, Toast.Type.INFO,
                                         "↔️ " + Messages.get("toast.brand.moved", brand.getName(), sourceType.getName(), targetType.getName()));
                             }));
                 });

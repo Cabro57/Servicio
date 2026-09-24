@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import lombok.NonNull;
 import raven.modal.Toast;
 import raven.modal.component.ModalBorderAction;
@@ -91,7 +92,7 @@ public abstract class AbstractEditPanel<T> extends JPanel {
     }
 
     protected void showValidationError(raven.modal.Toast.Type type, String message) {
-        Toast.show(this, type, message);
+        Toasts.show(this, type, message);
     }
 
     /**

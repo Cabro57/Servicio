@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.system.AppModal;
@@ -36,7 +37,7 @@ public final class EditModals {
             Part updated = panel.getData();
             if (updated == null) { controller.consume(); return; }
             ServiceManager.getPartService().save(updated, true).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(owner, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getName()));
+                Toasts.show(owner, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getName()));
                 if (onSaved != null) onSaved.run();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);
@@ -52,7 +53,7 @@ public final class EditModals {
             Product updated = panel.getData();
             if (updated == null) { controller.consume(); return; }
             ServiceManager.getProductService().save(updated, true).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(owner, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getName()));
+                Toasts.show(owner, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", updated.getName()));
                 if (onSaved != null) onSaved.run();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);
@@ -70,7 +71,7 @@ public final class EditModals {
             updated.setId(supplier.getId());
             updated.setCreatedAt(supplier.getCreatedAt());
             ServiceManager.getSupplierService().save(updated, true).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toast.show(owner, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", saved.getName()));
+                Toasts.show(owner, Toast.Type.SUCCESS, Messages.get("toast.entity.updated", saved.getName()));
                 if (onSaved != null) onSaved.run();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);

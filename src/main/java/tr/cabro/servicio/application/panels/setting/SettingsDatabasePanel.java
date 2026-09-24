@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import net.miginfocom.swing.MigLayout;
@@ -279,10 +280,10 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
                 refreshBackups();
                 refreshSchedule();
                 if (ok && !backupModel.isEmpty()) {
-                    Toast.show(SettingsDatabasePanel.this, Toast.Type.SUCCESS,
+                    Toasts.show(SettingsDatabasePanel.this, Toast.Type.SUCCESS,
                             Messages.get("toast.backup.done", backupModel.get(0).getName()));
                 } else {
-                    Toast.show(SettingsDatabasePanel.this, Toast.Type.ERROR, Messages.get("toast.backup.failed"));
+                    Toasts.show(SettingsDatabasePanel.this, Toast.Type.ERROR, Messages.get("toast.backup.failed"));
                 }
             }
         }.execute();

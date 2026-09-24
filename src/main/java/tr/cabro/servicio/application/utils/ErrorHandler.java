@@ -30,7 +30,7 @@ public final class ErrorHandler {
                 ? root.getMessage()
                 : "Beklenmeyen bir hata oluştu. Ayrıntılar için log dosyasına bakın.";
 
-        SwingUtilities.invokeLater(() -> Toast.show(owner, Toast.Type.ERROR, userMessage));
+        SwingUtilities.invokeLater(() -> Toasts.show(owner, Toast.Type.ERROR, userMessage));
         return null;
     }
 

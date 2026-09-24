@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -167,7 +168,7 @@ public class SettingsExchangeRatePanel extends JPanel implements SettingsModal.H
         refreshButton.setEnabled(false);
         exchangeRateManager.refreshFromTcmb().thenAccept(list -> SwingUtilities.invokeLater(() -> {
             refreshButton.setEnabled(true);
-            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.exchangeRate.refreshed"));
+            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.exchangeRate.refreshed"));
             applyRates(list);
             SettingsKit.saved(this);
         })).exceptionally(ex -> {
@@ -185,7 +186,7 @@ public class SettingsExchangeRatePanel extends JPanel implements SettingsModal.H
             try {
                 rateValue = new BigDecimal(input.trim().replace(',', '.'));
             } catch (NumberFormatException ex) {
-                Toast.show(this, Toast.Type.WARNING, Messages.get("toast.exchangeRate.invalidNumber"));
+                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.exchangeRate.invalidNumber"));
                 return;
             }
 

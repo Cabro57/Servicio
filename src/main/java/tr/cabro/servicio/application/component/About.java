@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.component;
 
+import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -62,7 +63,7 @@ public class About extends JPanel {
         check.addActionListener(e -> {
             UpdateChecker checker = Servicio.getInstance().getUpdateChecker();
             if (checker != null) checker.checkNow();
-            Toast.show(this, Toast.Type.INFO, Messages.get("toast.update.checking"));
+            Toasts.show(this, Toast.Type.INFO, Messages.get("toast.update.checking"));
         });
         JPanel updateRow = new JPanel(new MigLayout("insets 10 12 10 12, fillx", "[grow][]", "[center]"));
         updateRow.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
@@ -96,7 +97,7 @@ public class About extends JPanel {
         copy.setToolTipText("Destek isterken yapıştırmak için sürüm ve sistem bilgisini panoya kopyalar");
         copy.addActionListener(e -> {
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(supportText(dataFolder)), null);
-            Toast.show(this, Toast.Type.SUCCESS, Messages.get("toast.about.copied"));
+            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.about.copied"));
         });
         JButton repo = new JButton("Proje sayfası");
         repo.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
