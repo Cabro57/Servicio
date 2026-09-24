@@ -35,7 +35,11 @@ public class ListTable extends JTable {
     /** Yüzen şeritteki bir düğme; tıklanınca görünüm (view) satır indeksini alır. */
     public static final class RowAction {
         final String iconPath;
-        /** İkonun tema renk anahtarı (ör. {@code Servicio.dangerColor}); tema değişince ikon da döner. */
+        /**
+         * Üstüne gelindiğindeki ikon rengi (tema anahtarı). Dinlenmede ikon her zaman soluk yazı rengindedir;
+         * yalnızca anlamı olan eylemler renk alır: sil (danger), para girişi (success). Diğerleri (göz,
+         * kalem, fiş…) hover'da da nötr kalır — renk yalnızca anlam taşır.
+         */
         final String colorKey;
         final String tooltip;
         final IntConsumer onRow;
@@ -60,6 +64,12 @@ public class ListTable extends JTable {
             if (c.equals(SemanticColor.info())) return "Servicio.infoColor";
             if (c.equals(SemanticColor.action())) return "Servicio.actionColor";
             return "Label.foreground";
+        }
+
+        /** Hover rengi: yalnızca danger/success korunur, geri kalanı nötr. */
+        String hoverKey() {
+            return "Servicio.dangerColor".equals(colorKey) || "Servicio.successColor".equals(colorKey)
+                    ? colorKey : "Label.foreground";
         }
     }
 
@@ -254,12 +264,20 @@ public class ListTable extends JTable {
             this.actions = list;
             removeAll();
             for (RowAction a : list) {
-                // İkon dinlenmede de anlamlı renkte (tema anahtarından okunur); üstüne gelince arka plan belirir.
-                JButton b = new JButton(new Ikon(a.iconPath, 0.8f, a.colorKey));
+                // Dinlenmede soluk nötr ikon; üstüne gelince tam yazı rengi (sil/para girişi anlam rengi).
+                JButton b = new JButton(new Ikon(a.iconPath, 0.8f, "Label.foreground", 0.6f));
                 b.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
                 b.putClientProperty(FlatClientProperties.STYLE, "arc: 8; margin: 4,4,4,4; focusWidth: 0;"
                         + " toolbar.hoverBackground: fade($Label.foreground,10%);"
                         + " toolbar.pressedBackground: fade($Label.foreground,18%)");
+                b.addMouseListener(new MouseAdapter() {
+                    @Override public void mouseEntered(MouseEvent e) {
+                        b.setIcon(new Ikon(a.iconPath, 0.8f, a.hoverKey(), 1f));
+                    }
+                    @Override public void mouseExited(MouseEvent e) {
+                        b.setIcon(new Ikon(a.iconPath, 0.8f, "Label.foreground", 0.6f));
+                    }
+                });
                 b.setFocusable(false);
                 b.setToolTipText(a.tooltip);
                 b.getAccessibleContext().setAccessibleName(a.tooltip);
