@@ -83,7 +83,7 @@ public class SettingsDevicePanel extends JPanel implements SettingsModal.HeaderA
     // ------------------------------------------------------------------ yerleşim
 
     private void initComponent() {
-        setLayout(new MigLayout("insets 4 24 20 24, gap 16", "[250:270:300, fill][grow, fill]", "[grow, fill]"));
+        setLayout(new MigLayout("insets 4 24 20 24, gap 16", "[280:300:340, fill][grow, fill]", "[grow, fill]"));
         setOpaque(false);
         add(typeCard(), "grow, hmin 260");
         add(brandCard(), "grow, hmin 260, wmin 0");

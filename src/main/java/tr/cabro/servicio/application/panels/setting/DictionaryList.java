@@ -35,7 +35,11 @@ class DictionaryList<T> extends JPanel {
     private record RowAction<T>(String icon, String tip, boolean danger, KeyStroke key,
                                 Predicate<T> visible, Consumer<T> handler) {}
 
-    private final JPanel rows = new JPanel(new MigLayout("insets 0, fillx, wrap, gap 0 1", "[grow, fill]", ""));
+    /**
+     * Satırlar kaydırma alanının genişliğini izler: dar kolonda satır tercih ettiği genişliğe uzayıp
+     * sağdaki sayı ve eylemleri (sil) görünür alanın dışına itmesin; uzun ad kısalır ("…").
+     */
+    private final JPanel rows = new WidthTrackingRows();
     private final JScrollPane scroll;
     private final Function<T, String> title;
     private Function<T, String> subtitle;
@@ -219,6 +223,18 @@ class DictionaryList<T> extends JPanel {
         select(visibleRows.get(next).item, onSelect != null);
     }
 
+    private static final class WidthTrackingRows extends JPanel implements Scrollable {
+        WidthTrackingRows() {
+            super(new MigLayout("insets 0, fillx, wrap, gap 0 1", "[grow, fill]", ""));
+        }
+
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) { return 16; }
+        @Override public int getScrollableBlockIncrement(Rectangle r, int o, int d) { return Math.max(16, r.height - 32); }
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
+    }
+
     // ------------------------------------------------------------------ satır
 
     private final class Row extends JPanel {
@@ -227,7 +243,7 @@ class DictionaryList<T> extends JPanel {
         private boolean hover;
 
         Row(T item) {
-            super(new MigLayout("insets 7 12 7 6, fillx, gap 12 0, hidemode 3", "[grow, fill][right][right]", "[]1[]"));
+            super(new MigLayout("insets 7 12 7 6, fillx, gap 12 0, hidemode 3", "[grow, fill, shrink 100][right, shrink 0][right, shrink 0]", "[]1[]"));
             this.item = item;
             setOpaque(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
