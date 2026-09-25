@@ -60,7 +60,7 @@ public final class DataDirResolver {
      * → VBS → cmd.exe → yeni javaw) cwd'yi her adımda doğru devretmeyi garanti etmiyor;
      * cwd yanlış olursa burası ".servicio" bulamayıp yanlışlıkla LOCALAPPDATA'da YENİ/BOŞ
      * bir klasör oluşturuyordu (kullanıcıya veritabanı/resimlerin "kaybolduğu" gibi görünüyordu).
-     * Bunun yerine JAR'ın gerçek fiziksel konumunu (codeSource, UpdateChecker.resolveAppRoot
+     * Bunun yerine JAR'ın gerçek fiziksel konumunu (codeSource, UpdateService.resolveAppRoot
      * ile aynı yöntem) kullanır — cwd'den bağımsızdır. IDE/geliştirme ortamında codeSource bir
      * dizin (örn. target/classes) olduğu için o durumda eski cwd davranışına düşer.
      */

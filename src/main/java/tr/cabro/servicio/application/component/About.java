@@ -7,7 +7,6 @@ import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.i18n.Messages;
-import tr.cabro.servicio.updater.UpdateChecker;
 import tr.cabro.servicio.util.DesktopHelper;
 
 import javax.swing.*;
@@ -17,14 +16,12 @@ import java.io.File;
 import java.util.Locale;
 
 /**
- * Hakkında penceresi: uygulamanın kimliği ve sürüm/güncelleme durumu üstte; altında destek
+ * Hakkında penceresi: uygulamanın kimliği ve sürümü üstte; altında destek
  * isterken sorulan bilgiler (veri klasörü, veritabanı boyutu, Java, sistem) tek tıkla kopyalanabilir.
  */
 public class About extends JPanel {
 
     private static final String REPO_URL = "https://github.com/Cabro57/Servicio";
-
-    private final JLabel updateState = new JLabel();
 
     public About() {
         init();
@@ -56,21 +53,6 @@ public class About extends JPanel {
                 + "hesap takibi. Verileriniz bu bilgisayarda saklanır.</html>");
         description.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
         add(description, "gaptop 14, wmin 0");
-
-        // --- Güncelleme durumu ---
-        JButton check = new JButton("Güncellemeleri denetle", new Ikon("icons/refresh-cw.svg", 14, "Label.foreground"));
-        check.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,10,5,10; iconTextGap: 6");
-        check.addActionListener(e -> {
-            UpdateChecker checker = Servicio.getInstance().getUpdateChecker();
-            if (checker != null) checker.checkNow();
-            Toasts.show(this, Toast.Type.INFO, Messages.get("toast.update.checking"));
-        });
-        JPanel updateRow = new JPanel(new MigLayout("insets 10 12 10 12, fillx", "[grow][]", "[center]"));
-        updateRow.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
-        updateRow.add(updateState, "wmin 0");
-        updateRow.add(check);
-        add(updateRow, "gaptop 16");
-        refreshUpdateState();
 
         // --- Destek bilgileri ---
         JLabel supportTitle = new JLabel("Destek bilgileri");
@@ -119,20 +101,6 @@ public class About extends JPanel {
         facts.add(cap);
         facts.add(val, "wmin 0" + (trailing == null ? ", span 2, wrap" : ""));
         if (trailing != null) facts.add(trailing, "wrap");
-    }
-
-    private void refreshUpdateState() {
-        UpdateChecker checker = Servicio.getInstance().getUpdateChecker();
-        if (checker != null && checker.hasPendingUpdate() && checker.getPendingUpdate() != null) {
-            updateState.setText("Yeni sürüm hazır: v" + checker.getPendingUpdate().getVersion());
-            updateState.setIcon(new Ikon("icons/circle-alert.svg", 16, "Servicio.actionColor"));
-            updateState.putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: $Servicio.actionColor");
-        } else {
-            updateState.setText("Güncel sürümü kullanıyorsunuz");
-            updateState.setIcon(new Ikon("icons/check-check.svg", 16, "Servicio.successColor"));
-            updateState.putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: $Servicio.successColor");
-        }
-        updateState.setIconTextGap(8);
     }
 
     private static String databaseSize(File dataFolder) {

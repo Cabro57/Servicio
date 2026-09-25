@@ -365,11 +365,19 @@ public class UpdateManager {
      * Script: JVM kapandıktan sonra ana JAR'ı taşır ve uygulamayı yeniden başlatır.
      */
     public File writeLauncherScript(String jarName, String jvmArgs) throws IOException {
+        return writeLauncherScript(jarName, jvmArgs, true);
+    }
+
+    /**
+     * @param restart false → script dosyaları taşır ama uygulamayı yeniden açmaz
+     *                (kullanıcı uygulamayı kapatırken bekleyen güncellemenin kurulması).
+     */
+    public File writeLauncherScript(String jarName, String jvmArgs, boolean restart) throws IOException {
         boolean isWindows = System.getProperty("os.name", "")
                 .toLowerCase().contains("win");
         return isWindows
-                ? writeBatScript(jarName, jvmArgs)
-                : writeShScript(jarName, jvmArgs);
+                ? writeBatScript(jarName, jvmArgs, restart)
+                : writeShScript(jarName, jvmArgs, restart);
     }
 
     /** Launcher script'i başlatır. Ardından Servicio.shutdown() çağrılmalıdır. */
@@ -639,8 +647,8 @@ public class UpdateManager {
         return "start \"\" \"" + exe[0] + "\"" + (args.isEmpty() ? "" : " " + args);
     }
 
-    private File writeBatScript(String jarName, String jvmArgs) throws IOException {
-        String startCmd = buildRestartCommand(jarName, jvmArgs, true, !appRootWritable);
+    private File writeBatScript(String jarName, String jvmArgs, boolean restart) throws IOException {
+        String startCmd = restart ? buildRestartCommand(jarName, jvmArgs, true, !appRootWritable) : "";
 
         if (appRootWritable) {
             File   script = new File(appRoot, "update-restart.bat");
@@ -709,8 +717,8 @@ public class UpdateManager {
         return script;
     }
 
-    private File writeShScript(String jarName, String jvmArgs) throws IOException {
-        String javaCmd = buildRestartCommand(jarName, jvmArgs, false, false);
+    private File writeShScript(String jarName, String jvmArgs, boolean restart) throws IOException {
+        String javaCmd = restart ? buildRestartCommand(jarName, jvmArgs, false, false) : "";
 
         if (appRootWritable) {
             File   script = new File(appRoot, "update-restart.sh");

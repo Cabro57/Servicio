@@ -253,16 +253,25 @@ public class FormManager {
      * modal olması sayesinde üzerinde çalışılan form kapanmıyor.
      */
     public static void showSettings() {
+        showSettings(null);
+    }
+
+    /** Ayarları belirli bir sayfada ("Grup/Başlık") açar; null ise son açılan sayfada. */
+    public static void showSettings(String pageId) {
+        if (ModalDialog.isIdExist(SettingsModal.MODAL_ID)) return;
         AppModal.showModal(frame,
-                new SimpleModalBorder(new SettingsModal(), "Ayarlar"),
+                new SimpleModalBorder(pageId != null ? new SettingsModal(pageId) : new SettingsModal(), "Ayarlar"),
                 ModalDialog.createOption(),
                 SettingsModal.MODAL_ID
         );
     }
 
+    public static final String ABOUT_MODAL_ID = "app-about";
+
     public static void showAbout() {
+        if (ModalDialog.isIdExist(ABOUT_MODAL_ID)) return;
         ModalDialog.showModal(frame, new SimpleModalBorder(new About(), "Hakkında"),
-                ModalDialog.createOption().setAnimationEnabled(false)
+                ModalDialog.createOption().setAnimationEnabled(false), ABOUT_MODAL_ID
         );
     }
 }

@@ -13,7 +13,7 @@ import tr.cabro.servicio.model.enums.BackupMode;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.i18n.AppLocale;
 import tr.cabro.servicio.settings.AppSettings;
-import tr.cabro.servicio.updater.UpdateChecker;
+import tr.cabro.servicio.updater.UpdateService;
 
 import javax.swing.*;
 import java.awt.*;
@@ -41,7 +41,7 @@ public final class Servicio {
     @Getter private MainUI frame;
     @Getter private static final Logger logger = LoggerFactory.getLogger(Servicio.class);
     @Getter private static InactivityMonitor inactivityMonitor;
-    @Getter private final UpdateChecker updateChecker;
+    @Getter private final UpdateService updateService;
 
     private boolean running = false;
     private String appVersion = null;
@@ -71,9 +71,8 @@ public final class Servicio {
         AppLocale.init();
 
         // ── Güncelleme kontrolü (bloklamaz) ───────────────────────────────────
-        splash.updateMessage("Güncelleme kontrol ediliyor...");
-        updateChecker = new UpdateChecker();
-        updateChecker.checkOnSplash(splash);
+        updateService = new UpdateService();
+        updateService.checkOnSplash(splash);
 
         // ── Veritabanı ────────────────────────────────────────────────────────
         splash.updateMessage("Veritabanı bağlantısı kuruluyor...");
@@ -114,19 +113,8 @@ public final class Servicio {
             // Splash kapat
             splash.dispose();
 
-            // Periyodik güncelleme kontrolünü başlat
-            updateChecker.startPeriodicCheck(frame);
-
-            // Splash kontrolünden kalan güncelleme var mı?
-            // hasPendingUpdate() true ise MainUI kendi içinde
-            // Servicio.getInstance().getUpdateChecker().getPendingUpdate()
-            // ile manifesti alır ve diyaloğu gösterir.
-            if (updateChecker.hasPendingUpdate()) {
-                logger.info("Splash'ten bekleyen güncelleme var: v{}",
-                updateChecker.getPendingUpdate().getVersion());
-                // MainUI bu bilgiyle istediği UI'yi gösterebilir.
-                // Örnek: frame.showUpdateNotification();
-            }
+            // Periyodik sessiz güncelleme denetimi; sonuç yalnızca alt çubukta gösterilir.
+            updateService.startAutomaticChecks();
         });
     }
 
@@ -146,13 +134,16 @@ public final class Servicio {
             AppSettings.save();
 
             if (inactivityMonitor != null) inactivityMonitor.stop();
-            if (updateChecker     != null) updateChecker.stop();
+            if (updateService     != null) updateService.stop();
             BackupScheduler.stop();
             DeviceAccessPurgeScheduler.stop();
 
             runBackupIfNeeded(BackupMode.ON_EXIT, BackupMode.ON_START_AND_EXIT);
 
             DatabaseManager.shutdown();
+
+            // İndirilmiş ama "Sonra" denmiş güncelleme: yeniden açmadan kur, bir sonraki açılışta hazır olsun.
+            if (updateService != null) updateService.installOnExitIfReady();
 
             logger.info("Güle güle!");
             System.exit(0);

@@ -14,8 +14,8 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
 /**
- * Uygulamanın her yerinden erişilen sık işlemler: ana sayfadaki kısayol şeridi, başlıktaki
- * "Yeni" menüsü, komut paleti (Ctrl+K) ve Alt+harf klavye kısayolları hepsi bu tek listeden beslenir.
+ * Uygulamanın her yerinden erişilen sık işlemler: ana sayfadaki kısayol şeridi, Ayarlar > Klavye kısayolları,
+ * komut paleti (Ctrl+K) ve Alt+harf klavye kısayolları hepsi bu tek listeden beslenir.
  * <p>
  * Kısayollar Alt+harf seçildi: F1–F8 ve Ctrl+T/W/I POS ekranına, Ctrl+1..6 müşteri detayına ait.
  */

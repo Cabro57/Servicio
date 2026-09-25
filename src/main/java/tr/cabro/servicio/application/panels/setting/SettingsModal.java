@@ -67,6 +67,12 @@ public class SettingsModal extends JPanel {
     private JLabel savedLabel;
     private Timer savedTimer;
 
+    /** Belirli bir sayfada ("Grup/Başlık") açılır; ör. alt çubuktan Ayarlar &gt; Güncelleme. */
+    public SettingsModal(String pageId) {
+        this();
+        pages.stream().filter(p -> p.id().equals(pageId)).findFirst().ifPresent(this::selectPage);
+    }
+
     public SettingsModal() {
         buildPages();
         initComponent();
@@ -84,6 +90,9 @@ public class SettingsModal extends JPanel {
         page("Uygulama", "Ses", "Bildirim seslerini aç/kapat, seviyesini ayarla ve dinle.", "volume-2.svg",
                 "ses bildirim sessiz zil hoparlör seviye volume tahsilat uyarı",
                 SettingsSoundPanel::new);
+        page("Uygulama", "Klavye kısayolları", "Tüm kısayolların listesi. Salt bilgi; kısayollar değiştirilemez.", "keyboard.svg",
+                "kısayol klavye tuş alt ctrl f1 f2 pos kısa yol",
+                SettingsShortcutsPanel::new);
 
         page("İşletme", "İşletme Bilgileri", "Belgelerin antedinde ve fişlerde görünen işletme bilgileri.", "store.svg",
                 "ad telefon adres logo antet firma şirket işletme",
@@ -117,6 +126,9 @@ public class SettingsModal extends JPanel {
         page("Sistem", "Yedekleme", "Veritabanı yedekleri, otomatik yedekleme ve geri yükleme.", "database-backup.svg",
                 "yedek yedekleme geri yükle klasör veritabanı",
                 SettingsDatabasePanel::new);
+        page("Sistem", "Güncelleme", "Yüklü sürüm, yeni sürüm denetimi ve otomatik denetim.", "circle-arrow-up.svg",
+                "güncelleme sürüm versiyon yeni indir denetle kontrol otomatik atla yama",
+                SettingsUpdatePanel::new);
     }
 
     private void page(String group, String title, String description, String icon, String keywords,

@@ -5,6 +5,7 @@ import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.util.ColorFunctions;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import lombok.Getter;
+import net.miginfocom.swing.MigLayout;
 import raven.extras.AvatarIcon;
 import raven.modal.drawer.DrawerPanel;
 import raven.modal.drawer.item.Item;
@@ -125,9 +126,15 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         });
     }
 
+    /**
+     * Menü başlığı: avatar + işletme adı (tık: profil) ve sağda ekranı kilitleme
+     * düğmesi. Dar (ikon) modda yalnızca avatar kalır.
+     */
     @Override
     public AbstractMenuElement createHeader() {
         return new SimpleHeader(getSimpleHeaderData()) {
+            private JPanel sessionActions;
+
             {
                 setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                 setToolTipText("Profil Ayarları");
@@ -138,7 +145,42 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                     }
                 });
             }
+
+            @Override
+            protected void initComponent() {
+                super.initComponent();
+                layout.setLayoutConstraints("hidemode 3,insets 15 15 5 10,gap 10");
+                layout.setColumnConstraints("[][grow,fill][]");
+                layout.setComponentConstraints(panel, "wmin 0");
+
+                sessionActions = new JPanel(new MigLayout("insets 0,gap 0", "[]", "[center]"));
+                sessionActions.setOpaque(false);
+                sessionActions.add(sessionButton("icons/lock.svg", "Ekranı kilitle",
+                        "Açık pencereler ve yazdıklarınız kilit açılınca aynen geri gelir",
+                        tr.cabro.servicio.application.system.FormManager::lockForInactivity));
+                add(sessionActions, "aligny center");
+            }
+
+            @Override
+            protected void layoutOptionChanged(MenuOption.MenuOpenMode menuOpenMode) {
+                super.layoutOptionChanged(menuOpenMode);
+                boolean full = menuOpenMode == MenuOption.MenuOpenMode.FULL;
+                if (full) layout.setColumnConstraints("[][grow,fill][]");
+                if (sessionActions != null) sessionActions.setVisible(full);
+            }
         };
+    }
+
+    private static JButton sessionButton(String icon, String name, String tooltip, Runnable action) {
+        JButton b = new JButton(new tr.cabro.servicio.application.utils.Ikon(icon, 16, "Label.disabledForeground"));
+        b.setRolloverIcon(new tr.cabro.servicio.application.utils.Ikon(icon, 16, "Label.foreground"));
+        b.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+        b.putClientProperty(FlatClientProperties.STYLE, "arc:10;margin:6,6,6,6;toolbar.hoverBackground:fade($Label.foreground,6%)");
+        b.setToolTipText(name + " — " + tooltip);
+        b.getAccessibleContext().setAccessibleName(name);
+        b.setFocusable(false);
+        b.addActionListener(e -> action.run());
+        return b;
     }
 
     @Override

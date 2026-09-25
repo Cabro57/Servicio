@@ -10,7 +10,7 @@ import java.net.URL;
  * <p>
  * Progress bar kullanılmıyor — sadece mesaj metni güncelleniyor.
  * Güncelleme bildirim UI'si buradan kaldırıldı;
- * UpdateChecker non-blocking çalışır, sonuç MainUI tarafından işlenir.
+ * UpdateService non-blocking çalışır, sonuç alt çubuktaki göstergede görünür.
  */
 public class AppSplashScreen extends JWindow {
 

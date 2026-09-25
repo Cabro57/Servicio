@@ -130,6 +130,9 @@ public class AppConfig {
 
         /** Kullanıcının "bu sürümü atla" dediği sürüm; bu sürüm için tekrar bildirim gösterilmez. */
         private String skippedVersion;
+
+        /** Açılışta ve belirli aralıklarla sessizce denetle; yeni sürüm yalnızca alt çubukta gösterilir. */
+        private boolean autoCheck = true;
     }
 
     /** Yazdırma tercihleri — fiş yazıcısı makineye bağlı olduğu için burada. */
