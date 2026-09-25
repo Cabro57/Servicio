@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.component.table;
 
+import tr.cabro.servicio.model.enums.CategoryScope;
 import tr.cabro.servicio.application.tablemodal.ColumnDef.Option;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.service.ServiceManager;
@@ -35,8 +36,9 @@ public final class Lookups {
                 .collect(Collectors.toList()));
     }
 
-    public static Supplier<CompletableFuture<List<Option>>> partCategories() {
-        return () -> ServiceManager.getPartCategoryManager().getAll().thenApply(list -> list.stream()
+    /** {@code catalog} (PART ya da PRODUCT) ekranında seçilebilen kategoriler. */
+    public static Supplier<CompletableFuture<List<Option>>> categories(CategoryScope catalog) {
+        return () -> ServiceManager.getPartCategoryManager().getFor(catalog, null).thenApply(list -> list.stream()
                 .map(c -> new Option(c.getId(), c.getName()))
                 .collect(Collectors.toList()));
     }

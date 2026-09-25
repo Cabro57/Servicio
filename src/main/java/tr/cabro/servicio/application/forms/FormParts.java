@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.model.enums.CategoryScope;
 import tr.cabro.servicio.application.utils.Toasts;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.application.component.table.Lookups;
@@ -171,7 +172,7 @@ public class FormParts extends AbstractTableForm {
     protected void setupTable() {
         List<ColumnDef<Part>> columns = Arrays.asList(
                 new ColumnDef<Part>("Parça", Part.class, p -> p).alignment(SwingConstants.LEADING)
-                        .lookupFilter("p.category_id", Lookups.partCategories()),
+                        .lookupFilter("p.category_id", Lookups.categories(CategoryScope.PART)),
                 new ColumnDef<Part>("SKU", String.class, Part::getBarcode).alignment(SwingConstants.LEADING),
                 new ColumnDef<Part>("Tedarikçi", String.class, p -> p.getSupplier() != null ? (p.getSupplier().getBusinessName() != null && !p.getSupplier().getBusinessName().isBlank() ? p.getSupplier().getBusinessName() : p.getSupplier().getName()) : "—")
                         .alignment(SwingConstants.LEADING).lookupFilter("p.supplier_id", Lookups.suppliers()),

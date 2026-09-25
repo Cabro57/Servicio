@@ -296,15 +296,18 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
             return;
         }
 
-        DialogHelper.confirmDelete(this, "confirm.restore.backup", () -> {
-            DatabaseManager.restore(selected);
-
-            // Tüm formları sıfırla — eski cached data'yı temizle
-            SwingUtilities.invokeLater(() -> {
-                FormManager.lock(); // Kilit ekranına at, stack temizlensin
-                DialogHelper.info(this, "backup.restore.done");
-            });
-        });
+        DictionaryDialogs.confirm(this, "Yedek geri yüklensin mi?",
+                "Şu anki veriler \"" + selected.getName() + "\" yedeğindeki haliyle değiştirilir. Yedekten sonra girilen "
+                        + "kayıtlar kaybolur; bu işlem geri alınamaz. Emin değilseniz önce \"Şimdi yedekle\" ile güncel bir yedek alın.",
+                "Geri yükle", () -> {
+                    // Bilerek EDT'de: geri yükleme sürerken başka ekranlar kapanan havuza sorgu atmasın.
+                    DatabaseManager.restore(selected);
+                    return java.util.concurrent.CompletableFuture.completedFuture(null);
+                }, () -> {
+                    // Tüm formları sıfırla — eski cached data'yı temizle
+                    FormManager.lock(); // Kilit ekranına at, stack temizlensin
+                    DialogHelper.info(this, "backup.restore.done");
+                });
     }
 
     private void chooseFolder() {

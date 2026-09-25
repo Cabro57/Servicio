@@ -12,7 +12,6 @@ import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.enums.TemplateType;
 import tr.cabro.servicio.service.DocumentTemplateService;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.util.TemplateEngine;
@@ -282,13 +281,13 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
     private void delete() {
         if (current == null || current.getId() == null) return;
         DocumentTemplate t = current;
-        DialogHelper.confirmDelete(this, "confirm.delete.template", () ->
-                        templateService.delete(t.getId()).thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.template.deleted"));
-                            current = null;
-                            refreshList(null);
-                        })).exceptionally(ex -> ErrorHandler.handle(this, "Şablon silinemedi", ex)),
-                t.getName());
+        DictionaryDialogs.confirm(this, "\"" + t.getName() + "\" silinsin mi?",
+                "Şablon hazır mesajlar listesinden kalkar. Daha önce gönderilmiş mesajlar etkilenmez.",
+                "Sil", () -> templateService.delete(t.getId()), () -> {
+                    Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.template.deleted"));
+                    current = null;
+                    refreshList(null);
+                });
     }
 
     // -------------------------------------------------------------------------

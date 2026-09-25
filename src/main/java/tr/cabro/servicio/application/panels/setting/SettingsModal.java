@@ -107,15 +107,15 @@ public class SettingsModal extends JPanel {
                 "mesaj whatsapp şablon bildirim",
                 SettingsTemplatesPanel::new);
 
-        page("Sözlükler", "Cihazlar", "Arıza kaydında seçilen cihaz türleri ve her türün markaları.", "tablet-smartphone.svg",
-                "cihaz tür marka telefon tablet",
+        page("Sözlükler", "Cihazlar", "Cihaz türleri ve her türün markaları. Kullanılan kayıt silinirken başka birine taşınır.", "tablet-smartphone.svg",
+                "cihaz tür marka telefon tablet birleştir",
                 SettingsDevicePanel::new);
         page("Sözlükler", "Tamirler", "Cihaz türüne göre hazır işçilik kalemleri ve fiyatları.", "wrench.svg",
                 "tamir işçilik fiyat onarım",
                 SettingsRepairPanel::new);
-        page("Sözlükler", "Parça Kategorileri", "Stok ve parça ekranlarında seçilen kategoriler.", "tag.svg",
-                "kategori parça stok",
-                SettingsPartCategoryPanel::new);
+        page("Sözlükler", "Kategoriler", "Parça ve ürün ekranlarında seçilen kategoriler.", "tag.svg",
+                "kategori parça ürün stok pos",
+                SettingsCategoryPanel::new);
         page("Sözlükler", "Döviz Kurları", "Dövizli parça fiyatlarını TL'ye çevirirken kullanılan kurlar.", "banknote.svg",
                 "kur döviz dolar euro sterlin tcmb",
                 SettingsExchangeRatePanel::new);

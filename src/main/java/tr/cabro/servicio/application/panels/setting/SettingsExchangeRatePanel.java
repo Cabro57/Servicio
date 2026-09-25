@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.component.FormKit;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -12,7 +13,6 @@ import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.dictionary.ExchangeRate;
 import tr.cabro.servicio.service.ExchangeRateManager;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
@@ -177,23 +177,38 @@ public class SettingsExchangeRatePanel extends JPanel implements SettingsModal.H
         });
     }
 
+    /** Elle kur girişi: tek alan, virgül ya da nokta kabul edilir; hata alanın altında. */
     private void onEdit(ExchangeRate rate) {
-        String currentValue = rate.getRate() != null && rate.getRate().signum() > 0 ? rate.getRate().toPlainString() : "";
-        DialogHelper.prompt(this, "exchangeRate.edit.title", "exchangeRate.edit.label", currentValue, input -> {
-            if (input == null || input.trim().isEmpty()) return;
-
-            BigDecimal rateValue;
+        String code = rate.getCurrencyCode();
+        SettingsDialog d = new SettingsDialog("1 " + code + " kaç TL?", 380);
+        d.lead("Elle girilen kur, TCMB'den yeniden güncellenene kadar dövizli parça fiyatlarında kullanılır.");
+        JTextField field = new JTextField(rate.getRate() != null && rate.getRate().signum() > 0 ? rate.getRate().toPlainString() : "");
+        field.setHorizontalAlignment(SwingConstants.RIGHT);
+        field.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, new JLabel("TL  "));
+        JLabel error = FormKit.errorLabel();
+        d.body().add(FormKit.cell("Kur", field, error), "span 2");
+        d.primary("Kaydet", false, () -> {
+            BigDecimal value;
             try {
-                rateValue = new BigDecimal(input.trim().replace(',', '.'));
+                value = new BigDecimal(field.getText().trim().replace(',', '.'));
             } catch (NumberFormatException ex) {
-                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.exchangeRate.invalidNumber"));
+                FormKit.fail(field, error, "Sayı girin, örn. 34,25");
                 return;
             }
-
-            exchangeRateManager.setManualRate(rate.getCurrencyCode(), rateValue).thenAccept(v -> SwingUtilities.invokeLater(() -> {
+            if (value.signum() <= 0) {
+                FormKit.fail(field, error, "Kur sıfırdan büyük olmalı.");
+                return;
+            }
+            d.busy();
+            exchangeRateManager.setManualRate(code, value).thenAccept(v -> SwingUtilities.invokeLater(() -> {
+                d.close();
                 SettingsKit.saved(this);
                 refreshList();
-            })).exceptionally(ex -> ErrorHandler.handle(this, "Kur güncellenemedi", ex));
-        }, rate.getCurrencyCode());
+            })).exceptionally(ex -> {
+                SwingUtilities.invokeLater(d::idle);
+                return ErrorHandler.handle(this, "Kur güncellenemedi", ex);
+            });
+        });
+        d.show(this, field);
     }
 }

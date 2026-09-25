@@ -96,18 +96,6 @@ final class SettingsKit {
         return p;
     }
 
-    /**
-     * Sözlük listelerinin kaydırma alanı. Tercih edilen yükseklik bilerek küçük: liste sayfayı
-     * uzatmasın, sayfa pencereyi doldursun ve uzun liste kendi içinde kaysın.
-     */
-    static JScrollPane listScroll(JList<?> list) {
-        JScrollPane scroll = new JScrollPane(list);
-        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.setPreferredSize(new Dimension(200, 200));
-        return scroll;
-    }
-
     /** Sayfa başlığındaki eylem düğmesi (Ekle, Şimdi yedekle…). */
     static JButton headerButton(String text, String iconPath) {
         JButton b = new JButton(text, iconPath != null ? new Ikon(iconPath, 16) : null);

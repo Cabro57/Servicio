@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import tr.cabro.servicio.model.enums.CategoryScope;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
@@ -66,6 +67,9 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
 
     /** "Parça" / "Ürün" — mesajlarda kullanılır. */
     protected abstract String itemNoun();
+
+    /** Kategori listesinin kapsamı: parça ekranında PART, ürün ekranında PRODUCT. */
+    protected abstract CategoryScope categoryScope();
 
     /** Barkodu kullanan kaydı arar: bulunursa {@code [id, ad]}. */
     protected abstract CompletableFuture<Optional<Object[]>> findByBarcode(String barcode);
@@ -262,7 +266,7 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
     // -------------------------------------------------------------------------
 
     protected void loadCategories(Long selectedCategoryId) {
-        ServiceManager.getPartCategoryManager().getAll().thenAccept(categories -> SwingUtilities.invokeLater(() -> {
+        ServiceManager.getPartCategoryManager().getFor(categoryScope(), selectedCategoryId).thenAccept(categories -> SwingUtilities.invokeLater(() -> {
             categoryCombo.removeAllItems();
             categoryCombo.addItem(null);
             PartCategory target = null;
@@ -280,7 +284,7 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
     private void onAddCategory() {
         DialogHelper.prompt(this, "category.add.title", "category.add.label", "", name -> {
             if (name == null || name.trim().isEmpty()) return;
-            ServiceManager.getPartCategoryManager().add(name.trim()).thenAccept(id ->
+            ServiceManager.getPartCategoryManager().add(name.trim(), categoryScope()).thenAccept(id ->
                     loadCategories((long) id)
             ).exceptionally(ex -> ErrorHandler.handle(this, "Kategori eklenemedi", ex));
         });

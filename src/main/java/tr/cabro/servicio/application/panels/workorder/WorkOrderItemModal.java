@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.workorder;
 
+import tr.cabro.servicio.model.enums.CategoryScope;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -880,7 +881,7 @@ public class WorkOrderItemModal extends JPanel {
             applyFilters();
         })).exceptionally(ex -> ErrorHandler.handle(this, "Parçalar yüklenemedi", ex));
 
-        ServiceManager.getPartCategoryManager().getAll().thenAccept(categories -> SwingUtilities.invokeLater(() -> {
+        ServiceManager.getPartCategoryManager().getFor(CategoryScope.PART, null).thenAccept(categories -> SwingUtilities.invokeLater(() -> {
             populating = true;
             categories.forEach(c -> cmbCategory.addItem(c.getName()));
             populating = false;

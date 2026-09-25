@@ -19,9 +19,8 @@ public class LaborService {
     }
 
     public CompletableFuture<Labor> save(Labor labor, boolean updated) {
-        validateLabor(labor);
-
         return CompletableFuture.supplyAsync(() -> {
+            validateLabor(labor);
             if (updated) {
                 repository.update(labor);
             } else {

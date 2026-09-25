@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import tr.cabro.servicio.model.enums.CategoryScope;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import tr.cabro.servicio.Servicio;
@@ -31,6 +32,11 @@ public class PartEditPanel extends CatalogItemEditPanel<Part> {
     @Override
     protected String itemNoun() {
         return "Parça";
+    }
+
+    @Override
+    protected CategoryScope categoryScope() {
+        return CategoryScope.PART;
     }
 
     @Override

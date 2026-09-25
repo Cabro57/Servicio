@@ -158,7 +158,7 @@ The palette is the active FlatLaf theme plus semantic and surface keys defined p
 - **Hairline** (`$Component.borderColor`): card border, table row lines and keycap outline.
 
 ### Named Rules
-**The One Accent Rule.** A screen carries at most one accent-filled action (home "Yeni Servis", list page "Yeni …", detail page primary); the only other accent fill is the selected state of a segmented filter (period toggles, view tabs). The header "Yeni" menu button is deliberately unfilled.
+**The One Accent Rule.** A screen carries at most one accent-filled action (home "Yeni Servis", list page "Yeni …", detail page primary); the only other accent fill is the selected state of a segmented filter (period toggles, view tabs). The header "Yeni" menu button is deliberately unfilled. A confirmation window whose one action cannot be undone (Sil, Taşı ve sil, Birleştir, Geri yükle) fills that action with `$Servicio.dangerColor` instead of the accent, text in `$Servicio.onDangerForeground`.
 
 **The On-Accent Rule.** Anything drawn on an accent fill (label, icon, keycap, selected tab text) uses `$Servicio.onAccentForeground`, never `Button.default.foreground` or a fixed white.
 
@@ -241,6 +241,12 @@ Rounded, soft rectangles on a fixed radius ladder: keycap 6, controls/toggles/vi
 
 ### List Table
 `ListTable` styled by `TableStyler.applyStandardStyle`: 48px rows, horizontal hairlines only, 34px header in muted −1 regular. The whole row is the target: hover paints `rowHoverBackground`, a single click or Enter opens the record, and the cursor is a hand. Row action buttons render only on the hovered or selected row; settings dictionary lists follow the same hover-reveal. Two-line cells put the bold name over a muted −1 secondary line. Money cells use `MoneyCellRenderer` (see The Sign Rule). Empty, loading and no-result states render inside the card through `TableStatePanel`.
+
+### Dictionary List
+`DictionaryList` (settings dictionaries: device types, brands, labors, categories). Rows at 10px arc, insets 7 12 7 6: bold name over a muted −1 subtitle, a −1 usage figure on the right (muted when zero: "cihaz yok", "kullanılmıyor"), then row actions revealed on hover or selection. The trash action turns danger on hover. The list draws no card; the page puts it in a `listCard`. Two modes: master (click selects, the right pane follows) and record (click or Enter opens the edit window). Keys: ↑/↓, Enter, F2 rename, Delete. Search filters with Turkish letters folded ("sarj" finds "Şarj").
+
+### Settings Window
+`SettingsDialog` is the shell of every window opened from Ayarlar. The raven title bar sits on top. Under it: an optional muted lead sentence, a two-column `FormKit.cell` grid, and a footer with a muted status line left, "Vazgeç" and one primary right. Enter runs the primary, except in a text area or an open combo. Validation errors stay under the field and the window stays open. A dictionary record in use is never deleted outright: the delete window lists its impact (icon plus count lines) and asks "Nereye taşınsın?". The same window merges duplicates, and a rename to an existing name opens it.
 
 ### Identity Bar
 `DetailHeader` in a `listCard` (insets 14 16 14 20): back arrow; record title with badges, and a muted meta line joined by "   ·   "; a stat trio (muted −1 caption over bold +5 value, right-aligned, colored only when meaningful); secondary actions; the primary last. An optional bold danger warning line with an alert icon sits beneath.
