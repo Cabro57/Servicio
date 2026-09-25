@@ -220,6 +220,16 @@ public class FormManager {
         pendingModals = null;
     }
 
+    /** Kilit ekranı için: açılış girişi mi, yoksa açık bir oturumun kilidi mi? */
+    public static boolean hasOpenSession() {
+        return FORMS.getCurrent() != null;
+    }
+
+    /** Kilitlenirken yakalanmış, kilit açılınca geri gelecek pencere sayısı. */
+    public static int pendingModalCount() {
+        return pendingModals == null ? 0 : pendingModals.size();
+    }
+
     /** Ana form; modalların sahibi olarak kullanılır (ör. Alt+T tahsilat penceresi). */
     public static MainForm getMainForm() {
         if (mainForm == null) {
