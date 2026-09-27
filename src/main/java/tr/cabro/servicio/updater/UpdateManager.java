@@ -383,59 +383,64 @@ public class UpdateManager {
     /** Launcher script'i başlatır. Ardından Servicio.shutdown() çağrılmalıdır. */
     public void launchAndExit(File script) throws IOException {
         String pid = getCurrentPid();
-        log.info("Launcher başlatılıyor: {}  PID={}", script.getName(), pid);
+        File logFile = restartLogFile();
+        Files.deleteIfExists(logFile.toPath()); // yalnızca son çalıştırma tutulur
+        log.info("Launcher başlatılıyor: {}  PID={}  günlük={}", script, pid, logFile);
 
         boolean isWindows = System.getProperty("os.name", "")
                 .toLowerCase().contains("win");
 
+        ProcessBuilder pb = isWindows
+                // .bat gizli (pencere stili 0) VBS sarmalayıcısıyla, kullanıcının normal yetkisiyle
+                // çalışır; yönetici izni gerekiyorsa yalnızca dosya taşıma adımı için UAC istenir.
+                ? new ProcessBuilder("wscript.exe", writeHiddenLauncherVbs(script, pid).getAbsolutePath())
+                : new ProcessBuilder("sh", script.getAbsolutePath(), pid);
+        pb.directory(script.getParentFile());
+        // Çıktı JVM'e pipe edilmez: JVM kapandıktan sonra kırık pipe'a yazan süreçler ölmesin.
+        // Windows'ta .bat günlüğe kendisi yazar; açık bir tanıtıcı devralınırsa cmd'nin ">>"
+        // yönlendirmesi paylaşım hatası verir, o yüzden orada çıktı atılır.
+        pb.redirectErrorStream(true);
         if (isWindows) {
-            File vbs = writeHiddenLauncherVbs(script, pid);
-            if (appRootWritable) {
-                // appRoot yazılabilir → yükseltme gerekmez, gizli (pencere stili 0)
-                // wscript sarmalayıcısıyla doğrudan çalıştır.
-                ProcessBuilder pb = new ProcessBuilder("wscript.exe", vbs.getAbsolutePath());
-                pb.directory(appRoot);
-                pb.start();
-            } else {
-                // appRoot (ör. Program Files) admin olmayan kullanıcıyla yazılamıyor →
-                // VBS'i ShellExecute "runas" ile başlatarak tek seferlik UAC istemi tetiklenir;
-                // script bu izinle appRoot'a dosya taşıyabilir.
-                ProcessBuilder pb = new ProcessBuilder("wscript.exe", vbs.getAbsolutePath());
-                pb.directory(tempDir);
-                pb.start();
-            }
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
         } else {
-            ProcessBuilder pb = new ProcessBuilder("sh", script.getAbsolutePath(), pid);
-            pb.directory(appRootWritable ? appRoot : tempDir);
-            pb.start();
+            pb.redirectOutput(ProcessBuilder.Redirect.appendTo(logFile));
+            pb.redirectInput(ProcessBuilder.Redirect.from(new File("/dev/null")));
         }
+        pb.start();
     }
 
     /**
      * .bat launcher'ını gizli (pencere stili 0) çalıştıran VBS sarmalayıcı üretir.
      * Böylece güncelleme sırasında hiçbir konsol penceresi görünmez.
-     * <p>
-     * appRoot yazılamıyorsa (ör. Program Files kurulumu), Shell.Application'ın
-     * ShellExecute "runas" fiiliyle çalıştırılır — bu, tek seferlik bir UAC istemi
-     * tetikler ve .bat script'i yönetici izniyle çalışır (dosyaları appRoot'a taşıyabilir).
      * VBS dosyasını .bat kendini silmeden önce siler (writeBatScript).
      */
     private File writeHiddenLauncherVbs(File batScript, String pid) throws IOException {
-        File vbs = new File(appRootWritable ? appRoot : tempDir, "update-restart.vbs");
+        File vbs = new File(batScript.getParentFile(), "update-restart.vbs");
         // VBS string literali için tırnakları ikiye katla
         String batPath = batScript.getAbsolutePath().replace("\"", "\"\"");
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 Files.newOutputStream(vbs.toPath()), StandardCharsets.UTF_8))) {
-            if (appRootWritable) {
-                pw.println("Set WshShell = CreateObject(\"WScript.Shell\")");
-                pw.println("WshShell.Run \"cmd /c \"\"" + batPath + "\"\" " + pid + "\", 0, False");
-            } else {
-                pw.println("Set objShell = CreateObject(\"Shell.Application\")");
-                pw.println("objShell.ShellExecute \"cmd.exe\", \"/c \"\"" + batPath
-                        + "\"\" " + pid + "\", \"\", \"runas\", 0");
-            }
+            pw.println("Set WshShell = CreateObject(\"WScript.Shell\")");
+            pw.println("WshShell.Run \"cmd /c \"\"" + batPath + "\"\" " + pid + "\", 0, False");
         }
         return vbs;
+    }
+
+    /**
+     * Script'lerin yazıldığı klasör. appRoot yazılamıyorsa veri klasörü ({@code .servicio}) —
+     * asla {@code update-tmp}'nin içi değil: script o klasörü silerken kendini de silmemeli.
+     */
+    private File scriptDir() {
+        return appRootWritable ? appRoot : tempDir.getParentFile();
+    }
+
+    /** Son güncelleme script'inin günlüğü: {@code .servicio/logs/update-restart.log}. */
+    private static File restartLogFile() {
+        String base = System.getProperty("servicio.baseDir");
+        File logs = new File(new File(base != null ? new File(base) : DataDirResolver.resolveBaseFolder(),
+                ".servicio"), "logs");
+        logs.mkdirs();
+        return new File(logs, "update-restart.log");
     }
 
     public void cancel() { cancelRequested = true; }
@@ -631,24 +636,25 @@ public class UpdateManager {
         return new String[]{java.isFile() ? java.getAbsolutePath() : (windows ? "javaw" : "java"), "false"};
     }
 
-    private static String buildRestartCommand(String jarName, String jvmArgs, boolean windows, boolean elevated) {
+    /**
+     * Uygulamayı açan komut. Script her zaman kullanıcının normal yetkisiyle çalıştığı için
+     * uygulama da yönetici olarak açılmaz. Linux'ta script bittikten sonra da yaşaması ve
+     * çıktısının hiçbir yere bağlı kalmaması için nohup + /dev/null.
+     */
+    private static String buildRestartCommand(String jarName, String jvmArgs, boolean windows) {
         String[] exe = resolveRestartExecutable(windows);
         boolean nativeLauncher = Boolean.parseBoolean(exe[1]);
         String args = nativeLauncher ? ""
                 : ((jvmArgs != null && !jvmArgs.isEmpty() ? jvmArgs + " " : "") + "-jar \"" + jarName + "\"");
-        if (!windows) {
-            return "\"" + exe[0] + "\"" + (args.isEmpty() ? "" : " " + args) + " &";
-        }
-        if (elevated && nativeLauncher) {
-            // Script UAC ile yönetici olarak çalışıyor; uygulamanın da yönetici olarak açılmaması için
-            // explorer üzerinden (kullanıcının normal yetkisiyle) başlatılır.
-            return "start \"\" explorer.exe \"" + exe[0] + "\"";
-        }
-        return "start \"\" \"" + exe[0] + "\"" + (args.isEmpty() ? "" : " " + args);
+        String cmd = "\"" + exe[0] + "\"" + (args.isEmpty() ? "" : " " + args);
+        return windows
+                ? "start \"\" " + cmd
+                : "nohup " + cmd + " </dev/null >/dev/null 2>&1 &";
     }
 
     private File writeBatScript(String jarName, String jvmArgs, boolean restart) throws IOException {
-        String startCmd = restart ? buildRestartCommand(jarName, jvmArgs, true, !appRootWritable) : "";
+        String startCmd = restart ? buildRestartCommand(jarName, jvmArgs, true) : "";
+        String logPath  = restartLogFile().getAbsolutePath();
 
         if (appRootWritable) {
             File   script = new File(appRoot, "update-restart.bat");
@@ -660,7 +666,9 @@ public class UpdateManager {
                 pw.println("chcp 65001 >nul");
                 pw.println(":: Servicio Guncelleme Launcher");
                 pw.println("set OLD_PID=%1");
+                pw.println("set \"LOG=" + logPath + "\"");
                 pw.println("cd /d \"%~dp0\"");
+                pw.println("echo [%date% %time%] Eski surec bekleniyor, PID %OLD_PID% >> \"%LOG%\"");
                 pw.println("");
                 // PID ile beklenir: jpackage kurulumunda süreç adı "Servicio.exe", "java" içermez.
                 pw.println(":WAIT_JVM");
@@ -673,10 +681,11 @@ public class UpdateManager {
                 pw.println("if exist \"" + tmpJar + "\" (");
                 pw.println("    if exist \"" + jarName + ".bak\" del /f \"" + jarName + ".bak\"");
                 pw.println("    if exist \"" + jarName + "\" ren \"" + jarName + "\" \"" + jarName + ".bak\"");
-                pw.println("    move /y \"" + tmpJar + "\" \"" + jarName + "\"");
+                pw.println("    move /y \"" + tmpJar + "\" \"" + jarName + "\" >> \"%LOG%\" 2>&1");
                 pw.println(")");
                 pw.println("");
                 pw.println("if exist \".update-tmp\" rd /s /q \".update-tmp\"");
+                pw.println("echo [%date% %time%] Guncelleme kuruldu >> \"%LOG%\"");
                 pw.println("");
                 pw.println(startCmd);
                 pw.println("");
@@ -686,19 +695,40 @@ public class UpdateManager {
             return script;
         }
 
-        // appRoot yazılamıyor (ör. Program Files) → script yönetici izniyle çalıştırılacak.
-        // tüm indirilen dosyalar (ana JAR dahil) robocopy ile appRoot'a taşınır — eski JVM
-        // zaten kapanmış olduğu için ana JAR'ın da tek adımda taşınması güvenlidir.
-        File script = new File(tempDir, "update-restart.bat");
+        // appRoot yazılamıyor (ör. Program Files). İki script, ikisi de update-tmp'nin DIŞINDA:
+        //   update-install.bat → yalnızca dosya taşıma; UAC ile yönetici olarak çalışır.
+        //   update-restart.bat → kullanıcının normal yetkisiyle: eski süreci bekler, kurulumu
+        //                        yükseltilmiş başlatıp bitmesini bekler, sonra uygulamayı açar.
+        // Eskiden tek script update-tmp'nin içindeydi ve "rd update-tmp" ile kendini siliyordu;
+        // cmd batch'i satır satır diskten okuduğu için sonraki "start" satırına hiç gelinmiyor,
+        // güncelleme kurulup uygulama açılmıyordu.
+        File dir     = scriptDir();
+        File install = new File(dir, "update-install.bat");
+        // Ayrı günlük: PowerShell satırı ana günlüğü açık tuttuğu için yükseltilmiş süreç ona yazamıyor.
+        String installLog = new File(restartLogFile().getParentFile(), "update-install.log").getAbsolutePath();
+        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
+                Files.newOutputStream(install.toPath()), StandardCharsets.UTF_8))) {
+            pw.println("@echo off");
+            pw.println("chcp 65001 >nul");
+            pw.println(":: Servicio Guncelleme - dosya tasima (yonetici)");
+            pw.println("robocopy \"" + tempDir.getAbsolutePath() + "\" \"" + appRoot.getAbsolutePath() + "\""
+                    + " /E /MOVE /IS /IT /R:3 /W:1 /NFL /NDL /NJH /NJS /NP > \"" + installLog + "\" 2>&1");
+            pw.println("exit %errorlevel%");
+        }
+
+        // Start-Process -Verb RunAs: UAC istemi; reddedilirse hata fırlatır → 1223 (ERROR_CANCELLED).
+        String installPs = install.getAbsolutePath().replace("'", "''");
+        File script = new File(dir, "update-restart.bat");
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
             pw.println("@echo off");
             pw.println("chcp 65001 >nul");
-            pw.println(":: Servicio Guncelleme Launcher (yukseltilmis)");
+            pw.println(":: Servicio Guncelleme Launcher");
             pw.println("set OLD_PID=%1");
-            pw.println("set TEMPDIR=" + tempDir.getAbsolutePath());
-            pw.println("set APPROOT=" + appRoot.getAbsolutePath());
-            pw.println("cd /d \"%APPROOT%\"");
+            pw.println("set \"LOG=" + logPath + "\"");
+            pw.println("set \"TEMPDIR=" + tempDir.getAbsolutePath() + "\"");
+            pw.println("cd /d \"" + appRoot.getAbsolutePath() + "\"");
+            pw.println("echo [%date% %time%] Eski surec bekleniyor, PID %OLD_PID% >> \"%LOG%\"");
             pw.println("");
             // PID ile beklenir: jpackage kurulumunda süreç adı "Servicio.exe", "java" içermez.
             pw.println(":WAIT_JVM");
@@ -708,17 +738,35 @@ public class UpdateManager {
             pw.println("    goto WAIT_JVM");
             pw.println(")");
             pw.println("");
-            pw.println("robocopy \"%TEMPDIR%\" \"%APPROOT%\" /E /MOVE /IS /IT /R:3 /W:1 /NFL /NDL /NJH /NJS"
-                    + " /XF update-restart.bat update-restart.vbs");
-            pw.println("rd /s /q \"%TEMPDIR%\" 2>nul");
+            pw.println("echo [%date% %time%] Dosyalar yonetici izniyle tasiniyor >> \"%LOG%\"");
+            pw.println("powershell -NoProfile -ExecutionPolicy Bypass -Command \"try { $p = Start-Process -FilePath '"
+                    + installPs + "' -Verb RunAs -WindowStyle Hidden -Wait -PassThru; exit $p.ExitCode }"
+                    + " catch { Write-Output $_.Exception.Message; exit 1223 }\" >> \"%LOG%\" 2>&1");
+            pw.println("set RC=%errorlevel%");
+            pw.println("if exist \"" + installLog + "\" (");
+            pw.println("    type \"" + installLog + "\" >> \"%LOG%\"");
+            pw.println("    del /f \"" + installLog + "\"");
+            pw.println(")");
+            // robocopy: 0-7 başarı, 8+ hata
+            pw.println("if %RC% LSS 8 (");
+            pw.println("    echo [%date% %time%] Guncelleme kuruldu, kod %RC% >> \"%LOG%\"");
+            pw.println("    if exist \"%TEMPDIR%\" rd /s /q \"%TEMPDIR%\"");
+            pw.println(") else (");
+            pw.println("    echo [%date% %time%] Guncelleme kurulamadi, kod %RC% >> \"%LOG%\"");
+            pw.println(")");
             pw.println("");
             pw.println(startCmd);
+            pw.println("");
+            pw.println("if exist \"%~dp0update-restart.vbs\" del /f \"%~dp0update-restart.vbs\"");
+            pw.println("if exist \"%~dp0update-install.bat\" del /f \"%~dp0update-install.bat\"");
+            pw.println("del \"%~f0\"");
         }
         return script;
     }
 
     private File writeShScript(String jarName, String jvmArgs, boolean restart) throws IOException {
-        String javaCmd = restart ? buildRestartCommand(jarName, jvmArgs, false, false) : "";
+        String javaCmd = restart ? buildRestartCommand(jarName, jvmArgs, false) : "";
+        String stamp   = "echo \"$(date '+%Y-%m-%d %H:%M:%S')\"";
 
         if (appRootWritable) {
             File   script = new File(appRoot, "update-restart.sh");
@@ -731,36 +779,43 @@ public class UpdateManager {
                 pw.println("OLD_PID=$1");
                 pw.println("SCRIPT_DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"");
                 pw.println("cd \"$SCRIPT_DIR\"");
+                pw.println(stamp + " \"Eski surec bekleniyor, PID $OLD_PID\"");
                 pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
                 pw.println("if [ -f \"" + tmpJar + "\" ]; then");
                 pw.println("    mv -f \"" + jarName + "\" \"" + jarName + ".bak\" 2>/dev/null");
                 pw.println("    mv -f \"" + tmpJar + "\" \"" + jarName + "\"");
                 pw.println("fi");
                 pw.println("rm -rf .update-tmp");
+                pw.println(stamp + " \"Guncelleme kuruldu\"");
                 pw.println(javaCmd);
-                pw.println("rm -- \"$0\"");
+                pw.println("rm -f -- \"$0\"");
             }
             script.setExecutable(true);
             return script;
         }
 
-        // appRoot yazılamıyor → indirilenler kullanıcı veri dizininden mutlak yollarla taşınır.
-        File script = new File(tempDir, "update-restart.sh");
-        String tempDirAbs = tempDir.getAbsolutePath();
-        String appRootAbs = appRoot.getAbsolutePath();
-
+        // appRoot yazılamıyor (ör. /opt) → kopyalama pkexec ile (polkit parola istemi), uygulama
+        // yine kullanıcının normal yetkisiyle açılır. Script update-tmp'nin dışında durur.
+        File script = new File(scriptDir(), "update-restart.sh");
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(
                 Files.newOutputStream(script.toPath()), StandardCharsets.UTF_8))) {
             pw.println("#!/bin/sh");
             pw.println("# Servicio Guncelleme Launcher (appRoot yazilamiyor)");
             pw.println("OLD_PID=$1");
-            pw.println("TEMPDIR=\"" + tempDirAbs + "\"");
-            pw.println("APPROOT=\"" + appRootAbs + "\"");
+            pw.println("TEMPDIR=\"" + tempDir.getAbsolutePath() + "\"");
+            pw.println("APPROOT=\"" + appRoot.getAbsolutePath() + "\"");
             pw.println("cd \"$APPROOT\"");
+            pw.println(stamp + " \"Eski surec bekleniyor, PID $OLD_PID\"");
             pw.println("while kill -0 \"$OLD_PID\" 2>/dev/null; do sleep 1; done");
-            pw.println("cp -a \"$TEMPDIR\"/. \"$APPROOT\"/ && rm -rf \"$TEMPDIR\"");
-            pw.println("rm -f \"$APPROOT/update-restart.sh\"");
+            pw.println(stamp + " \"Dosyalar yonetici izniyle kopyalaniyor\"");
+            pw.println("if command -v pkexec >/dev/null 2>&1 && pkexec cp -rf \"$TEMPDIR\"/. \"$APPROOT\"/; then");
+            pw.println("    " + stamp + " \"Guncelleme kuruldu\"");
+            pw.println("    rm -rf \"$TEMPDIR\"");
+            pw.println("else");
+            pw.println("    " + stamp + " \"Guncelleme kurulamadi: pkexec yok ya da izin verilmedi\"");
+            pw.println("fi");
             pw.println(javaCmd);
+            pw.println("rm -f -- \"$0\"");
         }
         script.setExecutable(true);
         return script;
