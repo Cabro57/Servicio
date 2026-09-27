@@ -1,10 +1,12 @@
 package tr.cabro.servicio.application.panels.edit;
 
 import tr.cabro.servicio.model.enums.CategoryScope;
+import tr.cabro.servicio.model.enums.StockItemKind;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import tr.cabro.servicio.application.component.FormKit;
 import tr.cabro.servicio.model.Product;
+import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
@@ -21,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 public class ProductEditPanel extends CatalogItemEditPanel<Product> {
 
     private JTextField brandField;
+    private JComboBox<Supplier> wholesalerCombo;
 
     public ProductEditPanel(Product data) {
         super(data);
@@ -47,6 +50,13 @@ public class ProductEditPanel extends CatalogItemEditPanel<Product> {
         brandField = new JTextField();
         brandField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Örn. Anker, Samsung");
         grid.add(FormKit.cell("Marka", brandField, null));
+        wholesalerCombo = supplierCombo("Toptancı yok");
+        grid.add(FormKit.cell("Toptancı", wholesalerCombo, null));
+    }
+
+    @Override
+    protected StockItemKind stockKind() {
+        return StockItemKind.PRODUCT;
     }
 
     @Override
@@ -55,6 +65,7 @@ public class ProductEditPanel extends CatalogItemEditPanel<Product> {
         data.setName(nameField.getText().trim());
         data.setBrand(brandField.getText().trim());
         data.setCategoryId(selectedCategoryId());
+        data.setSupplierId(selectedSupplierId(wholesalerCombo));
 
         data.setPurchaseCurrency(priceFields.getPurchaseCurrency());
         data.setPurchasePriceOriginal(priceFields.getPurchaseOriginal());
@@ -63,7 +74,9 @@ public class ProductEditPanel extends CatalogItemEditPanel<Product> {
         data.setSalePriceOriginal(priceFields.getSaleOriginal());
         data.setSalePrice(priceFields.getSaleTry());
 
+        // Stok yalnızca yeni kayıtta açılış olarak yazılır; düzenlemede servis bu alanı yok sayar.
         data.setStockQuantity((Integer) stockSpinner.getValue());
+        data.setOpeningWarehouseId(selectedOpeningWarehouseId());
         data.setMinStockLevel((Integer) minStockSpinner.getValue());
         data.setDescription(descriptionArea.getText().trim());
         return data;
@@ -76,12 +89,14 @@ public class ProductEditPanel extends CatalogItemEditPanel<Product> {
         brandField.setText(data.getBrand() != null ? data.getBrand() : "");
         priceFields.setPurchase(data.getPurchaseCurrency(), data.getPurchasePriceOriginal(), data.getPurchasePrice());
         priceFields.setSale(data.getSaleCurrency(), data.getSalePriceOriginal(), data.getSalePrice());
+        loadSupplierCombo(wholesalerCombo, true, data.getSupplierId());
     }
 
     @Override
     public void clearForm() {
         clearCommon();
         brandField.setText("");
+        wholesalerCombo.setSelectedItem(null);
     }
 
     @Override

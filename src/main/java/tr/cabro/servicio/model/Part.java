@@ -29,8 +29,11 @@ public class Part {
 
     private Supplier supplier;
 
-    @ColumnName("warehouse_id")
-    private Long warehouseId;
+    /**
+     * DB kolonu değil: yeni kartta açılış stoğunun yazılacağı depo (null → varsayılan depo).
+     * Stoğun depo dağılımı StockService.getLevels() ile okunur.
+     */
+    private Long openingWarehouseId;
 
     @ColumnName("purchase_price")
     private BigDecimal purchasePrice = BigDecimal.ZERO;

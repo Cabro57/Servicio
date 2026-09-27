@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.QuickActionButton;
 import tr.cabro.servicio.application.panels.dashboard.ActiveServicesPanel;
@@ -111,15 +110,6 @@ public class FormDashboard extends Form {
                 new QuickActionButton(QuickAction.NEW_PART, false)
         };
         for (QuickActionButton b : buttons) panel.add(b);
-
-        // Şerit sığmıyorsa (1366 px ekran + açık menü) önce kısayol etiketleri gizlenir.
-        panel.addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override
-            public void componentResized(java.awt.event.ComponentEvent e) {
-                boolean compact = panel.getWidth() < UIScale.scale(1180);
-                for (QuickActionButton b : buttons) b.setCompact(compact);
-            }
-        });
         return panel;
     }
 

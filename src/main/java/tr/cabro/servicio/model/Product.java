@@ -49,8 +49,21 @@ public class Product {
     @ColumnName("sale_price_original")
     private BigDecimal salePriceOriginal;
 
+    /** Toptancı (suppliers.id, rolü WHOLESALER/BOTH). */
+    @ColumnName("supplier_id")
+    private Long supplierId;
+
+    // DB kolonu değil; ProductService.hydrateProducts() ile doldurulur.
+    private Supplier supplier;
+
     @ColumnName("stock_quantity")
     private Integer stockQuantity;
+
+    /**
+     * DB kolonu değil: yeni kartta açılış stoğunun yazılacağı depo (null → varsayılan depo).
+     * Stoğun depo dağılımı StockService.getLevels() ile okunur.
+     */
+    private Long openingWarehouseId;
 
     @ColumnName("min_stock_level")
     private Integer minStockLevel;

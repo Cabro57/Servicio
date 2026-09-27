@@ -25,7 +25,8 @@ public final class SoundPlayer {
     /** Sesin adı: ne olduğu anlamına göre; çalınışı {@link #NOTES} tablosunda. */
     public enum Cue {
         SUCCESS("Başarı"), PAYMENT("Tahsilat"), ADDED("Kalem eklendi"), REMOVED("Kalem silindi"),
-        STATUS("Durum değişti"), WARNING("Uyarı"), ERROR("Hata");
+        STATUS("Durum değişti"), WARNING("Uyarı"), ERROR("Hata"),
+        UNLOCK("Kilit açıldı"), UNLOCK_FAILED("Yanlış PIN");
 
         private final String label;
 
@@ -34,11 +35,15 @@ public final class SoundPlayer {
         public String label() { return label; }
     }
 
-    /** {frekans Hz, başlangıç ms, sönüm sabiti ms, üst ton (3. harmonik) payı}. */
+    /**
+     * {frekans Hz, başlangıç ms, sönüm sabiti ms, 3. harmonik payı [, 2. harmonik payı (varsayılan 0.28),
+     * çan kısmisi payı (2.76×, harmonik dışı — cam/çan parlaklığı; varsayılan 0)]}.
+     */
     private static double[][] notes(Cue cue) {
         return switch (cue) {
-            // Yükselen ikili çıngırak
-            case SUCCESS -> new double[][]{{1319, 0, 110, 0.10}, {1760, 95, 150, 0.10}};
+            // iPhone Face ID / Apple Pay onayını andıran iki hızlı, parlak, yükselen cam tonu (Mi6 → Si6):
+            // ilki kısa, ikincisi biraz daha uzun çınlar; 2. harmonik kısık, çan kısmisi tınıyı camsı yapar.
+            case SUCCESS -> new double[][]{{1318.5, 0, 70, 0.0, 0.06, 0.10}, {1975.5, 78, 210, 0.0, 0.06, 0.12}};
             // Madeni para gibi yükselen dörtlü
             case PAYMENT -> new double[][]{{1047, 0, 90, 0.12}, {1319, 70, 90, 0.12}, {1568, 140, 100, 0.12}, {2093, 215, 190, 0.12}};
             // Kısa tek "pop"
@@ -51,6 +56,10 @@ public final class SoundPlayer {
             case WARNING -> new double[][]{{880, 0, 80, 0.18}, {880, 150, 100, 0.18}};
             // Alçalan, biraz mat iki ton
             case ERROR -> new double[][]{{392, 0, 120, 0.35}, {294, 130, 190, 0.35}};
+            // Kilit açıldı: yumuşak, hızlı yükselen üçlü (Do6-Mi6-Sol6) — başarı sesinden ayrı, "kapı açıldı" hissi
+            case UNLOCK -> new double[][]{{1046.5, 0, 55, 0.0, 0.05, 0.05}, {1318.5, 48, 60, 0.0, 0.05, 0.05}, {1568, 96, 200, 0.0, 0.05, 0.08}};
+            // Yanlış PIN: telefonun titreşimini andıran iki kısa, alçak, boğuk vızıltı
+            case UNLOCK_FAILED -> new double[][]{{196, 0, 40, 0.45, 0.6}, {196, 120, 55, 0.45, 0.6}};
         };
     }
 
@@ -106,6 +115,8 @@ public final class SoundPlayer {
             int start = (int) (SAMPLE_RATE * n[1] / 1000.0);
             double tau = SAMPLE_RATE * n[2] / 1000.0;
             double third = n[3];
+            double second = n.length > 4 ? n[4] : 0.28;
+            double bell = n.length > 5 ? n[5] : 0.0;
             for (int i = 0; start + i < total; i++) {
                 double t = i / SAMPLE_RATE;
                 double env = Math.exp(-i / tau);
@@ -113,7 +124,9 @@ public final class SoundPlayer {
                 // Kısa atak: tık sesi olmasın
                 double attack = Math.min(1.0, i / (SAMPLE_RATE * 0.004));
                 double w = 2.0 * Math.PI * freq * t;
-                double v = Math.sin(w) + 0.28 * Math.sin(2 * w) + third * Math.sin(3 * w);
+                double v = Math.sin(w) + second * Math.sin(2 * w) + third * Math.sin(3 * w);
+                // Çan kısmisi temel tondan hızlı söner: yalnızca vuruş anına parlaklık katar.
+                if (bell > 0) v += bell * Math.sin(2.76 * w) * Math.exp(-i / (tau * 0.35));
                 mix[start + i] += v * env * attack;
             }
         }

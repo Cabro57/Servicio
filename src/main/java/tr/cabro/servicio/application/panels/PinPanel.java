@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels;
 
+import tr.cabro.servicio.util.SoundPlayer;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
@@ -300,10 +301,12 @@ public class PinPanel extends Form {
             if (Boolean.TRUE.equals(ok)) {
                 failures = 0;
                 dots.setFilled(0, false);
+                SoundPlayer.play(SoundPlayer.Cue.UNLOCK);
                 FormManager.unlock();
                 return;
             }
             failures++;
+            SoundPlayer.play(SoundPlayer.Cue.UNLOCK_FAILED);
             dots.setFilled(PIN_LENGTH, true);
             dots.shake();
             // Sallanma bitince noktalar boşalır; operatör hemen yeniden yazabilir.

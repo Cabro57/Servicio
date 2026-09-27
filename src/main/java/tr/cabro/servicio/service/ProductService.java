@@ -1,15 +1,16 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.repository.PartCategoryRepository;
 import tr.cabro.servicio.database.repository.ProductRepository;
-import tr.cabro.servicio.database.repository.ProductStockMovementRepository;
+import tr.cabro.servicio.database.repository.SupplierRepository;
+import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.model.Product;
-import tr.cabro.servicio.model.ProductStockMovement;
 import tr.cabro.servicio.model.dictionary.PartCategory;
 import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.dto.PartStatsDto;
 import tr.cabro.servicio.model.enums.ReferenceType;
-import tr.cabro.servicio.model.enums.StockType;
+import tr.cabro.servicio.model.enums.StockItemKind;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.Validator;
 
@@ -25,14 +26,17 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
-    private final ProductStockMovementRepository stockMovementRepository;
+    private final StockService stockService;
     private final PartCategoryRepository partCategoryRepository;
+    private final SupplierRepository supplierRepository;
 
-    public ProductService(ProductRepository productRepository, ProductStockMovementRepository stockMovementRepository,
-                           PartCategoryRepository partCategoryRepository) {
+    public ProductService(ProductRepository productRepository, StockService stockService,
+                           PartCategoryRepository partCategoryRepository,
+                           SupplierRepository supplierRepository) {
         this.productRepository = productRepository;
-        this.stockMovementRepository = stockMovementRepository;
+        this.stockService = stockService;
         this.partCategoryRepository = partCategoryRepository;
+        this.supplierRepository = supplierRepository;
     }
 
     public CompletableFuture<Product> save(Product product, boolean update) {
@@ -45,42 +49,31 @@ public class ProductService {
         if (product.getStockQuantity() != null && product.getStockQuantity() < 0)
             throw new ValidationException("Stok miktarı negatif olamaz.");
 
-        // İstenen stok, kayıttan sonra yalnızca FARK olarak hareket yazılır; stock_quantity doğrudan
-        // yazılmaz çünkü product_stock_movements tetikleyicisi hareketi stoka zaten ekliyor.
-        // Eskiden güncellemede stok = X yazılıp ardından X adet giriş eklendiği için her düzenlemede
-        // stok ikiye katlanıyordu.
-        int requestedStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
+        // Stok yalnızca kart açılışında girilir (açılış hareketi); düzenleme stoğa dokunmaz.
+        // Sonraki değişiklikler StockService işlemleriyle yapılır — bkz. PartService.save.
+        int openingStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
 
-        return DbExecutor.supply(() -> {
-            int currentStock;
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
+            ProductRepository repo = handle.attach(ProductRepository.class);
             if (!update) {
-                if (productRepository.existsByBarcode(product.getBarcode())) {
+                if (repo.existsByBarcode(product.getBarcode())) {
                     throw new ValidationException("Bu barkod (" + product.getBarcode() + ") zaten sistemde kayıtlı!");
                 }
-                currentStock = 0;
-                product.setStockQuantity(0);
-                Long id = productRepository.insert(product);
+                Long id = repo.insert(product);
                 product.setId(id);
+                if (openingStock > 0) {
+                    Long warehouseId = stockService.resolveWarehouse(handle, product.getOpeningWarehouseId(), true);
+                    stockService.record(handle, StockItemKind.PRODUCT, id, warehouseId, openingStock,
+                            ReferenceType.OPENING, null, product.getPurchasePrice(), null);
+                }
+                product.setStockQuantity(openingStock);
             } else {
-                currentStock = productRepository.findById(product.getId())
-                        .map(p -> p.getStockQuantity() != null ? p.getStockQuantity() : 0).orElse(0);
-                product.setStockQuantity(currentStock);
-                productRepository.update(product);
+                repo.update(product);
+                product.setStockQuantity(repo.findById(product.getId())
+                        .map(p -> p.getStockQuantity() != null ? p.getStockQuantity() : 0).orElse(0));
             }
-
-            int delta = requestedStock - currentStock;
-            if (delta != 0) {
-                ProductStockMovement movement = new ProductStockMovement();
-                movement.setProductId(product.getId());
-                // OUT hareketlerinde miktar eksi yazılır (satışla aynı kural); tetikleyici doğrudan toplar.
-                movement.setQuantity(delta);
-                movement.setType(delta > 0 ? StockType.IN : StockType.OUT);
-                movement.setReferenceType(update ? ReferenceType.ADJUSTMENT : ReferenceType.PURCHASE);
-                stockMovementRepository.insert(movement);
-            }
-            product.setStockQuantity(requestedStock);
             return product;
-        });
+        }));
     }
 
     public CompletableFuture<Void> delete(Long id) {
@@ -152,6 +145,10 @@ public class ProductService {
         return DbExecutor.supply(productRepository::getStats);
     }
 
+    public CompletableFuture<List<Product>> getBySupplierId(Long supplierId) {
+        return DbExecutor.supply(() -> hydrateProducts(productRepository.findBySupplierId(supplierId)));
+    }
+
     private List<Product> hydrateProducts(List<Product> products) {
         if (products == null || products.isEmpty()) return products;
 
@@ -161,8 +158,15 @@ public class ProductService {
                 ? Collections.emptyMap()
                 : partCategoryRepository.findByIds(categoryIds).stream().collect(Collectors.toMap(PartCategory::getId, c -> c));
 
+        List<Long> supplierIds = products.stream()
+                .map(Product::getSupplierId).filter(id -> id != null && id > 0).distinct().collect(Collectors.toList());
+        Map<Long, Supplier> supplierMap = supplierIds.isEmpty()
+                ? Collections.emptyMap()
+                : supplierRepository.findByIds(supplierIds).stream().collect(Collectors.toMap(Supplier::getId, s -> s));
+
         for (Product product : products) {
             product.setCategory(categoryMap.get(product.getCategoryId()));
+            product.setSupplier(supplierMap.get(product.getSupplierId()));
         }
         return products;
     }

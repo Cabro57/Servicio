@@ -23,19 +23,19 @@ import java.util.Optional;
 public interface ProductRepository extends SqlObject {
 
     // --- INSERT / UPDATE ---
-    @SqlUpdate("INSERT INTO products (barcode, name, brand, category_id, purchase_price, sale_price, " +
+    @SqlUpdate("INSERT INTO products (barcode, name, brand, category_id, supplier_id, purchase_price, sale_price, " +
             "purchase_currency, purchase_price_original, sale_currency, sale_price_original, " +
             "stock_quantity, min_stock_level, description, created_at, updated_at) " +
-            "VALUES (:barcode, :name, :brand, :categoryId, :purchasePrice, :salePrice, " +
+            "VALUES (:barcode, :name, :brand, :categoryId, :supplierId, :purchasePrice, :salePrice, " +
             ":purchaseCurrency, :purchasePriceOriginal, :saleCurrency, :salePriceOriginal, " +
-            ":stockQuantity, :minStockLevel, :description, :createdAt, :updatedAt)")
+            "0, :minStockLevel, :description, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean Product product);
 
-    @SqlUpdate("UPDATE products SET barcode=:barcode, name=:name, brand=:brand, category_id=:categoryId, " +
+    @SqlUpdate("UPDATE products SET barcode=:barcode, name=:name, brand=:brand, category_id=:categoryId, supplier_id=:supplierId, " +
             "purchase_price=:purchasePrice, sale_price=:salePrice, purchase_currency=:purchaseCurrency, " +
             "purchase_price_original=:purchasePriceOriginal, sale_currency=:saleCurrency, sale_price_original=:salePriceOriginal, " +
-            "stock_quantity=:stockQuantity, min_stock_level=:minStockLevel, description=:description, " +
+            "min_stock_level=:minStockLevel, description=:description, " +
             "updated_at=:updatedAt WHERE id=:id")
     void update(@BindBean Product product);
 
@@ -50,23 +50,23 @@ public interface ProductRepository extends SqlObject {
     boolean existsByBarcode(@Bind("barcode") String barcode);
 
     // --- SELECT ---
-    @SqlQuery("SELECT id, barcode, name, brand, category_id, purchase_price, sale_price, purchase_currency, " +
+    @SqlQuery("SELECT id, barcode, name, brand, category_id, supplier_id, purchase_price, sale_price, purchase_currency, " +
             "purchase_price_original, sale_currency, sale_price_original, stock_quantity, min_stock_level, " +
             "description, is_deleted, created_at, updated_at FROM products WHERE id = :id AND is_deleted = 0")
     Optional<Product> findById(@Bind("id") Long id);
 
-    @SqlQuery("SELECT id, barcode, name, brand, category_id, purchase_price, sale_price, purchase_currency, " +
+    @SqlQuery("SELECT id, barcode, name, brand, category_id, supplier_id, purchase_price, sale_price, purchase_currency, " +
             "purchase_price_original, sale_currency, sale_price_original, stock_quantity, min_stock_level, " +
             "description, is_deleted, created_at, updated_at FROM products WHERE barcode = :barcode AND is_deleted = 0")
     Optional<Product> findByBarcode(@Bind("barcode") String barcode);
 
-    @SqlQuery("SELECT id, barcode, name, brand, category_id, purchase_price, sale_price, purchase_currency, " +
+    @SqlQuery("SELECT id, barcode, name, brand, category_id, supplier_id, purchase_price, sale_price, purchase_currency, " +
             "purchase_price_original, sale_currency, sale_price_original, stock_quantity, min_stock_level, " +
             "description, is_deleted, created_at, updated_at FROM products WHERE is_deleted = 0 ORDER BY name")
     List<Product> findAll();
 
     // Arama alanı kategori ve marka adını da kapsar.
-    String SEARCH_SELECT = "SELECT p.id, p.barcode, p.name, p.brand, p.category_id, p.purchase_price, p.sale_price, " +
+    String SEARCH_SELECT = "SELECT p.id, p.barcode, p.name, p.brand, p.category_id, p.supplier_id, p.purchase_price, p.sale_price, " +
             "p.purchase_currency, p.purchase_price_original, p.sale_currency, p.sale_price_original, " +
             "p.stock_quantity, p.min_stock_level, p.description, p.is_deleted, p.created_at, p.updated_at ";
     String SEARCH_FROM = "FROM products p LEFT JOIN part_categories pc ON pc.id = p.category_id ";
@@ -76,11 +76,14 @@ public interface ProductRepository extends SqlObject {
     @SqlQuery(SEARCH_SELECT + SEARCH_FROM + SEARCH_WHERE + "ORDER BY p.name")
     List<Product> search(@Bind("search") String searchTerm);
 
+    @SqlQuery(SEARCH_SELECT + SEARCH_FROM + "WHERE p.supplier_id = :supplierId AND p.is_deleted = 0 ORDER BY p.name")
+    List<Product> findBySupplierId(@Bind("supplierId") Long supplierId);
+
     // =========================================================================
     // SAYFALAMA (LIMIT/OFFSET)
     // =========================================================================
 
-    @SqlQuery("SELECT id, barcode, name, brand, category_id, purchase_price, sale_price, purchase_currency, " +
+    @SqlQuery("SELECT id, barcode, name, brand, category_id, supplier_id, purchase_price, sale_price, purchase_currency, " +
             "purchase_price_original, sale_currency, sale_price_original, stock_quantity, min_stock_level, " +
             "description, is_deleted, created_at, updated_at FROM products WHERE is_deleted = 0 " +
             "ORDER BY created_at DESC LIMIT :limit OFFSET :offset")

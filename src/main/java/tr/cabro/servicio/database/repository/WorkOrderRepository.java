@@ -45,6 +45,9 @@ public interface WorkOrderRepository extends SqlObject {
                       @Bind("deliveryDate") LocalDateTime deliveryDate,
                       @Bind("updatedAt") LocalDateTime updatedAt);
 
+    @SqlQuery("SELECT service_status FROM work_orders WHERE id = :id")
+    Optional<ServiceStatus> findStatus(@Bind("id") Long id);
+
     @SqlUpdate("UPDATE work_orders SET detected_fault=:detectedFault, updated_at=:updatedAt WHERE id=:id")
     void updateDetectedFault(@Bind("id") Long id,
                              @Bind("detectedFault") String detectedFault,

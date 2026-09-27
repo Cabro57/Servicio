@@ -1,15 +1,16 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.repository.PartCategoryRepository;
 import tr.cabro.servicio.database.repository.PartRepository;
 import tr.cabro.servicio.database.repository.SupplierRepository;
 import tr.cabro.servicio.model.Part;
-import tr.cabro.servicio.model.StockMovement;
 import tr.cabro.servicio.model.Supplier;
 import tr.cabro.servicio.model.dictionary.PartCategory;
 import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.dto.PartStatsDto;
 import tr.cabro.servicio.model.enums.ReferenceType;
+import tr.cabro.servicio.model.enums.StockItemKind;
 import tr.cabro.servicio.service.exception.ValidationException;
 import tr.cabro.servicio.util.Validator;
 
@@ -46,58 +47,34 @@ public class PartService {
         if (part.getSalePrice() != null && part.getSalePrice().compareTo(BigDecimal.ZERO) < 0)
             throw new ValidationException("Satış fiyatı negatif olamaz.");
 
-        // FIX: getStock() → getStockQuantity()
-        if (part.getStockQuantity() < 0) throw new ValidationException("Stok miktarı negatif olamaz.");
+        if (part.getStockQuantity() != null && part.getStockQuantity() < 0)
+            throw new ValidationException("Stok miktarı negatif olamaz.");
 
-        // İstenen stok, kayıttan sonra hareket olarak yazılır. stock_quantity doğrudan yazılmaz:
-        // stock_movements tetikleyicisi (trg_stock_movement_in/out) hareketi stoka zaten ekliyor.
-        // Eskiden güncellemede önce stok = X yazılıp ardından X adet giriş hareketi ekleniyordu;
-        // tetikleyici bunu ikinci kez eklediği için her düzenlemede stok ikiye katlanıyordu.
-        // Ayrıca stok 0 girilen yeni parçada 0 adetlik hareket doğrulamaya takılıp kaydı hatalı gösteriyordu.
-        int requestedStock = part.getStockQuantity() != null ? part.getStockQuantity() : 0;
+        // Stok kartla birlikte yalnızca AÇILIŞTA girilir ve açılış hareketi olarak deftere yazılır.
+        // Düzenlemede stok hiç değişmez (update SQL'inde stock_quantity yok); stok değişiklikleri
+        // StockService'in giriş/çıkış/sayım/transfer işlemleriyle, sebebiyle birlikte yapılır.
+        int openingStock = part.getStockQuantity() != null ? part.getStockQuantity() : 0;
 
-        return DbExecutor.supply(() -> {
-            int currentStock;
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
+            PartRepository repo = handle.attach(PartRepository.class);
             if (!update) {
-                // FIX: existsByBarcode metodu PartRepository'ye eklendi
-                if (partRepository.existsByBarcode(part.getBarcode())) {
+                if (repo.existsByBarcode(part.getBarcode())) {
                     throw new ValidationException("Bu barkod (" + part.getBarcode() + ") zaten sistemde kayıtlı!");
                 }
-                currentStock = 0;
-                part.setStockQuantity(0);
-                Long id = partRepository.insert(part);
+                Long id = repo.insert(part);
                 part.setId(id);
+                if (openingStock > 0) {
+                    Long warehouseId = stockService.resolveWarehouse(handle, part.getOpeningWarehouseId(), true);
+                    stockService.record(handle, StockItemKind.PART, id, warehouseId, openingStock,
+                            ReferenceType.OPENING, null, part.getPurchasePrice(), null);
+                }
+                part.setStockQuantity(openingStock);
             } else {
-                currentStock = partRepository.findById(part.getId())
-                        .map(Part::getStockQuantity).orElse(0);
-                part.setStockQuantity(currentStock);
-                partRepository.update(part);
+                repo.update(part);
+                part.setStockQuantity(repo.findById(part.getId()).map(Part::getStockQuantity).orElse(0));
             }
-            return currentStock;
-        }).thenCompose(currentStock -> {
-            int delta = requestedStock - currentStock;
-            part.setStockQuantity(requestedStock);
-            if (delta == 0) return CompletableFuture.completedFuture(part);
-
-            StockMovement movement = new StockMovement();
-            movement.setPartId(part.getId());
-            movement.setQuantity(Math.abs(delta));
-            movement.setWarehouseId(part.getWarehouseId());
-            // Yeni kayıttaki ilk stok alış sayılır; sonradan elle yapılan değişiklik düzeltmedir.
-            movement.setReferenceType(update ? ReferenceType.ADJUSTMENT : ReferenceType.PURCHASE);
-            CompletableFuture<Void> write = delta > 0 ? stockService.addStock(movement) : stockService.removeStock(movement);
-            return write.thenApply(v -> part);
-        });
-    }
-
-    public CompletableFuture<Void> addStock(Long partId, int amount, Long warehouseId) {
-        if (amount <= 0) throw new ValidationException("Miktar 0'dan büyük olmalıdır.");
-        StockMovement movement = new StockMovement();
-        movement.setPartId(partId);
-        movement.setQuantity(amount);
-        movement.setWarehouseId(warehouseId != null ? warehouseId : 1L);
-        movement.setReferenceType(ReferenceType.PURCHASE);
-        return stockService.addStock(movement);
+            return part;
+        }));
     }
 
     /** ID tabanlı silme */

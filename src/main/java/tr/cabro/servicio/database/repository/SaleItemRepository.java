@@ -15,12 +15,12 @@ import java.util.Optional;
 public interface SaleItemRepository {
 
     String COLUMNS = "id, sale_id, product_id, item_name, quantity, purchase_price, unit_price, sale_currency, " +
-            "unit_price_original, line_discount_type, line_discount_value, line_total, created_at, source_sale_item_id ";
+            "unit_price_original, line_discount_type, line_discount_value, line_total, created_at, source_sale_item_id, warehouse_id ";
 
     @SqlUpdate("INSERT INTO sale_items (sale_id, product_id, item_name, quantity, purchase_price, unit_price, sale_currency, " +
-            "unit_price_original, line_discount_type, line_discount_value, line_total, created_at, source_sale_item_id) " +
+            "unit_price_original, line_discount_type, line_discount_value, line_total, created_at, source_sale_item_id, warehouse_id) " +
             "VALUES (:saleId, :productId, :itemName, :quantity, :purchasePrice, :unitPrice, :saleCurrency, " +
-            ":unitPriceOriginal, :lineDiscountType, :lineDiscountValue, :lineTotal, :createdAt, :sourceSaleItemId)")
+            ":unitPriceOriginal, :lineDiscountType, :lineDiscountValue, :lineTotal, :createdAt, :sourceSaleItemId, :warehouseId)")
     @GetGeneratedKeys
     Long insert(@BindBean SaleItem item);
 
@@ -33,7 +33,7 @@ public interface SaleItemRepository {
     /** Ürün detayı: ürünün geçtiği tüm satış/iade kalemleri (silinmemiş fişler), en yeni önce. */
     @SqlQuery("SELECT si.id, si.sale_id, si.product_id, si.item_name, si.quantity, si.purchase_price, si.unit_price, " +
             "si.sale_currency, si.unit_price_original, si.line_discount_type, si.line_discount_value, si.line_total, " +
-            "si.created_at, si.source_sale_item_id FROM sale_items si JOIN sales s ON s.id = si.sale_id " +
+            "si.created_at, si.source_sale_item_id, si.warehouse_id FROM sale_items si JOIN sales s ON s.id = si.sale_id " +
             "WHERE si.product_id = :productId AND s.is_deleted = 0 ORDER BY s.sale_date DESC, si.id DESC LIMIT 500")
     List<SaleItem> findByProductId(@Bind("productId") Long productId);
 

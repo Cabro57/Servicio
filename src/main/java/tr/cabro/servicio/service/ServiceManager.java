@@ -22,6 +22,7 @@ public final class ServiceManager {
     @Getter private static LaborService laborService;
     @Getter private static ReportManager reportManager;
     @Getter private static StockService stockService;
+    @Getter private static WarehouseService warehouseService;
     @Getter private static DeviceAccessCredentialService deviceAccessCredentialService;
     @Getter private static AppSettingService appSettingService;
     @Getter private static DeviceTransactionService deviceTransactionService;
@@ -48,9 +49,9 @@ public final class ServiceManager {
         LaborRepository laborRepo = jdbi.onDemand(LaborRepository.class);
         ReportRepository reportRepo = jdbi.onDemand(ReportRepository.class);
         ServiceNoteRepository noteRepo = jdbi.onDemand(ServiceNoteRepository.class);
-        StockMovementRepository stockMovementRepo = jdbi.onDemand(StockMovementRepository.class);
+        StockLedgerRepository stockLedgerRepo = jdbi.onDemand(StockLedgerRepository.class);
+        WarehouseRepository warehouseRepo = jdbi.onDemand(WarehouseRepository.class);
         ProductRepository productRepo = jdbi.onDemand(ProductRepository.class);
-        ProductStockMovementRepository productStockMovementRepo = jdbi.onDemand(ProductStockMovementRepository.class);
         DeviceAccessCredentialRepository deviceAccessCredentialRepo = jdbi.onDemand(DeviceAccessCredentialRepository.class);
         AppSettingRepository appSettingRepo = jdbi.onDemand(AppSettingRepository.class);
         DeviceTransactionRepository deviceTransactionRepo = jdbi.onDemand(DeviceTransactionRepository.class);
@@ -63,7 +64,8 @@ public final class ServiceManager {
         customerService = new CustomerService(customerRepo);
         deviceService = new DeviceService(deviceRepo);
         supplierService = new SupplierService(supplierRepo);
-        stockService = new StockService(stockMovementRepo);
+        stockService = new StockService(stockLedgerRepo);
+        warehouseService = new WarehouseService(warehouseRepo);
         userService = new UserService(userRepo);
 
         // --- Yeni Servislerin Başlatılması ---
@@ -73,15 +75,15 @@ public final class ServiceManager {
         laborService = new LaborService(laborRepo);
         reportManager = new ReportManager(reportRepo, new AnalyticsRepository(jdbi));
         partService = new PartService(partRepo, supplierRepo, stockService, partCategoryRepo);
-        productService = new ProductService(productRepo, productStockMovementRepo, partCategoryRepo);
+        productService = new ProductService(productRepo, stockService, partCategoryRepo, supplierRepo);
         deviceAccessCredentialService = new DeviceAccessCredentialService(deviceAccessCredentialRepo);
         paymentService = new PaymentService(paymentRepo, paymentAllocationRepo, accountRepo);
 
         SaleRepository saleRepo = jdbi.onDemand(SaleRepository.class);
         SaleItemRepository saleItemRepo = jdbi.onDemand(SaleItemRepository.class);
-        saleService = new SaleService(saleRepo, saleItemRepo, customerRepo, paymentService);
+        saleService = new SaleService(saleRepo, saleItemRepo, customerRepo, paymentService, stockService);
 
-        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentService, noteRepo, partService, stockService, deviceService,
+        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentService, noteRepo, stockService, deviceService,
                 customerRepo, deviceRepo, paymentRepo);
 
         appSettingService = new AppSettingService(appSettingRepo);

@@ -1,5 +1,8 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import net.miginfocom.swing.MigLayout;
+import tr.cabro.servicio.model.enums.SupplierRole;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import tr.cabro.servicio.application.component.FormKit;
@@ -56,6 +59,10 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
             first = first(first, FormKit.fail(taxNoField, taxNoError, "En fazla 50 karakter olabilir."));
         }
 
+        if (!partsCheck.isSelected() && !productsCheck.isSelected()) {
+            first = first(first, FormKit.fail(partsCheck, roleError, "En az birini seçin: tedarikçi ya da toptancı."));
+        }
+
         if (first != null) {
             first.requestFocusInWindow();
             return false;
@@ -77,6 +84,7 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
         data.setEmail(emailField.getText().trim());
         data.setTaxNumber(taxNoField.getText().trim());
         data.setTaxOffice(taxOfficeField.getText().trim());
+        data.setRole(SupplierRole.of(partsCheck.isSelected(), productsCheck.isSelected()));
         return data;
     }
 
@@ -90,6 +98,9 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
         emailField.setText(data.getEmail());
         taxNoField.setText(data.getTaxNumber());
         taxOfficeField.setText(data.getTaxOffice());
+        SupplierRole role = data.getRole() != null ? data.getRole() : SupplierRole.SUPPLIER;
+        partsCheck.setSelected(role.suppliesParts());
+        productsCheck.setSelected(role.suppliesProducts());
         clearErrors();
     }
 
@@ -103,6 +114,8 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
         emailField.setText("");
         taxNoField.setText("");
         taxOfficeField.setText("");
+        partsCheck.setSelected(true);
+        productsCheck.setSelected(false);
         clearErrors();
     }
 
@@ -112,6 +125,7 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
         FormKit.clear(emailField, emailError);
         FormKit.clear(taxNoField, taxNoError);
         FormKit.clear(null, phoneError); // PhoneField çerçevesini kendi anlık kontrolü yönetir.
+        FormKit.clear(partsCheck, roleError);
     }
 
     @Override
@@ -126,11 +140,21 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
         add(FormKit.scroll(form), BorderLayout.CENTER);
 
         // --- Firma ---
-        form.add(FormKit.rail("Firma", "Parça kayıtlarında tedarikçi olarak görünür."), "top");
+        form.add(FormKit.rail("Firma", "Tedarikçi: parça formunda seçilir. Toptancı: ürün formunda seçilir. Aynı firma ikisi birden olabilir."), "top");
         JPanel company = FormKit.grid(2);
         businessNameField = new JTextField();
         businessNameError = FormKit.errorLabel();
         company.add(FormKit.cell("Firma İsmi *", businessNameField, businessNameError), "span 2");
+        partsCheck = new JCheckBox("Tedarikçi (parça)");
+        productsCheck = new JCheckBox("Toptancı (ürün)");
+        roleError = FormKit.errorLabel();
+        JPanel roles = new JPanel(new MigLayout("insets 0, gap 18", "[][]", "[]"));
+        roles.setOpaque(false);
+        roles.add(partsCheck);
+        roles.add(productsCheck);
+        company.add(FormKit.cell("Rolü *", roles, roleError), "span 2");
+        partsCheck.addActionListener(e -> FormKit.clear(partsCheck, roleError));
+        productsCheck.addActionListener(e -> FormKit.clear(partsCheck, roleError));
         nameField = new JTextField();
         nameError = FormKit.errorLabel();
         company.add(FormKit.cell("Yetkili Ad Soyad *", nameField, nameError), "wrap");
@@ -183,10 +207,13 @@ public class SupplierEditPanel extends AbstractEditPanel<Supplier> {
     private JTextField emailField;
     private JTextArea addressField;
     private JTextArea notesField;
+    private JCheckBox partsCheck;
+    private JCheckBox productsCheck;
 
     private JLabel businessNameError;
     private JLabel nameError;
     private JLabel taxNoError;
     private JLabel phoneError;
     private JLabel emailError;
+    private JLabel roleError;
 }

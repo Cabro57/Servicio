@@ -272,7 +272,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 new Item.Label("STOK"),
                 new Item("Parçalar", "circuit-board.svg", FormParts.class),
                 new Item("Ürünler", "shopping-bag.svg", FormProducts.class),
-                new Item("Tedarikçiler", "store.svg", FormSuppliers.class)
+                new Item("Tedarikçiler / Toptancılar", "store.svg", FormSuppliers.class)
                 // Ayarlar ve Hakkında menüde değil, alt kısımda (bkz. DrawerFooter).
         };
 

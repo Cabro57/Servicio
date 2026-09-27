@@ -23,21 +23,21 @@ import java.util.Optional;
 public interface PartRepository extends SqlObject {
 
     // --- INSERT ---
-    @SqlUpdate("INSERT INTO parts (barcode, name, category_id, model_compatibility, supplier_id, warehouse_id, " +
+    @SqlUpdate("INSERT INTO parts (barcode, name, category_id, model_compatibility, supplier_id, " +
             "purchase_price, sale_price, purchase_currency, purchase_price_original, sale_currency, sale_price_original, " +
             "stock_quantity, min_stock_level, description, created_at, updated_at) " +
-            "VALUES (:barcode, :name, :categoryId, :modelCompatibility, :supplierId, :warehouseId, " +
+            "VALUES (:barcode, :name, :categoryId, :modelCompatibility, :supplierId, " +
             ":purchasePrice, :salePrice, :purchaseCurrency, :purchasePriceOriginal, :saleCurrency, :salePriceOriginal, " +
-            ":stockQuantity, :minStockLevel, :description, :createdAt, :updatedAt)")
+            "0, :minStockLevel, :description, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean Part part);
 
     // --- UPDATE ---
     @SqlUpdate("UPDATE parts SET barcode=:barcode, name=:name, category_id=:categoryId, model_compatibility=:modelCompatibility, " +
-            "supplier_id=:supplierId, warehouse_id=:warehouseId, purchase_price=:purchasePrice, sale_price=:salePrice, " +
+            "supplier_id=:supplierId, purchase_price=:purchasePrice, sale_price=:salePrice, " +
             "purchase_currency=:purchaseCurrency, purchase_price_original=:purchasePriceOriginal, " +
             "sale_currency=:saleCurrency, sale_price_original=:salePriceOriginal, " +
-            "stock_quantity=:stockQuantity, min_stock_level=:minStockLevel, " +
+            "min_stock_level=:minStockLevel, " +
             "description=:description, updated_at=:updatedAt WHERE id=:id")
     void update(@BindBean Part part);
 
@@ -54,17 +54,6 @@ public interface PartRepository extends SqlObject {
     @SqlUpdate("UPDATE parts SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE barcode IN (<barcodes>)")
     void deleteByBarcodes(@BindList("barcodes") List<String> barcodes);
 
-    // --- STOK GÜNCELLEME ---
-    @SqlUpdate("UPDATE parts SET stock_quantity = stock_quantity + :amount, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
-    void adjustStock(@Bind("id") Long id, @Bind("amount") Integer amount);
-
-    @SqlUpdate("UPDATE parts SET stock_quantity = stock_quantity + :amount, updated_at = CURRENT_TIMESTAMP " +
-            "WHERE barcode = :barcode AND is_deleted = 0")
-    void increaseStockAtomically(@Bind("barcode") String barcode, @Bind("amount") Integer amount);
-
-    @SqlUpdate("UPDATE parts SET stock_quantity = stock_quantity - :amount, updated_at = CURRENT_TIMESTAMP " +
-            "WHERE barcode = :barcode AND is_deleted = 0 AND stock_quantity >= :amount")
-    int decreaseStockAtomically(@Bind("barcode") String barcode, @Bind("amount") Integer amount);
 
     @SqlQuery("SELECT COUNT(*) > 0 FROM parts WHERE barcode = :barcode AND is_deleted = 0")
     boolean existsByBarcode(@Bind("barcode") String barcode);

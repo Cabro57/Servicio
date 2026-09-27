@@ -19,6 +19,10 @@ public class SaleItem {
     @ColumnName("product_id")
     private Long productId; // NULL = katalogda olmayan manuel kalem
 
+    /** Stoğun düştüğü depo (null → varsayılan depo; iade aynı depoya döner). Manuel kalemde boş. */
+    @ColumnName("warehouse_id")
+    private Long warehouseId;
+
     @ColumnName("item_name")
     private String itemName; // Snapshot (Product.name kopyası veya elle yazılan)
 

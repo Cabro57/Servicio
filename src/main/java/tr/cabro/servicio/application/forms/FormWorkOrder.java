@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.panels.workorder.WorkOrderDeleteDialog;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
@@ -32,7 +33,6 @@ import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.model.enums.TemplateType;
 import tr.cabro.servicio.service.*;
 import tr.cabro.servicio.util.DesktopHelper;
-import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.util.TemplateEngine;
 
@@ -192,7 +192,7 @@ public class FormWorkOrder extends Form {
                             .save(saved.getId(), panel.getDeviceAccessType(), panel.getDeviceAccessSecret())
                             .thenApply(v -> saved)
             ).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
-                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.workorder.updated"));
+                Toasts.saved(this, Messages.get("toast.workorder.updated"));
                 formRefresh();
             })).exceptionally(ex -> {
                 SwingUtilities.invokeLater(controller::consume);
@@ -202,19 +202,14 @@ public class FormWorkOrder extends Form {
     }
 
     private void confirmDelete() {
-        DialogHelper.confirmDelete(this, "confirm.delete.workorder", () ->
-                workOrderService.delete(workOrder.getId())
-                        .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                            Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
-                            FormManager.showForm(AllForms.getForm(FormWorkOrders.class));
-                        }))
-                        .exceptionally(ex -> ErrorHandler.handle(this, "Servis kaydı silinemedi", ex)),
-                workOrder.getId());
+        WorkOrderDeleteDialog.confirm(this, workOrder,
+                () -> FormManager.showForm(AllForms.getForm(FormWorkOrders.class)));
     }
 
     /** Durum menüsünden seçilen yeni durumu kaydeder; hata olursa rozet eski durumda kalır. */
     private void changeStatus(ServiceStatus newStatus) {
         if (newStatus == null || workOrder == null || workOrder.getServiceStatus() == newStatus) return;
+        ServiceStatus previous = workOrder.getServiceStatus();
         workOrderService.updateStatus(workOrder.getId(), newStatus)
                 .thenAccept(unused -> SwingUtilities.invokeLater(() -> {
                     workOrder.setServiceStatus(newStatus);
@@ -222,6 +217,13 @@ public class FormWorkOrder extends Form {
                     statusButton.setStatus(newStatus);
                     infoPanel.refresh(workOrder);
                     tr.cabro.servicio.util.SoundPlayer.statusChanged();
+                    // "İade" parçaları stoğa döndürür, geri açmak yeniden düşer (WorkOrderService.syncStock).
+                    boolean hasParts = workOrder.getItems() != null && workOrder.getItems().stream()
+                            .anyMatch(i -> i.getItemType() == tr.cabro.servicio.model.enums.ItemType.PART && i.getPartId() != null);
+                    if (hasParts && (newStatus == ServiceStatus.RETURN || previous == ServiceStatus.RETURN)) {
+                        Toasts.show(this, Toast.Type.INFO, newStatus == ServiceStatus.RETURN
+                                ? "Servisteki parçalar stoğa geri döndü." : "Servisteki parçalar yeniden stoktan düşüldü.");
+                    }
                 }))
                 .exceptionally(ex -> ErrorHandler.handle(this, "Servis durumu güncellenemedi", ex));
     }

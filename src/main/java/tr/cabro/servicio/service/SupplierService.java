@@ -1,5 +1,7 @@
 package tr.cabro.servicio.service;
 
+import tr.cabro.servicio.model.enums.SupplierRole;
+
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.database.repository.SupplierRepository;
 import tr.cabro.servicio.model.Supplier;
@@ -25,6 +27,7 @@ public class SupplierService {
         // --- Senkron Validasyon (Hata varsa UI'da anında fırlatılır) ---
         if (Validator.isEmpty(supplier.getName())) throw new ValidationException("Ad alanı boş olamaz.");
         if (Validator.isEmpty(supplier.getBusinessName())) throw new ValidationException("Firma adı boş olamaz.");
+        if (supplier.getRole() == null) supplier.setRole(SupplierRole.SUPPLIER);
 
         try {
             if (!Validator.isEmpty(supplier.getPhone())) {
@@ -60,6 +63,20 @@ public class SupplierService {
 
     public CompletableFuture<List<Supplier>> getAll() {
         return DbExecutor.supply(repository::findAll);
+    }
+
+    /** Parça formundaki "Tedarikçi" listesi: tedarikçi ve iki rollü firmalar. */
+    public CompletableFuture<List<Supplier>> getPartSuppliers() {
+        return getAll().thenApply(list -> list.stream().filter(s -> role(s).suppliesParts()).toList());
+    }
+
+    /** Ürün formundaki "Toptancı" listesi: toptancı ve iki rollü firmalar. */
+    public CompletableFuture<List<Supplier>> getWholesalers() {
+        return getAll().thenApply(list -> list.stream().filter(s -> role(s).suppliesProducts()).toList());
+    }
+
+    private static SupplierRole role(Supplier s) {
+        return s.getRole() != null ? s.getRole() : SupplierRole.SUPPLIER;
     }
 
     /** Tablo başlığı filtresi (kayıt tarihi) + serbest metin arama — sunucu tarafında, tüm kayıtlar üzerinde. */

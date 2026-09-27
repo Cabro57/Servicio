@@ -1,6 +1,8 @@
 package tr.cabro.servicio.application.panels.edit;
 
 import tr.cabro.servicio.model.enums.CategoryScope;
+import tr.cabro.servicio.model.enums.StockItemKind;
+import tr.cabro.servicio.model.enums.SupplierRole;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
@@ -8,6 +10,8 @@ import tr.cabro.servicio.application.component.FormKit;
 import tr.cabro.servicio.application.component.PriceFields;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.model.Warehouse;
 import tr.cabro.servicio.model.dictionary.PartCategory;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Barcode;
@@ -28,8 +32,8 @@ import java.util.concurrent.CompletableFuture;
  * <ul>
  *   <li>Barkod okutulunca (Enter) başka bir kayıtta kullanılıp kullanılmadığı alanın altında yazar;
  *       kullanılıyorsa kayıt engellenir. Boş bırakılırsa kayıtta otomatik barkod üretilir.</li>
- *   <li>Düzenlemede stok alanı mevcut miktarı gösterir; değiştirilirse kayıtta yalnızca fark
- *       giriş/çıkış hareketi olarak yazılır ve bu, alanın altında önceden söylenir.</li>
+ *   <li>Stok yalnızca yeni kayıtta girilir (açılış stoğu, seçilen depoya). Düzenlemede mevcut stok
+ *       ve depo dağılımı salt okunur gösterilir; stok kart sayfasındaki "Stok Hareketi" ile değişir.</li>
  * </ul>
  * DİKKAT: {@link #initComponent()} üst sınıfın kurucusundan çağrılır — bu sınıfta ve alt sınıflarda
  * alanlara başlangıç değeri ({@code = ...}) VERİLMEMELİ, aksi halde kurucu bittikten sonra sıfırlanırlar.
@@ -48,10 +52,16 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
     private JLabel barcodeError;
     private JLabel nameError;
     private JLabel stockNote;
+    private JComboBox<Warehouse> warehouseCombo;
+    private JPanel openingStockCell;
+    private JPanel warehouseCell;
+    private JPanel currentStockCell;
+    private JLabel currentStockValue;
+    private JLabel currentStockSplit;
 
     /** Düzenlenen kaydın kimliği; yeni kayıtta null. Barkod çakışma kontrolünde hariç tutulur. */
     protected Long editingId;
-    /** Kayıt açıldığındaki stok; düzenlemede farkı göstermek için. Yeni kayıtta null. */
+    /** Kayıt açıldığındaki stok (düzenlemede salt okunur gösterilir). Yeni kayıtta null. */
     private Integer originalStock;
     /** Son barkod kontrolünde barkod başka bir kayıtta bulunduysa o kaydın adı. */
     private String barcodeOwner;
@@ -67,6 +77,9 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
 
     /** "Parça" / "Ürün" — mesajlarda kullanılır. */
     protected abstract String itemNoun();
+
+    /** Stok defteri türü: parça ekranında PART, ürün ekranında PRODUCT. */
+    protected abstract StockItemKind stockKind();
 
     /** Kategori listesinin kapsamı: parça ekranında PART, ürün ekranında PRODUCT. */
     protected abstract CategoryScope categoryScope();
@@ -101,7 +114,7 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
         form.add(priceFields);
         form.add(FormKit.separator(), "span 2, growx, gaptop 12, gapbottom 12");
 
-        form.add(FormKit.rail("Stok", "Stoktaki her değişiklik stok hareketi olarak kaydedilir."), "top");
+        form.add(FormKit.rail("Stok", "Açılış stoğu seçilen depoya yazılır. Sonraki her değişiklik kart sayfasındaki Stok Hareketi ile, sebebiyle kaydedilir."), "top");
         form.add(buildStockSection());
         form.add(FormKit.separator(), "span 2, growx, gaptop 12, gapbottom 12");
 
@@ -191,34 +204,113 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
         JPanel grid = FormKit.grid(3);
         stockSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 99999, 1));
         minStockSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 99999, 1));
+        warehouseCombo = new JComboBox<>();
         stockNote = FormKit.note(" ");
-        grid.add(FormKit.cell("Stok", stockSpinner, null));
-        grid.add(FormKit.cell("Minimum Stok", minStockSpinner, FormKit.note("Uyarı eşiği")));
-        grid.add(new JLabel(), "wrap");
+
+        currentStockValue = new JLabel("—");
+        currentStockValue.putClientProperty(FlatClientProperties.STYLE, "font: bold +1");
+        currentStockSplit = FormKit.note(" ");
+
+        openingStockCell = FormKit.cell("Açılış stoğu", stockSpinner, null);
+        warehouseCell = FormKit.cell("Depo", warehouseCombo, null);
+        currentStockCell = FormKit.cell("Mevcut stok", currentStockValue, currentStockSplit);
+        grid.add(openingStockCell);
+        grid.add(warehouseCell);
+        grid.add(currentStockCell, "span 2");
+        grid.add(FormKit.cell("Minimum Stok", minStockSpinner, FormKit.note("Uyarı eşiği")), "wrap");
         grid.add(stockNote, "span 3, wmin 0");
         stockSpinner.addChangeListener(e -> updateStockNote());
         minStockSpinner.addChangeListener(e -> updateStockNote());
+        warehouseCombo.addActionListener(e -> updateStockNote());
+        loadWarehouses();
         return grid;
     }
 
+    private void loadWarehouses() {
+        ServiceManager.getWarehouseService().getActive().thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            warehouseCombo.removeAllItems();
+            Warehouse def = null;
+            for (Warehouse w : list) {
+                warehouseCombo.addItem(w);
+                if (w.isDefaultWarehouse()) def = w;
+            }
+            warehouseCombo.setSelectedItem(def);
+        })).exceptionally(ex -> {
+            Servicio.getLogger().error("Depo listesi yüklenemedi", ex);
+            return null;
+        });
+    }
+
+    /** Firma seçim listesi: parçada "Tedarikçi", üründe "Toptancı". Boş seçenek {@code emptyText} yazar. */
+    protected static JComboBox<Supplier> supplierCombo(String emptyText) {
+        JComboBox<Supplier> combo = new JComboBox<>();
+        combo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean sel, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, sel, focus);
+                if (value instanceof Supplier s) {
+                    setText(s.getBusinessName() != null && !s.getBusinessName().isBlank() ? s.getBusinessName() : s.getName());
+                } else {
+                    setText(emptyText);
+                }
+                return this;
+            }
+        });
+        return combo;
+    }
+
+    /**
+     * Listeyi rolü uyan firmalarla doldurur (parça → tedarikçi, ürün → toptancı). Kayıtlı firma
+     * sonradan rolünü kaybettiyse de listede kalır; kaydı açmak onu sessizce silmesin.
+     */
+    protected void loadSupplierCombo(JComboBox<Supplier> combo, boolean forProducts, Long selectedId) {
+        ServiceManager.getSupplierService().getAll().thenAccept(all -> SwingUtilities.invokeLater(() -> {
+            combo.removeAllItems();
+            combo.addItem(null);
+            Supplier target = null;
+            for (Supplier s : all) {
+                SupplierRole role = s.getRole() != null ? s.getRole() : SupplierRole.SUPPLIER;
+                boolean fits = forProducts ? role.suppliesProducts() : role.suppliesParts();
+                boolean current = s.getId().equals(selectedId);
+                if (!fits && !current) continue;
+                combo.addItem(s);
+                if (current) target = s;
+            }
+            combo.setSelectedItem(target);
+        })).exceptionally(ex -> {
+            Servicio.getLogger().error("Firma listesi yüklenemedi", ex);
+            return null;
+        });
+    }
+
+    protected static Long selectedSupplierId(JComboBox<Supplier> combo) {
+        Supplier s = (Supplier) combo.getSelectedItem();
+        return s != null ? s.getId() : null;
+    }
+
+    /** Yeni kayıtta açılış stoğunun yazılacağı depo (null → varsayılan). */
+    protected Long selectedOpeningWarehouseId() {
+        Warehouse w = (Warehouse) warehouseCombo.getSelectedItem();
+        return w != null ? w.getId() : null;
+    }
+
     private void updateStockNote() {
-        int stock = (Integer) stockSpinner.getValue();
+        boolean editing = originalStock != null;
+        openingStockCell.setVisible(!editing);
+        warehouseCell.setVisible(!editing);
+        currentStockCell.setVisible(editing);
+
+        int stock = editing ? originalStock : (Integer) stockSpinner.getValue();
         int min = (Integer) minStockSpinner.getValue();
         String text;
         String color = "$Label.disabledForeground";
-        if (originalStock == null) {
-            text = stock > 0 ? "Kayıtta " + stock + " adet açılış stoğu giriş hareketi olarak yazılacak." : "Stoksuz kaydedilecek.";
+        if (editing) {
+            text = "Stok bu formda değişmez. Giriş, çıkış, sayım ve transfer için kart sayfasında Stok Hareketi'ni kullanın.";
         } else {
-            int delta = stock - originalStock;
-            if (delta > 0) {
-                text = "Mevcut " + originalStock + " adet. Kayıtta +" + delta + " adet giriş (düzeltme) yazılacak.";
-                color = "$Servicio.infoColor";
-            } else if (delta < 0) {
-                text = "Mevcut " + originalStock + " adet. Kayıtta " + (-delta) + " adet çıkış (düzeltme) yazılacak.";
-                color = "$Servicio.warningColor";
-            } else {
-                text = "Mevcut stok: " + originalStock + " adet.";
-            }
+            Warehouse w = (Warehouse) warehouseCombo.getSelectedItem();
+            text = stock > 0
+                    ? stock + " adet açılış stoğu " + (w != null ? w.getName() : "varsayılan depo") + " deposuna yazılacak."
+                    : "Stoksuz kaydedilecek; stok sonra kart sayfasından girilir.";
         }
         if (min > 0 && stock <= min) {
             text += "  Stok minimum seviyede ya da altında.";
@@ -226,6 +318,21 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
         }
         stockNote.setText(text);
         stockNote.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: " + color);
+    }
+
+    /** Düzenlemede mevcut stoğun depo dağılımı: "Ana Depo 9  ·  Vitrin 5". */
+    private void loadStockSplit(Long id) {
+        currentStockSplit.setText(" ");
+        ServiceManager.getStockService().getLevels(stockKind(), id).thenAccept(levels -> SwingUtilities.invokeLater(() -> {
+            if (!java.util.Objects.equals(id, editingId)) return;
+            String split = levels.stream().filter(l -> l.getQuantity() != 0)
+                    .map(l -> l.getWarehouseName() + " " + l.getQuantity())
+                    .collect(java.util.stream.Collectors.joining("  ·  "));
+            currentStockSplit.setText(split.isEmpty() ? "Hiçbir depoda yok" : split);
+        })).exceptionally(ex -> {
+            Servicio.getLogger().error("Depo dağılımı okunamadı", ex);
+            return null;
+        });
     }
 
     // -------------------------------------------------------------------------
@@ -340,7 +447,9 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
         nameField.setText(name != null ? name : "");
         loadCategories(categoryId);
         originalStock = (id != null && id > 0) ? (stock != null ? stock : 0) : null;
-        stockSpinner.setValue(stock != null ? stock : 0);
+        stockSpinner.setValue(originalStock == null && stock != null ? stock : 0);
+        currentStockValue.setText((originalStock != null ? originalStock : 0) + " adet");
+        if (originalStock != null) loadStockSplit(id);
         minStockSpinner.setValue(minStock != null ? minStock : 0);
         descriptionArea.setText(description != null ? description : "");
         barcodeOwner = null;

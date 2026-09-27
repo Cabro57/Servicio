@@ -109,6 +109,19 @@ public class DatabaseManager {
         return dataSource.getConnection();
     }
 
+    /** Bağlantı havuzu durumu: {aktif, boşta, toplam}; havuz yoksa sıfırlar (Kaynak Kullanımı sayfası). */
+    public static int[] poolStats() {
+        try {
+            if (dataSource != null && dataSource.getHikariPoolMXBean() != null) {
+                var pool = dataSource.getHikariPoolMXBean();
+                return new int[]{pool.getActiveConnections(), pool.getIdleConnections(), pool.getTotalConnections()};
+            }
+        } catch (Exception ignored) {
+            // Havuz kapanırken okunamayabilir; sayfa "—" gösterir.
+        }
+        return new int[]{0, 0, 0};
+    }
+
     public static Jdbi getJdbi() {
         if (jdbi == null) initialize();
         return jdbi;

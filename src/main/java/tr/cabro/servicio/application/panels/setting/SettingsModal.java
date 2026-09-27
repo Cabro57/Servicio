@@ -116,6 +116,9 @@ public class SettingsModal extends JPanel {
         page("Sözlükler", "Kategoriler", "Parça ve ürün ekranlarında seçilen kategoriler.", "tag.svg",
                 "kategori parça ürün stok pos",
                 SettingsCategoryPanel::new);
+        page("Sözlükler", "Depolar", "Stoğun durduğu yerler ve her birinde ne olduğu. Varsayılan depo, konum belirtilmeyen işlemlerde kullanılır.", "warehouse.svg",
+                "depo ambar raf vitrin stok konum yer nerede transfer",
+                SettingsWarehousePanel::new);
         page("Sözlükler", "Döviz Kurları", "Dövizli parça fiyatlarını TL'ye çevirirken kullanılan kurlar.", "banknote.svg",
                 "kur döviz dolar euro sterlin tcmb",
                 SettingsExchangeRatePanel::new);
@@ -126,6 +129,9 @@ public class SettingsModal extends JPanel {
         page("Sistem", "Yedekleme", "Veritabanı yedekleri, otomatik yedekleme ve geri yükleme.", "database-backup.svg",
                 "yedek yedekleme geri yükle klasör veritabanı",
                 SettingsDatabasePanel::new);
+        page("Sistem", "Kaynak Kullanımı", "Servicio hangi donanımda çalışıyor ve işlemci, bellek, disk ile ekrandan ne kadar kullanıyor.", "activity.svg",
+                "kaynak donanım işlemci cpu bellek ram disk ekran performans yavaş hız sistem",
+                SettingsResourcePanel::new);
         page("Sistem", "Güncelleme", "Yüklü sürüm, yeni sürüm denetimi ve otomatik denetim.", "circle-arrow-up.svg",
                 "güncelleme sürüm versiyon yeni indir denetle kontrol otomatik atla yama",
                 SettingsUpdatePanel::new);

@@ -137,6 +137,7 @@ class DictionaryList<T> extends JPanel {
     private void rebuild() {
         rows.removeAll();
         visibleRows.clear();
+        actionWidth = reservedActionWidth();
         for (T item : items) {
             if (!query.isEmpty() && !matches(item)) continue;
             Row row = new Row(item);
@@ -268,7 +269,7 @@ class DictionaryList<T> extends JPanel {
                 actionBar.add(iconButton(a, item));
             }
             // Eylemler gizliyken de yer tutsun: üstüne gelince satırdaki sayı yerinden oynamasın.
-            add(actionBar, span + "aligny center, wrap, w " + actionBar.getPreferredSize().width + "!");
+            add(actionBar, span + "aligny center, wrap, w " + actionWidth + "!");
 
             if (twoLines) {
                 JLabel s = new JLabel(sub);
@@ -332,6 +333,26 @@ class DictionaryList<T> extends JPanel {
             }
             super.paintComponent(g);
         }
+    }
+
+    /** Satırların eylem alanı için ayrılan genişlik (tüm satırlarda aynı; bkz. {@link #reservedActionWidth}). */
+    private int actionWidth;
+
+    /**
+     * Eylem alanı, bir satırda aynı anda görünebilecek en çok eylem kadar yer tutar. Eylemleri
+     * duruma göre değişen listelerde (depo: varsayılan yap / pasife al / sil) her satır kendi
+     * eylemi kadar yer ayırınca sağdaki sayılar satırdan satıra kayıyordu.
+     */
+    private int reservedActionWidth() {
+        int max = 0;
+        for (T item : items) {
+            int n = 0;
+            for (RowAction<T> a : actions) if (a.visible() == null || a.visible().test(item)) n++;
+            max = Math.max(max, n);
+        }
+        JPanel probe = new JPanel(new MigLayout("insets 0, gap 2", "", "[center]"));
+        for (int i = 0; i < max && !actions.isEmpty(); i++) probe.add(iconButton(actions.get(0), null));
+        return probe.getPreferredSize().width;
     }
 
     private JButton iconButton(RowAction<T> a, T item) {

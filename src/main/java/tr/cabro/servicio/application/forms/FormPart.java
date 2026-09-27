@@ -1,12 +1,14 @@
 package tr.cabro.servicio.application.forms;
 
-import tr.cabro.servicio.application.utils.Toasts;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.Toast;
 import tr.cabro.servicio.application.component.Badge;
 import tr.cabro.servicio.application.component.detail.DetailHeader;
 import tr.cabro.servicio.application.component.detail.DetailKit;
 import tr.cabro.servicio.application.component.detail.DetailListSection;
+import tr.cabro.servicio.application.component.detail.SectionSwitcher;
+import tr.cabro.servicio.application.component.stock.StockHistorySection;
+import tr.cabro.servicio.application.component.stock.StockLocationsCard;
+import tr.cabro.servicio.application.component.stock.StockMovementDialog;
 import tr.cabro.servicio.application.panels.edit.EditModals;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.system.Form;
@@ -14,7 +16,6 @@ import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.i18n.DateFormats;
-import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.Supplier;
@@ -23,10 +24,10 @@ import tr.cabro.servicio.model.WorkOrderItem;
 import tr.cabro.servicio.model.contract.Visualizable;
 import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.model.enums.ServiceStatus;
+import tr.cabro.servicio.model.enums.StockItemKind;
 import tr.cabro.servicio.service.PartService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.WorkOrderService;
-import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
 
@@ -49,6 +50,9 @@ public class FormPart extends Form {
     private final Badge categoryBadge = new Badge(simple("Kategorisiz", BadgeColor.GRAY));
     private final Badge criticalBadge = new Badge(simple("Kritik stok", BadgeColor.RED)).setShowIcon(true);
     private DetailListSection<WorkOrder> usage;
+    private StockHistorySection history;
+    private SectionSwitcher sections;
+    private StockLocationsCard locations;
 
     private JLabel factStock, factMin, factUsage, factRevenue, factUpdated;
     private JLabel supplierName, supplierPhone;
@@ -82,10 +86,12 @@ public class FormPart extends Form {
         header.addStat("sell", "Satış");
         header.addStat("margin", "Adet başı kâr");
         header.addAction("Düzenle", "icons/pencil.svg", () -> EditModals.editPart(this, part, this::formRefresh));
-        header.setPrimary("Stok Girişi", "icons/package-plus.svg", this::openAddStockDialog);
+        header.setPrimary("Stok Hareketi", "icons/arrow-down-up.svg", () -> openStockDialog(StockMovementDialog.Mode.IN));
         add(header, "span 2, growx, wmin 0, wrap");
 
-        usage = new DetailListSection<>("Kullanıldığı servisler", Arrays.asList(
+        history = new StockHistorySection("Geçmiş", StockItemKind.PART);
+
+        usage = new DetailListSection<>("Geçmiş", Arrays.asList(
                 new ColumnDef<WorkOrder>("No", String.class, s -> "SRV-" + s.getId()).alignment(SwingConstants.LEADING),
                 new ColumnDef<WorkOrder>("Müşteri", WorkOrder.class, s -> s).alignment(SwingConstants.LEADING),
                 new ColumnDef<WorkOrder>("Cihaz", Device.class, WorkOrder::getDevice).alignment(SwingConstants.LEADING),
@@ -104,7 +110,12 @@ public class FormPart extends Form {
         t.getColumnModel().getColumn(0).setMaxWidth(90);
         t.getColumnModel().getColumn(4).setMaxWidth(70);
         usage.setOnOpen(wo -> FormManager.showForm(new FormWorkOrder(wo)));
-        add(usage, "grow, wmin 0, hmin 0");
+
+        // Stok defteri parçanın nereden gelip nereye gittiğini, servis listesi kime takıldığını anlatır.
+        sections = new SectionSwitcher(new String[]{"stock", "usage"},
+                new String[]{"Stok hareketleri", "Kullanıldığı servisler"}, history, usage);
+        history.setOnCount(n -> sections.setCount("stock", n));
+        add(sections, "grow, wmin 0, hmin 0");
 
         add(DetailKit.scroll(buildSideColumn()), "grow, hmin 0");
         refreshData();
@@ -123,6 +134,9 @@ public class FormPart extends Form {
         factUpdated = DetailKit.fact(facts, "Son güncelleme");
         stockCard.add(facts);
         column.add(stockCard);
+
+        locations = new StockLocationsCard(() -> openStockDialog(StockMovementDialog.Mode.TRANSFER));
+        column.add(locations.component());
 
         supplierLink = DetailKit.link("Tedarikçiye git", () -> {
             if (part.getSupplier() != null) FormManager.showForm(new FormSupplier(part.getSupplier()));
@@ -199,9 +213,13 @@ public class FormPart extends Form {
         descriptionCard.setVisible(hasDesc);
         description.setText(hasDesc ? part.getDescription().trim() : "");
 
+        history.load(part.getId());
+        locations.load(StockItemKind.PART, part.getId());
+
         usage.showLoading();
         workOrderService.getAllByPart(part.getId()).thenAccept(workOrders -> SwingUtilities.invokeLater(() -> {
             usage.setData(workOrders);
+            sections.setCount("usage", workOrders.size());
             int used = 0;
             BigDecimal revenue = BigDecimal.ZERO;
             for (WorkOrder wo : workOrders) {
@@ -232,34 +250,8 @@ public class FormPart extends Form {
         return v != null ? Format.formatPrice(v) : "—";
     }
 
-    private void openAddStockDialog() {
-        DialogHelper.prompt(this, "stock.add.title", "stock.add.label", "", input -> {
-            if (input == null || input.trim().isEmpty()) return;
-
-            int amount;
-            try {
-                amount = Integer.parseInt(input.trim());
-            } catch (NumberFormatException ex) {
-                Toasts.show(this, Toast.Type.ERROR, Messages.get("toast.stock.invalidNumber"));
-                return;
-            }
-
-            if (amount <= 0) {
-                Toasts.show(this, Toast.Type.WARNING, Messages.get("toast.stock.mustBePositive"));
-                return;
-            }
-
-            final int finalAmount = amount;
-            partService.addStock(part.getId(), finalAmount, part.getWarehouseId())
-                    .thenCompose(v -> partService.getById(part.getId()))
-                    .thenAccept(opt -> SwingUtilities.invokeLater(() -> {
-                        opt.ifPresent(updated -> {
-                            this.part = updated;
-                            refreshData();
-                        });
-                        Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.stock.added", finalAmount));
-                    }))
-                    .exceptionally(ex -> ErrorHandler.handle(this, "Stok eklenemedi", ex));
-        });
+    private void openStockDialog(StockMovementDialog.Mode mode) {
+        StockMovementDialog.open(this, StockItemKind.PART, part.getId(), part.getName(), part.getPurchasePrice(),
+                mode, this::formRefresh);
     }
 }

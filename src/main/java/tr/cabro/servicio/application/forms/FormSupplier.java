@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
 import tr.cabro.servicio.application.utils.Toasts;
-import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.component.detail.DetailHeader;
@@ -19,8 +18,11 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.model.Product;
 import tr.cabro.servicio.model.Supplier;
+import tr.cabro.servicio.model.enums.SupplierRole;
 import tr.cabro.servicio.service.PartService;
+import tr.cabro.servicio.service.ProductService;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.service.SupplierService;
 import tr.cabro.servicio.util.Format;
@@ -30,29 +32,56 @@ import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
- * Tedarikçi detayı: kimlik şeridinde parça çeşidi, stoktaki mal değeri ve kritik parça sayısı;
- * altta tedarik ettiği parçalar (Tümü / Sipariş gerekli), sağda iletişim ve fatura bilgileri.
- * Birincil işlem kritik parçaların sipariş listesini panoya kopyalar (WhatsApp/e-postaya yapıştırılır).
+ * Tedarikçi / toptancı detayı: kimlik şeridinde kalem çeşidi, stoktaki mal değeri ve sipariş
+ * gereken kalem sayısı; altta firmadan alınan parçalar (tedarikçi) ve ürünler (toptancı) tek
+ * listede, sekmelerle; sağda iletişim ve fatura bilgileri. Birincil işlem kritik kalemlerin
+ * sipariş listesini panoya kopyalar (WhatsApp/e-postaya yapıştırılır).
  */
 public class FormSupplier extends Form {
 
     private static final String VIEW_ALL = "all";
+    private static final String VIEW_PARTS = "parts";
+    private static final String VIEW_PRODUCTS = "products";
     private static final String VIEW_REORDER = "reorder";
+
+    /** Liste satırı: parça ya da ürün, aynı kolonlarla. */
+    private record Item(boolean product, Object source, String name, String category, String barcode,
+                        int stock, Integer min, BigDecimal purchase, BigDecimal sale) {
+        static Item of(Part p) {
+            return new Item(false, p, p.getName(), p.getCategory() != null ? p.getCategory().getName() : null,
+                    p.getBarcode(), p.getStockQuantity() != null ? p.getStockQuantity() : 0, p.getMinStockLevel(),
+                    p.getPurchasePrice(), p.getSalePrice());
+        }
+
+        static Item of(Product p) {
+            return new Item(true, p, p.getName(), p.getCategory() != null ? p.getCategory().getName() : null,
+                    p.getBarcode(), p.getStockQuantity() != null ? p.getStockQuantity() : 0, p.getMinStockLevel(),
+                    p.getPurchasePrice(), p.getSalePrice());
+        }
+
+        boolean critical() {
+            return stock <= 0 || (min != null && stock < min);
+        }
+    }
 
     private Supplier supplier;
     private final SupplierService supplierService;
     private final PartService partService;
+    private final ProductService productService;
 
     private DetailHeader header;
-    private DetailListSection<Part> partsSection;
+    private DetailListSection<Item> itemsSection;
     private ViewTabs views;
-    private List<Part> parts = Collections.emptyList();
+    private List<Item> items = Collections.emptyList();
 
     private JLabel factPhone, factEmail, factAddress, factTaxNo, factTaxOffice, factCreated;
     private JPanel noteCard;
@@ -62,6 +91,7 @@ public class FormSupplier extends Form {
         this.supplier = supplier;
         this.supplierService = ServiceManager.getSupplierService();
         this.partService = ServiceManager.getPartService();
+        this.productService = ServiceManager.getProductService();
         init();
     }
 
@@ -69,30 +99,33 @@ public class FormSupplier extends Form {
         setLayout(new MigLayout("fill, insets 20, gap 16", "[grow, fill][340!, fill]", "[pref][grow, fill]"));
 
         header = new DetailHeader();
-        header.addStat("variety", "Parça çeşidi");
+        header.addStat("variety", "Kalem çeşidi");
         header.addStat("value", "Stoktaki mal değeri");
         header.addStat("critical", "Sipariş gereken");
         header.addAction("Düzenle", "icons/pencil.svg", () -> EditModals.editSupplier(this, supplier, this::formRefresh));
         header.setPrimary("Sipariş Listesi", "icons/clipboard-list.svg", this::copyReorderList);
         add(header, "span 2, growx, wmin 0, wrap");
 
-        partsSection = new DetailListSection<>("Tedarik ettiği parçalar", Arrays.asList(
-                new ColumnDef<Part>("Parça", Part.class, p -> p).alignment(SwingConstants.LEADING),
-                new ColumnDef<Part>("SKU", String.class, Part::getBarcode).alignment(SwingConstants.LEADING),
-                new ColumnDef<Part>("Stok", Part.class, p -> p).alignment(SwingConstants.CENTER),
-                new ColumnDef<Part>("Alış", BigDecimal.class, Part::getPurchasePrice).alignment(SwingConstants.TRAILING),
-                new ColumnDef<Part>("Satış", BigDecimal.class, Part::getSalePrice).alignment(SwingConstants.TRAILING)
-        ), "Bu tedarikçiye bağlı parça yok", "Parça eklerken ya da düzenlerken tedarikçi olarak seçildiğinde burada görünür.", false);
+        itemsSection = new DetailListSection<>("Bu firmadan alınanlar", Arrays.asList(
+                new ColumnDef<Item>("Kalem", Item.class, i -> i).alignment(SwingConstants.LEADING),
+                new ColumnDef<Item>("SKU", String.class, Item::barcode).alignment(SwingConstants.LEADING),
+                new ColumnDef<Item>("Stok", Item.class, i -> i).alignment(SwingConstants.CENTER),
+                new ColumnDef<Item>("Alış", BigDecimal.class, Item::purchase).alignment(SwingConstants.TRAILING),
+                new ColumnDef<Item>("Satış", BigDecimal.class, Item::sale).alignment(SwingConstants.TRAILING)
+        ), "Bu firmaya bağlı kalem yok",
+                "Parça formunda tedarikçi ya da ürün formunda toptancı olarak seçildiğinde burada görünür.", false);
         views = new ViewTabs();
         views.addView(VIEW_ALL, "Tümü");
+        views.addView(VIEW_PARTS, "Parçalar");
+        views.addView(VIEW_PRODUCTS, "Ürünler");
         views.addView(VIEW_REORDER, "Sipariş gerekli");
         views.setOnChange(k -> applyView());
-        partsSection.setTabs(views);
+        itemsSection.setTabs(views);
 
-        JTable t = partsSection.getTable();
-        t.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Part>(
-                Part::getName,
-                p -> p.getCategory() != null ? p.getCategory().getName() : "Kategorisiz"));
+        JTable t = itemsSection.getTable();
+        t.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Item>(
+                Item::name,
+                i -> (i.product() ? "Ürün" : "Parça") + "  ·  " + (i.category() != null ? i.category() : "Kategorisiz")));
         t.getColumnModel().getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean s, boolean f, int row, int col) {
@@ -105,13 +138,12 @@ public class FormSupplier extends Form {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean s, boolean f, int row, int col) {
                 super.getTableCellRendererComponent(table, value, s, false, row, col);
-                Part p = (Part) value;
-                int stock = p.getStockQuantity() != null ? p.getStockQuantity() : 0;
-                boolean critical = isCritical(p);
+                Item i = (Item) value;
+                boolean belowMin = i.min() != null && i.stock() < i.min();
                 setHorizontalAlignment(CENTER);
                 setFont(table.getFont().deriveFont(Font.BOLD));
-                setText(stock <= 0 ? "Tükendi" : critical ? stock + "  ·  min " + p.getMinStockLevel() : String.valueOf(stock));
-                setForeground(critical || stock <= 0 ? SemanticColor.danger() : table.getForeground());
+                setText(i.stock() <= 0 ? "Tükendi" : belowMin ? i.stock() + "  ·  min " + i.min() : String.valueOf(i.stock()));
+                setForeground(i.critical() ? SemanticColor.danger() : table.getForeground());
                 return this;
             }
         });
@@ -122,8 +154,9 @@ public class FormSupplier extends Form {
         t.getColumnModel().getColumn(1).setPreferredWidth(100);
         t.getColumnModel().getColumn(2).setPreferredWidth(110);
         t.getColumnModel().getColumn(2).setMaxWidth(130);
-        partsSection.setOnOpen(p -> FormManager.showForm(new FormPart(p)));
-        add(partsSection, "grow, wmin 0, hmin 0");
+        itemsSection.setOnOpen(i -> FormManager.showForm(i.product()
+                ? new FormProduct((Product) i.source()) : new FormPart((Part) i.source())));
+        add(itemsSection, "grow, wmin 0, hmin 0");
 
         add(DetailKit.scroll(buildSideColumn()), "grow, hmin 0");
         refreshData();
@@ -171,10 +204,6 @@ public class FormSupplier extends Form {
         );
     }
 
-    private static boolean isCritical(Part p) {
-        return p.getStockQuantity() != null && p.getMinStockLevel() != null && p.getStockQuantity() < p.getMinStockLevel();
-    }
-
     private String firmName() {
         return supplier.getBusinessName() != null && !supplier.getBusinessName().isBlank()
                 ? supplier.getBusinessName() : supplier.getName();
@@ -183,9 +212,10 @@ public class FormSupplier extends Form {
     private void refreshData() {
         header.setTitle(firmName());
         boolean hasFirm = supplier.getBusinessName() != null && !supplier.getBusinessName().isBlank();
-        header.setMeta(hasFirm && supplier.getName() != null ? "İlgili: " + supplier.getName() : null,
-                supplier.getPhone() != null ? Format.formatPhoneNumber(supplier.getPhone()) : null,
-                supplier.getEmail());
+        SupplierRole role = supplier.getRole() != null ? supplier.getRole() : SupplierRole.SUPPLIER;
+        header.setMeta(role.getLabel(),
+                hasFirm && supplier.getName() != null ? "İlgili: " + supplier.getName() : null,
+                supplier.getPhone() != null ? Format.formatPhoneNumber(supplier.getPhone()) : null);
 
         DetailKit.setFact(factPhone, supplier.getPhone() != null ? Format.formatPhoneNumber(supplier.getPhone()) : null);
         DetailKit.setFact(factEmail, supplier.getEmail());
@@ -197,49 +227,62 @@ public class FormSupplier extends Form {
         noteCard.setVisible(hasNote);
         note.setText(hasNote ? supplier.getNote().trim() : "");
 
-        partsSection.showLoading();
-        partService.getBySupplierId(supplier.getId()).thenAccept(list -> SwingUtilities.invokeLater(() -> {
-            parts = list;
-            long critical = list.stream().filter(p -> isCritical(p) || (p.getStockQuantity() != null && p.getStockQuantity() <= 0)).count();
+        itemsSection.showLoading();
+        CompletableFuture<List<Part>> parts = partService.getBySupplierId(supplier.getId());
+        CompletableFuture<List<Product>> products = productService.getBySupplierId(supplier.getId());
+        parts.thenCombine(products, (pl, rl) -> {
+            List<Item> all = new ArrayList<>();
+            pl.forEach(p -> all.add(Item.of(p)));
+            rl.forEach(p -> all.add(Item.of(p)));
+            all.sort(Comparator.comparing(i -> i.name() != null ? i.name().toLowerCase() : ""));
+            return all;
+        }).thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            items = list;
+            long critical = list.stream().filter(Item::critical).count();
             BigDecimal value = list.stream()
-                    .map(p -> (p.getPurchasePrice() != null ? p.getPurchasePrice() : BigDecimal.ZERO)
-                            .multiply(BigDecimal.valueOf(Math.max(0, p.getStockQuantity() != null ? p.getStockQuantity() : 0))))
+                    .map(i -> (i.purchase() != null ? i.purchase() : BigDecimal.ZERO).multiply(BigDecimal.valueOf(Math.max(0, i.stock()))))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             header.setStat("variety", String.valueOf(list.size()), null);
             header.setStat("value", Format.formatPrice(value), null);
             header.setStat("critical", String.valueOf(critical), critical > 0 ? "Servicio.warningColor" : null);
             views.setCount(VIEW_ALL, (long) list.size());
+            views.setCount(VIEW_PARTS, list.stream().filter(i -> !i.product()).count());
+            views.setCount(VIEW_PRODUCTS, list.stream().filter(Item::product).count());
             views.setCount(VIEW_REORDER, critical);
             applyView();
         })).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> partsSection.showError("Parçalar yüklenemedi."));
-            return ErrorHandler.handle(this, "Tedarikçi parçaları yüklenemedi", ex);
+            SwingUtilities.invokeLater(() -> itemsSection.showError("Kalemler yüklenemedi."));
+            return ErrorHandler.handle(this, "Firma kalemleri yüklenemedi", ex);
         });
     }
 
-    private List<Part> reorderParts() {
-        return parts.stream().filter(p -> isCritical(p) || (p.getStockQuantity() != null && p.getStockQuantity() <= 0))
-                .collect(Collectors.toList());
+    private List<Item> reorderItems() {
+        return items.stream().filter(Item::critical).collect(Collectors.toList());
     }
 
     private void applyView() {
-        partsSection.setData(VIEW_REORDER.equals(views.getSelected()) ? reorderParts() : parts);
+        String view = views.getSelected();
+        List<Item> shown;
+        if (VIEW_REORDER.equals(view)) shown = reorderItems();
+        else if (VIEW_PARTS.equals(view)) shown = items.stream().filter(i -> !i.product()).toList();
+        else if (VIEW_PRODUCTS.equals(view)) shown = items.stream().filter(Item::product).toList();
+        else shown = items;
+        itemsSection.setData(shown);
     }
 
-    /** Kritik parçaları "ad (SKU) — stok X, en az Y" satırları olarak panoya kopyalar. */
+    /** Kritik kalemleri "ad (SKU) — N adet (stok X, en az Y)" satırları olarak panoya kopyalar. */
     private void copyReorderList() {
-        List<Part> list = reorderParts();
+        List<Item> list = reorderItems();
         if (list.isEmpty()) {
             Toasts.show(this, Toast.Type.INFO, Messages.get("toast.supplier.reorderEmpty"));
             return;
         }
         StringBuilder sb = new StringBuilder("Sipariş listesi — ").append(firmName()).append("\n");
-        for (Part p : list) {
-            int stock = p.getStockQuantity() != null ? p.getStockQuantity() : 0;
-            int min = p.getMinStockLevel() != null ? p.getMinStockLevel() : 0;
-            int need = Math.max(1, min - stock);
-            sb.append("• ").append(p.getName()).append(" (").append(p.getBarcode()).append(") — ")
-                    .append(need).append(" adet (stok ").append(stock).append(", en az ").append(min).append(")\n");
+        for (Item i : list) {
+            int min = i.min() != null ? i.min() : 0;
+            int need = Math.max(1, min - i.stock());
+            sb.append("• ").append(i.name()).append(" (").append(i.barcode()).append(") — ")
+                    .append(need).append(" adet (stok ").append(i.stock()).append(", en az ").append(min).append(")\n");
         }
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(sb.toString().trim()), null);
         Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.supplier.reorderCopied", list.size()));

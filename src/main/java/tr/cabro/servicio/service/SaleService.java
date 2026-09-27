@@ -4,13 +4,11 @@ import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.repository.CustomerRepository;
 import tr.cabro.servicio.database.repository.PaymentAllocationRepository;
 import tr.cabro.servicio.database.repository.PaymentRepository;
-import tr.cabro.servicio.database.repository.ProductStockMovementRepository;
 import tr.cabro.servicio.database.repository.SaleItemRepository;
 import tr.cabro.servicio.database.repository.SaleRepository;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Payment;
 import tr.cabro.servicio.model.PaymentAllocation;
-import tr.cabro.servicio.model.ProductStockMovement;
 import tr.cabro.servicio.model.Sale;
 import tr.cabro.servicio.model.SaleItem;
 import tr.cabro.servicio.model.dto.PageResult;
@@ -19,7 +17,7 @@ import tr.cabro.servicio.model.enums.DiscountType;
 import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.model.enums.ReferenceType;
 import tr.cabro.servicio.model.enums.SaleType;
-import tr.cabro.servicio.model.enums.StockType;
+import tr.cabro.servicio.model.enums.StockItemKind;
 import tr.cabro.servicio.service.exception.ValidationException;
 
 import java.math.BigDecimal;
@@ -44,13 +42,16 @@ public class SaleService {
     private final SaleItemRepository saleItemRepository;
     private final CustomerRepository customerRepository;
     private final PaymentService paymentService;
+    private final StockService stockService;
 
     public SaleService(SaleRepository saleRepository, SaleItemRepository saleItemRepository,
-                        CustomerRepository customerRepository, PaymentService paymentService) {
+                        CustomerRepository customerRepository, PaymentService paymentService,
+                        StockService stockService) {
         this.saleRepository = saleRepository;
         this.saleItemRepository = saleItemRepository;
         this.customerRepository = customerRepository;
         this.paymentService = paymentService;
+        this.stockService = stockService;
     }
 
     /** {@link #recordReturn} girişi — hangi orijinal satış kaleminden ne kadar iade edileceği. */
@@ -145,7 +146,6 @@ public class SaleService {
 
             SaleRepository saleRepo = handle.attach(SaleRepository.class);
             SaleItemRepository itemRepo = handle.attach(SaleItemRepository.class);
-            ProductStockMovementRepository stockRepo = handle.attach(ProductStockMovementRepository.class);
             PaymentRepository paymentRepo = handle.attach(PaymentRepository.class);
             PaymentAllocationRepository allocationRepo = handle.attach(PaymentAllocationRepository.class);
 
@@ -188,6 +188,9 @@ public class SaleService {
                 returnItem.setSaleCurrency(originalItem.getSaleCurrency());
                 returnItem.setUnitPriceOriginal(originalItem.getUnitPriceOriginal());
                 returnItem.setSourceSaleItemId(originalItem.getId());
+                if (originalItem.getProductId() != null) {
+                    returnItem.setWarehouseId(stockService.resolveWarehouse(handle, originalItem.getWarehouseId(), false));
+                }
                 if (discount.signum() > 0) {
                     returnItem.setLineDiscountType(DiscountType.AMOUNT);
                     returnItem.setLineDiscountValue(discount);
@@ -224,13 +227,9 @@ public class SaleService {
                 item.setId(itemId);
 
                 if (item.getProductId() != null) {
-                    ProductStockMovement movement = new ProductStockMovement();
-                    movement.setProductId(item.getProductId());
-                    movement.setQuantity(Math.abs(item.getQuantity()));
-                    movement.setType(StockType.IN);
-                    movement.setReferenceType(ReferenceType.RETURN);
-                    movement.setReferenceId(saleId);
-                    stockRepo.insert(movement);
+                    // İade, satışın düştüğü depoya döner (depo pasif olsa bile).
+                    stockService.record(handle, StockItemKind.PRODUCT, item.getProductId(), item.getWarehouseId(),
+                            Math.abs(item.getQuantity()), ReferenceType.RETURN, saleId, item.getPurchasePrice(), null);
                 }
             }
             returnSale.setItems(returnItems);
@@ -264,7 +263,6 @@ public class SaleService {
         return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
             SaleRepository saleRepo = handle.attach(SaleRepository.class);
             SaleItemRepository itemRepo = handle.attach(SaleItemRepository.class);
-            ProductStockMovementRepository stockRepo = handle.attach(ProductStockMovementRepository.class);
             PaymentRepository paymentRepo = handle.attach(PaymentRepository.class);
             PaymentAllocationRepository allocationRepo = handle.attach(PaymentAllocationRepository.class);
 
@@ -279,17 +277,16 @@ public class SaleService {
             for (SaleItem item : sale.getItems()) {
                 item.setSaleId(saleId);
                 item.setCreatedAt(now);
+                // Satış deposu seçilmemişse varsayılan depodan düşülür. Stok yetersizliği satışı
+                // engellemez (market akışı, bkz. sınıf yorumu); depo bakiyesi eksiye düşebilir.
+                item.setWarehouseId(item.getProductId() != null
+                        ? stockService.resolveWarehouse(handle, item.getWarehouseId(), true) : null);
                 Long itemId = itemRepo.insert(item);
                 item.setId(itemId);
 
                 if (item.getProductId() != null) {
-                    ProductStockMovement movement = new ProductStockMovement();
-                    movement.setProductId(item.getProductId());
-                    movement.setQuantity(-Math.abs(item.getQuantity()));
-                    movement.setType(StockType.OUT);
-                    movement.setReferenceType(ReferenceType.SALE);
-                    movement.setReferenceId(saleId);
-                    stockRepo.insert(movement);
+                    stockService.record(handle, StockItemKind.PRODUCT, item.getProductId(), item.getWarehouseId(),
+                            -Math.abs(item.getQuantity()), ReferenceType.SALE, saleId, item.getPurchasePrice(), null);
                 }
             }
 

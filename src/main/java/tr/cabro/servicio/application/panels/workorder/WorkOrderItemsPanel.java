@@ -202,7 +202,7 @@ public class WorkOrderItemsPanel extends JPanel {
         MessageModal modal = MessageModal.of(MessageModal.Tone.DANGER, Messages.get("confirm.delete.title"),
                 Messages.get("confirm.delete.item.named", item.getItemName()));
         // Hazır parçadan gelen kalemde stok iadesi sorulur; varsayılan olarak stoğa geri eklenir.
-        JCheckBox stockCheckBox = new JCheckBox("Silinen parça stoğa geri eklensin");
+        JCheckBox stockCheckBox = new JCheckBox("Parça stoğa geri dönsün (işaretsizse fire/kayıp yazılır)");
         if (item.getSourceType() == SourceType.PRESET) {
             stockCheckBox.setSelected(true);
             modal.extra(stockCheckBox);

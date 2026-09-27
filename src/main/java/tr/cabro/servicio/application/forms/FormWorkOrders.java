@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.panels.workorder.WorkOrderDeleteDialog;
 import tr.cabro.servicio.application.utils.Toasts;
 import java.util.ArrayList;
 import tr.cabro.servicio.application.component.table.Lookups;
@@ -37,7 +38,6 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.i18n.Messages;
-import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
@@ -462,7 +462,7 @@ public class FormWorkOrders extends AbstractTableForm {
             ).thenAccept(saved ->
                     SwingUtilities.invokeLater(() -> {
                         String msg = isEdit ? Messages.get("toast.workorder.updated") : Messages.get("toast.workorder.created");
-                        Toasts.show(this, Toast.Type.SUCCESS, msg);
+                        Toasts.saved(this, msg);
                         refreshTable();
                         if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
                     })
@@ -536,14 +536,7 @@ public class FormWorkOrders extends AbstractTableForm {
             public void onDelete(WorkOrder wo) {
                 if (wo == null) return;
 
-                DialogHelper.confirmDelete(FormWorkOrders.this, "confirm.delete.workorder", () ->
-                        service.delete(wo.getId())
-                                .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                                    Toasts.show(FormWorkOrders.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
-                                    refreshTable();
-                                }))
-                                .exceptionally(ex -> ErrorHandler.handle(FormWorkOrders.this, "Servis kaydı silinemedi", ex)),
-                        wo.getId());
+                WorkOrderDeleteDialog.confirm(FormWorkOrders.this, wo, () -> refreshTable());
             }
 
             @Override

@@ -15,6 +15,8 @@ import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Labor;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.model.Part;
+import tr.cabro.servicio.model.StockLevel;
+import tr.cabro.servicio.model.Warehouse;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderItem;
 import tr.cabro.servicio.model.enums.ItemType;
@@ -50,21 +52,24 @@ public class WorkOrderItemModal extends JPanel {
 
     private enum Mode { PART, LABOR, MANUAL }
 
-    /** Katalog satırı: parça ya da hazır işçilik. */
-    private record Entry(Part part, Labor labor, boolean compatible) {
+    /**
+     * Katalog satırı: parça ya da hazır işçilik. {@code warehouseQty}: parçanın SEÇİLİ DEPODAKİ adedi
+     * (depo değişince satırlar yeniden kurulur); işçilikte anlamsız.
+     */
+    private record Entry(Part part, Labor labor, boolean compatible, int warehouseQty) {
         boolean isPart() { return part != null; }
         String name() { return isPart() ? part.getName() : labor.getName(); }
         BigDecimal price() {
             BigDecimal p = isPart() ? part.getSalePrice() : labor.getDefaultPrice();
             return p != null ? p : BigDecimal.ZERO;
         }
-        int stock() { return isPart() && part.getStockQuantity() != null ? part.getStockQuantity() : Integer.MAX_VALUE; }
+        int stock() { return isPart() ? warehouseQty : Integer.MAX_VALUE; }
         Object key() { return isPart() ? "P" + part.getId() : "L" + labor.getId(); }
     }
 
     /** Sepet satırı: kaleme dönüşecek durum + satırın bileşenleri. */
     private static final class Line {
-        final Entry entry;          // katalogtan geldiyse dolu, manuelde null
+        Entry entry;                // katalogtan geldiyse dolu, manuelde null (depo değişince güncellenir)
         final ItemType type;
         final String name;
         String serialNo;
@@ -101,6 +106,12 @@ public class WorkOrderItemModal extends JPanel {
     private JPanel partFilters, laborFilters;
     private JComboBox<String> cmbCategory, cmbModel, cmbSupplier, cmbPartSort;
     private JCheckBox chkInStock, chkCompatible;
+    private JComboBox<Warehouse> cmbWarehouse;
+    /** Tüm parçalar (kaynak liste); {@link #parts} seçili depoya göre bundan kurulur. */
+    private final List<Part> allParts = new ArrayList<>();
+    /** Seçili depodaki parça adetleri; null → depo bakiyesi henüz okunmadı (toplam stok kullanılır). */
+    private java.util.Map<Long, Integer> warehouseStock;
+    private int stockToken;
     private JComboBox<String> cmbLaborCategory, cmbLaborSort;
     private JComboBox<DeviceType> cmbLaborType;
     private JCheckBox chkPriced;
@@ -180,7 +191,7 @@ public class WorkOrderItemModal extends JPanel {
                 && !workOrder.getDevice().getModel().isBlank() ? workOrder.getDevice().getModel().trim() : null;
 
         // Parça süzgeçleri: 1. satır kategori, uyumlu model, sıralama; 2. satır tedarikçi ve hızlı süzgeçler
-        partFilters = new JPanel(new MigLayout("insets 0, fillx, wrap 3, gap 8 6, hidemode 3", "[0::, grow, fill][0::, grow, fill][0::, grow, fill]", "[][]"));
+        partFilters = new JPanel(new MigLayout("insets 0, fillx, wrap 3, gap 8 6, hidemode 3", "[0::, grow, fill][0::, grow, fill][0::, grow, fill]", "[][][]"));
         partFilters.setOpaque(false);
         cmbCategory = filterCombo("Tüm kategoriler");
         cmbModel = filterCombo("Tüm modeller");
@@ -195,13 +206,27 @@ public class WorkOrderItemModal extends JPanel {
         partFilters.add(cmbCategory);
         partFilters.add(cmbModel);
         partFilters.add(cmbPartSort);
+        cmbWarehouse = new JComboBox<>();
+        cmbWarehouse.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
+        cmbWarehouse.setMinimumSize(new Dimension(0, cmbWarehouse.getMinimumSize().height));
+        cmbWarehouse.setToolTipText("Eklenen parçalar bu depodan düşülür; stok adetleri bu depoya göredir");
+        cmbWarehouse.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean sel, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, sel, focus);
+                if (value instanceof Warehouse w) setText((index < 0 ? "Depo: " : "") + w.getName());
+                return this;
+            }
+        });
+        cmbWarehouse.addActionListener(e -> { if (!populating) loadWarehouseStock(); });
+        partFilters.add(cmbWarehouse);
         partFilters.add(cmbSupplier);
         JPanel checks = new JPanel(new MigLayout("insets 0, gap 14, hidemode 3", "[][][]", "[center]"));
         checks.setOpaque(false);
         checks.add(chkInStock);
         checks.add(chkCompatible);
         checks.add(resetPart);
-        partFilters.add(checks, "span 2, wmin 0");
+        partFilters.add(checks, "newline, span 3, wmin 0");
 
         // İşçilik süzgeçleri: kategori, cihaz türü, sıralama; ücreti tanımlı olanlar
         laborFilters = new JPanel(new MigLayout("insets 0, fillx, wrap 3, gap 8 6, hidemode 3", "[0::, grow, fill][0::, grow, fill][0::, grow, fill]", "[][]"));
@@ -416,7 +441,7 @@ public class WorkOrderItemModal extends JPanel {
                 if (supplier != null && (p.getSupplier() == null || !supplier.equals(p.getSupplier().getName()))) continue;
                 if (modelFilter != null && !nz(p.getModelCompatibility()).toLowerCase(TR).contains(modelFilter)) continue;
                 if (compatibleOnly && !e.compatible()) continue;
-                if (inStockOnly && (p.getStockQuantity() == null || p.getStockQuantity() <= 0)) continue;
+                if (inStockOnly && e.stock() <= 0) continue;
                 if (!needle.isEmpty() && !(nz(p.getName()) + " " + nz(p.getBarcode()) + " " + nz(p.getModelCompatibility()))
                         .toLowerCase(TR).contains(needle)) continue;
                 out.add(e);
@@ -841,23 +866,10 @@ public class WorkOrderItemModal extends JPanel {
     // =========================================================================
 
     private void loadData() {
-        String model = workOrder.getDevice() != null && workOrder.getDevice().getModel() != null
-                ? workOrder.getDevice().getModel().trim().toLowerCase(TR) : "";
-
         ServiceManager.getPartService().getAll().thenAccept(list -> SwingUtilities.invokeLater(() -> {
-            parts.clear();
-            for (Part p : list) {
-                boolean compatible = !model.isEmpty() && p.getModelCompatibility() != null
-                        && p.getModelCompatibility().toLowerCase(TR).contains(model);
-                parts.add(new Entry(p, null, compatible));
-            }
-            // Bu cihaza uyumlu parçalar üstte; sonra stokta olanlar, sonra ad.
-            parts.sort((a, b) -> {
-                if (a.compatible() != b.compatible()) return a.compatible() ? -1 : 1;
-                boolean sa = a.stock() > 0, sb = b.stock() > 0;
-                if (sa != sb) return sa ? -1 : 1;
-                return nz(a.name()).compareToIgnoreCase(nz(b.name()));
-            });
+            allParts.clear();
+            allParts.addAll(list);
+            rebuildPartEntries();
             populating = true;
             String prevModel = sel(cmbModel), prevSupplier = sel(cmbSupplier);
             cmbModel.removeAllItems();
@@ -881,6 +893,20 @@ public class WorkOrderItemModal extends JPanel {
             applyFilters();
         })).exceptionally(ex -> ErrorHandler.handle(this, "Parçalar yüklenemedi", ex));
 
+        ServiceManager.getWarehouseService().getActive().thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            populating = true;
+            Warehouse def = null;
+            for (Warehouse w : list) {
+                cmbWarehouse.addItem(w);
+                if (w.isDefaultWarehouse()) def = w;
+            }
+            cmbWarehouse.setSelectedItem(def);
+            // Tek depoda seçim anlamsız; stok zaten o depodadır.
+            cmbWarehouse.setVisible(list.size() > 1);
+            populating = false;
+            loadWarehouseStock();
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Depolar yüklenemedi", ex));
+
         ServiceManager.getPartCategoryManager().getFor(CategoryScope.PART, null).thenAccept(categories -> SwingUtilities.invokeLater(() -> {
             populating = true;
             categories.forEach(c -> cmbCategory.addItem(c.getName()));
@@ -900,6 +926,60 @@ public class WorkOrderItemModal extends JPanel {
         });
     }
 
+    /** Seçili deponun parça adetlerini okur; gelince katalog ve sepet o depoya göre yenilenir. */
+    private void loadWarehouseStock() {
+        Warehouse w = (Warehouse) cmbWarehouse.getSelectedItem();
+        if (w == null) return;
+        int token = ++stockToken;
+        ServiceManager.getStockService().getWarehouseContents(w.getId()).thenAccept(levels -> SwingUtilities.invokeLater(() -> {
+            if (token != stockToken) return;
+            java.util.Map<Long, Integer> map = new java.util.HashMap<>();
+            for (StockLevel l : levels) if ("PART".equals(l.getItemKind())) map.put(l.getItemId(), l.getQuantity());
+            warehouseStock = map;
+            rebuildPartEntries();
+        })).exceptionally(ex -> ErrorHandler.handle(this, "Depo stoğu okunamadı", ex));
+    }
+
+    /** Katalog satırlarını ve sepetteki parça satırlarını seçili depo adetleriyle yeniden kurar. */
+    private void rebuildPartEntries() {
+        String model = workOrder.getDevice() != null && workOrder.getDevice().getModel() != null
+                ? workOrder.getDevice().getModel().trim().toLowerCase(TR) : "";
+        parts.clear();
+        java.util.Map<Object, Entry> byKey = new java.util.HashMap<>();
+        for (Part p : allParts) {
+            boolean compatible = !model.isEmpty() && p.getModelCompatibility() != null
+                    && p.getModelCompatibility().toLowerCase(TR).contains(model);
+            int stock = warehouseStock != null ? warehouseStock.getOrDefault(p.getId(), 0)
+                    : (p.getStockQuantity() != null ? p.getStockQuantity() : 0);
+            Entry e = new Entry(p, null, compatible, stock);
+            parts.add(e);
+            byKey.put(e.key(), e);
+        }
+        // Bu cihaza uyumlu parçalar üstte; sonra stokta olanlar, sonra ad.
+        parts.sort((a, b) -> {
+            if (a.compatible() != b.compatible()) return a.compatible() ? -1 : 1;
+            boolean sa = a.stock() > 0, sb = b.stock() > 0;
+            if (sa != sb) return sa ? -1 : 1;
+            return nz(a.name()).compareToIgnoreCase(nz(b.name()));
+        });
+        // Sepetteki parçalar yeni deponun adedine bağlanır; fazlası kırpılır.
+        boolean clipped = false;
+        for (Line l : lines) {
+            if (l.entry == null || !l.entry.isPart()) continue;
+            Entry fresh = byKey.get(l.entry.key());
+            if (fresh == null) continue;
+            l.entry = fresh;
+            int max = Math.max(fresh.stock(), 0);
+            if (l.qty > max) {
+                l.qty = Math.max(max, 1);
+                clipped = true;
+            }
+        }
+        if (clipped) Toasts.show(this, Toast.Type.WARNING, "Seçili depoda yeterli stok yok; listedeki adetler depoya göre düzeltildi.");
+        refreshBasket();
+        if (partsLoaded) applyFilters();
+    }
+
     private void loadLabors() {
         DeviceType type = (DeviceType) cmbLaborType.getSelectedItem();
         Long typeId = type != null ? type.getId() : null;
@@ -907,7 +987,7 @@ public class WorkOrderItemModal extends JPanel {
         var future = typeId != null ? ServiceManager.getLaborService().getByTypeId(typeId) : ServiceManager.getLaborService().getAll();
         future.thenAccept(list -> SwingUtilities.invokeLater(() -> {
             labors.clear();
-            for (Labor l : list) labors.add(new Entry(null, l, false));
+            for (Labor l : list) labors.add(new Entry(null, l, false, 0));
             populating = true;
             String prev = sel(cmbLaborCategory);
             cmbLaborCategory.removeAllItems();
@@ -953,7 +1033,11 @@ public class WorkOrderItemModal extends JPanel {
         item.setItemType(l.type);
         item.setSourceType(l.entry != null ? SourceType.PRESET : SourceType.MANUAL);
         if (l.entry != null) {
-            if (l.entry.isPart()) item.setPartId(l.entry.part().getId());
+            if (l.entry.isPart()) {
+                item.setPartId(l.entry.part().getId());
+                Warehouse w = (Warehouse) cmbWarehouse.getSelectedItem();
+                item.setWarehouseId(w != null ? w.getId() : null);
+            }
             else item.setLaborId(l.entry.labor().getId());
         }
         item.setItemName(l.name);

@@ -64,7 +64,7 @@ public final class EditModals {
 
     public static void editSupplier(Component owner, Supplier supplier, Runnable onSaved) {
         SupplierEditPanel panel = new SupplierEditPanel(supplier);
-        AppModal.showModal(owner, new SimpleModalBorder(panel, "Tedarikçi Düzenle", updateOptions(), (controller, action) -> {
+        AppModal.showModal(owner, new SimpleModalBorder(panel, "Firmayı Düzenle", updateOptions(), (controller, action) -> {
             if (action != SimpleModalBorder.OK_OPTION) return;
             Supplier updated = panel.getData();
             if (updated == null) { controller.consume(); return; }

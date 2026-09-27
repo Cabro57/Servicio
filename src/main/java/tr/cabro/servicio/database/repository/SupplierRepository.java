@@ -22,13 +22,13 @@ import java.util.Optional;
 @RegisterBeanMapper(Supplier.class)
 public interface SupplierRepository extends SqlObject {
 
-    @SqlUpdate("INSERT INTO suppliers (name, business_name, tax_number, tax_office, email, phone, address, note, created_at, updated_at) " +
-            "VALUES (:name, :businessName, :taxNumber, :taxOffice, :email, :phone, :address, :note, :createdAt, :updatedAt)")
+    @SqlUpdate("INSERT INTO suppliers (name, business_name, tax_number, tax_office, email, phone, address, note, role, created_at, updated_at) " +
+            "VALUES (:name, :businessName, :taxNumber, :taxOffice, :email, :phone, :address, :note, :role, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean Supplier supplier);
 
     @SqlUpdate("UPDATE suppliers SET name=:name, business_name=:businessName, tax_number=:taxNumber, " +
-            "tax_office=:taxOffice, email=:email, phone=:phone, address=:address, note=:note, updated_at=:updatedAt WHERE id=:id")
+            "tax_office=:taxOffice, email=:email, phone=:phone, address=:address, note=:note, role=:role, updated_at=:updatedAt WHERE id=:id")
     void update(@BindBean Supplier supplier);
 
     // --- SOFT DELETE İŞLEMLERİ ---
@@ -40,17 +40,17 @@ public interface SupplierRepository extends SqlObject {
 
     // --- SEÇME (SELECT) İŞLEMLERİ ---
     // SELECT * yerine performansı ve güvenilirliği artırmak için kolon isimlerini açıkça yazmak kurumsal bir best-practice'dir.
-    @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers WHERE id = :id AND is_deleted = 0")
+    @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, role, is_deleted, created_at, updated_at FROM suppliers WHERE id = :id AND is_deleted = 0")
     Optional<Supplier> findById(@Bind("id") Long id);
 
-    @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers WHERE id IN (<ids>) AND is_deleted = 0")
+    @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, role, is_deleted, created_at, updated_at FROM suppliers WHERE id IN (<ids>) AND is_deleted = 0")
     List<Supplier> findByIds(@BindList("ids") List<Long> ids);
 
-    @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers WHERE is_deleted = 0 ORDER BY name")
+    @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, role, is_deleted, created_at, updated_at FROM suppliers WHERE is_deleted = 0 ORDER BY name")
     List<Supplier> findAll();
 
     // UI tarafındaki arama panellerinde kullanmanız için kullanışlı bir search metodu
-    @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers WHERE is_deleted = 0 AND " +
+    @SqlQuery("SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, role, is_deleted, created_at, updated_at FROM suppliers WHERE is_deleted = 0 AND " +
             "(name LIKE :search OR business_name LIKE :search OR tax_number LIKE :search OR phone LIKE :search) " +
             "ORDER BY name")
     List<Supplier> search(@Bind("search") String searchTerm);
@@ -84,7 +84,7 @@ public interface SupplierRepository extends SqlObject {
         params.put("limit", pageSize);
         params.put("offset", (page - 1) * pageSize);
 
-        String listSql = "SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, is_deleted, created_at, updated_at FROM suppliers " +
+        String listSql = "SELECT id, name, business_name, tax_number, tax_office, email, phone, address, note, role, is_deleted, created_at, updated_at FROM suppliers " +
                 whereClause + " ORDER BY " + SORTS.getOrDefault(sortKey == null ? "NEWEST" : sortKey, SORTS.get("NEWEST")) + " LIMIT :limit OFFSET :offset";
         String countSql = "SELECT COUNT(*) FROM suppliers " + whereClause;
 

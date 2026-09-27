@@ -5,6 +5,10 @@ import tr.cabro.servicio.application.component.Badge;
 import tr.cabro.servicio.application.component.detail.DetailHeader;
 import tr.cabro.servicio.application.component.detail.DetailKit;
 import tr.cabro.servicio.application.component.detail.DetailListSection;
+import tr.cabro.servicio.application.component.detail.SectionSwitcher;
+import tr.cabro.servicio.application.component.stock.StockHistorySection;
+import tr.cabro.servicio.application.component.stock.StockLocationsCard;
+import tr.cabro.servicio.application.component.stock.StockMovementDialog;
 import tr.cabro.servicio.application.panels.edit.EditModals;
 import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
@@ -22,6 +26,7 @@ import tr.cabro.servicio.model.contract.Visualizable;
 import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.model.enums.PaymentStatus;
 import tr.cabro.servicio.model.enums.SaleType;
+import tr.cabro.servicio.model.enums.StockItemKind;
 import tr.cabro.servicio.service.PaymentService;
 import tr.cabro.servicio.service.ProductService;
 import tr.cabro.servicio.service.SaleService;
@@ -46,10 +51,15 @@ public class FormProduct extends Form {
     private final Badge categoryBadge = new Badge(simple("Kategorisiz", BadgeColor.GRAY));
     private final Badge criticalBadge = new Badge(simple("Kritik stok", BadgeColor.RED)).setShowIcon(true);
     private DetailListSection<Sale> salesSection;
+    private StockHistorySection history;
+    private SectionSwitcher sections;
+    private StockLocationsCard locations;
     private Map<Long, Integer> quantityBySale = Collections.emptyMap();
     private Map<Long, BigDecimal> amountBySale = Collections.emptyMap();
 
     private JLabel factStock, factMin, factSold, factRevenue, factLast;
+    private JLabel wholesalerName, wholesalerPhone;
+    private JButton wholesalerLink;
     private JPanel descriptionCard;
     private JTextArea description;
 
@@ -79,11 +89,14 @@ public class FormProduct extends Form {
         header.addStat("sell", "Satış");
         header.addStat("margin", "Adet başı kâr");
         header.addAction("Düzenle", "icons/pencil.svg", () -> EditModals.editProduct(this, product, this::formRefresh));
+        header.addAction("Stok Hareketi", "icons/arrow-down-up.svg", () -> openStockDialog(StockMovementDialog.Mode.IN));
         header.setPrimary("Satışa Ekle", "icons/shopping-bag.svg",
                 () -> FormManager.showForm(AllForms.getForm(FormPos.class)));
         add(header, "span 2, growx, wmin 0, wrap");
 
-        salesSection = new DetailListSection<>("Satış geçmişi", Arrays.asList(
+        history = new StockHistorySection("Geçmiş", StockItemKind.PRODUCT);
+
+        salesSection = new DetailListSection<>("Geçmiş", Arrays.asList(
                 new ColumnDef<Sale>("Fiş", Sale.class, s -> s).alignment(SwingConstants.LEADING),
                 new ColumnDef<Sale>("Tarih", String.class, s -> s.getSaleDate() != null ? s.getSaleDate().format(DateFormats.dateTime()) : "-")
                         .alignment(SwingConstants.LEADING),
@@ -103,7 +116,11 @@ public class FormProduct extends Form {
         t.getColumnModel().getColumn(4).setCellRenderer(new MoneyCellRenderer(MoneyCellRenderer.Mode.NEGATIVE));
         t.getColumnModel().getColumn(3).setMaxWidth(70);
         salesSection.setOnOpen(s -> FormManager.showForm(new FormSale(s)));
-        add(salesSection, "grow, wmin 0, hmin 0");
+
+        sections = new SectionSwitcher(new String[]{"stock", "sales"},
+                new String[]{"Stok hareketleri", "Satışlar"}, history, salesSection);
+        history.setOnCount(n -> sections.setCount("stock", n));
+        add(sections, "grow, wmin 0, hmin 0");
 
         add(DetailKit.scroll(buildSideColumn()), "grow, hmin 0");
         refreshData();
@@ -122,6 +139,20 @@ public class FormProduct extends Form {
         factLast = DetailKit.fact(facts, "Son satış");
         perf.add(facts);
         column.add(perf);
+
+        locations = new StockLocationsCard(() -> openStockDialog(StockMovementDialog.Mode.TRANSFER));
+        column.add(locations.component());
+
+        wholesalerLink = DetailKit.link("Toptancıya git", () -> {
+            if (product.getSupplier() != null) FormManager.showForm(new FormSupplier(product.getSupplier()));
+        });
+        JPanel wholesalerCard = DetailKit.card("Toptancı", wholesalerLink);
+        wholesalerName = new JLabel("—");
+        wholesalerName.putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, "font: bold");
+        wholesalerPhone = DetailKit.muted(" ");
+        wholesalerCard.add(wholesalerName);
+        wholesalerCard.add(wholesalerPhone);
+        column.add(wholesalerCard);
 
         descriptionCard = DetailKit.card("Açıklama", null);
         description = new JTextArea();
@@ -168,9 +199,19 @@ public class FormProduct extends Form {
         DetailKit.setFact(factStock, stock + " adet");
         DetailKit.setFact(factMin, product.getMinStockLevel() != null ? product.getMinStockLevel() + " adet" : null);
 
+        tr.cabro.servicio.model.Supplier ws = product.getSupplier();
+        String wsName = ws == null ? null
+                : (ws.getBusinessName() != null && !ws.getBusinessName().isBlank() ? ws.getBusinessName() : ws.getName());
+        wholesalerName.setText(wsName != null ? wsName : "Toptancı seçilmemiş");
+        wholesalerPhone.setText(ws != null && ws.getPhone() != null ? Format.formatPhoneNumber(ws.getPhone()) : " ");
+        wholesalerLink.setVisible(ws != null);
+
         boolean hasDesc = product.getDescription() != null && !product.getDescription().isBlank();
         descriptionCard.setVisible(hasDesc);
         description.setText(hasDesc ? product.getDescription().trim() : "");
+
+        history.load(product.getId());
+        locations.load(StockItemKind.PRODUCT, product.getId());
 
         salesSection.showLoading();
         saleService.getProductSales(product.getId()).thenAccept(result -> SwingUtilities.invokeLater(() -> {
@@ -188,6 +229,7 @@ public class FormProduct extends Form {
             quantityBySale = qty;
             amountBySale = amount;
             salesSection.setData(result.sales);
+            sections.setCount("sales", result.sales.size());
             DetailKit.setFact(factSold, netQty + " adet, " + result.sales.size() + " fiş");
             DetailKit.setFact(factRevenue, Format.formatPrice(net));
             DetailKit.setFact(factLast, result.sales.isEmpty() || result.sales.get(0).getSaleDate() == null ? null
@@ -200,5 +242,10 @@ public class FormProduct extends Form {
 
     private static String price(BigDecimal v) {
         return v != null ? Format.formatPrice(v) : "—";
+    }
+
+    private void openStockDialog(StockMovementDialog.Mode mode) {
+        StockMovementDialog.open(this, StockItemKind.PRODUCT, product.getId(), product.getName(), product.getPurchasePrice(),
+                mode, this::formRefresh);
     }
 }

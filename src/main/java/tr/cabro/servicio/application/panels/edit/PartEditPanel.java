@@ -1,6 +1,7 @@
 package tr.cabro.servicio.application.panels.edit;
 
 import tr.cabro.servicio.model.enums.CategoryScope;
+import tr.cabro.servicio.model.enums.StockItemKind;
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import tr.cabro.servicio.Servicio;
@@ -47,15 +48,7 @@ public class PartEditPanel extends CatalogItemEditPanel<Part> {
 
     @Override
     protected void addIdentityFields(JPanel grid) {
-        supplierCombo = new JComboBox<>();
-        supplierCombo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                setText(value instanceof Supplier s ? s.getBusinessName() : "Tedarikçi yok");
-                return this;
-            }
-        });
+        supplierCombo = supplierCombo("Tedarikçi yok");
         grid.add(FormKit.cell("Tedarikçi", supplierCombo, null));
 
         modelsField = new JTextField();
@@ -63,20 +56,9 @@ public class PartEditPanel extends CatalogItemEditPanel<Part> {
         grid.add(FormKit.cell("Uyumlu Modeller", modelsField, FormKit.note("Virgülle ayırın; parça aramasında kullanılır.")), "span 2");
     }
 
-    private void loadSuppliers(Long selectedSupplierId) {
-        ServiceManager.getSupplierService().getAll().thenAccept(suppliers -> SwingUtilities.invokeLater(() -> {
-            supplierCombo.removeAllItems();
-            supplierCombo.addItem(null);
-            Supplier target = null;
-            for (Supplier s : suppliers) {
-                supplierCombo.addItem(s);
-                if (s.getId().equals(selectedSupplierId)) target = s;
-            }
-            supplierCombo.setSelectedItem(target);
-        })).exceptionally(ex -> {
-            Servicio.getLogger().error("Tedarikçi listesi yüklenemedi", ex);
-            return null;
-        });
+    @Override
+    protected StockItemKind stockKind() {
+        return StockItemKind.PART;
     }
 
     @Override
@@ -84,8 +66,7 @@ public class PartEditPanel extends CatalogItemEditPanel<Part> {
         data.setBarcode(barcodeField.getText().trim());
         data.setName(nameField.getText().trim());
         data.setCategoryId(selectedCategoryId());
-        Supplier supplier = (Supplier) supplierCombo.getSelectedItem();
-        data.setSupplierId(supplier != null ? supplier.getId() : null);
+        data.setSupplierId(selectedSupplierId(supplierCombo));
         data.setModelCompatibility(modelsField.getText().trim());
 
         data.setPurchaseCurrency(priceFields.getPurchaseCurrency());
@@ -95,7 +76,9 @@ public class PartEditPanel extends CatalogItemEditPanel<Part> {
         data.setSalePriceOriginal(priceFields.getSaleOriginal());
         data.setSalePrice(priceFields.getSaleTry());
 
+        // Stok yalnızca yeni kayıtta açılış olarak yazılır; düzenlemede servis bu alanı yok sayar.
         data.setStockQuantity((Integer) stockSpinner.getValue());
+        data.setOpeningWarehouseId(selectedOpeningWarehouseId());
         data.setMinStockLevel((Integer) minStockSpinner.getValue());
         data.setDescription(descriptionArea.getText().trim());
         return data;
@@ -108,7 +91,7 @@ public class PartEditPanel extends CatalogItemEditPanel<Part> {
         modelsField.setText(data.getModelCompatibility() != null ? data.getModelCompatibility() : "");
         priceFields.setPurchase(data.getPurchaseCurrency(), data.getPurchasePriceOriginal(), data.getPurchasePrice());
         priceFields.setSale(data.getSaleCurrency(), data.getSalePriceOriginal(), data.getSalePrice());
-        loadSuppliers(data.getSupplierId());
+        loadSupplierCombo(supplierCombo, false, data.getSupplierId());
     }
 
     @Override

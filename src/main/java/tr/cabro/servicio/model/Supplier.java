@@ -1,5 +1,7 @@
 package tr.cabro.servicio.model;
 
+import tr.cabro.servicio.model.enums.SupplierRole;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,6 +34,9 @@ public class Supplier {
 
     @ColumnName("note")
     private String note;
+
+    /** Parça tedarikçisi, ürün toptancısı ya da ikisi (bkz. V26). */
+    private SupplierRole role = SupplierRole.SUPPLIER;
 
     // Denetim (Audit) & Soft Delete Alanları
     @ColumnName("is_deleted")

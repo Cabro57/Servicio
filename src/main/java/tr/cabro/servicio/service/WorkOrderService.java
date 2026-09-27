@@ -1,5 +1,6 @@
 package tr.cabro.servicio.service;
 
+import org.jdbi.v3.core.Handle;
 import tr.cabro.servicio.database.DatabaseManager;
 import tr.cabro.servicio.database.filter.ColumnFilterValue;
 import tr.cabro.servicio.database.repository.*;
@@ -11,6 +12,7 @@ import tr.cabro.servicio.model.enums.ReferenceType;
 import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.model.dto.TargetPayment;
 import tr.cabro.servicio.model.enums.ServiceStatus;
+import tr.cabro.servicio.model.enums.StockItemKind;
 import tr.cabro.servicio.service.exception.ValidationException;
 
 import java.math.BigDecimal;
@@ -25,7 +27,6 @@ public class WorkOrderService {
     private final ServiceItemRepository itemRepository;
     private final PaymentService paymentService;
     private final ServiceNoteRepository noteRepository;
-    private final PartService partService;
     private final StockService stockService;
     private final DeviceService deviceService;
     private final CustomerRepository customerRepository;
@@ -38,7 +39,6 @@ public class WorkOrderService {
                             ServiceItemRepository itemRepository,
                             PaymentService paymentService,
                             ServiceNoteRepository noteRepository,
-                            PartService partService,
                             StockService stockService,
                             DeviceService deviceService,
                             CustomerRepository customerRepository,
@@ -48,7 +48,6 @@ public class WorkOrderService {
         this.itemRepository = itemRepository;
         this.paymentService = paymentService;
         this.noteRepository = noteRepository;
-        this.partService = partService;
         this.stockService = stockService;
         this.deviceService = deviceService;
         this.customerRepository = customerRepository;
@@ -140,9 +139,12 @@ public class WorkOrderService {
                 ? LocalDateTime.now()
                 : null;
 
-        return DbExecutor.run(() ->
-                workOrderRepository.updateStatus(id, newStatus, deliveryDate, LocalDateTime.now())
-        );
+        // "İade" durumunda servisin parçaları stoğa döner, başka duruma geçince yeniden düşülür;
+        // stok yetmezse durum değişmez (tek transaction).
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
+            handle.attach(WorkOrderRepository.class).updateStatus(id, newStatus, deliveryDate, LocalDateTime.now());
+            syncStock(handle, id, false);
+        }));
     }
 
     public CompletableFuture<Void> updateDetectedFault(Long id, String detectedFault) {
@@ -177,11 +179,21 @@ public class WorkOrderService {
     // OKUMA İŞLEMLERİ
     // =========================================================================
 
+    /** Servisi siler; kullanılan parçalar stoğa döner. */
     public CompletableFuture<Void> delete(Long id) {
+        return delete(id, true);
+    }
+
+    /**
+     * @param restoreStock true → servisin kullandığı parçalar çıktıkları depoya geri girer.
+     *                     false → tüketim defterde "Servis #id" olarak kalır (parça gerçekten kullanıldı).
+     */
+    public CompletableFuture<Void> delete(Long id, boolean restoreStock) {
         // İş emri hard-delete edildiği için ödeme tahsislerini önce elle temizlemek gerekir
         // (payment_allocations polimorfik olduğundan ON DELETE CASCADE ile bağlanamıyor) —
         // aksi halde yetim tahsis satırları kalır ve cari bakiye şişer.
         return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
+            if (restoreStock) syncStock(handle, id, true);
             paymentService.releaseAllocationsForTarget(handle, AllocationTargetType.WORK_ORDER, id);
             handle.attach(WorkOrderRepository.class).delete(id);
         }));
@@ -435,48 +447,61 @@ public class WorkOrderService {
     // ITEM
     // =========================================================================
 
+    // Kalem yazımı ve stok hareketi tek transaction'dadır: stok yetmezse kalem de kaydedilmez.
+    // Eskiden kalem önce kaydedilip stok ayrı adımda düşülüyordu; yetersiz stokta kalem kalıyor,
+    // stok düşmüyordu.
+
     public CompletableFuture<WorkOrderItem> addItem(WorkOrderItem item) {
-        return DbExecutor.supply(() -> {
-            Long id = itemRepository.insert(item);
-            item.setId(id);
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
+            item.setWarehouseId(isStockPart(item)
+                    ? stockService.resolveWarehouse(handle, item.getWarehouseId(), true) : null);
+            ServiceItemRepository items = handle.attach(ServiceItemRepository.class);
+            item.setId(items.insert(item));
+            syncStock(handle, item.getServiceId(), false);
             return item;
-        }).thenCompose(savedItem -> {
-            if (savedItem.getItemType() == ItemType.PART && savedItem.getPartId() != null) {
-                return reduceStockForItem(savedItem).thenApply(v -> savedItem);
-            }
-            return CompletableFuture.completedFuture(savedItem);
-        });
+        }));
     }
 
-    // Stok adımları join ile beklenmez, zincirlenir: DB thread'i başka bir DB işini beklerken
-    // tutulursa sınırlı havuzda kilitlenme olur.
     public CompletableFuture<Void> updateItem(WorkOrderItem updatedItem) {
-        return DbExecutor.supply(() -> {
-            WorkOrderItem oldItem = itemRepository.findById(updatedItem.getId())
-                    .orElseThrow(() -> new ValidationException("Güncellenecek item bulunamadı."));
-            itemRepository.update(updatedItem);
-            return oldItem;
-        }).thenCompose(oldItem -> {
-            if (updatedItem.getItemType() != ItemType.PART) return CompletableFuture.completedFuture(null);
-            boolean partChanged = !Objects.equals(oldItem.getPartId(), updatedItem.getPartId());
-            boolean quantityChanged = !oldItem.getQuantity().equals(updatedItem.getQuantity());
-            if (!partChanged && !quantityChanged) return CompletableFuture.completedFuture(null);
-
-            CompletableFuture<Void> restore = oldItem.getPartId() != null
-                    ? restoreStockForItem(oldItem) : CompletableFuture.completedFuture(null);
-            return restore.thenCompose(v -> updatedItem.getPartId() != null
-                    ? reduceStockForItem(updatedItem) : CompletableFuture.completedFuture(null));
-        });
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
+            ServiceItemRepository items = handle.attach(ServiceItemRepository.class);
+            WorkOrderItem oldItem = items.findById(updatedItem.getId())
+                    .orElseThrow(() -> new ValidationException("Güncellenecek kalem bulunamadı."));
+            if (isStockPart(updatedItem)) {
+                // Depo değişmediyse pasif olması engel değil (eski kalemin adedi düzeltilebilsin).
+                boolean warehouseChanged = updatedItem.getWarehouseId() != null
+                        && !updatedItem.getWarehouseId().equals(oldItem.getWarehouseId());
+                Long requested = updatedItem.getWarehouseId() != null ? updatedItem.getWarehouseId() : oldItem.getWarehouseId();
+                updatedItem.setWarehouseId(stockService.resolveWarehouse(handle, requested, warehouseChanged));
+            } else {
+                updatedItem.setWarehouseId(null);
+            }
+            items.update(updatedItem);
+            syncStock(handle, oldItem.getServiceId(), false);
+        }));
     }
 
-    public CompletableFuture<Void> deleteItem(Long itemId, boolean stockUpdate) {
-        return DbExecutor.supply(() -> itemRepository.findById(itemId)
-                .orElseThrow(() -> new ValidationException("Silinecek item bulunamadı.")))
-                .thenCompose(item -> {
-                    CompletableFuture<Void> restore = item.getItemType() == ItemType.PART && item.getPartId() != null && stockUpdate
-                            ? restoreStockForItem(item) : CompletableFuture.completedFuture(null);
-                    return restore.thenRun(() -> itemRepository.delete(itemId));
-                });
+    /**
+     * @param restoreStock true → parça çıktığı depoya geri girer. false → parça kullanılmış/hasar görmüş
+     *                     sayılır: servisten dönüş + fire/kayıp hareketi yazılır (stok değişmez, iz kalır).
+     */
+    public CompletableFuture<Void> deleteItem(Long itemId, boolean restoreStock) {
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
+            ServiceItemRepository items = handle.attach(ServiceItemRepository.class);
+            WorkOrderItem item = items.findById(itemId)
+                    .orElseThrow(() -> new ValidationException("Silinecek kalem bulunamadı."));
+            items.delete(itemId);
+            syncStock(handle, item.getServiceId(), false);
+
+            boolean consumed = isStockPart(item) && handle.attach(WorkOrderRepository.class)
+                    .findStatus(item.getServiceId()).orElse(null) != ServiceStatus.RETURN;
+            if (!restoreStock && consumed) {
+                Long warehouseId = stockService.resolveWarehouse(handle, item.getWarehouseId(), false);
+                stockService.record(handle, StockItemKind.PART, item.getPartId(), warehouseId, -item.getQuantity(),
+                        ReferenceType.LOSS, item.getServiceId(), null,
+                        "Servis #" + item.getServiceId() + " kaleminden çıkarıldı, stoğa dönmedi");
+            }
+        }));
     }
 
     public CompletableFuture<List<WorkOrderItem>> getItems(Long serviceId) {
@@ -524,36 +549,65 @@ public class WorkOrderService {
     }
 
     // =========================================================================
-    // STOK YARDIMCILARI
+    // STOK EŞİTLEME
     // =========================================================================
 
-    private CompletableFuture<Void> reduceStockForItem(WorkOrderItem item) {
-        return partService.getById(item.getPartId()).thenCompose(partOpt -> {
-            if (!partOpt.isPresent()) {
-                throw new ValidationException("Parça bulunamadı: " + item.getPartId());
-            }
-            Part part = partOpt.get();
-            if (part.getStockQuantity() < item.getQuantity()) {
-                throw new ValidationException(
-                        "Yetersiz stok! " + part.getName() +
-                                " için mevcut: " + part.getStockQuantity() +
-                                ", gerekli: " + item.getQuantity());
-            }
-            StockMovement movement = new StockMovement();
-            movement.setPartId(item.getPartId());
-            movement.setQuantity(item.getQuantity());
-            movement.setReferenceType(ReferenceType.WORK_ORDER);
-            movement.setReferenceId(item.getServiceId());
-            return stockService.removeStock(movement);
-        });
+    private static boolean isStockPart(WorkOrderItem item) {
+        return item.getItemType() == ItemType.PART && item.getPartId() != null;
     }
 
-    private CompletableFuture<Void> restoreStockForItem(WorkOrderItem item) {
-        StockMovement movement = new StockMovement();
-        movement.setPartId(item.getPartId());
-        movement.setQuantity(item.getQuantity());
-        movement.setReferenceType(ReferenceType.WORK_ORDER_CANCEL);
-        movement.setReferenceId(item.getServiceId());
-        return stockService.addStock(movement);
+    private record StockKey(Long partId, Long warehouseId) {}
+
+    /**
+     * Servisin defterdeki net parça tüketimini kalemleriyle eşitler (çağıranın transaction'ında).
+     * Olması gereken: parça kalemlerinin adetleri, depo bazında; servis "İade" durumundaysa ya da
+     * {@code releaseAll} ise hiçbiri. Fark kadar hareket yazılır — önce dönüşler, sonra çıkışlar,
+     * böylece adet azaltma/depo değiştirme önce stoğu serbest bırakır. Çıkışta depo yetmezse
+     * {@link ValidationException} ile tüm işlem geri alınır.
+     * <p>
+     * Kalem bazında +/- yazmak yerine eşitleme: adet, parça, depo, durum değişiklikleri ve silme
+     * aynı yoldan geçer; defter servisle her zaman tutarlı kalır.
+     */
+    private void syncStock(Handle handle, Long workOrderId, boolean releaseAll) {
+        Map<StockKey, Integer> desired = new HashMap<>();
+        boolean returned = handle.attach(WorkOrderRepository.class).findStatus(workOrderId).orElse(null) == ServiceStatus.RETURN;
+        if (!releaseAll && !returned) {
+            Long defaultWarehouse = null;
+            for (WorkOrderItem item : handle.attach(ServiceItemRepository.class).findByServiceId(workOrderId)) {
+                if (!isStockPart(item) || item.getQuantity() == null || item.getQuantity() <= 0) continue;
+                Long warehouseId = item.getWarehouseId();
+                if (warehouseId == null) {
+                    if (defaultWarehouse == null) defaultWarehouse = stockService.resolveWarehouse(handle, null, false);
+                    warehouseId = defaultWarehouse;
+                }
+                desired.merge(new StockKey(item.getPartId(), warehouseId), item.getQuantity(), Integer::sum);
+            }
+        }
+
+        Map<StockKey, Integer> actual = new HashMap<>();
+        for (StockLevel level : handle.attach(StockLedgerRepository.class).findWorkOrderConsumption(workOrderId)) {
+            actual.put(new StockKey(level.getItemId(), level.getWarehouseId()), level.getQuantity());
+        }
+
+        Set<StockKey> keys = new LinkedHashSet<>(actual.keySet());
+        keys.addAll(desired.keySet());
+
+        // Önce stoğa dönenler
+        for (StockKey key : keys) {
+            int diff = desired.getOrDefault(key, 0) - actual.getOrDefault(key, 0);
+            if (diff < 0) {
+                stockService.record(handle, StockItemKind.PART, key.partId(), key.warehouseId(), -diff,
+                        ReferenceType.WORK_ORDER_CANCEL, workOrderId, null, null);
+            }
+        }
+        // Sonra servise çıkanlar
+        for (StockKey key : keys) {
+            int diff = desired.getOrDefault(key, 0) - actual.getOrDefault(key, 0);
+            if (diff > 0) {
+                stockService.requireAvailable(handle, StockItemKind.PART, key.partId(), key.warehouseId(), diff);
+                stockService.record(handle, StockItemKind.PART, key.partId(), key.warehouseId(), -diff,
+                        ReferenceType.WORK_ORDER, workOrderId, null, null);
+            }
+        }
     }
 }

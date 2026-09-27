@@ -15,7 +15,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 
 /**
- * Ayarlar'dan açılan küçük pencerelerin ortak kabuğu (işçilik, kategori, ad değiştir, taşı ve sil…).
+ * Küçük kayıt pencerelerinin ortak kabuğu: Ayarlar'dan açılanlar (işçilik, kategori, depo, ad değiştir,
+ * taşı ve sil…) ve kart sayfalarındaki stok hareketi penceresi.
  * <p>
  * Anatomi her pencerede aynı: modal başlığı (raven), altında isteğe bağlı soluk bir giriş cümlesi,
  * gövde (alan ızgarası ya da bilgi satırları), en altta solda durum/uyarı satırı, sağda "Vazgeç" ve
@@ -30,7 +31,7 @@ import java.awt.event.KeyEvent;
  * d.show(this, nameField);
  * }</pre>
  */
-final class SettingsDialog extends JPanel {
+public final class SettingsDialog extends JPanel {
 
     private static int sequence;
 
@@ -44,7 +45,7 @@ final class SettingsDialog extends JPanel {
     private Runnable primaryAction;
     private boolean busy;
 
-    SettingsDialog(String title, int width) {
+    public SettingsDialog(String title, int width) {
         super(new MigLayout("wrap, insets 2 24 18 24, fillx, gap 0, hidemode 3, width " + width + "!", "[grow, fill]"));
         this.title = title;
         body.setOpaque(false);
@@ -75,7 +76,7 @@ final class SettingsDialog extends JPanel {
     }
 
     /** Başlığın altındaki soluk giriş cümlesi: pencerenin neyi değiştirdiği, neyi etkilediği. */
-    SettingsDialog lead(String text) {
+    public SettingsDialog lead(String text) {
         JTextArea lead = FormKit.hint(text);
         lead.putClientProperty(FlatClientProperties.STYLE,
                 "foreground: $Label.disabledForeground; background: null; margin: 0,0,0,0");
@@ -84,7 +85,7 @@ final class SettingsDialog extends JPanel {
     }
 
     /** İki kolonlu alan ızgarası; tam genişlik için {@code "span 2"}. */
-    JPanel body() {
+    public JPanel body() {
         return body;
     }
 
@@ -92,7 +93,7 @@ final class SettingsDialog extends JPanel {
      * Tek birincil eylem. {@code danger} geri alınamaz eylemler içindir (tehlike dolgusu).
      * Eylem çalışırken pencere açık kalır; iş bitince {@link #close()} ya da {@link #idle()} çağrılır.
      */
-    SettingsDialog primary(String text, boolean danger, Runnable action) {
+    public SettingsDialog primary(String text, boolean danger, Runnable action) {
         primaryAction = action;
         primary = danger ? dangerButton(text) : DetailKit.primaryButton(text, null, null);
         primary.addActionListener(e -> {
@@ -103,28 +104,28 @@ final class SettingsDialog extends JPanel {
         return this;
     }
 
-    void setPrimaryText(String text) {
+    public void setPrimaryText(String text) {
         if (primary != null) primary.setText(text);
     }
 
-    void setPrimaryEnabled(boolean enabled) {
+    public void setPrimaryEnabled(boolean enabled) {
         if (primary != null) primary.setEnabled(enabled);
     }
 
     /** Kayıt sürüyor: birincil eylem kilitlenir (çift tıklamada çift kayıt olmasın). */
-    void busy() {
+    public void busy() {
         busy = true;
         if (primary != null) primary.setEnabled(false);
     }
 
     /** İş hata ile döndü: pencere açık kalır, operatör düzeltip yeniden dener. */
-    void idle() {
+    public void idle() {
         busy = false;
         if (primary != null) primary.setEnabled(true);
     }
 
     /** Alt satırdaki durum/uyarı; {@code colorKey} null ise soluk. Boş metin gizler. */
-    void status(String text, String iconPath, String colorKey) {
+    public void status(String text, String iconPath, String colorKey) {
         status.setVisible(text != null && !text.isBlank());
         status.setText(text);
         String color = colorKey != null ? colorKey : "Label.disabledForeground";
@@ -132,7 +133,7 @@ final class SettingsDialog extends JPanel {
         status.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $" + color);
     }
 
-    void show(Component parent, JComponent focus) {
+    public void show(Component parent, JComponent focus) {
         AppModal.showModal(parent, new SimpleModalBorder(this, title, null, (controller, action) -> {
             if (action == SimpleModalBorder.OPENED && focus != null) {
                 focus.requestFocusInWindow();
@@ -141,14 +142,14 @@ final class SettingsDialog extends JPanel {
         }), modalId);
     }
 
-    void close() {
+    public void close() {
         AppModal.closeModal(modalId);
     }
 
     // ------------------------------------------------------------------ yapı taşları
 
     /** Tehlike dolgulu birincil düğme: DetailKit.primaryButton anatomisi, vurgu yerine tehlike rengi. */
-    static JButton dangerButton(String text) {
+    public static JButton dangerButton(String text) {
         JButton b = new JButton(text);
         b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,14,7,14; font: bold;"
                 + " borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
@@ -158,7 +159,7 @@ final class SettingsDialog extends JPanel {
     }
 
     /** Pencere gövdesinde tek satırlık etki bilgisi: soluk ikon + metin ("212 cihaz kaydı bu türde"). */
-    static JLabel impact(String iconPath, String text) {
+    public static JLabel impact(String iconPath, String text) {
         JLabel l = new JLabel(text, new Ikon(iconPath, 16, "Label.disabledForeground"), SwingConstants.LEADING);
         l.setIconTextGap(10);
         return l;

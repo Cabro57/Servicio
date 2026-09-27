@@ -30,6 +30,10 @@ public class WorkOrderItem {
     @ColumnName("labor_id")
     private Long laborId; // Gelecekte eklenebilecek Hazır İşçilikler (labor_definitions) tablosu için
 
+    /** Parçanın düştüğü depo (null → varsayılan depo). Stoktan gelmeyen kalemde boş. */
+    @ColumnName("warehouse_id")
+    private Long warehouseId;
+
     // --- SNAPSHOT (Anlık Görüntü) ALANLARI ---
     @ColumnName("item_name")
     private String itemName; // Rapordaki 'label' (Örn: "Ekran Değişimi" veya "Batarya")

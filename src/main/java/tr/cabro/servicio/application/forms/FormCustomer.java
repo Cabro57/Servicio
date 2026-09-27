@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.panels.workorder.WorkOrderDeleteDialog;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -38,7 +39,6 @@ import tr.cabro.servicio.model.enums.SaleType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.*;
 import tr.cabro.servicio.util.DesktopHelper;
-import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
@@ -213,14 +213,7 @@ public class FormCustomer extends Form {
                 WorkOrder s = workOrderAt(table, row);
                 if (s == null) return;
 
-                DialogHelper.confirmDelete(FormCustomer.this, "confirm.delete.workorder", () ->
-                                workOrderService.delete(s.getId())
-                                        .thenAccept(v -> SwingUtilities.invokeLater(() -> {
-                                            Toasts.show(FormCustomer.this, Toast.Type.SUCCESS, Messages.get("toast.record.deleted"));
-                                            refreshData();
-                                        }))
-                                        .exceptionally(ex -> ErrorHandler.handle(FormCustomer.this, "Servis kaydı silinemedi", ex)),
-                        s.getId());
+                WorkOrderDeleteDialog.confirm(FormCustomer.this, s, () -> refreshData());
             }
         }));
 
@@ -579,7 +572,7 @@ public class FormCustomer extends Form {
             workOrderService.save(formData, isEdit).thenAccept(saved ->
                     SwingUtilities.invokeLater(() -> {
                         String msg = isEdit ? Messages.get("toast.workorder.updated") : Messages.get("toast.workorder.created");
-                        Toasts.show(this, Toast.Type.SUCCESS, msg);
+                        Toasts.saved(this, msg);
                         refreshData();
                         if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
                     })

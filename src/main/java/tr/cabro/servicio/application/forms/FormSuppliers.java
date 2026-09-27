@@ -53,7 +53,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-@SystemForm(name = "Tedarikçiler", description = "Tüm tedarikçileri listeler")
+@SystemForm(name = "Tedarikçiler / Toptancılar", description = "Parça tedarikçileri ve ürün toptancıları")
 public class FormSuppliers extends AbstractTableForm {
 
     private final SupplierService supplierService;
@@ -94,7 +94,7 @@ public class FormSuppliers extends AbstractTableForm {
 
     @Override
     protected String getNewButtonText() {
-        return "Yeni Tedarikçi";
+        return "Yeni Firma";
     }
 
     @Override
@@ -110,26 +110,31 @@ public class FormSuppliers extends AbstractTableForm {
     // --- Görünüm sekmeleri ---
 
     private static final String VIEW_ALL = "all";
+    private static final String VIEW_SUPPLIERS = "suppliers";
+    private static final String VIEW_WHOLESALERS = "wholesalers";
     private static final String VIEW_REORDER = "reorder";
-    private static final String VIEW_WITH_PARTS = "parts";
 
-    /** Stoğu minimumun altına düşmüş parçası olan tedarikçiler: sipariş verilecek yerler. */
-    private static final String REORDER_CONDITION = "id IN (SELECT supplier_id FROM parts WHERE is_deleted = 0 "
-            + "AND supplier_id IS NOT NULL AND stock_quantity < min_stock_level)";
-    private static final String WITH_PARTS_CONDITION = "id IN (SELECT supplier_id FROM parts WHERE is_deleted = 0 "
-            + "AND supplier_id IS NOT NULL)";
+    /** Stoğu minimumun altına düşmüş parçası ya da ürünü olan firmalar: sipariş verilecek yerler. */
+    private static final String REORDER_CONDITION = "(id IN (SELECT supplier_id FROM parts WHERE is_deleted = 0 "
+            + "AND supplier_id IS NOT NULL AND stock_quantity < min_stock_level) "
+            + "OR id IN (SELECT supplier_id FROM products WHERE is_deleted = 0 "
+            + "AND supplier_id IS NOT NULL AND stock_quantity < min_stock_level))";
+    private static final String SUPPLIER_CONDITION = "role IN ('SUPPLIER', 'BOTH')";
+    private static final String WHOLESALER_CONDITION = "role IN ('WHOLESALER', 'BOTH')";
 
     @Override
     protected void initViews() {
         addView(VIEW_ALL, "Tümü");
+        addView(VIEW_SUPPLIERS, "Tedarikçiler");
+        addView(VIEW_WHOLESALERS, "Toptancılar");
         addView(VIEW_REORDER, "Sipariş gerekli");
-        addView(VIEW_WITH_PARTS, "Parça tedarik edenler");
     }
 
     @Override
     protected Map<String, ColumnFilterValue> viewFilters(String key) {
+        if (VIEW_SUPPLIERS.equals(key)) return Map.of("view:suppliers", ColumnFilterValue.condition(SUPPLIER_CONDITION));
+        if (VIEW_WHOLESALERS.equals(key)) return Map.of("view:wholesalers", ColumnFilterValue.condition(WHOLESALER_CONDITION));
         if (VIEW_REORDER.equals(key)) return Map.of("view:reorder", ColumnFilterValue.condition(REORDER_CONDITION));
-        if (VIEW_WITH_PARTS.equals(key)) return Map.of("view:parts", ColumnFilterValue.condition(WITH_PARTS_CONDITION));
         return Collections.emptyMap();
     }
 
@@ -150,12 +155,18 @@ public class FormSuppliers extends AbstractTableForm {
                 .thenApply(PageResult::getTotalItems);
         CompletableFuture<Long> reorder = supplierService.searchFilteredPaged(null, viewFilters(VIEW_REORDER), 1, 1)
                 .thenApply(PageResult::getTotalItems);
-        CompletableFuture.allOf(total, reorder).thenRun(() -> SwingUtilities.invokeLater(() -> {
+        CompletableFuture<Long> suppliers = supplierService.searchFilteredPaged(null, viewFilters(VIEW_SUPPLIERS), 1, 1)
+                .thenApply(PageResult::getTotalItems);
+        CompletableFuture<Long> wholesalers = supplierService.searchFilteredPaged(null, viewFilters(VIEW_WHOLESALERS), 1, 1)
+                .thenApply(PageResult::getTotalItems);
+        CompletableFuture.allOf(total, reorder, suppliers, wholesalers).thenRun(() -> SwingUtilities.invokeLater(() -> {
             long r = reorder.join();
             summary.set(
-                    ListSummary.Part.strong(total.join() + " tedarikçi"),
-                    r > 0 ? ListSummary.Part.meaning(r + " tedarikçiden sipariş gerekli", "Servicio.warningColor")
-                            : ListSummary.Part.of("kritik stokta parça yok"));
+                    ListSummary.Part.strong(total.join() + " firma"),
+                    ListSummary.Part.of(suppliers.join() + " tedarikçi"),
+                    ListSummary.Part.of(wholesalers.join() + " toptancı"),
+                    r > 0 ? ListSummary.Part.meaning(r + " firmadan sipariş gerekli", "Servicio.warningColor")
+                            : ListSummary.Part.of("kritik stokta kalem yok"));
         })).exceptionally(ex -> ErrorHandler.handle(this, "Tedarikçi özeti yüklenemedi", ex));
     }
 
@@ -193,11 +204,13 @@ public class FormSuppliers extends AbstractTableForm {
         table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Supplier>(
                 FormSuppliers::firmName,
                 s -> {
+                    // Rol önce: listede firmanın ne verdiği bir bakışta okunsun.
+                    List<String> parts = new ArrayList<>();
+                    parts.add(s.getRole() != null ? s.getRole().getLabel() : "Tedarikçi");
                     boolean hasFirm = s.getBusinessName() != null && !s.getBusinessName().isBlank();
-                    String contact = hasFirm && s.getName() != null && !s.getName().isBlank() ? "İlgili: " + s.getName() : null;
-                    String tax = s.getTaxNumber() != null && !s.getTaxNumber().isBlank() ? "VN " + s.getTaxNumber() : null;
-                    if (contact != null && tax != null) return contact + "  ·  " + tax;
-                    return contact != null ? contact : (tax != null ? tax : "");
+                    if (hasFirm && s.getName() != null && !s.getName().isBlank()) parts.add("İlgili: " + s.getName());
+                    if (s.getTaxNumber() != null && !s.getTaxNumber().isBlank()) parts.add("VN " + s.getTaxNumber());
+                    return String.join("  ·  ", parts);
                 }));
         table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Supplier>(
                 s -> s.getPhone() != null && !s.getPhone().isBlank() ? Format.formatPhoneNumber(s.getPhone()) : "Telefon yok",
@@ -235,10 +248,10 @@ public class FormSuppliers extends AbstractTableForm {
 
     // Tabloyu Güncelleme (Asenkron)
     @Override
-    protected String getEmptyStateTitle() { return "Henüz tedarikçi yok"; }
+    protected String getEmptyStateTitle() { return "Henüz firma yok"; }
 
     @Override
-    protected String getEmptyStateDescription() { return "Parça aldığınız firmaları ekleyin, alımları onlara bağlayabilirsiniz."; }
+    protected String getEmptyStateDescription() { return "Parça aldığınız tedarikçileri ve ürün aldığınız toptancıları ekleyin; kalemleri onlara bağlayabilirsiniz."; }
 
     @Override
     protected void onSortChanged(String key) {
@@ -275,7 +288,7 @@ public class FormSuppliers extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        AppModal.showModal(this, new SimpleModalBorder(panel, "Yeni Tedarikçi Ekle", options,
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Yeni Firma", options,
                 (controller, action) -> {
                     if (action == SimpleModalBorder.OK_OPTION) {
                         Supplier updated = panel.getData();
@@ -317,7 +330,7 @@ public class FormSuppliers extends AbstractTableForm {
                 new SimpleModalBorder.Option("İptal", 2)
         };
 
-        AppModal.showModal(this, new SimpleModalBorder(panel, "Tedarikçi Düzenle", options,
+        AppModal.showModal(this, new SimpleModalBorder(panel, "Firmayı Düzenle", options,
                 (controller, action) -> {
                     if (action == SimpleModalBorder.OK_OPTION) {
                         Supplier updated = panel.getData();
