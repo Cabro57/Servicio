@@ -340,7 +340,7 @@ public class FormPos extends Form {
             close.run();
         } else {
             DialogHelper.confirm(this, "confirm.sale.closeCart.title", "confirm.sale.closeCart",
-                    close, cart.title(), cart.items.size());
+                    "confirm.sale.closeCart.action", close, cart.title(), cart.items.size());
         }
     }
 
@@ -1847,7 +1847,8 @@ public class FormPos extends Form {
                     .map(item -> "• " + item.getItemName() + " — satılan " + item.getQuantity()
                             + ", eldeki " + stockOf(item))
                     .collect(Collectors.joining("\n"));
-            DialogHelper.confirm(this, "confirm.sale.oversell.title", "confirm.sale.oversell", submit, lines);
+            DialogHelper.confirm(this, "confirm.sale.oversell.title", "confirm.sale.oversell",
+                    "confirm.sale.oversell.action", submit, lines);
             return;
         }
         submit.run();

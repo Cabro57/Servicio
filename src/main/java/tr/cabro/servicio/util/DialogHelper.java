@@ -1,8 +1,8 @@
 package tr.cabro.servicio.util;
 
-import raven.modal.ModalDialog;
-import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.application.simple.SimpleMessageModal;
+import com.formdev.flatlaf.FlatClientProperties;
+import tr.cabro.servicio.application.component.MessageModal;
+import tr.cabro.servicio.application.component.MessageModal.Tone;
 import tr.cabro.servicio.i18n.Messages;
 
 import javax.swing.*;
@@ -12,13 +12,11 @@ import java.util.function.Consumer;
 /**
  * Onay/hata/bilgi diyalogları için merkezi yardımcı. {@link Messages} üzerinden
  * aktif dile göre metin okur — çağıran kod her zaman bir i18n anahtarı verir,
- * ham metin değil. Diyaloglar {@code raven.modal} (bkz. {@link SimpleMessageModal},
- * {@code application/forms/FormSuppliers.java} gibi mevcut kullanım örnekleri) ile
- * gösterilir — proje genelinde {@code JOptionPane} artık kullanılmıyor.
+ * ham metin değil. Diyaloglar {@link MessageModal} ("karar kartı", {@code raven.modal}
+ * üzerinde) ile gösterilir — proje genelinde {@code JOptionPane} kullanılmıyor.
  * <p>
- * {@code ModalDialog.showModal(...)} asenkron çalıştığı için (EDT'ye
- * {@code invokeLater} ile atılır), onay sonucu bir dönüş değeri yerine
- * {@code onConfirm} callback'i ile bildirilir — çağıran kod eskisi gibi
+ * Modal asenkron açıldığı için onay sonucu bir dönüş değeri yerine
+ * {@code onConfirm} callback'i ile bildirilir — çağıran kod
  * {@code if (DialogHelper.confirmDelete(...)) { ... }} değil,
  * {@code DialogHelper.confirmDelete(..., () -> { ... })} yazmalıdır.
  * <p>
@@ -29,68 +27,46 @@ public final class DialogHelper {
 
     private DialogHelper() {}
 
-    /** Ortak "Silme Onayı" başlığıyla evet/hayır sorar; "Evet" seçilirse {@code onConfirm} çalışır. */
+    /** Ortak "Silme Onayı" başlığıyla sorar; tehlike tonunda, birincil eylem "Sil". */
     public static void confirmDelete(Component parent, String messageKey, Runnable onConfirm, Object... args) {
-        confirm(parent, "confirm.delete.title", messageKey, onConfirm, args);
+        MessageModal.of(Tone.DANGER, Messages.get("confirm.delete.title"), Messages.get(messageKey, args))
+                .primary(Messages.get("dialog.button.delete"), onConfirm)
+                .show(parent);
     }
 
-    /** Özel başlıklı bir onay diyaloğu (ör. çıkış onayı); "Evet" seçilirse {@code onConfirm} çalışır. */
+    /** Özel başlıklı bir onay (uyarı tonu); birincil eylem "Devam et". */
     public static void confirm(Component parent, String titleKey, String messageKey, Runnable onConfirm, Object... args) {
-        SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option(Messages.get("dialog.button.yes"), SimpleModalBorder.YES_OPTION),
-                new SimpleModalBorder.Option(Messages.get("dialog.button.no"), SimpleModalBorder.NO_OPTION)
-        };
-        ModalDialog.showModal(parent, new SimpleMessageModal(SimpleMessageModal.Type.WARNING,
-                messageComponent(Messages.get(messageKey, args)), Messages.get(titleKey), options,
-                (controller, action) -> {
-                    if (action == SimpleModalBorder.YES_OPTION) onConfirm.run();
-                }));
+        confirm(parent, titleKey, messageKey, "dialog.button.continue", onConfirm, args);
+    }
+
+    /** Özel başlıklı ve özel eylem adlı bir onay (ör. "Üzerine yaz", "Yeniden başlat"). */
+    public static void confirm(Component parent, String titleKey, String messageKey, String actionKey,
+                               Runnable onConfirm, Object... args) {
+        MessageModal.of(Tone.WARNING, Messages.get(titleKey), Messages.get(messageKey, args))
+                .primary(Messages.get(actionKey), onConfirm)
+                .show(parent);
     }
 
     public static void error(Component parent, String messageKey, Object... args) {
-        showMessage(parent, SimpleMessageModal.Type.ERROR, Messages.get("dialog.error.title"), messageKey, args);
+        MessageModal.of(Tone.ERROR, Messages.get("dialog.error.title"), Messages.get(messageKey, args))
+                .single()
+                .show(parent);
     }
 
     public static void info(Component parent, String messageKey, Object... args) {
-        showMessage(parent, SimpleMessageModal.Type.INFO, Messages.get("dialog.info.title"), messageKey, args);
+        MessageModal.of(Tone.INFO, Messages.get("dialog.info.title"), Messages.get(messageKey, args))
+                .single()
+                .show(parent);
     }
 
     /** Serbest metin girişi için tek alanlı bir modal gösterir; "Tamam" seçilirse girilen metin {@code onConfirm}'e iletilir. */
     public static void prompt(Component parent, String titleKey, String labelKey, String initialValue, Consumer<String> onConfirm, Object... labelArgs) {
-        JPanel panel = new JPanel(new BorderLayout(0, 8));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 30, 10, 30));
-        panel.setOpaque(false);
-        panel.add(new JLabel(Messages.get(labelKey, labelArgs)), BorderLayout.NORTH);
         JTextField field = new JTextField(initialValue != null ? initialValue : "");
-        panel.add(field, BorderLayout.CENTER);
-
-        SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option(Messages.get("dialog.button.ok"), SimpleModalBorder.OK_OPTION),
-                new SimpleModalBorder.Option(Messages.get("dialog.button.cancel"), SimpleModalBorder.CANCEL_OPTION)
-        };
-        ModalDialog.showModal(parent, new SimpleMessageModal(SimpleMessageModal.Type.DEFAULT,
-                panel, Messages.get(titleKey), options,
-                (controller, action) -> {
-                    if (action == SimpleModalBorder.OK_OPTION) onConfirm.accept(field.getText());
-                }));
-    }
-
-    private static void showMessage(Component parent, SimpleMessageModal.Type type, String title, String messageKey, Object... args) {
-        SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option(Messages.get("dialog.button.close"), SimpleModalBorder.CLOSE_OPTION)
-        };
-        ModalDialog.showModal(parent, new SimpleMessageModal(type,
-                messageComponent(Messages.get(messageKey, args)), title, options, null));
-    }
-
-    private static JComponent messageComponent(String text) {
-        JTextArea area = new JTextArea(text);
-        area.setEditable(false);
-        area.setFocusable(false);
-        area.setOpaque(false);
-        area.setLineWrap(true);
-        area.setWrapStyleWord(true);
-        area.setBorder(BorderFactory.createEmptyBorder(10, 30, 10, 30));
-        return area;
+        field.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
+        MessageModal.of(Tone.INPUT, Messages.get(titleKey), Messages.get(labelKey, labelArgs))
+                .extra(field)
+                .focus(field)
+                .primary(Messages.get("dialog.button.ok"), () -> onConfirm.accept(field.getText()))
+                .show(parent);
     }
 }

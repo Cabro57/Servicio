@@ -3,10 +3,9 @@ package tr.cabro.servicio.application.panels.workorder;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
-import tr.cabro.servicio.application.simple.SimpleMessageModal;
+import tr.cabro.servicio.application.component.MessageModal;
 import tr.cabro.servicio.application.component.table.DynamicActionColumnSupport;
 import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.application.component.table.TableActionEvent;
@@ -200,29 +199,16 @@ public class WorkOrderItemsPanel extends JPanel {
     private void confirmDeleteItem(WorkOrderItem item) {
         if (item == null) return;
 
-        JPanel panel = new JPanel(new BorderLayout(0, 10));
-
-        JLabel messageLabel = new JLabel(Messages.get("confirm.delete.item.named", item.getItemName()));
-        JCheckBox stockCheckBox = new JCheckBox("Silinen parça stoğa eklensin mi?");
-
-        stockCheckBox.setSelected(false);
-
-        // Bileşenleri panele ekliyoruz
-        panel.add(messageLabel, BorderLayout.CENTER);
+        MessageModal modal = MessageModal.of(MessageModal.Tone.DANGER, Messages.get("confirm.delete.title"),
+                Messages.get("confirm.delete.item.named", item.getItemName()));
+        // Hazır parçadan gelen kalemde stok iadesi sorulur; varsayılan olarak stoğa geri eklenir.
+        JCheckBox stockCheckBox = new JCheckBox("Silinen parça stoğa geri eklensin");
         if (item.getSourceType() == SourceType.PRESET) {
             stockCheckBox.setSelected(true);
-            panel.add(stockCheckBox, BorderLayout.SOUTH);
+            modal.extra(stockCheckBox);
         }
 
-        SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option(Messages.get("dialog.button.yes"), SimpleModalBorder.YES_OPTION),
-                new SimpleModalBorder.Option(Messages.get("dialog.button.no"), SimpleModalBorder.NO_OPTION)
-        };
-
-        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.WARNING,
-                panel, Messages.get("confirm.delete.title"), options, (controller, action) -> {
-            if (action != SimpleModalBorder.YES_OPTION) return;
-
+        modal.primary(Messages.get("dialog.button.delete"), () -> {
             boolean updateStock = stockCheckBox.isSelected();
 
             workOrderService.deleteItem(item.getId(), updateStock).thenRun(() -> SwingUtilities.invokeLater(() -> {
@@ -234,7 +220,7 @@ public class WorkOrderItemsPanel extends JPanel {
                 tr.cabro.servicio.util.SoundPlayer.removed();
                 Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.item.deleted"));
             })).exceptionally(ex -> ErrorHandler.handle(this, "Kalem silinemedi", ex));
-        }));
+        }).show(this);
     }
 
     private static class ItemTypeBadgeRenderer extends DefaultTableCellRenderer {

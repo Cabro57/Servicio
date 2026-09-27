@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.component.table.AppPagination;
@@ -39,7 +38,7 @@ import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
-import tr.cabro.servicio.application.simple.SimpleMessageModal;
+
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
@@ -48,6 +47,7 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.model.Product;
 import tr.cabro.servicio.model.dto.PageResult;
 import tr.cabro.servicio.service.ProductService;
@@ -240,19 +240,14 @@ public class FormProducts extends AbstractTableForm {
 
             @Override
             public void onDelete(Product selected) {
-                ModalDialog.showModal(FormProducts.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                        Messages.get("confirm.delete.part"), Messages.get("confirm.delete.title"),
-                        SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-
-                    if (action == SimpleModalBorder.YES_OPTION) {
-                        productService.delete(selected.getId()).thenAccept(v -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toasts.show(FormProducts.this, Toast.Type.SUCCESS, Messages.get("toast.part.deleted"));
-                                refreshTable();
-                            });
-                        }).exceptionally(ex -> ErrorHandler.handle(FormProducts.this, "Ürün silinemedi", ex));
-                    }
-                }));
+                DialogHelper.confirmDelete(FormProducts.this, "confirm.delete.product", () -> {
+                    productService.delete(selected.getId()).thenAccept(v -> {
+                        SwingUtilities.invokeLater(() -> {
+                            Toasts.show(FormProducts.this, Toast.Type.SUCCESS, Messages.get("toast.product.deleted"));
+                            refreshTable();
+                        });
+                    }).exceptionally(ex -> ErrorHandler.handle(FormProducts.this, "Ürün silinemedi", ex));
+                });
             }
 
             @Override

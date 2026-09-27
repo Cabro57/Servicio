@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import com.formdev.flatlaf.FlatClientProperties;
-import raven.modal.ModalDialog;
 import tr.cabro.servicio.application.renderer.CurrencyTableCellRenderer;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
@@ -36,8 +35,9 @@ import tr.cabro.servicio.application.renderer.ActionButtonRenderer;
 import tr.cabro.servicio.application.renderer.StyledLabelCellRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
-import tr.cabro.servicio.application.simple.SimpleMessageModal;
+
 import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
@@ -244,19 +244,14 @@ public class FormParts extends AbstractTableForm {
 
             @Override
             public void onDelete(Part selected) {
-                ModalDialog.showModal(FormParts.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                        Messages.get("confirm.delete.part"), Messages.get("confirm.delete.title"),
-                        SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-
-                    if (action == SimpleModalBorder.YES_OPTION) {
-                        partService.delete(selected.getId()).thenAccept(v -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toasts.show(FormParts.this, Toast.Type.SUCCESS, Messages.get("toast.part.deleted"));
-                                refreshTable();
-                            });
-                        }).exceptionally(ex -> ErrorHandler.handle(FormParts.this, "Parça silinemedi", ex));
-                    }
-                }));
+                DialogHelper.confirmDelete(FormParts.this, "confirm.delete.part", () -> {
+                    partService.delete(selected.getId()).thenAccept(v -> {
+                        SwingUtilities.invokeLater(() -> {
+                            Toasts.show(FormParts.this, Toast.Type.SUCCESS, Messages.get("toast.part.deleted"));
+                            refreshTable();
+                        });
+                    }).exceptionally(ex -> ErrorHandler.handle(FormParts.this, "Parça silinemedi", ex));
+                });
             }
 
             @Override

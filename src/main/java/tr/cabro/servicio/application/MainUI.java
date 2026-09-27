@@ -3,11 +3,9 @@ package tr.cabro.servicio.application;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
-import raven.modal.ModalDialog;
-import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
-import tr.cabro.servicio.application.simple.SimpleMessageModal;
+import tr.cabro.servicio.application.component.MessageModal;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.User;
@@ -87,32 +85,17 @@ public class MainUI extends JFrame {
             return;
         }
 
-        // DIYALOG OLUŞTURMA
-        JPanel panel = new JPanel(new MigLayout("wrap, insets 20 30 10 30, gapy 10"));
-        panel.setOpaque(false);
-        panel.add(new JLabel(Messages.get("confirm.exit.app")));
-
         JCheckBox chkDontAsk = new JCheckBox(Messages.get("exit.dontAskAgain"));
-        panel.add(chkDontAsk);
-
-        SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option(Messages.get("exit.button.yes"), SimpleModalBorder.YES_OPTION),
-                new SimpleModalBorder.Option(Messages.get("exit.button.cancel"), SimpleModalBorder.CANCEL_OPTION)
-        };
-
-        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.WARNING,
-                panel, Messages.get("confirm.exit.title"), options, (controller, action) -> {
-            if (action != SimpleModalBorder.YES_OPTION) return;
-
-            // Ayarı kaydet
-            if (chkDontAsk.isSelected()) {
-                AppSettings.get().getUi().setSkipExitConfirmation(true);
-                // Kaydetme işini Servicio.shutdown() yapacak, burada set etmek yeterli
-            }
-
-            // Uygulamayı kapat
-            Servicio.getInstance().shutdown();
-        }));
-        // "Hayır" veya pencere kapatılırsa hiçbir şey yapma, uygulama açık kalır.
+        MessageModal.of(MessageModal.Tone.WARNING, Messages.get("confirm.exit.title"), Messages.get("confirm.exit.app"))
+                .extra(chkDontAsk)
+                .primary(Messages.get("exit.button.yes"), () -> {
+                    // Ayarı kaydet; kaydetme işini Servicio.shutdown() yapacak, burada set etmek yeterli
+                    if (chkDontAsk.isSelected()) {
+                        AppSettings.get().getUi().setSkipExitConfirmation(true);
+                    }
+                    Servicio.getInstance().shutdown();
+                })
+                .show(this);
+        // "Vazgeç", Esc veya pencere kapatılırsa hiçbir şey yapma, uygulama açık kalır.
     }
 }

@@ -80,7 +80,8 @@ public class UpdateModal extends JPanel {
         Runnable go = () -> Servicio.getInstance().getUpdateService().restartNow(
                 e -> DialogHelper.error(parent, "updater.apply.failed", String.valueOf(e.getMessage())));
         if (AppModal.hasOpenModal()) {
-            DialogHelper.confirm(parent, "updater.restart.confirm.title", "updater.restart.confirm.message", go);
+            DialogHelper.confirm(parent, "updater.restart.confirm.title", "updater.restart.confirm.message",
+                    "updater.restart.confirm.action", go);
         } else {
             go.run();
         }

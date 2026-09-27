@@ -23,7 +23,6 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
-import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
@@ -34,8 +33,9 @@ import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.forms.base.AbstractTableForm;
 import tr.cabro.servicio.application.panels.secondhand.PurchasePanel;
 import tr.cabro.servicio.application.panels.secondhand.SalePanel;
-import tr.cabro.servicio.application.simple.SimpleMessageModal;
+
 import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.DocumentExportModal;
 import tr.cabro.servicio.application.system.NewCustomerModal;
@@ -390,15 +390,11 @@ public class FormSecondHandStock extends AbstractTableForm {
     // =========================================================================
 
     private void deleteTransaction(DeviceTransaction transaction) {
-        ModalDialog.showModal(this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                Messages.get("confirm.delete.generic"), Messages.get("confirm.delete.title"),
-                SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-            if (action == SimpleModalBorder.YES_OPTION) {
-                transactionService.delete(transaction.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
-                    Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.record.deletedShort"));
-                    refreshTable();
-                })).exceptionally(ex -> ErrorHandler.handle(this, "2.el kaydı silinemedi", ex));
-            }
-        }));
+        DialogHelper.confirmDelete(this, "confirm.delete.generic", () -> {
+            transactionService.delete(transaction.getId()).thenRun(() -> SwingUtilities.invokeLater(() -> {
+                Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.record.deletedShort"));
+                refreshTable();
+            })).exceptionally(ex -> ErrorHandler.handle(this, "2.el kaydı silinemedi", ex));
+        });
     }
 }

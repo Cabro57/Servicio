@@ -93,7 +93,7 @@ public final class DocumentExportModal {
                 DocumentFormat format = formatOf(target, spec.formats());
                 if (target.exists()) {
                     DialogHelper.confirm(owner, "confirm.overwrite.title", "confirm.overwrite.message",
-                            () -> produceAsync(owner, producer, request, format, target), target.getName());
+                            "confirm.overwrite.action", () -> produceAsync(owner, producer, request, format, target), target.getName());
                 } else {
                     produceAsync(owner, producer, request, format, target);
                 }

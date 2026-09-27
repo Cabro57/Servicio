@@ -373,7 +373,7 @@ public class FormReports extends Form {
         lastDirectory = file.getParentFile();
         if (file.exists()) {
             DialogHelper.confirm(this, "confirm.overwrite.title", "confirm.overwrite.message",
-                    () -> writeCsv(report, file), file.getName());
+                    "confirm.overwrite.action", () -> writeCsv(report, file), file.getName());
         } else {
             writeCsv(report, file);
         }

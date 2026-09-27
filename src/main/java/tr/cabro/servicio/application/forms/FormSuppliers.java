@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.application.renderer.RowParts;
 import com.formdev.flatlaf.FlatClientProperties;
-import raven.modal.ModalDialog;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.application.component.table.ListSummary;
@@ -23,8 +22,9 @@ import java.util.concurrent.CompletableFuture;
 import tr.cabro.servicio.application.component.table.TableColumnConfigurator;
 import tr.cabro.servicio.application.component.table.TableHeaderFilterSupport;
 import tr.cabro.servicio.application.component.table.TableActionColumnSupport;
-import tr.cabro.servicio.application.simple.SimpleMessageModal;
+
 import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.util.DialogHelper;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.SystemForm;
@@ -215,18 +215,14 @@ public class FormSuppliers extends AbstractTableForm {
 
             @Override
             public void onDelete(Supplier selectedSupplier) {
-                ModalDialog.showModal(FormSuppliers.this, new SimpleMessageModal(SimpleMessageModal.Type.INFO,
-                        Messages.get("confirm.delete.supplier"), Messages.get("confirm.delete.title"),
-                        SimpleModalBorder.YES_NO_OPTION, (controller, action) -> {
-                    if (action == SimpleModalBorder.YES_OPTION) {
-                        supplierService.delete(selectedSupplier.getId()).thenRun(() -> {
-                            SwingUtilities.invokeLater(() -> {
-                                Toasts.show(FormSuppliers.this, Toast.Type.SUCCESS, Messages.get("toast.supplier.deleted"));
-                                refreshTable();
-                            });
-                        }).exceptionally(ex -> ErrorHandler.handle(FormSuppliers.this, "Tedarikçi silinemedi", ex));
-                    }
-                }));
+                DialogHelper.confirmDelete(FormSuppliers.this, "confirm.delete.supplier", () -> {
+                    supplierService.delete(selectedSupplier.getId()).thenRun(() -> {
+                        SwingUtilities.invokeLater(() -> {
+                            Toasts.show(FormSuppliers.this, Toast.Type.SUCCESS, Messages.get("toast.supplier.deleted"));
+                            refreshTable();
+                        });
+                    }).exceptionally(ex -> ErrorHandler.handle(FormSuppliers.this, "Tedarikçi silinemedi", ex));
+                });
             }
 
             @Override
