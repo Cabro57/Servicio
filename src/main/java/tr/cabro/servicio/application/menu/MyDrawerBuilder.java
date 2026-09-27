@@ -17,7 +17,6 @@ import raven.modal.drawer.menu.MenuStyle;
 import raven.modal.drawer.renderer.DrawerNoneLineStyle;
 import raven.modal.drawer.simple.SimpleDrawerBuilder;
 import raven.modal.drawer.simple.header.SimpleHeader;
-import raven.modal.drawer.simple.footer.LightDarkButtonFooter;
 import raven.modal.drawer.simple.footer.SimpleFooterData;
 import raven.modal.drawer.simple.header.SimpleHeader;
 import raven.modal.drawer.simple.header.SimpleHeaderData;
@@ -120,10 +119,12 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
     private MyDrawerBuilder() {
         super(createSimpleMenuOption());
-        LightDarkButtonFooter lightDarkButtonFooter = (LightDarkButtonFooter) getFooter();
-        lightDarkButtonFooter.addModeChangeListener(isDarkMode -> {
-            // event for light dark mode changed
-        });
+    }
+
+    /** raven'ın varsayılan açık/koyu tema düğmesi yerine uygulama kimliği; bkz. {@link DrawerFooter}. */
+    @Override
+    public AbstractMenuElement createFooter() {
+        return new DrawerFooter();
     }
 
     /**
@@ -207,6 +208,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         icon.setBorderColor(new AvatarIcon.BorderColor(UIManager.getColor("Component.accentColor"), 0.7f));
     }
 
+    /** Yalnızca soyut metodu karşılar; alt kısım {@link #createFooter()} ile kendi verisini kuruyor. */
     @Override
     public SimpleFooterData getSimpleFooterData() {
         return new SimpleFooterData()
@@ -270,12 +272,8 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 new Item.Label("STOK"),
                 new Item("Parçalar", "circuit-board.svg", FormParts.class),
                 new Item("Ürünler", "shopping-bag.svg", FormProducts.class),
-                new Item("Tedarikçiler", "store.svg", FormSuppliers.class),
-
-                new Item.Separator(),
-                // Ayarlar ve Hakkında bir Form açmaz, modal olarak gösterilir (aşağıdaki menü olayına bkz.)
-                new Item("Ayarlar", "settings.svg"),
-                new Item("Hakkında", "info.svg")
+                new Item("Tedarikçiler", "store.svg", FormSuppliers.class)
+                // Ayarlar ve Hakkında menüde değil, alt kısımda (bkz. DrawerFooter).
         };
 
         // MyMenuValidation.getInstance() ÜZERİNDEN DEĞİL doğrudan bu dizi üzerinden çalışır —
@@ -314,20 +312,6 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         simpleMenuOption.addMenuEvent((action, index) -> {
             // FormManager seçimi eşitliyorsa form zaten açık: yalnızca işaretlensin, tekrar açılmasın.
             if (FormManager.isSyncingDrawer()) return;
-            // Ayarlar/Hakkında bir Form açmaz — index pozisyonuna göre değil isme göre yakalanır,
-            // aksi halde menüye yeni öğe eklendiğinde (ör. Ürünler) pozisyon kayar ve yanlış öğe tetiklenir.
-            String itemName = action.getItem().getName();
-            if ("Ayarlar".equals(itemName)) {
-                action.consume();
-                FormManager.showSettings();
-                return;
-            }
-            if ("Hakkında".equals(itemName)) {
-                action.consume();
-                FormManager.showAbout();
-                return;
-            }
-
             Class<?> itemClass = action.getItem().getItemClass();
             if (itemClass == null || !Form.class.isAssignableFrom(itemClass)) {
                 action.consume();

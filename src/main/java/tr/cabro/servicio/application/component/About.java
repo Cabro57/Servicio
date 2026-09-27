@@ -34,8 +34,8 @@ public class About extends JPanel {
         JLabel logo = new JLabel();
         java.net.URL url = getClass().getResource("/logo.png");
         if (url != null) {
-            Image img = new ImageIcon(url).getImage().getScaledInstance(56, 56, Image.SCALE_SMOOTH);
-            logo.setIcon(new ImageIcon(img));
+            int size = com.formdev.flatlaf.util.UIScale.scale(56);
+            logo.setIcon(new tr.cabro.servicio.application.utils.ScaledImageIcon(new ImageIcon(url).getImage(), size, size));
         }
         JLabel name = new JLabel("Servicio");
         name.putClientProperty(FlatClientProperties.STYLE, "font: bold +8");

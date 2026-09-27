@@ -33,9 +33,9 @@ public class MainUI extends JFrame {
         MyDrawerBuilder.getInstance().setUser(user);
         FormManager.install(this);
 
+        // Tek 256px görsel verilince Windows görev çubuğu/başlık ikonunu kaba küçültüyordu.
         Image logo = new ImageIcon(getClass().getResource("/logo.png")).getImage();
-
-        setIconImage(logo);
+        setIconImages(tr.cabro.servicio.application.utils.ScaledImageIcon.windowIcons(logo));
     }
 
     private void setupWindowSize() {

@@ -193,9 +193,7 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
             return;
         }
         int boxW = UIScale.scale(LOGO_W - 14), boxH = UIScale.scale(LOGO_H - 14);
-        double scale = Math.min((double) boxW / iw, (double) boxH / ih);
-        logoPreview.setIcon(new ImageIcon(image.getScaledInstance(
-                Math.max(1, (int) (iw * scale)), Math.max(1, (int) (ih * scale)), Image.SCALE_SMOOTH)));
+        logoPreview.setIcon(tr.cabro.servicio.application.utils.ScaledImageIcon.fit(image, boxW, boxH));
     }
 
     private void save() {

@@ -206,11 +206,7 @@ public class PinPanel extends Form {
             File file = new File(new File(Servicio.getInstance().getDataFolder(), "logos"), user.getLogoPath());
             if (file.isFile()) {
                 ImageIcon raw = new ImageIcon(file.getAbsolutePath());
-                int h = UIScale.scale(28);
-                if (raw.getIconHeight() > 0) {
-                    int w = Math.max(1, raw.getIconWidth() * h / raw.getIconHeight());
-                    icon = new ImageIcon(raw.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH));
-                }
+                icon = tr.cabro.servicio.application.utils.ScaledImageIcon.ofHeight(raw.getImage(), UIScale.scale(28));
             }
         }
         logo.setIcon(icon);

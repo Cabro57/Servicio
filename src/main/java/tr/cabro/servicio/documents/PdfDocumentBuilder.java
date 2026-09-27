@@ -70,6 +70,13 @@ public class PdfDocumentBuilder implements DocumentWriter {
 
     private final Document document;
 
+    /** Künyede işletme bloğu ile belge başlığı bloğunun oransal genişlikleri. */
+    private static final float MASTHEAD_LEFT = 1f;
+    private static final float MASTHEAD_RIGHT = 1.15f;
+    /** Künye logosunun sığdırıldığı kare (pt) ve logo ile yazı arası boşluk. */
+    private static final float LOGO_SIZE = 62f;
+    private static final float LOGO_GAP = 10f;
+
     private PdfDocumentBuilder(File outFile, String footerText) throws IOException, DocumentException {
         BaseFont regular = PdfFonts.regular();
         BaseFont bold = PdfFonts.bold();
@@ -132,7 +139,7 @@ public class PdfDocumentBuilder implements DocumentWriter {
 
     private void addMasthead(User shop, String title, String firstLabel, String firstValue,
                              String secondLabel, String secondValue) throws DocumentException, IOException {
-        PdfPTable head = new PdfPTable(new float[]{1f, 1.15f});
+        PdfPTable head = new PdfPTable(new float[]{MASTHEAD_LEFT, MASTHEAD_RIGHT});
         head.setWidthPercentage(100);
 
         head.addCell(shopBlock(shop));
@@ -170,15 +177,22 @@ public class PdfDocumentBuilder implements DocumentWriter {
         cell.setVerticalAlignment(Element.ALIGN_TOP);
 
         File logo = shop != null && notBlank(shop.getLogoPath()) ? resolveLogoFile(shop.getLogoPath()) : null;
-        PdfPTable inner = new PdfPTable(logo != null && logo.exists() ? new float[]{0.9f, 3f} : new float[]{1f});
+        boolean hasLogo = logo != null && logo.exists();
+        // Logo sütunu sabit genişlikte: oransal sütun (eskiden 0.9/3.9) logodan dar kalıyordu ve
+        // sığdırılmayan logo işletme adının üstüne taşıyordu.
+        float blockWidth = (document.right() - document.left()) * MASTHEAD_LEFT / (MASTHEAD_LEFT + MASTHEAD_RIGHT);
+        float logoColumn = LOGO_SIZE + LOGO_GAP;
+        PdfPTable inner = new PdfPTable(hasLogo ? new float[]{logoColumn, blockWidth - logoColumn} : new float[]{1f});
         inner.setWidthPercentage(100);
 
-        if (logo != null && logo.exists()) {
+        if (hasLogo) {
             Image image = Image.getInstance(logo.getAbsolutePath());
-            image.scaleToFit(62, 62);
+            image.scaleToFit(LOGO_SIZE, LOGO_SIZE);
             PdfPCell logoCell = new PdfPCell(image, false);
             logoCell.setBorder(Rectangle.NO_BORDER);
-            logoCell.setPaddingRight(10f);
+            logoCell.setPadding(0f);
+            logoCell.setPaddingRight(LOGO_GAP);
+            logoCell.setVerticalAlignment(Element.ALIGN_TOP);
             inner.addCell(logoCell);
         }
 
