@@ -322,14 +322,23 @@ public class FormWorkOrders extends AbstractTableForm {
 
     /** Belirli bir günde açılan servisleri gösterir (ana sayfadaki "Bugün alınan"). */
     public void showCreatedOn(java.time.LocalDate date) {
+        showCreatedBetween(null, date, date);
+    }
+
+    /**
+     * Tarih aralığında açılan servisleri gösterir; {@code term} verilirse arama kutusuna da yazılır
+     * (ana sayfadaki servis akışı grafiği ve "En çok gelen" listesi buradan açılır).
+     */
+    public void showCreatedBetween(String term, java.time.LocalDate from, java.time.LocalDate to) {
         SwingUtilities.invokeLater(() -> {
             if (headerFilters == null) return;
-            if (searchField != null && !searchField.getText().isEmpty()) searchField.setText("");
+            String text = term != null ? term : "";
+            if (searchField != null && !searchField.getText().equals(text)) searchField.setText(text);
             currentPage = 1;
             views.select(VIEW_ALL, false);
             ColumnFilterValue value = new ColumnFilterValue();
-            value.setDateFrom(date);
-            value.setDateTo(date);
+            value.setDateFrom(from);
+            value.setDateTo(to);
             headerFilters.applyOnly(DATE_COLUMN, value);
         });
     }

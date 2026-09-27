@@ -2,27 +2,26 @@ package tr.cabro.servicio.application.panels.dashboard;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
-import org.jfree.data.time.Day;
-import org.jfree.data.time.Hour;
-import org.jfree.data.time.Month;
-import org.jfree.data.time.RegularTimePeriod;
-import org.jfree.data.time.TimeTableXYDataset;
-import org.jfree.data.time.Week;
-import tr.cabro.servicio.application.component.chart.TimeSeriesChart;
-import tr.cabro.servicio.model.dto.ChartDataDto;
+import tr.cabro.servicio.application.component.chart.ColumnChart;
+import tr.cabro.servicio.database.repository.AnalyticsRepository.FinancePoint;
+import tr.cabro.servicio.i18n.AppLocale;
+import tr.cabro.servicio.reports.Bucket;
 import tr.cabro.servicio.model.dto.SummaryCardDto;
 import tr.cabro.servicio.model.enums.TimeFilter;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
  * Dönem finansı: seçilen zaman aralığında ciro, parça gideri, net kâr ve servis sayısı;
- * her biri önceki eşdeğer döneme göre değişimiyle. Altında gelir/kâr trend grafiği.
+ * her biri önceki eşdeğer döneme göre değişimiyle. Altında ciro sütunları (servis ve satış
+ * üst üste, nötr mürekkeple) ve üstünde net kâr çizgisi.
  */
 public class PeriodPanel extends JPanel {
 
@@ -34,7 +33,7 @@ public class PeriodPanel extends JPanel {
     private final JLabel chExpense = badge();
     private final JLabel chProfit = badge();
     private final JLabel chRecords = badge();
-    private final TimeSeriesChart chart = new TimeSeriesChart();
+    private final ColumnChart chart = new ColumnChart();
 
     public PeriodPanel(TimeFilter initial, Consumer<TimeFilter> onChange) {
         setLayout(new MigLayout("insets 0, fillx, wrap", "[fill]", "[]"));
@@ -56,10 +55,8 @@ public class PeriodPanel extends JPanel {
         addFigure(figures, "Servis sayısı", lblRecords, chRecords);
         card.add(figures);
 
-        // Grafik kendi kart zeminini taşıyor; bu kartın içinde ikinci bir kart olmasın.
-        chart.putClientProperty(FlatClientProperties.STYLE_CLASS, null);
-        chart.putClientProperty(FlatClientProperties.STYLE, "background: null");
-        card.add(chart, "h 200:220:260");
+        chart.setValueFormat(v -> Format.formatPrice(BigDecimal.valueOf(v)));
+        card.add(chart, "h 190:210:240, wmin 0");
 
         add(card);
     }
@@ -131,38 +128,34 @@ public class PeriodPanel extends JPanel {
         label.setVisible(true);
     }
 
-    public void setTrend(List<ChartDataDto> revenue, List<ChartDataDto> profit, String granularity) {
-        TimeTableXYDataset dataset = new TimeTableXYDataset();
-        addSeries(dataset, revenue, granularity, "Ciro");
-        addSeries(dataset, profit, granularity, "Net kâr");
-        chart.setDataset(dataset);
+    public void setLoading() {
+        chart.setLoading();
     }
 
-    /** Aynı periyoda düşen etiketler (ör. Ocak'ta SQLite hafta 00 ve 01) üst üste yazılmaz, toplanır. */
-    private static void addSeries(TimeTableXYDataset dataset, List<ChartDataDto> data, String granularity, String series) {
-        java.util.Map<RegularTimePeriod, Double> sums = new java.util.LinkedHashMap<>();
-        for (ChartDataDto dto : data) {
-            if (dto.getLabel() == null || dto.getValue() == null) continue;
-            sums.merge(parsePeriod(dto.getLabel(), granularity), dto.getValue().doubleValue(), Double::sum);
+    /** Kova anahtarları sırasıyla; verisi olmayan kova sıfır çizilir. */
+    public void setTrend(Bucket bucket, List<String> keys, List<FinancePoint> points) {
+        Map<String, FinancePoint> byKey = new HashMap<>();
+        for (FinancePoint p : points) byKey.put(p.key(), p);
+        int n = keys.size();
+        double[] service = new double[n];
+        double[] sales = new double[n];
+        double[] profit = new double[n];
+        List<String> axis = new ArrayList<>(n);
+        List<String> tips = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            String key = keys.get(i);
+            FinancePoint p = byKey.get(key);
+            if (p != null) {
+                service[i] = p.serviceRevenue();
+                sales[i] = p.salesNet();
+                profit[i] = p.profit();
+            }
+            axis.add(bucket.shortLabel(key, AppLocale.uiLocale()));
+            tips.add(bucket.longLabel(key, AppLocale.uiLocale()));
         }
-        sums.forEach((period, value) -> dataset.add(period, value, series));
-    }
-
-    private static RegularTimePeriod parsePeriod(String label, String granularity) {
-        if ("hour".equals(granularity)) {
-            String[] parts = label.split("T");
-            LocalDate date = LocalDate.parse(parts[0]);
-            return new Hour(Integer.parseInt(parts[1]), new Day(date.getDayOfMonth(), date.getMonthValue(), date.getYear()));
-        } else if ("day".equals(granularity)) {
-            LocalDate d = LocalDate.parse(label);
-            return new Day(d.getDayOfMonth(), d.getMonthValue(), d.getYear());
-        } else if ("week".equals(granularity)) {
-            // SQLite %W yılın ilk pazartesisinden önceki günlere 00 verir; JFreeChart Week 1..53 bekler.
-            String[] p = label.split("-");
-            return new Week(Math.max(1, Integer.parseInt(p[1])), Integer.parseInt(p[0]));
-        } else {
-            String[] p = label.split("-");
-            return new Month(Integer.parseInt(p[1]), Integer.parseInt(p[0]));
-        }
+        chart.setData(axis, tips, List.of(
+                        new ColumnChart.Series("Servis", service, ColumnChart.Ink.neutral(0.62f)),
+                        new ColumnChart.Series("Satış", sales, ColumnChart.Ink.neutral(0.30f))),
+                new ColumnChart.Series("Net kâr", profit, ColumnChart.Ink.key("Servicio.successColor")), true);
     }
 }

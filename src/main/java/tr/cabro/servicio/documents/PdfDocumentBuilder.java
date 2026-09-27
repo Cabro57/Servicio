@@ -102,7 +102,20 @@ public class PdfDocumentBuilder implements DocumentWriter {
         String shopName = shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : "";
         String footer = (shopName.isEmpty() ? "" : shopName + "   ·   ") + title + "   ·   " + documentNumber;
         PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile, footer);
-        pdf.addMasthead(shop, title, documentNumber, date);
+        pdf.addMasthead(shop, title, "Belge No", documentNumber, "Tarih", date);
+        return pdf;
+    }
+
+    /**
+     * Rapor belgesini açar: künyedeki kutuda belge no yerine dönem ve oluşturulma zamanı yazar.
+     * Gövde {@link #figures} ve {@link #table} ile doldurulur.
+     */
+    public static PdfDocumentBuilder createReport(File outFile, User shop, String title,
+                                                  String period, String generatedAt) throws IOException, DocumentException {
+        String shopName = shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : "";
+        String footer = (shopName.isEmpty() ? "" : shopName + "   ·   ") + title + "   ·   " + period;
+        PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile, footer);
+        pdf.addMasthead(shop, title, "Dönem", period, "Oluşturma", generatedAt);
         return pdf;
     }
 
@@ -117,7 +130,8 @@ public class PdfDocumentBuilder implements DocumentWriter {
     // Künye
     // -------------------------------------------------------------------------
 
-    private void addMasthead(User shop, String title, String documentNumber, String date) throws DocumentException, IOException {
+    private void addMasthead(User shop, String title, String firstLabel, String firstValue,
+                             String secondLabel, String secondValue) throws DocumentException, IOException {
         PdfPTable head = new PdfPTable(new float[]{1f, 1.15f});
         head.setWidthPercentage(100);
 
@@ -132,8 +146,8 @@ public class PdfDocumentBuilder implements DocumentWriter {
         // Dış çerçeve tek hücrede çizilir; satırlar arasında yalnızca yatay ayraç olur.
         PdfPTable meta = new PdfPTable(new float[]{1f, 1.25f});
         meta.setWidthPercentage(100);
-        addMetaRow(meta, "Belge No", documentNumber, true);
-        addMetaRow(meta, "Tarih", date, false);
+        addMetaRow(meta, firstLabel, firstValue, true);
+        addMetaRow(meta, secondLabel, secondValue, false);
         PdfPCell frame = new PdfPCell(meta);
         frame.setBorder(Rectangle.BOX);
         frame.setBorderWidth(0.75f);
@@ -360,6 +374,101 @@ public class PdfDocumentBuilder implements DocumentWriter {
         cell.setPaddingBottom(7f);
         cell.setHorizontalAlignment(align);
         return cell;
+    }
+
+    /**
+     * Rapor rakamları: üç sütunlu ızgara; her hücrede küçük büyük harfli etiket, kalın değer ve
+     * soluk açıklama. {@code emphasis} true olan değer kalın ve bir boy büyük basılır.
+     * Satır: {etiket, değer, açıklama, "1" ise vurgulu}.
+     */
+    public void figures(List<String[]> figures) throws DocumentException {
+        PdfPTable table = new PdfPTable(3);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(4f);
+        Font strong = new Font(boldFont.getBaseFont(), 12.5f, Font.NORMAL, INK);
+        Font plain = new Font(bodyFont.getBaseFont(), 12.5f, Font.NORMAL, INK);
+        for (String[] f : figures) {
+            PdfPCell cell = bare();
+            cell.setBorder(Rectangle.BOTTOM);
+            cell.setBorderColorBottom(RULE);
+            cell.setBorderWidthBottom(0.5f);
+            cell.setPaddingTop(7f);
+            cell.setPaddingBottom(8f);
+            cell.setPaddingRight(14f);
+            cell.addElement(new Paragraph(f[0].toUpperCase(TR), labelFont));
+            Paragraph v = new Paragraph(notBlank(f[1]) ? f[1] : "—", f.length > 3 && "1".equals(f[3]) ? strong : plain);
+            v.setSpacingBefore(2f);
+            cell.addElement(v);
+            if (f.length > 2 && notBlank(f[2])) {
+                Paragraph h = new Paragraph(f[2], smallFont);
+                h.setSpacingBefore(1f);
+                cell.addElement(h);
+            }
+            table.addCell(cell);
+        }
+        for (int i = figures.size() % 3; i != 0 && i < 3; i++) table.addCell(bare());
+        document.add(table);
+    }
+
+    /**
+     * Genel döküm tablosu: kalem tablosuyla aynı dil (dikey çizgi yok, sayılar sağa hizalı).
+     * {@code totals} null değilse üstünde kalın çizgiyle toplam satırı basılır.
+     */
+    public void table(String[] headers, float[] widths, boolean[] rightAligned, List<String[]> rows,
+                      String[] totals, String emptyText) throws DocumentException {
+        Font cellFont = new Font(bodyFont.getBaseFont(), 8.5f, Font.NORMAL, INK);
+        Font cellBold = new Font(boldFont.getBaseFont(), 8.5f, Font.NORMAL, INK);
+        PdfPTable table = new PdfPTable(widths);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(2f);
+        table.setHeaderRows(1);
+        for (int i = 0; i < headers.length; i++) {
+            PdfPCell h = new PdfPCell(new Phrase(headers[i].toUpperCase(TR), labelFont));
+            h.setBorder(Rectangle.BOTTOM);
+            h.setBorderWidthBottom(1f);
+            h.setBorderColorBottom(INK);
+            h.setPaddingBottom(5f);
+            h.setPaddingTop(2f);
+            h.setHorizontalAlignment(rightAligned[i] ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
+            if (i > 0 && !rightAligned[i]) h.setPaddingLeft(12f);
+            table.addCell(h);
+        }
+        if (rows.isEmpty()) {
+            PdfPCell empty = itemCell(emptyText, smallFont, Element.ALIGN_LEFT);
+            empty.setColspan(headers.length);
+            table.addCell(empty);
+        } else {
+            for (String[] row : rows) {
+                for (int i = 0; i < row.length; i++) {
+                    PdfPCell c = itemCell(row[i], i == 0 ? cellBold : cellFont, rightAligned[i] ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
+                    c.setPaddingTop(4f);
+                    c.setPaddingBottom(5.5f);
+                    // Sağa hizalı tutarın hemen ardından gelen sola hizalı metin yapışmasın.
+                    if (i > 0 && !rightAligned[i]) c.setPaddingLeft(12f);
+                    table.addCell(c);
+                }
+            }
+        }
+        if (totals != null) {
+            for (int i = 0; i < totals.length; i++) {
+                PdfPCell c = new PdfPCell(new Phrase(notBlank(totals[i]) ? totals[i] : "", cellBold));
+                c.setBorder(Rectangle.TOP);
+                c.setBorderWidthTop(1.2f);
+                c.setBorderColorTop(INK);
+                c.setPaddingTop(5f);
+                c.setPaddingBottom(4f);
+                c.setHorizontalAlignment(rightAligned[i] ? Element.ALIGN_RIGHT : Element.ALIGN_LEFT);
+                table.addCell(c);
+            }
+        }
+        document.add(table);
+    }
+
+    /** Bölüm altındaki soluk açıklama satırı. */
+    public void note(String text) throws DocumentException {
+        Paragraph p = new Paragraph(text, smallFont);
+        p.setSpacingAfter(3f);
+        document.add(p);
     }
 
     /** Elle işaretlenecek seçenekler; her birinin önünde çizilmiş boş bir kare. */

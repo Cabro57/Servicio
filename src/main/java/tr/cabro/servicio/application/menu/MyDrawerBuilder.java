@@ -265,6 +265,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 new Item.Label("FİNANS"),
                 new Item("Cari Hesaplar", "hand-coins.svg", FormAccounts.class),
                 new Item("Kasa Raporu", "banknote.svg", FormCashReport.class),
+                new Item("Raporlar", "chart-column.svg", FormReports.class),
 
                 new Item.Label("STOK"),
                 new Item("Parçalar", "circuit-board.svg", FormParts.class),

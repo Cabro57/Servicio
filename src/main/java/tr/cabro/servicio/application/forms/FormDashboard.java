@@ -7,7 +7,7 @@ import tr.cabro.servicio.application.component.QuickActionButton;
 import tr.cabro.servicio.application.panels.dashboard.ActiveServicesPanel;
 import tr.cabro.servicio.application.panels.dashboard.AttentionPanel;
 import tr.cabro.servicio.application.panels.dashboard.CashTodayPanel;
-import tr.cabro.servicio.application.panels.dashboard.DistributionPanel;
+import tr.cabro.servicio.application.panels.dashboard.FlowPanel;
 import tr.cabro.servicio.application.panels.dashboard.MovementsPanel;
 import tr.cabro.servicio.application.panels.dashboard.PeriodPanel;
 import tr.cabro.servicio.application.panels.dashboard.PipelinePanel;
@@ -17,11 +17,12 @@ import tr.cabro.servicio.application.system.QuickAction;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.SystemForm;
 import tr.cabro.servicio.i18n.AppLocale;
+import tr.cabro.servicio.database.repository.AnalyticsRepository;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Payment;
-import tr.cabro.servicio.model.dto.ChartDataDto;
 import tr.cabro.servicio.model.dto.SummaryCardDto;
 import tr.cabro.servicio.model.enums.TimeFilter;
+import tr.cabro.servicio.reports.Bucket;
 import tr.cabro.servicio.service.ReportManager;
 import tr.cabro.servicio.service.ServiceManager;
 
@@ -40,7 +41,7 @@ import java.util.stream.Collectors;
 
 /**
  * Ana sayfa: tezgâhın operasyon panosu. Sol 2/3 bugünün işi (servis hattı, dikkat bekleyenler,
- * aktif servisler, cihaz dağılımı), sağ 1/3 para (bugünkü kasa, bugünkü hareketler, dönem kazancı).
+ * aktif servisler, servis akışı), sağ 1/3 para (bugünkü kasa, bugünkü hareketler, dönem kazancı).
  * Üstte sık işlemlerin kısayol şeridi; aynı işlemler Alt+harf ve Ctrl+K komut paletinden de çalışır.
  */
 @SystemForm(name = "Ana Sayfa", description = "Bugünkü kasa, atölye durumu, bekleyen işler ve dönem kazancı",
@@ -56,7 +57,7 @@ public class FormDashboard extends Form {
     private PipelinePanel pipelinePanel;
     private AttentionPanel attentionPanel;
     private ActiveServicesPanel activeServiceTable;
-    private DistributionPanel distributionPanel;
+    private FlowPanel flowPanel;
     private CashTodayPanel cashTodayPanel;
     private MovementsPanel movementsPanel;
     private PeriodPanel periodPanel;
@@ -133,11 +134,11 @@ public class FormDashboard extends Form {
             FormManager.refreshStatusBar();
         });
         activeServiceTable = new ActiveServicesPanel(ServiceManager.getWorkOrderService());
-        distributionPanel = new DistributionPanel();
+        flowPanel = new FlowPanel();
         left.add(pipelinePanel);
         left.add(attentionPanel);
         left.add(activeServiceTable);
-        left.add(distributionPanel);
+        left.add(flowPanel);
 
         JPanel right = column();
         cashTodayPanel = new CashTodayPanel();
@@ -212,7 +213,7 @@ public class FormDashboard extends Form {
         }).exceptionally(ex -> ErrorHandler.handle(this, "Bugünkü hareketler yüklenemedi", ex));
     }
 
-    /** Dönem filtresine bağlı bölümler: kazanç özeti, trend grafiği, cihaz dağılımı. */
+    /** Dönem filtresine bağlı bölümler: kazanç özeti ve grafiği, servis akışı, en çok gelen cihazlar. */
     private void loadPeriod() {
         ReportManager reportManager = ServiceManager.getReportManager();
         TimeFilter filter = selectedTimeFilter;
@@ -229,25 +230,44 @@ public class FormDashboard extends Form {
                 }))
                 .exceptionally(ex -> ErrorHandler.handle(this, "Dönem özeti yüklenemedi", ex));
 
-        boolean useEffective = filter == TimeFilter.ALL_TIME;
-        CompletableFuture<List<ChartDataDto>> revF = reportManager.getRevenueTrend(filter.getSqlFormat(), start, end, useEffective);
-        CompletableFuture<List<ChartDataDto>> profF = reportManager.getProfitTrend(filter.getSqlFormat(), start, end, useEffective);
-        CompletableFuture.allOf(revF, profF).thenRun(() -> SwingUtilities.invokeLater(() -> {
+        periodPanel.setLoading();
+        flowPanel.setLoading();
+        reportManager.analytics(repo -> {
+                    // "Tümü" 2000'den başlar; grafik ilk kayıttan başlasın, yoksa yüzlerce boş ay çizilir.
+                    LocalDate from = filter == TimeFilter.ALL_TIME ? repo.firstActivity() : dates[0];
+                    LocalDate to = dates[1];
+                    // Kartlar dar: 16 sütunu aşmayan kırılım (son 1 ay haftalık, son 1 yıl aylık).
+                    Bucket bucket = Bucket.forRange(from, to, 16);
+                    return new PeriodData(from, to, bucket, bucket.keys(from, to),
+                            repo.financeTrend(bucket, from, to), repo.serviceFlow(bucket, from, to),
+                            repo.serviceStats(from, to), repo.byDeviceType(from, to), repo.byBrand(from, to));
+                })
+                .thenAccept(d -> SwingUtilities.invokeLater(() -> {
                     if (filter != selectedTimeFilter) return;
-                    periodPanel.setTrend(revF.join(), profF.join(), filter.getGranularity());
+                    periodPanel.setTrend(d.bucket, d.keys, d.finance);
+                    flowPanel.setFlow(periodText(filter), d.bucket, d.keys, d.from, d.to, d.flow, d.stats);
+                    flowPanel.setRanks(d.types, d.brands);
                 }))
-                .exceptionally(ex -> ErrorHandler.handle(this, "Kazanç grafiği yüklenemedi", ex));
+                .exceptionally(ex -> ErrorHandler.handle(this, "Dönem grafikleri yüklenemedi", ex));
+    }
 
-        reportManager.getDeviceTypePieChart(start, end)
-                .thenAccept(data -> SwingUtilities.invokeLater(() -> {
-                    if (filter == selectedTimeFilter) distributionPanel.setDeviceTypes(data);
-                }))
-                .exceptionally(ex -> ErrorHandler.handle(this, "Cihaz türü grafiği yüklenemedi", ex));
-        reportManager.getBrandPieChart(start, end)
-                .thenAccept(data -> SwingUtilities.invokeLater(() -> {
-                    if (filter == selectedTimeFilter) distributionPanel.setBrands(data);
-                }))
-                .exceptionally(ex -> ErrorHandler.handle(this, "Marka grafiği yüklenemedi", ex));
+    private record PeriodData(LocalDate from, LocalDate to, Bucket bucket, List<String> keys,
+                              List<AnalyticsRepository.FinancePoint> finance, List<AnalyticsRepository.FlowPoint> flow,
+                              AnalyticsRepository.ServiceStats stats, List<AnalyticsRepository.Breakdown> types,
+                              List<AnalyticsRepository.Breakdown> brands) {}
+
+    /** Kart başlıklarındaki soluk dönem adı. */
+    private static String periodText(TimeFilter filter) {
+        switch (filter) {
+            case DAY_1: return "dün ve bugün";
+            case DAY_3: return "son 3 gün";
+            case WEEK_1: return "son 7 gün";
+            case MONTH_1: return "son 1 ay";
+            case MONTH_3: return "son 3 ay";
+            case MONTH_6: return "son 6 ay";
+            case YEAR_1: return "son 1 yıl";
+            default: return "tüm zamanlar";
+        }
     }
 
     /** Kaydırma alanında genişliği görünüm alanına eşitleyen içerik paneli (yatay kaydırma olmasın). */

@@ -71,7 +71,7 @@ public final class ServiceManager {
         partCategoryManager = new PartCategoryManager(partCategoryRepo);
         documentTemplateService = new DocumentTemplateService(documentTemplateRepo);
         laborService = new LaborService(laborRepo);
-        reportManager = new ReportManager(reportRepo);
+        reportManager = new ReportManager(reportRepo, new AnalyticsRepository(jdbi));
         partService = new PartService(partRepo, supplierRepo, stockService, partCategoryRepo);
         productService = new ProductService(productRepo, productStockMovementRepo, partCategoryRepo);
         deviceAccessCredentialService = new DeviceAccessCredentialService(deviceAccessCredentialRepo);

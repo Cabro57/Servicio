@@ -82,12 +82,13 @@ public interface WorkOrderRepository extends SqlObject {
     String SEARCH_FROM = "FROM work_orders s " +
             "LEFT JOIN customers c ON c.id = s.customer_id " +
             "LEFT JOIN devices d ON d.id = s.device_id " +
-            "LEFT JOIN device_brands db ON db.id = d.brand_id ";
+            "LEFT JOIN device_brands db ON db.id = d.brand_id " +
+            "LEFT JOIN device_types dt ON dt.id = d.device_type_id ";
     String SEARCH_WHERE = "WHERE (" +
             "CAST(s.id AS TEXT) LIKE :search " +
             "OR s.reported_fault LIKE :search " +
             "OR c.first_name LIKE :search OR c.last_name LIKE :search OR c.business_name LIKE :search OR c.phone_number_1 LIKE :search " +
-            "OR db.name LIKE :search OR d.model LIKE :search OR d.serial_no LIKE :search " +
+            "OR db.name LIKE :search OR dt.name LIKE :search OR d.model LIKE :search OR d.serial_no LIKE :search " +
             "OR EXISTS (SELECT 1 FROM work_order_notes sn WHERE sn.service_id = s.id AND sn.note LIKE :search)" +
             ") ";
 

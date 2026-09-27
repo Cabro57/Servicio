@@ -19,8 +19,8 @@ import java.util.function.BiConsumer;
 /**
  * Dönem gezgini: tek çerçeveli "‹ [takvim Bugün · 24 Eyl 2026] ›" şeridi; dönem tek gün ya da
  * tarih aralığı olabilir. Ortadaki düğme açılır paneli açar: hazır dönemler (Bugün, Dün, Bu hafta,
- * Bu ay, Geçen ay) ve serbest aralık için takvim. Oklar dönemi kendi uzunluğu kadar kaydırır
- * (tam ay ise ay ay); gelecek güne geçilmez. Dönem bugün değilse yanında "Bugün" kısayolu belirir.
+ * Son 7 gün, Bu ay, Geçen ay, Son 3 ay, Bu yıl, Geçen yıl) ve serbest aralık için takvim. Oklar dönemi
+ * kendi uzunluğu kadar kaydırır (tam ay ise ay ay, tam yıl ise yıl yıl); gelecek güne geçilmez. Dönem bugün değilse yanında "Bugün" kısayolu belirir.
  */
 public class PeriodNavigator extends JPanel {
 
@@ -106,6 +106,12 @@ public class PeriodNavigator extends JPanel {
             LocalDate first = LocalDate.now().minusMonths(1).withDayOfMonth(1);
             return new LocalDate[]{first, first.with(TemporalAdjusters.lastDayOfMonth())};
         });
+        addPreset(presets, "Son 3 ay", () -> { LocalDate t = LocalDate.now(); return new LocalDate[]{t.minusMonths(3).plusDays(1), t}; });
+        addPreset(presets, "Bu yıl", () -> { LocalDate t = LocalDate.now(); return new LocalDate[]{t.withDayOfYear(1), t}; });
+        addPreset(presets, "Geçen yıl", () -> {
+            LocalDate first = LocalDate.now().minusYears(1).withDayOfYear(1);
+            return new LocalDate[]{first, first.with(TemporalAdjusters.lastDayOfYear())};
+        });
         content.add(presets);
 
         JLabel hint = new JLabel("Ya da takvimden başlangıç ve bitiş günlerini seçin");
@@ -161,8 +167,13 @@ public class PeriodNavigator extends JPanel {
         onChange.accept(from, to);
     }
 
-    /** Dönemi kendi uzunluğu kadar kaydırır; tam takvim ayıysa ay ay gider. */
+    /** Dönemi kendi uzunluğu kadar kaydırır; tam takvim yılı ya da ayıysa yıl yıl / ay ay gider. */
     public void shift(int direction) {
+        if (isFullYear()) {
+            LocalDate f = from.plusYears(direction);
+            set(f, f.with(TemporalAdjusters.lastDayOfYear()));
+            return;
+        }
         if (isFullMonth()) {
             LocalDate f = from.plusMonths(direction);
             set(f, f.with(TemporalAdjusters.lastDayOfMonth()));
@@ -170,6 +181,10 @@ public class PeriodNavigator extends JPanel {
         }
         long span = ChronoUnit.DAYS.between(from, to) + 1;
         set(from.plusDays(direction * span), to.plusDays(direction * span));
+    }
+
+    private boolean isFullYear() {
+        return from.getDayOfYear() == 1 && to.equals(from.with(TemporalAdjusters.lastDayOfYear()));
     }
 
     private boolean isFullMonth() {
@@ -219,6 +234,10 @@ public class PeriodNavigator extends JPanel {
         if (to.equals(today) && from.equals(today.withDayOfMonth(1))) return "Bu ay";
         LocalDate lastMonth = today.minusMonths(1).withDayOfMonth(1);
         if (from.equals(lastMonth) && to.equals(lastMonth.with(TemporalAdjusters.lastDayOfMonth()))) return "Geçen ay";
+        if (to.equals(today) && from.equals(today.minusMonths(3).plusDays(1))) return "Son 3 ay";
+        if (to.equals(today) && from.equals(today.withDayOfYear(1))) return "Bu yıl";
+        LocalDate lastYear = today.minusYears(1).withDayOfYear(1);
+        if (from.equals(lastYear) && to.equals(lastYear.with(TemporalAdjusters.lastDayOfYear()))) return "Geçen yıl";
         return null;
     }
 }
