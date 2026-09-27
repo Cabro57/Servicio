@@ -63,13 +63,14 @@ public class DrawerFooter extends AbstractMenuElement {
         add(identity);
 
         settings = toolbarButton();
-        settings.setIcon(new Ikon("icons/settings.svg", 18, "Label.disabledForeground"));
-        settings.setRolloverIcon(new Ikon("icons/settings.svg", 18, "Label.foreground"));
-        settings.putClientProperty(FlatClientProperties.STYLE, BUTTON_STYLE + ";margin:8,8,8,8");
+        // 20 + 2×9 = 38: soldaki kimlik düğmesiyle (26 logo + 2×6 iç boşluk) aynı boyda kare.
+        settings.setIcon(new Ikon("icons/settings.svg", 20, "Label.disabledForeground"));
+        settings.setRolloverIcon(new Ikon("icons/settings.svg", 20, "Label.foreground"));
+        settings.putClientProperty(FlatClientProperties.STYLE, BUTTON_STYLE + ";margin:9,9,9,9");
         settings.setToolTipText("Ayarlar");
         settings.getAccessibleContext().setAccessibleName("Ayarlar");
         settings.addActionListener(e -> FormManager.showSettings());
-        add(settings, "aligny center");
+        add(settings, "growy");
     }
 
     private static JButton toolbarButton() {
@@ -98,7 +99,7 @@ public class DrawerFooter extends AbstractMenuElement {
         // Dar modda iki düğme tek sütunda alt alta, ortalı.
         layout.setColumnConstraints(full ? "[grow,fill][]" : "[grow,center]");
         layout.setComponentConstraints(identity, full ? "" : "wrap");
-        layout.setComponentConstraints(settings, "aligny center");
+        layout.setComponentConstraints(settings, full ? "growy" : "");
         revalidate();
     }
 }
