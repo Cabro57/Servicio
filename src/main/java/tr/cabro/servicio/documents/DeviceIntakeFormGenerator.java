@@ -25,25 +25,29 @@ public class DeviceIntakeFormGenerator implements ServiceFormGenerator {
 
         DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Cihaz Kabul Formu",
                 "SRV-" + workOrder.getId(), date(workOrder.getCreatedAt()));
+        try {
+            pdf.section("Müşteri ve Cihaz");
+            pdf.fields(new String[][]{
+                    {"Müşteri", customer != null ? customer.getFullName() : null},
+                    {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
+                    {"Cihaz", device != null ? device.getDisplayName() : null},
+                    {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
+            });
+            // Ekran kilidi (PIN/şifre/desen) ayrı tabloda şifreli tutulur ve bilinçli olarak basılmaz.
+            pdf.wideField("Aksesuar", device != null ? device.getAccessory() : null);
 
-        pdf.section("Müşteri ve Cihaz");
-        pdf.fields(new String[][]{
-                {"Müşteri", customer != null ? customer.getFullName() : null},
-                {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
-                {"Cihaz", device != null ? device.getDisplayName() : null},
-                {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
-        });
-        // Ekran kilidi (PIN/şifre/desen) ayrı tabloda şifreli tutulur ve bilinçli olarak basılmaz.
-        pdf.wideField("Aksesuar", device != null ? device.getAccessory() : null);
+            pdf.section("Bildirilen Arıza");
+            pdf.paragraph(workOrder.getReportedFault(), "Belirtilmemiş.");
 
-        pdf.section("Bildirilen Arıza");
-        pdf.paragraph(workOrder.getReportedFault(), "Belirtilmemiş.");
+            pdf.section("Koşullar");
+            pdf.terms(request.text(DocumentText.INTAKE_TERMS));
 
-        pdf.section("Koşullar");
-        pdf.terms(request.text(DocumentText.INTAKE_TERMS));
-
-        pdf.signatures("Teslim Eden (Müşteri)", request.getLeftSignerName(), "Teslim Alan (İşletme)", request.getRightSignerName());
-        pdf.close();
+            pdf.signatures("Teslim Eden (Müşteri)", request.getLeftSignerName(), "Teslim Alan (İşletme)", request.getRightSignerName());
+            pdf.close();
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return outFile;
     }
 

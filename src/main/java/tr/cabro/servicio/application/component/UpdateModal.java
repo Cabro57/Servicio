@@ -113,7 +113,9 @@ public class UpdateModal extends JPanel {
         card.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
         card.add(DetailKit.title("Bu sürümde"));
         JScrollPane scroll = DetailKit.scroll(notes);
-        card.add(scroll, "hmin 60, hmax " + UIScale.scale(300));
+        // Notlar ağdan sonradan gelir; yükseklik içeriğe bağlı olsaydı pencere tek satırla açılıp
+        // notlar gelince büyürdü. Sabit yükseklik pencereyi baştan son boyutuyla açar.
+        card.add(scroll, "h " + UIScale.scale(300) + "!");
         add(card, "gaptop 16");
 
         // --- Durum: indirme ilerlemesi, hata ya da hazır bilgisi ---

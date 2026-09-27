@@ -25,7 +25,7 @@ public class PartCategoryManager {
     }
 
     public CompletableFuture<List<PartCategory>> getAll() {
-        return CompletableFuture.supplyAsync(repository::findAll);
+        return DbExecutor.supply(repository::findAll);
     }
 
     /**
@@ -39,7 +39,7 @@ public class PartCategoryManager {
     }
 
     public CompletableFuture<Integer> add(String name, CategoryScope scope) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             String trimmed = requireName(name);
             repository.findByName(trimmed).ifPresent(category -> {
                 throw new AlreadyExistsException("\"" + category.getName() + "\" kategorisi zaten kayıtlı.");
@@ -49,7 +49,7 @@ public class PartCategoryManager {
     }
 
     public CompletableFuture<Void> update(Long id, String name, CategoryScope scope) {
-        return CompletableFuture.runAsync(() -> {
+        return DbExecutor.run(() -> {
             String trimmed = requireName(name);
             repository.findByName(trimmed)
                     .filter(category -> !category.getId().equals(id))
@@ -62,7 +62,7 @@ public class PartCategoryManager {
 
     /** Kategoriyi siler; {@code targetId} verilirse parçalar ve ürünler önce oraya taşınır, verilmezse kategorisiz kalır. */
     public CompletableFuture<Void> delete(Long id, Long targetId) {
-        return CompletableFuture.runAsync(() -> DatabaseManager.useTransaction(handle -> {
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
             if (Objects.equals(id, targetId)) throw new ValidationException("Kategori kendisine taşınamaz.");
             PartCategoryRepository repo = handle.attach(PartCategoryRepository.class);
             if (targetId != null) {

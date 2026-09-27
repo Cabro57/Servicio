@@ -78,8 +78,10 @@ public final class ReportExporter {
                 for (Object[] row : t.rows()) rows.add(texts(t, row));
                 pdf.table(headers, widths, right, rows, t.totals() != null ? texts(t, t.totals()) : null, t.emptyText());
             }
-        } finally {
             pdf.close();
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
         }
         return out;
     }

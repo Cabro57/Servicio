@@ -24,29 +24,33 @@ public class ServiceDeliveryFormGenerator implements ServiceFormGenerator {
 
         DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Servis Teslim Formu",
                 "SRV-" + workOrder.getId(), DeviceIntakeFormGenerator.date(LocalDateTime.now()));
+        try {
+            pdf.section("Müşteri ve Cihaz");
+            pdf.fields(new String[][]{
+                    {"Müşteri", customer != null ? customer.getFullName() : null},
+                    {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
+                    {"Cihaz", device != null ? device.getDisplayName() : null},
+                    {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
+            });
 
-        pdf.section("Müşteri ve Cihaz");
-        pdf.fields(new String[][]{
-                {"Müşteri", customer != null ? customer.getFullName() : null},
-                {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
-                {"Cihaz", device != null ? device.getDisplayName() : null},
-                {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
-        });
+            pdf.section("Yapılan İşlemler");
+            pdf.items(workOrder.getItems(), workOrder.getTotalServiceAmount());
 
-        pdf.section("Yapılan İşlemler");
-        pdf.items(workOrder.getItems(), workOrder.getTotalServiceAmount());
+            BigDecimal remaining = workOrder.getRemainingAmount();
+            pdf.fields(new String[][]{
+                    {"Ödenen", PdfDocumentBuilder.money(workOrder.getTotalPaid())},
+                    {remaining.signum() < 0 ? "Fazla Ödeme" : "Kalan Bakiye", PdfDocumentBuilder.money(remaining.abs())}
+            });
 
-        BigDecimal remaining = workOrder.getRemainingAmount();
-        pdf.fields(new String[][]{
-                {"Ödenen", PdfDocumentBuilder.money(workOrder.getTotalPaid())},
-                {remaining.signum() < 0 ? "Fazla Ödeme" : "Kalan Bakiye", PdfDocumentBuilder.money(remaining.abs())}
-        });
+            pdf.section("Garanti");
+            pdf.terms(request.deliveryWarrantyNote());
 
-        pdf.section("Garanti");
-        pdf.terms(request.deliveryWarrantyNote());
-
-        pdf.signatures("Teslim Eden (İşletme)", request.getLeftSignerName(), "Teslim Alan (Müşteri)", request.getRightSignerName());
-        pdf.close();
+            pdf.signatures("Teslim Eden (İşletme)", request.getLeftSignerName(), "Teslim Alan (Müşteri)", request.getRightSignerName());
+            pdf.close();
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return outFile;
     }
 }

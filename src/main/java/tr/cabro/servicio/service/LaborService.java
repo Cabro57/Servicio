@@ -19,7 +19,7 @@ public class LaborService {
     }
 
     public CompletableFuture<Labor> save(Labor labor, boolean updated) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             validateLabor(labor);
             if (updated) {
                 repository.update(labor);
@@ -33,24 +33,24 @@ public class LaborService {
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> repository.delete(id));
+        return DbExecutor.run(() -> repository.delete(id));
     }
 
     public CompletableFuture<Optional<Labor>> get(Long id) {
-        return CompletableFuture.supplyAsync(() -> repository.findById(id));
+        return DbExecutor.supply(() -> repository.findById(id));
     }
 
     public CompletableFuture<List<Labor>> getAll() {
-        return CompletableFuture.supplyAsync(repository::findAll);
+        return DbExecutor.supply(repository::findAll);
     }
 
     // Belirli bir cihaz türüne özel + türden bağımsız (Genel) işçilikleri getirir.
     public CompletableFuture<List<Labor>> getByTypeId(Long typeId) {
-        return CompletableFuture.supplyAsync(() -> repository.findByTypeId(typeId));
+        return DbExecutor.supply(() -> repository.findByTypeId(typeId));
     }
 
     public CompletableFuture<List<Labor>> search(String searchStr) {
-        return CompletableFuture.supplyAsync(() -> repository.search("%" + searchStr + "%"));
+        return DbExecutor.supply(() -> repository.search("%" + searchStr + "%"));
     }
 
     private void validateLabor(Labor labor) {

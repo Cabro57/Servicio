@@ -6,11 +6,8 @@ import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.system.FormSearch;
 import tr.cabro.servicio.application.utils.RecentSearchStore;
 import tr.cabro.servicio.application.forms.FormWorkOrder;
-import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.WorkOrder;
-import tr.cabro.servicio.service.ServiceManager;
 
-import java.util.Optional;
 
 public class ServiceSearchResult implements ISearchableResult {
 
@@ -36,21 +33,9 @@ public class ServiceSearchResult implements ISearchableResult {
             return "SRV-" + workOrder.getId() + "  ·  " + workOrder.getCustomer().getFullName()
                     + (workOrder.getServiceStatus() != null ? "  ·  " + workOrder.getServiceStatus().getDisplayName() : "");
         }
-        try {
-            // join() metodu asenkron işlemin tamamlanmasını bekler ve sonucu döndürür.
-            Optional<Customer> customerOpt = ServiceManager.getCustomerService()
-                    .get(workOrder.getCustomerId())
-                    .join();
-
-            return customerOpt
-                    .map(customer -> String.format("%s adlı müşterinin servisi",
-                            customer.getFullName()))
-                    .orElse("Silinmiş Müşterinin Servisi");
-
-        } catch (Exception e) {
-            // Veritabanı hatası veya zaman aşımı durumunda güvenli bir dönüş
-            return "Servis Bilgisi Alınamadı";
-        }
+        // Kayıt hydrate edilmişken müşteri yoksa silinmiştir; burada tekrar sorgulamak her çizimde
+        // EDT'yi veritabanı için bekletiyordu.
+        return "SRV-" + workOrder.getId() + "  ·  Silinmiş Müşterinin Servisi";
     }
 
     @Override

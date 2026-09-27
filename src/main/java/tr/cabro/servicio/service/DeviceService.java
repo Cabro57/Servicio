@@ -27,7 +27,7 @@ public class DeviceService {
     public CompletableFuture<Device> save(Device device, boolean update) {
         validateDevice(device);
 
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             if (!update) {
                 if (device.getCreatedAt() == null) {
                     device.setCreatedAt(LocalDateTime.now());
@@ -42,44 +42,44 @@ public class DeviceService {
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> deviceRepository.delete(id));
+        return DbExecutor.run(() -> deviceRepository.delete(id));
     }
 
     public CompletableFuture<Optional<Device>> get(Long id) {
-        return CompletableFuture.supplyAsync(() -> deviceRepository.findById(id));
+        return DbExecutor.supply(() -> deviceRepository.findById(id));
     }
 
     public CompletableFuture<Optional<Device>> getBySerialNo(String serialNo) {
-        return CompletableFuture.supplyAsync(() -> deviceRepository.findBySerialNo(serialNo));
+        return DbExecutor.supply(() -> deviceRepository.findBySerialNo(serialNo));
     }
 
     public CompletableFuture<List<Device>> getAll() {
-        return CompletableFuture.supplyAsync(deviceRepository::findAll);
+        return DbExecutor.supply(deviceRepository::findAll);
     }
 
     public CompletableFuture<List<Device>> getAll(List<Long> ids) {
-        return CompletableFuture.supplyAsync(() -> deviceRepository.findByIds(ids));
+        return DbExecutor.supply(() -> deviceRepository.findByIds(ids));
     }
 
     public CompletableFuture<List<Device>> getAllByCustomerId(Long customerId) {
-        return CompletableFuture.supplyAsync(() -> deviceRepository.findByCustomerId(customerId));
+        return DbExecutor.supply(() -> deviceRepository.findByCustomerId(customerId));
     }
 
     public CompletableFuture<List<Device>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
-        return CompletableFuture.supplyAsync(
+        return DbExecutor.supply(
                 () -> deviceRepository.search("%" + searchTerm.trim() + "%"));
     }
 
     /** Tablo başlığı filtresi (kayıt tarihi) + serbest metin arama — sunucu tarafında, tüm kayıtlar üzerinde. */
     public CompletableFuture<PageResult<Device>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                      int page, int pageSize) {
-        return CompletableFuture.supplyAsync(() -> deviceRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
+        return DbExecutor.supply(() -> deviceRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
     public CompletableFuture<PageResult<Device>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                      int page, int pageSize, String sortKey) {
-        return CompletableFuture.supplyAsync(() -> deviceRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
+        return DbExecutor.supply(() -> deviceRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
     }
 
     // -------------------------------------------------------------------------

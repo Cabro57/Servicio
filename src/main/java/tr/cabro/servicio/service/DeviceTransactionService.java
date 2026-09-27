@@ -28,7 +28,7 @@ public class DeviceTransactionService {
         if (deviceId == null) throw new ValidationException("Cihaz seçilmeden alım kaydı oluşturulamaz.");
         if (sellerCustomerId == null) throw new ValidationException("Satıcı müşteri seçilmeden alım kaydı oluşturulamaz.");
 
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<DeviceTransaction> latest = repository.findLatestByDeviceId(deviceId);
             if (latest.isPresent() && latest.get().getType() == DeviceTransactionType.PURCHASE) {
                 throw new ValidationException("Bu cihaz zaten stokta — tekrar alım kaydı açılamaz.");
@@ -58,7 +58,7 @@ public class DeviceTransactionService {
         if (deviceId == null) throw new ValidationException("Cihaz seçilmeden satış kaydı oluşturulamaz.");
         if (buyerCustomerId == null) throw new ValidationException("Alıcı müşteri seçilmeden satış kaydı oluşturulamaz.");
 
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<DeviceTransaction> latest = repository.findLatestByDeviceId(deviceId);
             if (latest.isEmpty() || latest.get().getType() != DeviceTransactionType.PURCHASE) {
                 throw new ValidationException("Bu cihaz stokta değil — önce alım kaydı oluşturulmalı.");
@@ -82,34 +82,34 @@ public class DeviceTransactionService {
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> repository.delete(id));
+        return DbExecutor.run(() -> repository.delete(id));
     }
 
     public CompletableFuture<Optional<DeviceTransaction>> get(Long id) {
-        return CompletableFuture.supplyAsync(() -> repository.findById(id));
+        return DbExecutor.supply(() -> repository.findById(id));
     }
 
     /** Cihaz Geçmişi paneli için — bir cihazın tüm alım/satım olayları, en yeni önce. */
     public CompletableFuture<List<DeviceTransaction>> getHistoryByDeviceId(Long deviceId) {
-        return CompletableFuture.supplyAsync(() -> repository.findByDeviceId(deviceId));
+        return DbExecutor.supply(() -> repository.findByDeviceId(deviceId));
     }
 
     /** Müşteri detayındaki 2.El bölümü için — müşterinin alıcı ya da satıcı olduğu işlemler, en yeni önce. */
     public CompletableFuture<List<DeviceTransaction>> getByCustomerId(Long customerId) {
-        return CompletableFuture.supplyAsync(() -> repository.findByCustomerId(customerId));
+        return DbExecutor.supply(() -> repository.findByCustomerId(customerId));
     }
 
     public CompletableFuture<List<DeviceTransaction>> getCurrentStock() {
-        return CompletableFuture.supplyAsync(repository::findCurrentStockDevices);
+        return DbExecutor.supply(repository::findCurrentStockDevices);
     }
 
     public CompletableFuture<PageResult<DeviceTransaction>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                                  boolean onlyInStock, int page, int pageSize) {
-        return CompletableFuture.supplyAsync(() -> repository.searchFilteredPaged(searchTerm, filters, onlyInStock, page, pageSize));
+        return DbExecutor.supply(() -> repository.searchFilteredPaged(searchTerm, filters, onlyInStock, page, pageSize));
     }
 
     public CompletableFuture<PageResult<DeviceTransaction>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                                  boolean onlyInStock, int page, int pageSize, String sortKey) {
-        return CompletableFuture.supplyAsync(() -> repository.searchFilteredPaged(searchTerm, filters, onlyInStock, page, pageSize, sortKey));
+        return DbExecutor.supply(() -> repository.searchFilteredPaged(searchTerm, filters, onlyInStock, page, pageSize, sortKey));
     }
 }

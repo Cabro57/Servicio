@@ -45,7 +45,7 @@ public class DeviceAccessCredentialService {
             throw new ValidationException("Erişim türü seçildiyse PIN/şifre/desen boş bırakılamaz.");
         }
 
-        return CompletableFuture.runAsync(() -> {
+        return DbExecutor.run(() -> {
             String encrypted = CryptoUtil.encrypt(secret.trim());
             Optional<DeviceAccessCredential> existing = repository.findActiveByWorkOrderId(workOrderId);
 
@@ -70,7 +70,7 @@ public class DeviceAccessCredentialService {
      * çağıran taraf bunu "artık erişilemiyor" olarak yorumlamalı.
      */
     public CompletableFuture<Optional<DeviceAccessCredential>> getActive(Long workOrderId) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<DeviceAccessCredential> credential = repository.findActiveByWorkOrderId(workOrderId);
             credential.ifPresent(c -> {
                 if (c.getSecret() != null) {

@@ -69,6 +69,8 @@ public class PdfDocumentBuilder implements DocumentWriter {
     private final Font sectionFont;
 
     private final Document document;
+    private final File outFile;
+    private final FileOutputStream out;
 
     /** Künyede işletme bloğu ile belge başlığı bloğunun oransal genişlikleri. */
     private static final float MASTHEAD_LEFT = 1f;
@@ -92,9 +94,16 @@ public class PdfDocumentBuilder implements DocumentWriter {
         totalFont = new Font(bold, 12f, Font.NORMAL, INK);
 
         document = new Document(PageSize.A4, MARGIN_X, MARGIN_X, MARGIN_TOP, MARGIN_BOTTOM);
-        PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(outFile));
-        writer.setPageEvent(new FooterEvent(footerText, smallFont));
-        document.open();
+        this.outFile = outFile;
+        this.out = new FileOutputStream(outFile);
+        try {
+            PdfWriter writer = PdfWriter.getInstance(document, out);
+            writer.setPageEvent(new FooterEvent(footerText, smallFont));
+            document.open();
+        } catch (RuntimeException e) {
+            abort();
+            throw e;
+        }
     }
 
     /**
@@ -109,7 +118,12 @@ public class PdfDocumentBuilder implements DocumentWriter {
         String shopName = shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : "";
         String footer = (shopName.isEmpty() ? "" : shopName + "   ·   ") + title + "   ·   " + documentNumber;
         PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile, footer);
-        pdf.addMasthead(shop, title, "Belge No", documentNumber, "Tarih", date);
+        try {
+            pdf.addMasthead(shop, title, "Belge No", documentNumber, "Tarih", date);
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return pdf;
     }
 
@@ -122,7 +136,12 @@ public class PdfDocumentBuilder implements DocumentWriter {
         String shopName = shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : "";
         String footer = (shopName.isEmpty() ? "" : shopName + "   ·   ") + title + "   ·   " + period;
         PdfDocumentBuilder pdf = new PdfDocumentBuilder(outFile, footer);
-        pdf.addMasthead(shop, title, "Dönem", period, "Oluşturma", generatedAt);
+        try {
+            pdf.addMasthead(shop, title, "Dönem", period, "Oluşturma", generatedAt);
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return pdf;
     }
 
@@ -556,6 +575,20 @@ public class PdfDocumentBuilder implements DocumentWriter {
     @Override
     public void close() {
         document.close();
+    }
+
+    /**
+     * Yarım kalan belgeyi bırakır: dosya akışını kapatır ve eksik dosyayı siler. Aksi halde hata
+     * yolunda akış açık kalır ve Windows dosyayı GC çalışana dek kilitli tutar.
+     */
+    @Override
+    public void abort() {
+        try {
+            out.close();
+        } catch (IOException ignored) {
+            // Kapatılamayan akış için yapılacak başka bir şey yok.
+        }
+        if (!outFile.delete()) outFile.deleteOnExit();
     }
 
     // -------------------------------------------------------------------------

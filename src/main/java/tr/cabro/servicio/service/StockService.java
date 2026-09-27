@@ -21,7 +21,7 @@ public class StockService {
         movement.setQuantity(Math.abs(movement.getQuantity()));
         movement.setWarehouseId(1L);
 
-        return CompletableFuture.runAsync(() -> stockRepo.insert(movement));
+        return DbExecutor.run(() -> stockRepo.insert(movement));
     }
 
     public CompletableFuture<Void> removeStock(StockMovement movement) {
@@ -36,12 +36,12 @@ public class StockService {
                 throw new ValidationException("Yetersiz stok! Mevcut stok: " + currentStock +
                         ", Çıkılmak istenen: " + Math.abs(movement.getQuantity()));
             }
-            return CompletableFuture.runAsync(() -> stockRepo.insert(movement));
+            return DbExecutor.run(() -> stockRepo.insert(movement));
         });
     }
 
     public CompletableFuture<Integer> getStock(Long partId) {
-        return CompletableFuture.supplyAsync(() -> stockRepo.getStock(partId));
+        return DbExecutor.supply(() -> stockRepo.getStock(partId));
     }
 
     private void validateMovement(StockMovement movement) {

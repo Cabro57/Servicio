@@ -40,6 +40,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -206,27 +207,30 @@ public class FormCashReport extends Form {
         final LocalDate reqFrom = from;
         final LocalDate reqTo = to;
 
-        saleService.getCashReport(reqFrom, reqTo).thenCombine(paymentService.getMovements(reqFrom, reqTo), (report, payments) -> {
+        var reportF = saleService.getCashReport(reqFrom, reqTo);
+        paymentService.getMovements(reqFrom, reqTo).thenCompose(payments -> {
             List<Long> ids = payments.stream().map(Payment::getCustomerId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-            Map<Long, Customer> map = ids.isEmpty() ? Collections.emptyMap()
-                    : ServiceManager.getCustomerService().getAll(ids).join().stream().collect(Collectors.toMap(Customer::getId, c -> c));
-            SwingUtilities.invokeLater(() -> {
-                if (!reqFrom.equals(from) || !reqTo.equals(to)) return;
-                customers = map;
-                dayPayments = payments;
-                String dateText = periodText(reqFrom, reqTo);
-                BigDecimal total = report.getTotal() != null ? report.getTotal() : BigDecimal.ZERO;
-                summary.set(
-                        ListSummary.Part.of(dateText),
-                        ListSummary.Part.meaning("net kasa " + Format.formatPrice(total),
-                                total.signum() < 0 ? "Servicio.dangerColor" : total.signum() > 0 ? "Servicio.successColor" : "Label.foreground"),
-                        ListSummary.Part.of(report.getSaleCount() + " satış"),
-                        report.getReturnCount() > 0 ? ListSummary.Part.meaning(report.getReturnCount() + " iade", "Servicio.dangerColor") : null,
-                        ListSummary.Part.of(payments.size() + " hareket"));
-                updateCounts();
-                applyView();
-            });
-            return null;
+            CompletableFuture<Map<Long, Customer>> customersF = ids.isEmpty()
+                    ? CompletableFuture.completedFuture(Collections.emptyMap())
+                    : ServiceManager.getCustomerService().getAll(ids)
+                            .thenApply(list -> list.stream().collect(Collectors.toMap(Customer::getId, c -> c)));
+            return reportF.thenAcceptBoth(customersF, (report, map) ->
+                SwingUtilities.invokeLater(() -> {
+                    if (!reqFrom.equals(from) || !reqTo.equals(to)) return;
+                    customers = map;
+                    dayPayments = payments;
+                    String dateText = periodText(reqFrom, reqTo);
+                    BigDecimal total = report.getTotal() != null ? report.getTotal() : BigDecimal.ZERO;
+                    summary.set(
+                            ListSummary.Part.of(dateText),
+                            ListSummary.Part.meaning("net kasa " + Format.formatPrice(total),
+                                    total.signum() < 0 ? "Servicio.dangerColor" : total.signum() > 0 ? "Servicio.successColor" : "Label.foreground"),
+                            ListSummary.Part.of(report.getSaleCount() + " satış"),
+                            report.getReturnCount() > 0 ? ListSummary.Part.meaning(report.getReturnCount() + " iade", "Servicio.dangerColor") : null,
+                            ListSummary.Part.of(payments.size() + " hareket"));
+                    updateCounts();
+                    applyView();
+                }));
         }).exceptionally(ex -> ErrorHandler.handle(this, "Kasa raporu yüklenemedi", ex));
     }
 

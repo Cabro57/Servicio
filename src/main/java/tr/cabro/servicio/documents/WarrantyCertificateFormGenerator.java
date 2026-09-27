@@ -25,26 +25,30 @@ public class WarrantyCertificateFormGenerator implements DeviceTransactionFormGe
 
         DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Garanti Belgesi",
                 "DT-" + transaction.getId(), DeviceExpertiseFormGenerator.date(transaction.getTransactionDate()));
+        try {
+            pdf.section("Garanti");
+            pdf.fields(new String[][]{
+                    {"Garanti Süresi", months != null ? months + " ay" : "Garantisiz"},
+                    {"Garanti Bitiş Tarihi", warrantyEnd}
+            });
 
-        pdf.section("Garanti");
-        pdf.fields(new String[][]{
-                {"Garanti Süresi", months != null ? months + " ay" : "Garantisiz"},
-                {"Garanti Bitiş Tarihi", warrantyEnd}
-        });
+            pdf.section("Alıcı ve Cihaz");
+            pdf.fields(new String[][]{
+                    {"Alıcı", buyer != null ? buyer.getFullName() : null},
+                    {"Satış Tarihi", DeviceExpertiseFormGenerator.date(transaction.getTransactionDate())},
+                    {"Cihaz", device != null ? device.getDisplayName() : null},
+                    {"Seri No / IMEI", device != null ? device.getSerialNo() : null},
+                    {"Satış Bedeli", PdfDocumentBuilder.money(transaction.getPrice())}
+            });
 
-        pdf.section("Alıcı ve Cihaz");
-        pdf.fields(new String[][]{
-                {"Alıcı", buyer != null ? buyer.getFullName() : null},
-                {"Satış Tarihi", DeviceExpertiseFormGenerator.date(transaction.getTransactionDate())},
-                {"Cihaz", device != null ? device.getDisplayName() : null},
-                {"Seri No / IMEI", device != null ? device.getSerialNo() : null},
-                {"Satış Bedeli", PdfDocumentBuilder.money(transaction.getPrice())}
-        });
+            pdf.section("Kapsam");
+            pdf.terms(request.text(DocumentText.WARRANTY_CERTIFICATE_NOTE));
 
-        pdf.section("Kapsam");
-        pdf.terms(request.text(DocumentText.WARRANTY_CERTIFICATE_NOTE));
-
-        pdf.close();
+            pdf.close();
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return outFile;
     }
 }

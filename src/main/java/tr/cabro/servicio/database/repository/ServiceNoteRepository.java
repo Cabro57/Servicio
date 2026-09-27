@@ -3,6 +3,7 @@ package tr.cabro.servicio.database.repository;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -21,6 +22,10 @@ public interface ServiceNoteRepository {
     // Bir servise ait tüm notları kronolojik olarak (en yeni en üstte) getirir
     @SqlQuery("SELECT * FROM work_order_notes WHERE service_id = :serviceId ORDER BY created_at DESC")
     List<WorkOrderNote> findByServiceId(@Bind("serviceId") Long serviceId);
+
+    // Liste ekranlarında her servis için ayrı sorgu atmamak için toplu sürüm.
+    @SqlQuery("SELECT * FROM work_order_notes WHERE service_id IN (<serviceIds>) ORDER BY created_at DESC")
+    List<WorkOrderNote> findByServiceIds(@BindList("serviceIds") List<Long> serviceIds);
 
     // Yanlış yazılan bir notu silmek için
     @SqlUpdate("DELETE FROM work_order_notes WHERE id = :id")

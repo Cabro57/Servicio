@@ -22,29 +22,33 @@ public class RepairQuoteApprovalFormGenerator implements ServiceFormGenerator {
 
         DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Teklif ve Onarım Onay Formu",
                 "SRV-" + workOrder.getId(), DeviceIntakeFormGenerator.date(LocalDateTime.now()));
+        try {
+            pdf.section("Müşteri ve Cihaz");
+            pdf.fields(new String[][]{
+                    {"Müşteri", customer != null ? customer.getFullName() : null},
+                    {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
+                    {"Cihaz", device != null ? device.getDisplayName() : null},
+                    {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
+            });
 
-        pdf.section("Müşteri ve Cihaz");
-        pdf.fields(new String[][]{
-                {"Müşteri", customer != null ? customer.getFullName() : null},
-                {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
-                {"Cihaz", device != null ? device.getDisplayName() : null},
-                {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
-        });
+            pdf.section("Tespit Edilen Arıza");
+            String detected = PdfDocumentBuilder.notBlank(workOrder.getDetectedFault())
+                    ? workOrder.getDetectedFault() : workOrder.getReportedFault();
+            pdf.paragraph(detected, "Belirtilmemiş.");
 
-        pdf.section("Tespit Edilen Arıza");
-        String detected = PdfDocumentBuilder.notBlank(workOrder.getDetectedFault())
-                ? workOrder.getDetectedFault() : workOrder.getReportedFault();
-        pdf.paragraph(detected, "Belirtilmemiş.");
+            pdf.section("Önerilen İşlemler ve Ücretlendirme");
+            pdf.items(workOrder.getItems(), workOrder.getTotalServiceAmount());
 
-        pdf.section("Önerilen İşlemler ve Ücretlendirme");
-        pdf.items(workOrder.getItems(), workOrder.getTotalServiceAmount());
+            pdf.section("Müşteri Onayı");
+            pdf.terms(request.text(DocumentText.QUOTE_APPROVAL_NOTE));
+            pdf.choices("Onaylıyorum", "Onaylamıyorum");
 
-        pdf.section("Müşteri Onayı");
-        pdf.terms(request.text(DocumentText.QUOTE_APPROVAL_NOTE));
-        pdf.choices("Onaylıyorum", "Onaylamıyorum");
-
-        pdf.signatures("Teklifi Sunan (İşletme)", request.getLeftSignerName(), "Onaylayan (Müşteri)", request.getRightSignerName());
-        pdf.close();
+            pdf.signatures("Teklifi Sunan (İşletme)", request.getLeftSignerName(), "Onaylayan (Müşteri)", request.getRightSignerName());
+            pdf.close();
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return outFile;
     }
 }

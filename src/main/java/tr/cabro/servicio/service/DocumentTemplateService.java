@@ -21,7 +21,7 @@ public class DocumentTemplateService {
     public CompletableFuture<DocumentTemplate> save(DocumentTemplate template, boolean update) {
         validateTemplate(template);
 
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             template.setUpdatedAt(LocalDateTime.now());
             if (update) {
                 repository.update(template);
@@ -34,15 +34,15 @@ public class DocumentTemplateService {
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> repository.delete(id));
+        return DbExecutor.run(() -> repository.delete(id));
     }
 
     public CompletableFuture<List<DocumentTemplate>> getByType(TemplateType type) {
-        return CompletableFuture.supplyAsync(() -> repository.findByType(type));
+        return DbExecutor.supply(() -> repository.findByType(type));
     }
 
     public CompletableFuture<List<DocumentTemplate>> getAll() {
-        return CompletableFuture.supplyAsync(repository::findAll);
+        return DbExecutor.supply(repository::findAll);
     }
 
     private void validateTemplate(DocumentTemplate template) {

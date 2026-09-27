@@ -3,11 +3,13 @@ package tr.cabro.servicio.database.repository;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import tr.cabro.servicio.model.Payment;
 import tr.cabro.servicio.model.dto.PaymentTypeSumDto;
+import tr.cabro.servicio.model.dto.TargetPayment;
 import tr.cabro.servicio.model.enums.AllocationTargetType;
 
 import java.time.LocalDateTime;
@@ -43,6 +45,14 @@ public interface PaymentRepository {
             "FROM payments p JOIN payment_allocations pa ON pa.payment_id = p.id " +
             "WHERE pa.target_type = :targetType AND pa.target_id = :targetId ORDER BY p.payment_date ASC")
     List<Payment> findByTarget(@Bind("targetType") AllocationTargetType targetType, @Bind("targetId") Long targetId);
+
+    // findByTarget'ın liste ekranları için toplu sürümü; her satır hangi belgeye ait olduğunu taşır.
+    @RegisterBeanMapper(TargetPayment.class)
+    @SqlQuery("SELECT pa.target_id, p.id, p.customer_id, p.amount, p.payment_type, p.note, p.payment_date, p.created_at " +
+            "FROM payments p JOIN payment_allocations pa ON pa.payment_id = p.id " +
+            "WHERE pa.target_type = :targetType AND pa.target_id IN (<targetIds>) ORDER BY p.payment_date ASC")
+    List<TargetPayment> findByTargets(@Bind("targetType") AllocationTargetType targetType,
+                                      @BindList("targetIds") List<Long> targetIds);
 
     // Ana sayfadaki "Bugünkü hareketler" listesi — tarih aralığındaki ödemeler, en yeni önce.
     @SqlQuery("SELECT id, customer_id, amount, payment_type, note, payment_date, created_at FROM payments " +

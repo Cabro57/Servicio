@@ -24,7 +24,7 @@ public class CustomerService {
 
         validateCustomer(customer);
 
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             // --- 2. Benzersiz alan çakışmaları (TC / vergi no) ---
             Customer deletedMatch = resolveUniqueConflicts(customer, update);
             if (deletedMatch != null) {
@@ -48,27 +48,27 @@ public class CustomerService {
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> customerRepository.delete(id));
+        return DbExecutor.run(() -> customerRepository.delete(id));
     }
 
     public CompletableFuture<Optional<Customer>> get(Long id) {
         // Tekil müşteri çekerken de cihaz sayısını almak isteyebiliriz
-        return CompletableFuture.supplyAsync(() -> customerRepository.findById(id));
+        return DbExecutor.supply(() -> customerRepository.findById(id));
     }
 
     public CompletableFuture<List<Customer>> getAll() {
-        return CompletableFuture.supplyAsync(customerRepository::findAll);
+        return DbExecutor.supply(customerRepository::findAll);
     }
 
     public CompletableFuture<List<Customer>> getAllTable() {
-        return CompletableFuture.supplyAsync(customerRepository::findAllTable);
+        return DbExecutor.supply(customerRepository::findAllTable);
     }
 
     public CompletableFuture<List<Customer>> getAll(List<Long> customerIds) {
         if (customerIds== null || customerIds.isEmpty()) {
             throw new ValidationException("BOŞ");
         }
-        return CompletableFuture.supplyAsync(() -> customerRepository.findByIds(customerIds)); // Çekilen listeyi cihaz sayısıyla doldur
+        return DbExecutor.supply(() -> customerRepository.findByIds(customerIds)); // Çekilen listeyi cihaz sayısıyla doldur
     }
 
     /**
@@ -81,25 +81,25 @@ public class CustomerService {
             return CompletableFuture.completedFuture(Optional.empty());
         }
         long exclude = excludeId != null ? excludeId : -1L;
-        return CompletableFuture.supplyAsync(() -> customerRepository.findOtherByPhone(normalizedPhone, exclude));
+        return DbExecutor.supply(() -> customerRepository.findOtherByPhone(normalizedPhone, exclude));
     }
 
     public CompletableFuture<List<Customer>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             return getAll();
         }
-        return CompletableFuture.supplyAsync(() -> customerRepository.search("%" + searchTerm.trim() + "%")); // Arama sonucunu cihaz sayısıyla doldur
+        return DbExecutor.supply(() -> customerRepository.search("%" + searchTerm.trim() + "%")); // Arama sonucunu cihaz sayısıyla doldur
     }
 
     /** Tablo başlığı filtresi (tip/kayıt tarihi vb.) + serbest metin arama — sunucu tarafında, tüm kayıtlar üzerinde. */
     public CompletableFuture<PageResult<Customer>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                        int page, int pageSize) {
-        return CompletableFuture.supplyAsync(() -> customerRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
+        return DbExecutor.supply(() -> customerRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
     public CompletableFuture<PageResult<Customer>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                        int page, int pageSize, String sortKey) {
-        return CompletableFuture.supplyAsync(() -> customerRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
+        return DbExecutor.supply(() -> customerRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
     }
 
     /**

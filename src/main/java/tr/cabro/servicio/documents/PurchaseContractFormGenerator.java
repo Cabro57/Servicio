@@ -21,21 +21,25 @@ public class PurchaseContractFormGenerator implements DeviceTransactionFormGener
 
         DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Satın Alma Sözleşmesi",
                 "DT-" + transaction.getId(), DeviceExpertiseFormGenerator.date(transaction.getTransactionDate()));
+        try {
+            pdf.section("Satıcı ve Cihaz");
+            pdf.fields(new String[][]{
+                    {"Satıcı", party != null ? party.getFullName() : null},
+                    {"Telefon", DeviceExpertiseFormGenerator.phone(party)},
+                    {"Cihaz", device != null ? device.getDisplayName() : null},
+                    {"Seri No / IMEI", device != null ? device.getSerialNo() : null},
+                    {"Alım Bedeli", PdfDocumentBuilder.money(transaction.getPrice())}
+            });
 
-        pdf.section("Satıcı ve Cihaz");
-        pdf.fields(new String[][]{
-                {"Satıcı", party != null ? party.getFullName() : null},
-                {"Telefon", DeviceExpertiseFormGenerator.phone(party)},
-                {"Cihaz", device != null ? device.getDisplayName() : null},
-                {"Seri No / IMEI", device != null ? device.getSerialNo() : null},
-                {"Alım Bedeli", PdfDocumentBuilder.money(transaction.getPrice())}
-        });
+            pdf.section("Beyan");
+            pdf.terms(request.text(DocumentText.PURCHASE_CONTRACT_NOTE));
 
-        pdf.section("Beyan");
-        pdf.terms(request.text(DocumentText.PURCHASE_CONTRACT_NOTE));
-
-        pdf.signatures("İşletme", request.getLeftSignerName(), "Satıcı (Müşteri)", request.getRightSignerName());
-        pdf.close();
+            pdf.signatures("İşletme", request.getLeftSignerName(), "Satıcı (Müşteri)", request.getRightSignerName());
+            pdf.close();
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return outFile;
     }
 }

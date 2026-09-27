@@ -19,7 +19,7 @@ public class UserService {
     }
 
     public CompletableFuture<User> save(User user, boolean update) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             // Şifre henüz hash'lenmemişse (düz PIN) doğrula ve hash'le
             if (!PasswordUtil.isHashed(user.getPassword())) {
                 if (user.getPassword().length() != 6 || !user.getPassword().matches("\\d+")) {
@@ -40,15 +40,15 @@ public class UserService {
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> repository.delete(id));
+        return DbExecutor.run(() -> repository.delete(id));
     }
 
     public CompletableFuture<Optional<User>> get(Long id) {
-        return CompletableFuture.supplyAsync(() -> repository.findById(id));
+        return DbExecutor.supply(() -> repository.findById(id));
     }
 
     public CompletableFuture<List<User>> getAll() {
-        return CompletableFuture.supplyAsync(repository::findAll);
+        return DbExecutor.supply(repository::findAll);
     }
 
     /**
@@ -56,7 +56,7 @@ public class UserService {
      * Sistemde tek kullanıcı olduğu için doğrudan ID=1 üzerinden PIN kontrolü yapar.
      */
     public CompletableFuture<Boolean> authenticate(String pin) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
 
             // Eğer pin boş gönderilmişse direkt false dön
             if (pin == null || pin.trim().isEmpty()) {
@@ -82,7 +82,7 @@ public class UserService {
 
     // Sistemde kayıtlı bir işletme sahibi var mı?
     public CompletableFuture<Boolean> hasSetupCompleted() {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<User> users = repository.findAll();
             return !users.isEmpty();
         });

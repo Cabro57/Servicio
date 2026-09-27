@@ -60,7 +60,7 @@ public class PaymentService {
             throw new ValidationException("Ödemenin bağlanacağı belge belirtilmelidir.");
         }
 
-        return CompletableFuture.supplyAsync(() -> DatabaseManager.inTransaction(handle -> {
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
             PaymentRepository paymentRepo = handle.attach(PaymentRepository.class);
             PaymentAllocationRepository allocationRepo = handle.attach(PaymentAllocationRepository.class);
 
@@ -108,7 +108,7 @@ public class PaymentService {
             throw new ValidationException("Dağıtılan tutar, tahsilat tutarından büyük olamaz.");
         }
 
-        return CompletableFuture.supplyAsync(() -> DatabaseManager.inTransaction(handle -> {
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
             PaymentRepository paymentRepo = handle.attach(PaymentRepository.class);
             PaymentAllocationRepository allocationRepo = handle.attach(PaymentAllocationRepository.class);
 
@@ -145,7 +145,7 @@ public class PaymentService {
     public CompletableFuture<Map<PaymentType, BigDecimal>> getBreakdown(java.time.LocalDate from, java.time.LocalDate to) {
         java.time.LocalDateTime start = from.atStartOfDay();
         java.time.LocalDateTime end = to.plusDays(1).atStartOfDay();
-        return CompletableFuture.supplyAsync(() -> paymentRepository.sumByTypeForDateRange(start, end).stream()
+        return DbExecutor.supply(() -> paymentRepository.sumByTypeForDateRange(start, end).stream()
                 .collect(Collectors.toMap(tr.cabro.servicio.model.dto.PaymentTypeSumDto::getPaymentType,
                         tr.cabro.servicio.model.dto.PaymentTypeSumDto::getTotal)));
     }
@@ -162,7 +162,7 @@ public class PaymentService {
     public CompletableFuture<List<Payment>> getMovements(java.time.LocalDate from, java.time.LocalDate to) {
         java.time.LocalDateTime start = from.atStartOfDay();
         java.time.LocalDateTime end = to.plusDays(1).atStartOfDay();
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<Payment> payments = paymentRepository.findByDateRange(start, end, 5000);
             if (payments.isEmpty()) return payments;
             List<Long> ids = payments.stream().map(Payment::getId).collect(Collectors.toList());
@@ -177,42 +177,42 @@ public class PaymentService {
     public CompletableFuture<List<Payment>> getPaymentsOn(java.time.LocalDate date, int limit) {
         java.time.LocalDateTime start = date.atStartOfDay();
         java.time.LocalDateTime end = start.plusDays(1);
-        return CompletableFuture.supplyAsync(() -> paymentRepository.findByDateRange(start, end, limit));
+        return DbExecutor.supply(() -> paymentRepository.findByDateRange(start, end, limit));
     }
 
     /** Borçlu müşterilerin toplam bakiyesi (açık alacak). */
     public CompletableFuture<BigDecimal> getTotalReceivables() {
-        return CompletableFuture.supplyAsync(() -> BigDecimal.valueOf(accountRepository.sumPositiveBalances())
+        return DbExecutor.supply(() -> BigDecimal.valueOf(accountRepository.sumPositiveBalances())
                 .setScale(2, java.math.RoundingMode.HALF_UP));
     }
 
     public CompletableFuture<List<OpenDocumentDto>> getOpenDocuments(Long customerId) {
-        return CompletableFuture.supplyAsync(() -> accountRepository.findOpenDocumentsByCustomer(customerId));
+        return DbExecutor.supply(() -> accountRepository.findOpenDocumentsByCustomer(customerId));
     }
 
     /** Müşteri detayındaki Ödemeler bölümü için — müşterinin tüm tahsilatları, en yeni önce. */
     public CompletableFuture<List<Payment>> getByCustomer(Long customerId) {
-        return CompletableFuture.supplyAsync(() -> paymentRepository.findByCustomerId(customerId));
+        return DbExecutor.supply(() -> paymentRepository.findByCustomerId(customerId));
     }
 
     public CompletableFuture<Optional<CustomerBalanceDto>> getCustomerBalance(Long customerId) {
-        return CompletableFuture.supplyAsync(() -> accountRepository.findBalanceByCustomer(customerId));
+        return DbExecutor.supply(() -> accountRepository.findBalanceByCustomer(customerId));
     }
 
     /** Cari hesaplar listesi: görünüm sekmesi koşulu (ör. borçlu/alacaklı) + arama + sayfalama. */
     public CompletableFuture<PageResult<CustomerBalanceDto>> searchAccountsPaged(String searchTerm,
             Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize) {
-        return CompletableFuture.supplyAsync(() -> accountRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
+        return DbExecutor.supply(() -> accountRepository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
     public CompletableFuture<PageResult<CustomerBalanceDto>> searchAccountsPaged(String searchTerm,
             Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize, String sortKey) {
-        return CompletableFuture.supplyAsync(() -> accountRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
+        return DbExecutor.supply(() -> accountRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
     }
 
     /** Süzgeçle eşleşen hesapların bakiye toplamı. */
     public CompletableFuture<BigDecimal> sumAccountBalances(Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters) {
-        return CompletableFuture.supplyAsync(() -> BigDecimal.valueOf(accountRepository.sumBalances(filters))
+        return DbExecutor.supply(() -> BigDecimal.valueOf(accountRepository.sumBalances(filters))
                 .setScale(2, java.math.RoundingMode.HALF_UP));
     }
 
@@ -220,7 +220,7 @@ public class PaymentService {
         int offset = (page - 1) * pageSize;
         boolean searching = searchTerm != null && !searchTerm.trim().isEmpty();
         String likeTerm = searching ? "%" + searchTerm.trim() + "%" : null;
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<CustomerBalanceDto> items = searching
                     ? accountRepository.searchCustomersWithBalancePaged(likeTerm, pageSize, offset)
                     : accountRepository.findCustomersWithBalancePaged(pageSize, offset);
@@ -232,22 +232,28 @@ public class PaymentService {
     }
 
     public CompletableFuture<Void> deletePayment(Long paymentId) {
-        return CompletableFuture.runAsync(() -> paymentRepository.delete(paymentId));
+        return DbExecutor.run(() -> paymentRepository.delete(paymentId));
     }
 
     public CompletableFuture<List<Payment>> getPaymentsForTarget(AllocationTargetType targetType, Long targetId) {
-        return CompletableFuture.supplyAsync(() -> paymentRepository.findByTarget(targetType, targetId));
+        return DbExecutor.supply(() -> paymentRepository.findByTarget(targetType, targetId));
     }
 
     public CompletableFuture<BigDecimal> getAllocatedAmount(AllocationTargetType targetType, Long targetId) {
-        return CompletableFuture.supplyAsync(() -> allocationRepository.sumByTarget(targetType, targetId));
+        return DbExecutor.supply(() -> allocationRepository.sumByTarget(targetType, targetId));
     }
 
     /** Liste ekranları için — N+1 yerine tek sorguda hedef id -> tahsis toplamı. */
     public CompletableFuture<Map<Long, BigDecimal>> getAllocatedAmounts(AllocationTargetType targetType, List<Long> targetIds) {
         if (targetIds == null || targetIds.isEmpty()) return CompletableFuture.completedFuture(Map.of());
-        return CompletableFuture.supplyAsync(() -> allocationRepository.sumByTargets(targetType, targetIds).stream()
-                .collect(Collectors.toMap(AllocationSumDto::getTargetId, AllocationSumDto::getTotal)));
+        return DbExecutor.supply(() -> allocatedAmounts(targetType, targetIds));
+    }
+
+    /** {@link #getAllocatedAmounts}'ın senkron hâli — zaten DB thread'inde çalışan servis kodu için. */
+    Map<Long, BigDecimal> allocatedAmounts(AllocationTargetType targetType, List<Long> targetIds) {
+        if (targetIds == null || targetIds.isEmpty()) return Map.of();
+        return allocationRepository.sumByTargets(targetType, targetIds).stream()
+                .collect(Collectors.toMap(AllocationSumDto::getTargetId, AllocationSumDto::getTotal));
     }
 
     /** Tahsis toplamı ile belge toplamından {@link PaymentStatus}'u türetir; saklanan bir durum kolonu YOK. */

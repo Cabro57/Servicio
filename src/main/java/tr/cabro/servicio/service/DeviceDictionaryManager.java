@@ -31,11 +31,11 @@ public class DeviceDictionaryManager {
     // --- TÜRLER (Types) ---
 
     public CompletableFuture<List<DeviceType>> getAllTypes() {
-        return CompletableFuture.supplyAsync(repository::findAllTypes);
+        return DbExecutor.supply(repository::findAllTypes);
     }
 
     public CompletableFuture<Integer> addType(String name) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             String trimmed = requireName(name, "Tür adı boş olamaz.");
             repository.findTypeByName(trimmed).ifPresent(type -> {
                 throw new AlreadyExistsException("\"" + type.getName() + "\" türü zaten kayıtlı.");
@@ -45,7 +45,7 @@ public class DeviceDictionaryManager {
     }
 
     public CompletableFuture<Void> renameType(Long id, String name) {
-        return CompletableFuture.runAsync(() -> {
+        return DbExecutor.run(() -> {
             String trimmed = requireName(name, "Tür adı boş olamaz.");
             repository.findTypeByName(trimmed)
                     .filter(type -> !type.getId().equals(id))
@@ -61,7 +61,7 @@ public class DeviceDictionaryManager {
      * o türe taşınır (birleştirme). Verilmezse tür kullanımda olmamalı.
      */
     public CompletableFuture<Void> deleteType(Long id, Long targetId) {
-        return CompletableFuture.runAsync(() -> DatabaseManager.useTransaction(handle -> {
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
             if (Objects.equals(id, targetId)) throw new ValidationException("Tür kendisine taşınamaz.");
             DeviceDictionaryRepository repo = handle.attach(DeviceDictionaryRepository.class);
             if (targetId != null) {
@@ -83,20 +83,20 @@ public class DeviceDictionaryManager {
     // --- MARKALAR (Brands) ---
 
     public CompletableFuture<List<DeviceBrand>> getBrandsByTypeId(Long typeId) {
-        return CompletableFuture.supplyAsync(() -> repository.findBrandsByTypeId(typeId));
+        return DbExecutor.supply(() -> repository.findBrandsByTypeId(typeId));
     }
 
     public CompletableFuture<List<DeviceBrand>> getAllBrands() {
-        return CompletableFuture.supplyAsync(repository::findAllBrands);
+        return DbExecutor.supply(repository::findAllBrands);
     }
 
     public CompletableFuture<List<Long>> getTypeIdsOfBrand(Long brandId) {
-        return CompletableFuture.supplyAsync(() -> repository.findTypeIdsByBrand(brandId));
+        return DbExecutor.supply(() -> repository.findTypeIdsByBrand(brandId));
     }
 
     /** Marka adı başka türde zaten kayıtlıysa aynı marka kullanılır, yoksa oluşturulur; ardından türe bağlanır. */
     public CompletableFuture<Void> addBrandToType(Long typeId, String name) {
-        return CompletableFuture.runAsync(() -> {
+        return DbExecutor.run(() -> {
             String trimmed = requireName(name, "Marka adı boş olamaz.");
             Long brandId = repository.findBrandByName(trimmed)
                     .map(DeviceBrand::getId)
@@ -110,7 +110,7 @@ public class DeviceDictionaryManager {
     }
 
     public CompletableFuture<Void> renameBrand(Long id, String name) {
-        return CompletableFuture.runAsync(() -> {
+        return DbExecutor.run(() -> {
             String trimmed = requireName(name, "Marka adı boş olamaz.");
             repository.findBrandByName(trimmed)
                     .filter(brand -> !brand.getId().equals(id))
@@ -126,7 +126,7 @@ public class DeviceDictionaryManager {
      * cihazda kullanılmayan marka silinir.
      */
     public CompletableFuture<Void> setBrandTypes(Long brandId, Set<Long> typeIds) {
-        return CompletableFuture.runAsync(() -> DatabaseManager.useTransaction(handle -> {
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
             DeviceDictionaryRepository repo = handle.attach(DeviceDictionaryRepository.class);
             Set<Long> current = new HashSet<>(repo.findTypeIdsByBrand(brandId));
             for (Long typeId : current) {
@@ -144,7 +144,7 @@ public class DeviceDictionaryManager {
      * türün seçim listesinden çıkar. Başka türe bağlı değilse ve cihazda kullanılmıyorsa silinir.
      */
     public CompletableFuture<Void> unlinkBrandFromType(Long typeId, Long brandId) {
-        return CompletableFuture.runAsync(() -> DatabaseManager.useTransaction(handle -> {
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
             DeviceDictionaryRepository repo = handle.attach(DeviceDictionaryRepository.class);
             repo.unlinkTypeAndBrand(typeId, brandId);
             repo.deleteBrandIfOrphan(brandId);
@@ -156,7 +156,7 @@ public class DeviceDictionaryManager {
      * taşınır (birleştirme). Verilmezse marka hiçbir cihazda kullanılmıyor olmalı.
      */
     public CompletableFuture<Void> deleteBrand(Long id, Long targetId) {
-        return CompletableFuture.runAsync(() -> DatabaseManager.useTransaction(handle -> {
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
             if (Objects.equals(id, targetId)) throw new ValidationException("Marka kendisine taşınamaz.");
             DeviceDictionaryRepository repo = handle.attach(DeviceDictionaryRepository.class);
             if (targetId != null) {

@@ -56,7 +56,7 @@ public class PartService {
         // Ayrıca stok 0 girilen yeni parçada 0 adetlik hareket doğrulamaya takılıp kaydı hatalı gösteriyordu.
         int requestedStock = part.getStockQuantity() != null ? part.getStockQuantity() : 0;
 
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             int currentStock;
             if (!update) {
                 // FIX: existsByBarcode metodu PartRepository'ye eklendi
@@ -102,26 +102,26 @@ public class PartService {
 
     /** ID tabanlı silme */
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> partRepository.delete(id));
+        return DbExecutor.run(() -> partRepository.delete(id));
     }
 
     /** Barcode tabanlı silme */
     public CompletableFuture<Void> deleteByBarcode(String barcode) {
         // FIX: deleteByBarcode metodu PartRepository'ye eklendi
-        return CompletableFuture.runAsync(() -> partRepository.deleteByBarcode(barcode));
+        return DbExecutor.run(() -> partRepository.deleteByBarcode(barcode));
     }
 
     public CompletableFuture<Void> deleteMultiple(List<String> barcodes) {
         // FIX: deleteByBarcodes metodu PartRepository'ye eklendi
-        return CompletableFuture.runAsync(() -> partRepository.deleteByBarcodes(barcodes));
+        return DbExecutor.run(() -> partRepository.deleteByBarcodes(barcodes));
     }
 
     public CompletableFuture<List<Part>> getAll() {
-        return CompletableFuture.supplyAsync(() -> hydrateParts(partRepository.findAll()));
+        return DbExecutor.supply(() -> hydrateParts(partRepository.findAll()));
     }
 
     public CompletableFuture<Optional<Part>> get(String barcode) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<Part> optPart = partRepository.findByBarcode(barcode);
             optPart.ifPresent(p -> hydrateParts(Collections.singletonList(p)));
             return optPart;
@@ -129,7 +129,7 @@ public class PartService {
     }
 
     public CompletableFuture<Optional<Part>> getById(Long id) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<Part> optPart = partRepository.findById(id);
             optPart.ifPresent(p -> hydrateParts(Collections.singletonList(p)));
             return optPart;
@@ -137,21 +137,21 @@ public class PartService {
     }
 
     public CompletableFuture<List<Part>> getBySupplierId(Long supplierId) {
-        return CompletableFuture.supplyAsync(() -> hydrateParts(partRepository.findBySupplierId(supplierId)));
+        return DbExecutor.supply(() -> hydrateParts(partRepository.findBySupplierId(supplierId)));
     }
 
     public CompletableFuture<List<Part>> getPartsBelowMinStock() {
         // FIX: findBelowMinStock() → artık PartRepository'de default alias olarak tanımlı
-        return CompletableFuture.supplyAsync(() -> hydrateParts(partRepository.findBelowMinStock()));
+        return DbExecutor.supply(() -> hydrateParts(partRepository.findBelowMinStock()));
     }
 
     public CompletableFuture<Boolean> isBarcodeAvailable(String barcode) {
-        return CompletableFuture.supplyAsync(() -> !partRepository.existsByBarcode(barcode));
+        return DbExecutor.supply(() -> !partRepository.existsByBarcode(barcode));
     }
 
     public CompletableFuture<List<Part>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
-        return CompletableFuture.supplyAsync(
+        return DbExecutor.supply(
                 () -> hydrateParts(partRepository.search("%" + searchTerm.trim() + "%")));
     }
 
@@ -161,7 +161,7 @@ public class PartService {
 
     public CompletableFuture<PageResult<Part>> getAllPaged(int page, int pageSize) {
         int offset = (page - 1) * pageSize;
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<Part> items = hydrateParts(partRepository.findAllPaged(pageSize, offset));
             long total = partRepository.countAll();
             return new PageResult<>(items, page, pageSize, total);
@@ -172,7 +172,7 @@ public class PartService {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAllPaged(page, pageSize);
         int offset = (page - 1) * pageSize;
         String likeTerm = "%" + searchTerm.trim() + "%";
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<Part> items = hydrateParts(partRepository.searchPaged(likeTerm, pageSize, offset));
             long total = partRepository.countSearch(likeTerm);
             return new PageResult<>(items, page, pageSize, total);
@@ -182,7 +182,7 @@ public class PartService {
     /** Liste sayfası: arama + görünüm sekmesi/başlık filtreleri + sayfalama. */
     public CompletableFuture<PageResult<Part>> searchFilteredPaged(String searchTerm,
             java.util.Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             PageResult<Part> r = partRepository.searchFilteredPaged(searchTerm, filters, page, pageSize);
             return new PageResult<>(hydrateParts(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
         });
@@ -190,14 +190,14 @@ public class PartService {
 
     public CompletableFuture<PageResult<Part>> searchFilteredPaged(String searchTerm,
             java.util.Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize, String sortKey) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             PageResult<Part> r = partRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey);
             return new PageResult<>(hydrateParts(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
         });
     }
 
     public CompletableFuture<PartStatsDto> getStats() {
-        return CompletableFuture.supplyAsync(partRepository::getStats);
+        return DbExecutor.supply(partRepository::getStats);
     }
 
     // --- Helper ---

@@ -50,4 +50,11 @@ public interface DocumentWriter {
 
     /** Belgeyi bitirip dosyayı yazar. */
     void close() throws Exception;
+
+    /**
+     * Yazım yarıda hata verdiğinde çağrılır: açık kaynakları bırakır, eksik dosyayı siler.
+     * Dosyayı yalnızca {@link #close()}'ta yazan biçimler için yapılacak bir şey yoktur.
+     */
+    default void abort() {
+    }
 }

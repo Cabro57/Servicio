@@ -9,6 +9,7 @@ import tr.cabro.servicio.model.enums.ItemType;
 import tr.cabro.servicio.model.enums.PaymentType;
 import tr.cabro.servicio.model.enums.ReferenceType;
 import tr.cabro.servicio.model.dto.PageResult;
+import tr.cabro.servicio.model.dto.TargetPayment;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.exception.ValidationException;
 
@@ -27,6 +28,11 @@ public class WorkOrderService {
     private final PartService partService;
     private final StockService stockService;
     private final DeviceService deviceService;
+    private final CustomerRepository customerRepository;
+    private final DeviceRepository deviceRepository;
+    private final PaymentRepository paymentRepository;
+
+    private static final int IN_CHUNK = 500;
 
     public WorkOrderService(WorkOrderRepository workOrderRepository,
                             ServiceItemRepository itemRepository,
@@ -34,7 +40,10 @@ public class WorkOrderService {
                             ServiceNoteRepository noteRepository,
                             PartService partService,
                             StockService stockService,
-                            DeviceService deviceService) {
+                            DeviceService deviceService,
+                            CustomerRepository customerRepository,
+                            DeviceRepository deviceRepository,
+                            PaymentRepository paymentRepository) {
         this.workOrderRepository = workOrderRepository;
         this.itemRepository = itemRepository;
         this.paymentService = paymentService;
@@ -42,6 +51,9 @@ public class WorkOrderService {
         this.partService = partService;
         this.stockService = stockService;
         this.deviceService = deviceService;
+        this.customerRepository = customerRepository;
+        this.deviceRepository = deviceRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     // =========================================================================
@@ -105,7 +117,7 @@ public class WorkOrderService {
     }
 
     private CompletableFuture<WorkOrder> insertWorkOrder(WorkOrder workOrder) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Long id = workOrderRepository.insert(workOrder);
             workOrder.setId(id);
             return workOrder;
@@ -113,7 +125,7 @@ public class WorkOrderService {
     }
 
     private CompletableFuture<WorkOrder> updateWorkOrder(WorkOrder workOrder) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             workOrderRepository.update(workOrder);
             return workOrder;
         });
@@ -128,7 +140,7 @@ public class WorkOrderService {
                 ? LocalDateTime.now()
                 : null;
 
-        return CompletableFuture.runAsync(() ->
+        return DbExecutor.run(() ->
                 workOrderRepository.updateStatus(id, newStatus, deliveryDate, LocalDateTime.now())
         );
     }
@@ -137,7 +149,7 @@ public class WorkOrderService {
         if (id == null) {
             throw new ValidationException("ID boş olamaz.");
         }
-        return CompletableFuture.runAsync(() ->
+        return DbExecutor.run(() ->
                 workOrderRepository.updateDetectedFault(id, detectedFault, LocalDateTime.now())
         );
     }
@@ -169,14 +181,14 @@ public class WorkOrderService {
         // İş emri hard-delete edildiği için ödeme tahsislerini önce elle temizlemek gerekir
         // (payment_allocations polimorfik olduğundan ON DELETE CASCADE ile bağlanamıyor) —
         // aksi halde yetim tahsis satırları kalır ve cari bakiye şişer.
-        return CompletableFuture.runAsync(() -> DatabaseManager.useTransaction(handle -> {
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
             paymentService.releaseAllocationsForTarget(handle, AllocationTargetType.WORK_ORDER, id);
             handle.attach(WorkOrderRepository.class).delete(id);
         }));
     }
 
     public CompletableFuture<Optional<WorkOrder>> get(Long id) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<WorkOrder> opt = workOrderRepository.findById(id);
             opt.ifPresent(s -> hydrateServices(Collections.singletonList(s)));
             return opt;
@@ -184,23 +196,23 @@ public class WorkOrderService {
     }
 
     public CompletableFuture<List<WorkOrder>> getAll() {
-        return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findAll()));
+        return DbExecutor.supply(() -> hydrateServices(workOrderRepository.findAll()));
     }
 
     public CompletableFuture<List<WorkOrder>> getAllSoft() {
-        return CompletableFuture.supplyAsync(workOrderRepository::findAll);
+        return DbExecutor.supply(workOrderRepository::findAll);
     }
 
     public CompletableFuture<List<WorkOrder>> getAll(Long customerId) {
-        return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findByCustomerId(customerId)));
+        return DbExecutor.supply(() -> hydrateServices(workOrderRepository.findByCustomerId(customerId)));
     }
 
     public CompletableFuture<List<WorkOrder>> getAllByDevice(Long deviceId) {
-        return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findByDeviceId(deviceId)));
+        return DbExecutor.supply(() -> hydrateServices(workOrderRepository.findByDeviceId(deviceId)));
     }
 
     public CompletableFuture<List<WorkOrder>> getAllByPart(Long partId) {
-        return CompletableFuture.supplyAsync(() -> hydrateServices(workOrderRepository.findByPartId(partId)));
+        return DbExecutor.supply(() -> hydrateServices(workOrderRepository.findByPartId(partId)));
     }
 
     public CompletableFuture<List<WorkOrder>> getAll(String statusStr) {
@@ -208,12 +220,12 @@ public class WorkOrderService {
             return getAll();
         }
         if (statusStr.equalsIgnoreCase("OPEN")) {
-            return CompletableFuture.supplyAsync(() -> {
+            return DbExecutor.supply(() -> {
                 List<ServiceStatus> closed = Arrays.asList(ServiceStatus.DELIVERED, ServiceStatus.RETURN);
                 return hydrateServices(workOrderRepository.findByStatusesExcluded(closed));
             });
         }
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             ServiceStatus status = ServiceStatus.of(statusStr);
             return hydrateServices(workOrderRepository.findByStatuses(Collections.singletonList(status)));
         });
@@ -230,7 +242,7 @@ public class WorkOrderService {
      * Hiç kaydı olmayan açık durumlar da 0 ile döner; sıra {@link ServiceStatus} sırasıdır.
      */
     public CompletableFuture<Map<ServiceStatus, Long>> getOpenStatusCounts() {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Map<ServiceStatus, Long> counts = new EnumMap<>(ServiceStatus.class);
             for (ServiceStatus status : ServiceStatus.values()) {
                 if (status != ServiceStatus.DELIVERED && status != ServiceStatus.RETURN) counts.put(status, 0L);
@@ -246,7 +258,7 @@ public class WorkOrderService {
     /** Verilen gün açılan iş emri sayısı. */
     public CompletableFuture<Long> countCreatedOn(java.time.LocalDate date) {
         LocalDateTime start = date.atStartOfDay();
-        return CompletableFuture.supplyAsync(() -> workOrderRepository.countCreatedBetween(start, start.plusDays(1)));
+        return DbExecutor.supply(() -> workOrderRepository.countCreatedBetween(start, start.plusDays(1)));
     }
 
     public CompletableFuture<Void> setDelivered(Long serviceId) {
@@ -255,7 +267,7 @@ public class WorkOrderService {
 
     public CompletableFuture<List<WorkOrder>> search(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAll();
-        return CompletableFuture.supplyAsync(
+        return DbExecutor.supply(
                 () -> hydrateServices(workOrderRepository.search("%" + searchTerm.trim() + "%")));
     }
 
@@ -265,7 +277,7 @@ public class WorkOrderService {
 
     public CompletableFuture<PageResult<WorkOrder>> getAllPaged(int page, int pageSize) {
         int offset = (page - 1) * pageSize;
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<WorkOrder> items = hydrateServices(workOrderRepository.findAllPaged(pageSize, offset));
             long total = workOrderRepository.countAll();
             return new PageResult<>(items, page, pageSize, total);
@@ -282,7 +294,7 @@ public class WorkOrderService {
         }
         ServiceStatus status = ServiceStatus.of(statusStr);
         List<ServiceStatus> statuses = Collections.singletonList(status);
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<WorkOrder> items = hydrateServices(workOrderRepository.findByStatusesPaged(statuses, pageSize, offset));
             long total = workOrderRepository.countByStatuses(statuses);
             return new PageResult<>(items, page, pageSize, total);
@@ -292,7 +304,7 @@ public class WorkOrderService {
     public CompletableFuture<PageResult<WorkOrder>> getOpenPaged(int page, int pageSize) {
         int offset = (page - 1) * pageSize;
         List<ServiceStatus> closed = Arrays.asList(ServiceStatus.DELIVERED, ServiceStatus.RETURN);
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<WorkOrder> items = hydrateServices(workOrderRepository.findByStatusesExcludedPaged(closed, pageSize, offset));
             long total = workOrderRepository.countByStatusesExcluded(closed);
             return new PageResult<>(items, page, pageSize, total);
@@ -301,7 +313,7 @@ public class WorkOrderService {
 
     public CompletableFuture<PageResult<WorkOrder>> getWithDebtPaged(int page, int pageSize) {
         int offset = (page - 1) * pageSize;
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<WorkOrder> items = hydrateServices(workOrderRepository.findWithDebtPaged(pageSize, offset));
             long total = workOrderRepository.countWithDebt();
             return new PageResult<>(items, page, pageSize, total);
@@ -312,7 +324,7 @@ public class WorkOrderService {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAllPaged(page, pageSize);
         int offset = (page - 1) * pageSize;
         String likeTerm = "%" + searchTerm.trim() + "%";
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<WorkOrder> items = hydrateServices(workOrderRepository.searchPaged(likeTerm, pageSize, offset));
             long total = workOrderRepository.countSearch(likeTerm);
             return new PageResult<>(items, page, pageSize, total);
@@ -329,7 +341,7 @@ public class WorkOrderService {
 
         if (statusStr.equalsIgnoreCase("OPEN")) {
             List<ServiceStatus> closed = Arrays.asList(ServiceStatus.DELIVERED, ServiceStatus.RETURN);
-            return CompletableFuture.supplyAsync(() -> {
+            return DbExecutor.supply(() -> {
                 List<WorkOrder> items = hydrateServices(workOrderRepository.searchPagedByStatusesExcluded(likeTerm, closed, pageSize, offset));
                 long total = workOrderRepository.countSearchByStatusesExcluded(likeTerm, closed);
                 return new PageResult<>(items, page, pageSize, total);
@@ -338,7 +350,7 @@ public class WorkOrderService {
 
         ServiceStatus status = ServiceStatus.of(statusStr);
         List<ServiceStatus> statuses = Collections.singletonList(status);
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<WorkOrder> items = hydrateServices(workOrderRepository.searchPagedByStatuses(likeTerm, statuses, pageSize, offset));
             long total = workOrderRepository.countSearchByStatuses(likeTerm, statuses);
             return new PageResult<>(items, page, pageSize, total);
@@ -354,7 +366,7 @@ public class WorkOrderService {
     public CompletableFuture<PageResult<WorkOrder>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                         int page, int pageSize, WorkOrderRepository.Sort sort,
                                                                         WorkOrderRepository.PayFilter pay) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             PageResult<WorkOrder> result = workOrderRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sort, pay);
             hydrateServices(result.getItems());
             return result;
@@ -380,26 +392,43 @@ public class WorkOrderService {
                 .distinct()
                 .collect(Collectors.toList());
 
-        CustomerService customerService = ServiceManager.getCustomerService();
-        Map<Long, Customer> customerMap = customerIds.isEmpty()
-                ? Collections.emptyMap()
-                : customerService.getAll(customerIds).join().stream()
-                  .collect(Collectors.toMap(Customer::getId, c -> c));
+        List<Long> ids = workOrders.stream().map(WorkOrder::getId).distinct().collect(Collectors.toList());
 
-        Map<Long, Device> deviceMap = deviceIds.isEmpty()
-                ? Collections.emptyMap()
-                : deviceService.getAll(deviceIds).join().stream()
-                  .collect(Collectors.toMap(Device::getId, d -> d));
+        // Satır başına sorgu yerine her ilişki için tek (parçalı) IN sorgusu: 50 satırlık sayfada
+        // 150+ sorgu yerine 5. Doğrudan repository çağrılır; başka bir future'ı join ile beklemek
+        // DB havuzunda thread tutuyordu.
+        Map<Long, Customer> customerMap = inChunks(customerIds, customerRepository::findByIds).stream()
+                .collect(Collectors.toMap(Customer::getId, c -> c, (a, b) -> a));
+        Map<Long, Device> deviceMap = inChunks(deviceIds, deviceRepository::findByIds).stream()
+                .collect(Collectors.toMap(Device::getId, d -> d, (a, b) -> a));
+        Map<Long, List<WorkOrderItem>> itemMap = inChunks(ids, itemRepository::findByServiceIds).stream()
+                .collect(Collectors.groupingBy(WorkOrderItem::getServiceId));
+        Map<Long, List<Payment>> paymentMap = inChunks(ids,
+                chunk -> paymentRepository.findByTargets(AllocationTargetType.WORK_ORDER, chunk)).stream()
+                .collect(Collectors.groupingBy(TargetPayment::getTargetId,
+                        Collectors.mapping(p -> (Payment) p, Collectors.toList())));
+        Map<Long, List<WorkOrderNote>> noteMap = inChunks(ids, noteRepository::findByServiceIds).stream()
+                .collect(Collectors.groupingBy(WorkOrderNote::getServiceId));
 
         for (WorkOrder s : workOrders) {
             s.setCustomer(customerMap.get(s.getCustomerId()));
             s.setDevice(deviceMap.get(s.getDeviceId()));
-            s.setItems(itemRepository.findByServiceId(s.getId()));
-            s.setPayments(paymentService.getPaymentsForTarget(AllocationTargetType.WORK_ORDER, s.getId()).join());
-            s.setTechnicianNotes(noteRepository.findByServiceId(s.getId()));
+            s.setItems(new ArrayList<>(itemMap.getOrDefault(s.getId(), List.of())));
+            s.setPayments(new ArrayList<>(paymentMap.getOrDefault(s.getId(), List.of())));
+            s.setTechnicianNotes(new ArrayList<>(noteMap.getOrDefault(s.getId(), List.of())));
         }
 
         return workOrders;
+    }
+
+    /** SQLite'ın bağlama değişkeni sınırına takılmamak için IN listesini parçalara bölerek sorgular. */
+    private static <T> List<T> inChunks(List<Long> ids, java.util.function.Function<List<Long>, List<T>> query) {
+        if (ids.isEmpty()) return List.of();
+        List<T> result = new ArrayList<>();
+        for (int i = 0; i < ids.size(); i += IN_CHUNK) {
+            result.addAll(query.apply(ids.subList(i, Math.min(ids.size(), i + IN_CHUNK))));
+        }
+        return result;
     }
 
     // =========================================================================
@@ -407,7 +436,7 @@ public class WorkOrderService {
     // =========================================================================
 
     public CompletableFuture<WorkOrderItem> addItem(WorkOrderItem item) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Long id = itemRepository.insert(item);
             item.setId(id);
             return item;
@@ -419,42 +448,39 @@ public class WorkOrderService {
         });
     }
 
+    // Stok adımları join ile beklenmez, zincirlenir: DB thread'i başka bir DB işini beklerken
+    // tutulursa sınırlı havuzda kilitlenme olur.
     public CompletableFuture<Void> updateItem(WorkOrderItem updatedItem) {
-        return CompletableFuture.runAsync(() -> {
-            Optional<WorkOrderItem> oldItemOpt = itemRepository.findById(updatedItem.getId());
-            if (!oldItemOpt.isPresent()) {
-                throw new ValidationException("Güncellenecek item bulunamadı.");
-            }
-            WorkOrderItem oldItem = oldItemOpt.get();
+        return DbExecutor.supply(() -> {
+            WorkOrderItem oldItem = itemRepository.findById(updatedItem.getId())
+                    .orElseThrow(() -> new ValidationException("Güncellenecek item bulunamadı."));
             itemRepository.update(updatedItem);
+            return oldItem;
+        }).thenCompose(oldItem -> {
+            if (updatedItem.getItemType() != ItemType.PART) return CompletableFuture.completedFuture(null);
+            boolean partChanged = !Objects.equals(oldItem.getPartId(), updatedItem.getPartId());
+            boolean quantityChanged = !oldItem.getQuantity().equals(updatedItem.getQuantity());
+            if (!partChanged && !quantityChanged) return CompletableFuture.completedFuture(null);
 
-            if (updatedItem.getItemType() == ItemType.PART) {
-                boolean partChanged = !Objects.equals(oldItem.getPartId(), updatedItem.getPartId());
-                boolean quantityChanged = !oldItem.getQuantity().equals(updatedItem.getQuantity());
-                if (partChanged || quantityChanged) {
-                    if (oldItem.getPartId() != null) restoreStockForItem(oldItem).join();
-                    if (updatedItem.getPartId() != null) reduceStockForItem(updatedItem).join();
-                }
-            }
+            CompletableFuture<Void> restore = oldItem.getPartId() != null
+                    ? restoreStockForItem(oldItem) : CompletableFuture.completedFuture(null);
+            return restore.thenCompose(v -> updatedItem.getPartId() != null
+                    ? reduceStockForItem(updatedItem) : CompletableFuture.completedFuture(null));
         });
     }
 
     public CompletableFuture<Void> deleteItem(Long itemId, boolean stockUpdate) {
-        return CompletableFuture.runAsync(() -> {
-            Optional<WorkOrderItem> itemOpt = itemRepository.findById(itemId);
-            if (!itemOpt.isPresent()) {
-                throw new ValidationException("Silinecek item bulunamadı.");
-            }
-            WorkOrderItem item = itemOpt.get();
-            if (item.getItemType() == ItemType.PART && item.getPartId() != null && stockUpdate) {
-                restoreStockForItem(item).join();
-            }
-            itemRepository.delete(itemId);
-        });
+        return DbExecutor.supply(() -> itemRepository.findById(itemId)
+                .orElseThrow(() -> new ValidationException("Silinecek item bulunamadı.")))
+                .thenCompose(item -> {
+                    CompletableFuture<Void> restore = item.getItemType() == ItemType.PART && item.getPartId() != null && stockUpdate
+                            ? restoreStockForItem(item) : CompletableFuture.completedFuture(null);
+                    return restore.thenRun(() -> itemRepository.delete(itemId));
+                });
     }
 
     public CompletableFuture<List<WorkOrderItem>> getItems(Long serviceId) {
-        return CompletableFuture.supplyAsync(() -> itemRepository.findByServiceId(serviceId));
+        return DbExecutor.supply(() -> itemRepository.findByServiceId(serviceId));
     }
 
     // =========================================================================
@@ -462,7 +488,7 @@ public class WorkOrderService {
     // =========================================================================
 
     public CompletableFuture<WorkOrderNote> addNote(WorkOrderNote note) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Long id = noteRepository.insert(note);
             note.setId(id);
             return note;
@@ -470,11 +496,11 @@ public class WorkOrderService {
     }
 
     public CompletableFuture<Void> deleteNote(Long id) {
-        return CompletableFuture.runAsync(() -> noteRepository.delete(id));
+        return DbExecutor.run(() -> noteRepository.delete(id));
     }
 
     public CompletableFuture<List<WorkOrderNote>> getNotes(Long serviceId) {
-        return CompletableFuture.supplyAsync(() -> noteRepository.findByServiceId(serviceId));
+        return DbExecutor.supply(() -> noteRepository.findByServiceId(serviceId));
     }
 
     // =========================================================================

@@ -35,9 +35,9 @@ public class WorkOrderPopup extends JPopupMenu {
         add(item("Teslim Et", () -> {
 
             WorkOrderService workOrderService = ServiceManager.getWorkOrderService();
-            workOrderService.setDelivered(workOrder.getId()).thenAccept(repair -> {
-                Toasts.show(FormManager.getFrame(), Toast.Type.SUCCESS, Messages.get("toast.workorder.delivered"));
-            }).exceptionally(ex -> ErrorHandler.handle(this, "Servis teslim güncellemesi başarısız", ex));
+            workOrderService.setDelivered(workOrder.getId()).thenAccept(repair -> SwingUtilities.invokeLater(() ->
+                    Toasts.show(FormManager.getFrame(), Toast.Type.SUCCESS, Messages.get("toast.workorder.delivered"))
+            )).exceptionally(ex -> ErrorHandler.handle(this, "Servis teslim güncellemesi başarısız", ex));
 
         }));
     }

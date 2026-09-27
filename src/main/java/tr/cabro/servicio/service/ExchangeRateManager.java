@@ -42,7 +42,7 @@ public class ExchangeRateManager {
     }
 
     public CompletableFuture<List<ExchangeRate>> getAll() {
-        return CompletableFuture.supplyAsync(repository::findAll);
+        return DbExecutor.supply(repository::findAll);
     }
 
     public CompletableFuture<Void> setManualRate(String currencyCode, BigDecimal rate) {
@@ -53,7 +53,7 @@ public class ExchangeRateManager {
             throw new ValidationException("Kur sıfırdan büyük olmalı.");
         }
         String code = currencyCode.toUpperCase(Locale.ROOT);
-        return CompletableFuture.runAsync(() -> {
+        return DbExecutor.run(() -> {
             String name = repository.findByCode(code)
                     .map(ExchangeRate::getCurrencyName)
                     .orElse(TCMB_CURRENCY_NAMES.getOrDefault(code, code));
@@ -63,7 +63,7 @@ public class ExchangeRateManager {
 
     /** TCMB'nin günlük kur servisinden USD/EUR satış kurlarını çeker ve tabloya yazar. */
     public CompletableFuture<List<ExchangeRate>> refreshFromTcmb() {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Map<String, BigDecimal> rates = fetchTcmbRates();
             if (rates.isEmpty()) {
                 throw new ValidationException("TCMB'den kur alınamadı. Bugün için kur yayınlanmamış olabilir (hafta sonu/tatil).");

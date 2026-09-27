@@ -39,7 +39,7 @@ public class SupplierService {
         }
 
         // --- Veritabanı İşlemi (Arka Plan Thread) ---
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             if (!update) {
                 Long id = repository.insert(supplier);
                 supplier.setId(id);
@@ -51,25 +51,25 @@ public class SupplierService {
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> repository.delete(id));
+        return DbExecutor.run(() -> repository.delete(id));
     }
 
     public CompletableFuture<Optional<Supplier>> get(Long id) {
-        return CompletableFuture.supplyAsync(() -> repository.findById(id));
+        return DbExecutor.supply(() -> repository.findById(id));
     }
 
     public CompletableFuture<List<Supplier>> getAll() {
-        return CompletableFuture.supplyAsync(repository::findAll);
+        return DbExecutor.supply(repository::findAll);
     }
 
     /** Tablo başlığı filtresi (kayıt tarihi) + serbest metin arama — sunucu tarafında, tüm kayıtlar üzerinde. */
     public CompletableFuture<PageResult<Supplier>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                        int page, int pageSize) {
-        return CompletableFuture.supplyAsync(() -> repository.searchFilteredPaged(searchTerm, filters, page, pageSize));
+        return DbExecutor.supply(() -> repository.searchFilteredPaged(searchTerm, filters, page, pageSize));
     }
 
     public CompletableFuture<PageResult<Supplier>> searchFilteredPaged(String searchTerm, Map<String, ColumnFilterValue> filters,
                                                                        int page, int pageSize, String sortKey) {
-        return CompletableFuture.supplyAsync(() -> repository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
+        return DbExecutor.supply(() -> repository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey));
     }
 }

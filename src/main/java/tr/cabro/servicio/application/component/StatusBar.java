@@ -202,12 +202,22 @@ public class StatusBar extends JPanel {
         }));
     }
 
-    /** Son yedeğin yaşı: dosya listesi ucuz olduğu için doğrudan okunur. */
+    /**
+     * Son yedeğin yaşı. Klasör USB ya da ağ sürücüsünde olabilir; listeleme EDT'yi bekletmesin diye
+     * arka planda yapılır.
+     */
     private void refreshBackup() {
         File dir = AppSettings.getBackupDir();
-        File[] files = dir.listFiles((d, name) -> name.endsWith(".db") || name.endsWith(".sql"));
-        long latest = files == null ? 0 : Arrays.stream(files).mapToLong(File::lastModified).max().orElse(0);
+        CompletableFuture.supplyAsync(() -> latestBackup(dir))
+                .thenAccept(latest -> SwingUtilities.invokeLater(() -> showBackup(latest)));
+    }
 
+    static long latestBackup(File dir) {
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".db") || name.endsWith(".sql"));
+        return files == null ? 0 : Arrays.stream(files).mapToLong(File::lastModified).max().orElse(0);
+    }
+
+    private void showBackup(long latest) {
         String text;
         String color;
         String icon;

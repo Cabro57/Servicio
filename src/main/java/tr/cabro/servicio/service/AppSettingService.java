@@ -6,8 +6,8 @@ import tr.cabro.servicio.database.repository.AppSettingRepository;
 import tr.cabro.servicio.settings.ConfigMigrations;
 import tr.cabro.servicio.settings.SettingKeys;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * İşletme ayarlarını ({@code app_settings} tablosu) yöneten servis.
@@ -28,7 +28,9 @@ public class AppSettingService {
     public static final int DEFAULT_AUTO_LOCK_MINUTES = 5;
 
     private final AppSettingRepository repository;
-    private final Map<String, String> cache = new HashMap<>();
+    // EDT yazarken zamanlayıcı thread'leri (yedek, erişim bilgisi temizliği) okuyabilir.
+    // ConcurrentHashMap null kabul etmez; boş değer "" tutulur, okuyucular boşu zaten varsayılana çevirir.
+    private final Map<String, String> cache = new ConcurrentHashMap<>();
 
     public AppSettingService(AppSettingRepository repository) {
         this.repository = repository;
@@ -37,7 +39,7 @@ public class AppSettingService {
 
     public void reload() {
         cache.clear();
-        cache.putAll(repository.findAll());
+        repository.findAll().forEach((k, v) -> cache.put(k, v != null ? v : ""));
     }
 
     /**
@@ -107,7 +109,7 @@ public class AppSettingService {
 
     public void setString(String key, String value) {
         repository.upsert(key, value);
-        cache.put(key, value);
+        cache.put(key, value != null ? value : "");
     }
 
     public int getInt(String key, int defaultValue) {

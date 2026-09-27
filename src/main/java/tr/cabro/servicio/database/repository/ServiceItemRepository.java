@@ -3,6 +3,7 @@ package tr.cabro.servicio.database.repository;
 import org.jdbi.v3.sqlobject.config.RegisterBeanMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -34,6 +35,12 @@ public interface ServiceItemRepository {
             "used_serial_no, quantity, purchase_price, unit_price, tax_rate " +
             "FROM work_order_items WHERE service_id = :serviceId")
     List<WorkOrderItem> findByServiceId(@Bind("serviceId") Long serviceId);
+
+    // Liste ekranlarında her servis için ayrı sorgu atmamak için toplu sürüm.
+    @SqlQuery("SELECT id, service_id, item_type, source_type, part_id, labor_id, item_name, " +
+            "used_serial_no, quantity, purchase_price, unit_price, tax_rate " +
+            "FROM work_order_items WHERE service_id IN (<serviceIds>) ORDER BY id")
+    List<WorkOrderItem> findByServiceIds(@BindList("serviceIds") List<Long> serviceIds);
 
     @SqlQuery("SELECT id, service_id, item_type, source_type, part_id, labor_id, item_name, " +
             "used_serial_no, quantity, purchase_price, unit_price, tax_rate " +

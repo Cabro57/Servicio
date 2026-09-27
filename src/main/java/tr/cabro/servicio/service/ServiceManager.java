@@ -81,7 +81,8 @@ public final class ServiceManager {
         SaleItemRepository saleItemRepo = jdbi.onDemand(SaleItemRepository.class);
         saleService = new SaleService(saleRepo, saleItemRepo, customerRepo, paymentService);
 
-        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentService, noteRepo, partService, stockService, deviceService);
+        workOrderService = new WorkOrderService(serviceRepo, itemRepo, paymentService, noteRepo, partService, stockService, deviceService,
+                customerRepo, deviceRepo, paymentRepo);
 
         appSettingService = new AppSettingService(appSettingRepo);
         deviceTransactionService = new DeviceTransactionService(deviceTransactionRepo);

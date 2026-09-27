@@ -51,7 +51,7 @@ public class ProductService {
         // stok ikiye katlanıyordu.
         int requestedStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
 
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             int currentStock;
             if (!update) {
                 if (productRepository.existsByBarcode(product.getBarcode())) {
@@ -84,15 +84,15 @@ public class ProductService {
     }
 
     public CompletableFuture<Void> delete(Long id) {
-        return CompletableFuture.runAsync(() -> productRepository.delete(id));
+        return DbExecutor.run(() -> productRepository.delete(id));
     }
 
     public CompletableFuture<List<Product>> getAll() {
-        return CompletableFuture.supplyAsync(() -> hydrateProducts(productRepository.findAll()));
+        return DbExecutor.supply(() -> hydrateProducts(productRepository.findAll()));
     }
 
     public CompletableFuture<Optional<Product>> get(String barcode) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<Product> opt = productRepository.findByBarcode(barcode);
             opt.ifPresent(p -> hydrateProducts(Collections.singletonList(p)));
             return opt;
@@ -100,7 +100,7 @@ public class ProductService {
     }
 
     public CompletableFuture<Optional<Product>> getById(Long id) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<Product> opt = productRepository.findById(id);
             opt.ifPresent(p -> hydrateProducts(Collections.singletonList(p)));
             return opt;
@@ -108,12 +108,12 @@ public class ProductService {
     }
 
     public CompletableFuture<Boolean> isBarcodeAvailable(String barcode) {
-        return CompletableFuture.supplyAsync(() -> !productRepository.existsByBarcode(barcode));
+        return DbExecutor.supply(() -> !productRepository.existsByBarcode(barcode));
     }
 
     public CompletableFuture<PageResult<Product>> getAllPaged(int page, int pageSize) {
         int offset = (page - 1) * pageSize;
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<Product> items = hydrateProducts(productRepository.findAllPaged(pageSize, offset));
             long total = productRepository.countAll();
             return new PageResult<>(items, page, pageSize, total);
@@ -124,7 +124,7 @@ public class ProductService {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAllPaged(page, pageSize);
         int offset = (page - 1) * pageSize;
         String likeTerm = "%" + searchTerm.trim() + "%";
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<Product> items = hydrateProducts(productRepository.searchPaged(likeTerm, pageSize, offset));
             long total = productRepository.countSearch(likeTerm);
             return new PageResult<>(items, page, pageSize, total);
@@ -134,7 +134,7 @@ public class ProductService {
     /** Liste sayfası: arama + görünüm sekmesi/başlık filtreleri + sayfalama. */
     public CompletableFuture<PageResult<Product>> searchFilteredPaged(String searchTerm,
             java.util.Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             PageResult<Product> r = productRepository.searchFilteredPaged(searchTerm, filters, page, pageSize);
             return new PageResult<>(hydrateProducts(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
         });
@@ -142,14 +142,14 @@ public class ProductService {
 
     public CompletableFuture<PageResult<Product>> searchFilteredPaged(String searchTerm,
             java.util.Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize, String sortKey) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             PageResult<Product> r = productRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey);
             return new PageResult<>(hydrateProducts(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
         });
     }
 
     public CompletableFuture<PartStatsDto> getStats() {
-        return CompletableFuture.supplyAsync(productRepository::getStats);
+        return DbExecutor.supply(productRepository::getStats);
     }
 
     private List<Product> hydrateProducts(List<Product> products) {

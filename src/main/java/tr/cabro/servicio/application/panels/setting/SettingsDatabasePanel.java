@@ -28,6 +28,7 @@ import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Ayarlar &gt; Sistem &gt; Yedekleme.
@@ -224,10 +225,18 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
         folderField.setText(dir.getAbsolutePath());
         folderField.setCaretPosition(0);
 
-        File[] files = dir.listFiles((d, name) -> name.endsWith(".db") || name.endsWith(".sql"));
-        List<File> sorted = files == null ? List.of()
-                : Arrays.stream(files).sorted(Comparator.comparingLong(File::lastModified).reversed()).toList();
+        // Klasör USB ya da ağ sürücüsünde olabilir; listeleme EDT'yi bekletmesin.
+        CompletableFuture.supplyAsync(() -> {
+            File[] files = dir.listFiles((d, name) -> name.endsWith(".db") || name.endsWith(".sql"));
+            return files == null ? List.<File>of()
+                    : Arrays.stream(files).sorted(Comparator.comparingLong(File::lastModified).reversed()).toList();
+        }).thenAccept(sorted -> SwingUtilities.invokeLater(() -> {
+            // Bu arada klasör değiştiyse eski sonuç gösterilmez.
+            if (dir.equals(AppSettings.getBackupDir())) showBackups(sorted);
+        }));
+    }
 
+    private void showBackups(List<File> sorted) {
         backupModel.clear();
         sorted.forEach(backupModel::addElement);
         boolean empty = sorted.isEmpty();

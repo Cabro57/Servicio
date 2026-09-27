@@ -28,6 +28,12 @@ public class AmountChipCellRenderer<T> extends JPanel implements TableCellRender
     private final JLabel captionL = new JLabel();
     private final RowParts.BadgeChip chipView = new RowParts.BadgeChip(20, 2f);
 
+    // Türetilmiş fontlar her hücre çiziminde yeniden üretilmesin; tema/yazı boyutu değişince
+    // Label.font başka bir nesne olur ve yeniden türetilir.
+    private Font baseFont;
+    private Font smallFont;
+    private Font boldFont;
+
     public AmountChipCellRenderer() {
         setOpaque(true);
         setLayout(new MigLayout("insets 0 8 0 14, gap 6 3, hidemode 3", "[grow, right]", "push[]3[]push"));
@@ -58,7 +64,12 @@ public class AmountChipCellRenderer<T> extends JPanel implements TableCellRender
         Color fg = table.getForeground();
         Color muted = UIManager.getColor("Label.disabledForeground");
         Font base = UIManager.getFont("Label.font");
-        captionL.setFont(base.deriveFont(Font.PLAIN, base.getSize2D() - 1f));
+        if (base != baseFont) {
+            baseFont = base;
+            smallFont = base.deriveFont(Font.PLAIN, base.getSize2D() - 1f);
+            boldFont = base.deriveFont(Font.BOLD);
+        }
+        captionL.setFont(smallFont);
 
         @SuppressWarnings("unchecked")
         T item = (T) value;
@@ -94,7 +105,7 @@ public class AmountChipCellRenderer<T> extends JPanel implements TableCellRender
             }
             amountL.setText(text);
             amountL.setForeground(color);
-            amountL.setFont(quiet ? base.deriveFont(Font.PLAIN, base.getSize2D() - 1f) : base.deriveFont(Font.BOLD));
+            amountL.setFont(quiet ? smallFont : boldFont);
         }
 
         String cap = caption.apply(item);

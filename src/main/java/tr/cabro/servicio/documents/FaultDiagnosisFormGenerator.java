@@ -20,22 +20,26 @@ public class FaultDiagnosisFormGenerator implements ServiceFormGenerator {
 
         DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Arıza Tespit Formu",
                 "SRV-" + workOrder.getId(), DeviceIntakeFormGenerator.date(workOrder.getCreatedAt()));
+        try {
+            pdf.section("Müşteri ve Cihaz");
+            pdf.fields(new String[][]{
+                    {"Müşteri", customer != null ? customer.getFullName() : null},
+                    {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
+                    {"Cihaz", device != null ? device.getDisplayName() : null},
+                    {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
+            });
 
-        pdf.section("Müşteri ve Cihaz");
-        pdf.fields(new String[][]{
-                {"Müşteri", customer != null ? customer.getFullName() : null},
-                {"Telefon", DeviceIntakeFormGenerator.phone(customer)},
-                {"Cihaz", device != null ? device.getDisplayName() : null},
-                {"Seri No / IMEI", device != null ? device.getSerialNo() : null}
-        });
+            pdf.section("Bildirilen Arıza (Müşteri)");
+            pdf.paragraph(workOrder.getReportedFault(), "Belirtilmemiş.");
 
-        pdf.section("Bildirilen Arıza (Müşteri)");
-        pdf.paragraph(workOrder.getReportedFault(), "Belirtilmemiş.");
+            pdf.section("Tespit Edilen Arıza (Teknisyen)");
+            pdf.paragraph(workOrder.getDetectedFault(), "Henüz belirlenmedi.");
 
-        pdf.section("Tespit Edilen Arıza (Teknisyen)");
-        pdf.paragraph(workOrder.getDetectedFault(), "Henüz belirlenmedi.");
-
-        pdf.close();
+            pdf.close();
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return outFile;
     }
 }

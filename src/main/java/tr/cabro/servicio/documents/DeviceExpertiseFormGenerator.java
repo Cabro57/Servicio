@@ -23,20 +23,24 @@ public class DeviceExpertiseFormGenerator implements DeviceTransactionFormGenera
 
         DocumentWriter pdf = DocumentWriter.open(format, outFile, shop, "Cihaz Ekspertizi Formu",
                 "DT-" + transaction.getId(), date(transaction.getTransactionDate()));
+        try {
+            pdf.section("Satıcı ve Cihaz");
+            pdf.fields(new String[][]{
+                    {"Satıcı", seller != null ? seller.getFullName() : null},
+                    {"Telefon", phone(seller)},
+                    {"Cihaz", device != null ? device.getDisplayName() : null},
+                    {"Seri No / IMEI", device != null ? device.getSerialNo() : null},
+                    {"Alım Fiyatı", PdfDocumentBuilder.money(transaction.getPrice())}
+            });
 
-        pdf.section("Satıcı ve Cihaz");
-        pdf.fields(new String[][]{
-                {"Satıcı", seller != null ? seller.getFullName() : null},
-                {"Telefon", phone(seller)},
-                {"Cihaz", device != null ? device.getDisplayName() : null},
-                {"Seri No / IMEI", device != null ? device.getSerialNo() : null},
-                {"Alım Fiyatı", PdfDocumentBuilder.money(transaction.getPrice())}
-        });
+            pdf.section("Ekspertiz Notları");
+            pdf.paragraph(transaction.getExpertiseNotes(), "Belirtilmemiş.");
 
-        pdf.section("Ekspertiz Notları");
-        pdf.paragraph(transaction.getExpertiseNotes(), "Belirtilmemiş.");
-
-        pdf.close();
+            pdf.close();
+        } catch (Exception e) {
+            pdf.abort();
+            throw e;
+        }
         return outFile;
     }
 

@@ -112,7 +112,7 @@ public class SaleService {
 
     /** İade paneli için satışın kalemleri ve her birinin iade edilebilir kalanı. */
     public CompletableFuture<List<ReturnQuote>> getReturnQuotes(Long saleId) {
-        return CompletableFuture.supplyAsync(() -> DatabaseManager.inTransaction(handle -> {
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
             SaleRepository saleRepo = handle.attach(SaleRepository.class);
             SaleItemRepository itemRepo = handle.attach(SaleItemRepository.class);
             Sale original = saleRepo.findById(saleId)
@@ -135,7 +135,7 @@ public class SaleService {
      */
     public CompletableFuture<Sale> recordReturn(Long originalSaleId, List<ReturnLine> lines,
                                                  PaymentType refundType, BigDecimal refundAmount) {
-        return CompletableFuture.supplyAsync(() -> DatabaseManager.inTransaction(handle -> {
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
             if (originalSaleId == null) {
                 throw new ValidationException("İade edilecek satış belirtilmelidir.");
             }
@@ -261,7 +261,7 @@ public class SaleService {
         BigDecimal total = computeTotals(sale);
         validate(sale, payments, total);
 
-        return CompletableFuture.supplyAsync(() -> DatabaseManager.inTransaction(handle -> {
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
             SaleRepository saleRepo = handle.attach(SaleRepository.class);
             SaleItemRepository itemRepo = handle.attach(SaleItemRepository.class);
             ProductStockMovementRepository stockRepo = handle.attach(ProductStockMovementRepository.class);
@@ -361,7 +361,7 @@ public class SaleService {
 
     public CompletableFuture<PageResult<Sale>> getAllPaged(int page, int pageSize) {
         int offset = (page - 1) * pageSize;
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<Sale> items = hydrateSales(saleRepository.findAllPaged(pageSize, offset));
             long total = saleRepository.countAll();
             return new PageResult<>(items, page, pageSize, total);
@@ -371,7 +371,7 @@ public class SaleService {
     /** Liste sayfası: arama + görünüm sekmesi/başlık filtreleri + sayfalama. */
     public CompletableFuture<PageResult<Sale>> searchFilteredPaged(String searchTerm,
             Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             PageResult<Sale> r = saleRepository.searchFilteredPaged(searchTerm, filters, page, pageSize);
             return new PageResult<>(hydrateSales(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
         });
@@ -379,7 +379,7 @@ public class SaleService {
 
     public CompletableFuture<PageResult<Sale>> searchFilteredPaged(String searchTerm,
             Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters, int page, int pageSize, String sortKey) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             PageResult<Sale> r = saleRepository.searchFilteredPaged(searchTerm, filters, page, pageSize, sortKey);
             return new PageResult<>(hydrateSales(r.getItems()), r.getPage(), r.getPageSize(), r.getTotalItems());
         });
@@ -387,14 +387,14 @@ public class SaleService {
 
     /** Süzgeçle eşleşen fişlerin net toplamı (liste özeti için). */
     public CompletableFuture<BigDecimal> sumFiltered(Map<String, tr.cabro.servicio.database.filter.ColumnFilterValue> filters) {
-        return CompletableFuture.supplyAsync(() -> saleRepository.sumFiltered(filters));
+        return DbExecutor.supply(() -> saleRepository.sumFiltered(filters));
     }
 
     public CompletableFuture<PageResult<Sale>> searchPaged(String searchTerm, int page, int pageSize) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) return getAllPaged(page, pageSize);
         int offset = (page - 1) * pageSize;
         String likeTerm = "%" + searchTerm.trim() + "%";
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<Sale> items = hydrateSales(saleRepository.searchPaged(likeTerm, pageSize, offset));
             long total = saleRepository.countSearch(likeTerm);
             return new PageResult<>(items, page, pageSize, total);
@@ -433,7 +433,7 @@ public class SaleService {
 
     /** İade panelinde kalem başına gösterilecek "kalan iade edilebilir miktar" haritası. */
     public CompletableFuture<Map<Long, Integer>> getReturnableQuantities(Long saleId) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<SaleItem> items = saleItemRepository.findBySaleId(saleId);
             Map<Long, Integer> result = new java.util.HashMap<>();
             for (SaleItem item : items) {
@@ -446,7 +446,7 @@ public class SaleService {
 
     /** Satış detayı: bu satışa bağlı iade fişleri (en yeni önce). */
     public CompletableFuture<List<Sale>> getReturnsOf(Long saleId) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<Sale> returns = new ArrayList<>(saleRepository.findByParentSaleId(saleId));
             returns.sort(java.util.Comparator.comparing(Sale::getSaleDate, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())).reversed());
             return hydrateSales(returns);
@@ -455,7 +455,7 @@ public class SaleService {
 
     /** Ürün detayı: ürünün geçtiği kalemler ({@link SaleItem#getSaleId()} ile) ve o fişler. */
     public CompletableFuture<ProductSales> getProductSales(Long productId) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             List<SaleItem> items = saleItemRepository.findByProductId(productId);
             List<Long> saleIds = items.stream().map(SaleItem::getSaleId).distinct().collect(Collectors.toList());
             List<Sale> sales = new ArrayList<>();
@@ -477,11 +477,11 @@ public class SaleService {
 
     /** Müşteri detayındaki Satışlar bölümü için — müşterinin satış ve iadeleri, en yeni önce. */
     public CompletableFuture<List<Sale>> getByCustomer(Long customerId) {
-        return CompletableFuture.supplyAsync(() -> hydrateSales(saleRepository.findByCustomerId(customerId)));
+        return DbExecutor.supply(() -> hydrateSales(saleRepository.findByCustomerId(customerId)));
     }
 
     public CompletableFuture<Optional<Sale>> getById(Long id) {
-        return CompletableFuture.supplyAsync(() -> {
+        return DbExecutor.supply(() -> {
             Optional<Sale> opt = saleRepository.findById(id);
             opt.ifPresent(sale -> {
                 sale.setItems(saleItemRepository.findBySaleId(sale.getId()));
@@ -502,7 +502,7 @@ public class SaleService {
                 : customerRepository.findByIds(customerIds).stream().collect(Collectors.toMap(Customer::getId, c -> c));
 
         List<Long> saleIds = sales.stream().map(Sale::getId).collect(Collectors.toList());
-        Map<Long, BigDecimal> allocatedMap = paymentService.getAllocatedAmounts(AllocationTargetType.SALE, saleIds).join();
+        Map<Long, BigDecimal> allocatedMap = paymentService.allocatedAmounts(AllocationTargetType.SALE, saleIds);
 
         for (Sale sale : sales) {
             sale.setCustomer(customerMap.get(sale.getCustomerId()));
