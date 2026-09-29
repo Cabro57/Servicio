@@ -32,6 +32,7 @@ public class SettingsUpdatePanel extends JPanel implements SettingsModal.HeaderA
     private final JButton statusAction = DetailKit.secondaryButton("", null, null);
 
     private final JCheckBox autoCheck = new JCheckBox("Güncellemeleri kendiliğinden denetle");
+    private final JCheckBox betaChannel = new JCheckBox("Beta sürümleri al");
 
     private JPanel skippedSection;
     private final JLabel skippedText = new JLabel();
@@ -87,6 +88,18 @@ public class SettingsUpdatePanel extends JPanel implements SettingsModal.HeaderA
                 "Açılışta ve 6 saatte bir sessizce bakılır. Yeni sürüm yalnızca alt çubukta gösterilir; "
                         + "siz istemeden indirilmez, çalışırken hiçbir pencere açılmaz."));
         SettingsKit.section(page, "Otomatik denetim", "İnternet bağlantısı gerekir.", auto);
+
+        // --- Beta kanalı ---
+        betaChannel.setSelected(service.isBetaChannel());
+        betaChannel.addActionListener(e -> {
+            service.setBetaChannel(betaChannel.isSelected());
+            SettingsKit.saved(this);
+        });
+        JPanel beta = SettingsKit.stack();
+        beta.add(SettingsKit.check(betaChannel,
+                "Yeni sürümler herkese açılmadan önce size gelir; hata içerebilir. Kapatırsanız sürüm "
+                        + "düşürülmez, bir sonraki kararlı sürüme kadar kullandığınız sürümde kalırsınız."));
+        SettingsKit.section(page, "Beta kanalı", "Yenilikleri erken denemek isteyenler için.", beta);
 
         // --- Atlanan sürüm ---
         JButton undo = DetailKit.secondaryButton("Geri al", null, () -> {
@@ -166,6 +179,7 @@ public class SettingsUpdatePanel extends JPanel implements SettingsModal.HeaderA
         setSectionVisible(skippedSection, skipped != null);
 
         autoCheck.setSelected(service.isAutoCheck());
+        betaChannel.setSelected(service.isBetaChannel());
         revalidate();
         repaint();
     }

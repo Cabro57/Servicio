@@ -464,7 +464,7 @@ public class ManifestGenerator {
 
         // patchNotes artık manifest.json'da YOK.
         // Patch notları GitHub Releases API'sinden (releasesApiUrl) çekilir.
-        // Bkz: UpdateManifest.GitHubReleaseInfo ve UpdateManager.fetchReleaseInfo()
+        // Bkz: UpdateManifest.GitHubReleaseInfo ve UpdateManager.fetchReleaseNotes()
         sb.append("  \"releasesApiUrl\": ").append(q(releasesApiUrl)).append(",\n");
 
         sb.append("  \"files\": [\n");

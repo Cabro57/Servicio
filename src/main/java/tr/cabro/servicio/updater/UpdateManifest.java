@@ -125,8 +125,12 @@ public class UpdateManifest {
         /** body'den ayrıştırılmış değişiklik satırları */
         public final List<String> changeLines;
 
+        /** GitHub'da "pre-release" işaretli: yalnızca beta kanalına dağıtılır. */
+        public final boolean prerelease;
+
         public GitHubReleaseInfo(String name, String tagName,
-                                 String publishedAt, String body) {
+                                 String publishedAt, String body, boolean prerelease) {
+            this.prerelease  = prerelease;
             this.name        = name;
             this.tagName     = tagName;
             this.publishedAt = publishedAt != null
@@ -173,26 +177,39 @@ public class UpdateManifest {
                     getStr(obj, "name"),
                     getStr(obj, "tag_name"),
                     getStr(obj, "published_at"),
-                    getStr(obj, "body")
+                    getStr(obj, "body"),
+                    getBool(obj, "prerelease")
             );
         }
 
-        /** JSON array'inden birden fazla release parse et. */
-        public static List<GitHubReleaseInfo> fromJsonArray(String json) {
+        /**
+         * JSON array'inden birden fazla release parse et. Taslaklar hiç, ön sürümler yalnızca
+         * {@code includePrerelease} ise alınır (beta kanalı).
+         */
+        public static List<GitHubReleaseInfo> fromJsonArray(String json, boolean includePrerelease) {
             List<GitHubReleaseInfo> list = new ArrayList<GitHubReleaseInfo>();
             try {
                 JsonArray arr = new Gson().fromJson(json, JsonArray.class);
                 for (JsonElement el : arr) {
                     JsonObject obj = el.getAsJsonObject();
+                    // Taslaklar kimseye, ön sürümler yalnızca beta kanalına dağıtılır.
+                    boolean prerelease = getBool(obj, "prerelease");
+                    if (getBool(obj, "draft") || (prerelease && !includePrerelease)) continue;
                     list.add(new GitHubReleaseInfo(
                             getStr(obj, "name"),
                             getStr(obj, "tag_name"),
                             getStr(obj, "published_at"),
-                            getStr(obj, "body")
+                            getStr(obj, "body"),
+                            prerelease
                     ));
                 }
             } catch (Exception ignored) {}
             return list;
+        }
+
+        private static boolean getBool(JsonObject obj, String key) {
+            JsonElement el = obj.get(key);
+            return el != null && !el.isJsonNull() && el.getAsBoolean();
         }
 
         private static String getStr(JsonObject obj, String key) {

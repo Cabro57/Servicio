@@ -55,6 +55,7 @@ public class UpdateModal extends JPanel {
     private final JButton primary = DetailKit.primaryButton("", null, null);
 
     private String notesVersion;
+    private final JLabel notesTitle = DetailKit.title("Bu sürümde");
 
     /** Pencereyi açar; bulunmuş bir sürüm yoksa Ayarlar &gt; Güncelleme'ye gider. */
     public static void open() {
@@ -111,7 +112,7 @@ public class UpdateModal extends JPanel {
         notes.setOpaque(false);
         JPanel card = new JPanel(new MigLayout("wrap, insets 14 16 14 16, fillx, gap 0", "[grow, fill]", "[]8[grow, fill]"));
         card.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
-        card.add(DetailKit.title("Bu sürümde"));
+        card.add(notesTitle);
         JScrollPane scroll = DetailKit.scroll(notes);
         // Notlar ağdan sonradan gelir; yükseklik içeriğe bağlı olsaydı pencere tek satırla açılıp
         // notlar gelince büyürdü. Sabit yükseklik pencereyi baştan son boyutuyla açar.
@@ -287,16 +288,33 @@ public class UpdateModal extends JPanel {
     private void loadNotes() {
         notes.removeAll();
         notes.add(DetailKit.small("Sürüm notları yükleniyor…"));
-        service.fetchReleaseInfo(this::showNotes, e -> showNotesError());
+        service.fetchReleaseNotes(this::showNotes, e -> showNotesError());
     }
 
-    private void showNotes(UpdateManifest.GitHubReleaseInfo info) {
+    /**
+     * Birkaç sürüm atlandıysa her sürümün notu kendi başlığıyla, yeniden eskiye sıralanır;
+     * tek sürümde başlık tekrarlanmaz (pencere başlığı zaten o sürümü söyler).
+     */
+    private void showNotes(List<UpdateManifest.GitHubReleaseInfo> releases) {
         notes.removeAll();
-        List<String> lines = info.changeLines;
-        if (lines == null || lines.isEmpty()) {
-            notes.add(DetailKit.small("Bu sürüm için not yazılmamış."));
-        } else {
-            boolean first = true;
+        boolean multi = releases.size() > 1;
+        notesTitle.setText(multi ? "Sürümünüzden bu yana (" + releases.size() + " sürüm)" : "Bu sürümde");
+        boolean first = true;
+        for (UpdateManifest.GitHubReleaseInfo info : releases) {
+            if (multi) {
+                notes.add(versionHeader(info), first ? "" : "gaptop 18");
+                first = false;
+            }
+            first = addLines(info.changeLines, first);
+        }
+        notes.revalidate();
+        notes.repaint();
+    }
+
+    /** Bir sürümün not satırlarını ekler; eklenen bir şey kalmadıysa "not yok" yazar. */
+    private boolean addLines(List<String> lines, boolean first) {
+        int before = notes.getComponentCount();
+        if (lines != null) {
             for (String raw : lines) {
                 boolean heading = raw.startsWith("**") && raw.endsWith("**") && raw.length() > 4;
                 String text = plain(heading ? raw.substring(2, raw.length() - 2) : raw);
@@ -306,13 +324,40 @@ public class UpdateModal extends JPanel {
                     h.putClientProperty(FlatClientProperties.STYLE, "font: bold");
                     notes.add(h, first ? "" : "gaptop 12");
                 } else {
-                    notes.add(bullet(text), "gaptop 4");
+                    notes.add(bullet(text), first ? "" : "gaptop 4");
                 }
                 first = false;
             }
         }
-        notes.revalidate();
-        notes.repaint();
+        if (notes.getComponentCount() == before) {
+            notes.add(DetailKit.small("Bu sürüm için not yazılmamış."), first ? "" : "gaptop 4");
+            first = false;
+        }
+        return first;
+    }
+
+    /** Sürüm başlığı: "2.12.0" + soluk yayın tarihi, altında ince ayraç. */
+    private static JPanel versionHeader(UpdateManifest.GitHubReleaseInfo info) {
+        JPanel row = new JPanel(new MigLayout("insets 0, gap 8, fillx", "[][grow]", "[baseline]4[]"));
+        row.setOpaque(false);
+        JLabel version = new JLabel(info.tagName.replaceFirst("^[vV]", ""));
+        version.putClientProperty(FlatClientProperties.STYLE, "font: bold +2");
+        row.add(version);
+        if (info.prerelease) {
+            JLabel beta = new JLabel("Beta");
+            beta.setOpaque(true);
+            beta.putClientProperty(FlatClientProperties.STYLE, BadgePalette.style(BadgeColor.YELLOW, null));
+            row.add(beta);
+        }
+        try {
+            if (!info.publishedAt.isBlank()) {
+                row.add(DetailKit.small(DateFormats.shortDate().format(LocalDate.parse(info.publishedAt))));
+            }
+        } catch (Exception ignored) {
+            // Tarih biçimi beklenmedikse yalnızca sürüm gösterilir.
+        }
+        row.add(new JSeparator(), "newline, span, growx");
+        return row;
     }
 
     private void showNotesError() {

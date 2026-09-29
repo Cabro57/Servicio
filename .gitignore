@@ -52,3 +52,6 @@ packaging/dist/
 
 ### Claude Code ###
 /CLAUDE.md
+
+# Manifest imzasi release.ps1 tarafindan uretilir, release ekidir
+/update-manifest.json.sig

@@ -56,8 +56,8 @@ public class UpdateService {
     private volatile double progress;
     private volatile String currentFile;
 
-    private volatile UpdateManifest.GitHubReleaseInfo releaseInfo;
-    private volatile String releaseInfoVersion;
+    private volatile List<UpdateManifest.GitHubReleaseInfo> releaseNotes;
+    private volatile String releaseNotesVersion;
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "servicio-update-scheduler");
@@ -94,6 +94,24 @@ public class UpdateService {
 
     public boolean isAutoCheck() {
         return AppSettings.get().getUpdate().isAutoCheck();
+    }
+
+    public boolean isBetaChannel() {
+        return AppSettings.get().getUpdate().isBetaChannel();
+    }
+
+    /**
+     * Beta kanalını açar/kapatır ve hemen yeniden denetler. Kapatınca sürüm düşürülmez:
+     * ön sürümdeki kurulum bir sonraki kararlı sürüme kadar olduğu yerde kalır.
+     */
+    public void setBetaChannel(boolean enabled) {
+        AppSettings.get().getUpdate().setBetaChannel(enabled);
+        AppSettings.save();
+        // Not listesi kanala göre değişir (ön sürümler dahil/hariç).
+        releaseNotes = null;
+        releaseNotesVersion = null;
+        fire();
+        check(true);
     }
 
     /** Durum her değiştiğinde EDT'de çağrılır. Kısa ömürlü bileşenler {@link #removeListener} ile bırakmalı. */
@@ -150,7 +168,7 @@ public class UpdateService {
         State before = state;
         if (manual) set(State.CHECKING);
 
-        manager.checkForUpdates(
+        manager.checkForUpdates(isBetaChannel(),
                 found -> onCheckResult(found, manual),
                 () -> {
                     lastChecked = LocalDateTime.now();
@@ -297,22 +315,25 @@ public class UpdateService {
 
     // ------------------------------------------------------------------ sürüm notları
 
-    /** Bulunan sürümün GitHub sürüm notlarını getirir; aynı sürüm için bir kez indirilir. */
-    public void fetchReleaseInfo(Consumer<UpdateManifest.GitHubReleaseInfo> onSuccess, Consumer<Exception> onError) {
+    /**
+     * Yerel sürümden bulunan sürüme kadar tüm sürümlerin GitHub notlarını getirir
+     * (yeniden eskiye); aynı sürüm için bir kez indirilir.
+     */
+    public void fetchReleaseNotes(Consumer<List<UpdateManifest.GitHubReleaseInfo>> onSuccess, Consumer<Exception> onError) {
         UpdateManifest m = manifest;
         if (m == null) {
             onError.accept(new IllegalStateException("Güncelleme yok"));
             return;
         }
-        if (releaseInfo != null && m.getVersion().equals(releaseInfoVersion)) {
-            onSuccess.accept(releaseInfo);
+        if (releaseNotes != null && m.getVersion().equals(releaseNotesVersion)) {
+            onSuccess.accept(releaseNotes);
             return;
         }
-        manager.fetchReleaseInfo(m,
-                info -> {
-                    releaseInfo = info;
-                    releaseInfoVersion = m.getVersion();
-                    SwingUtilities.invokeLater(() -> onSuccess.accept(info));
+        manager.fetchReleaseNotes(m, isBetaChannel(),
+                list -> {
+                    releaseNotes = list;
+                    releaseNotesVersion = m.getVersion();
+                    SwingUtilities.invokeLater(() -> onSuccess.accept(list));
                 },
                 e -> SwingUtilities.invokeLater(() -> onError.accept(e)));
     }

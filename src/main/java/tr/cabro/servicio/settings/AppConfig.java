@@ -133,6 +133,9 @@ public class AppConfig {
 
         /** Açılışta ve belirli aralıklarla sessizce denetle; yeni sürüm yalnızca alt çubukta gösterilir. */
         private boolean autoCheck = true;
+
+        /** Ön sürümleri (GitHub pre-release) de al; yeni sürümler herkese açılmadan önce gelir. */
+        private boolean betaChannel = false;
     }
 
     /** Yazdırma tercihleri — fiş yazıcısı makineye bağlı olduğu için burada. */

@@ -19,6 +19,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Güncelleme indirme motoru.
@@ -49,6 +51,11 @@ public class UpdateManager {
     private static final int READ_TIMEOUT_MS     = 30_000;
     private static final int DOWNLOAD_TIMEOUT_MS = 120_000;
     private static final int MAX_REDIRECTS       = 8;
+    private static final int DOWNLOAD_ATTEMPTS   = 3;
+
+    /** "https://github.com/SAHIP/REPO/releases/latest/download/DOSYA" → (SAHIP/REPO, DOSYA) */
+    private static final Pattern GITHUB_RELEASE_URL =
+            Pattern.compile("https://github\\.com/([^/]+/[^/]+)/releases/latest/download/([^/?]+)");
 
     // ─── Thread Pool ─────────────────────────────────────────────────────────
 
@@ -123,18 +130,26 @@ public class UpdateManager {
      * Geliştirme modunda (devMode=true) sadece sürüm numarası karşılaştırılır;
      * hash kontrolü atlanır (appRoot'ta libs/ dizini olmadığı için).
      *
+     * @param beta true → ön sürümler (GitHub pre-release) de aday; en yüksek sürümün manifesti okunur.
      * @return CompletableFuture — tamamlandığında onUpdateAvailable veya onUpToDate çağrılır.
      */
     public CompletableFuture<Void> checkForUpdates(
+            boolean beta,
             Consumer<UpdateManifest> onUpdateAvailable,
             Runnable onUpToDate,
             Consumer<Exception> onError) {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.info("Manifest indiriliyor: {}", manifestUrl);
-                String json = downloadText(manifestUrl);
-                return UpdateManifest.fromJson(json);
+                String url = beta ? resolveBetaManifestUrl() : manifestUrl;
+                log.info("Manifest indiriliyor: {}", url);
+                // İmza manifestin birebir baytlarına aittir; satır sonu dönüşümü yapılmadan okunur.
+                byte[] bytes = downloadBytes(url);
+                String signature = new String(downloadBytes(url + ".sig"), StandardCharsets.US_ASCII);
+                if (!ManifestSignature.verify(bytes, signature)) {
+                    throw new IOException("Manifest imzası doğrulanamadı; güncelleme reddedildi.");
+                }
+                return UpdateManifest.fromJson(new String(bytes, StandardCharsets.UTF_8));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -265,12 +280,15 @@ public class UpdateManager {
     }
 
     /**
-     * GitHub Releases API'sinden release bilgisini çeker.
+     * GitHub Releases API'sinden yerel sürümden sonraki tüm sürümlerin notlarını çeker
+     * (yeniden eskiye). Birkaç sürüm atlayan kullanıcı ara sürümlerin notlarını da görür.
+     * Aynı sürüme yeniden yayın (hotfix) durumunda yalnızca o sürümün notu döner.
      * Patch notları manifest.json'da değil, burada saklanır.
      */
-    public CompletableFuture<UpdateManifest.GitHubReleaseInfo> fetchReleaseInfo(
+    public CompletableFuture<List<UpdateManifest.GitHubReleaseInfo>> fetchReleaseNotes(
             UpdateManifest manifest,
-            Consumer<UpdateManifest.GitHubReleaseInfo> onSuccess,
+            boolean beta,
+            Consumer<List<UpdateManifest.GitHubReleaseInfo>> onSuccess,
             Consumer<Exception> onError) {
 
         return CompletableFuture.supplyAsync(() -> {
@@ -281,35 +299,88 @@ public class UpdateManager {
             }
 
             try {
-                log.info("GitHub Release bilgisi çekiliyor: {}", apiUrl);
-                String json = downloadGitHubApi(apiUrl);
+                List<UpdateManifest.GitHubReleaseInfo> all = downloadReleaseList(apiUrl, beta);
 
-                UpdateManifest.GitHubReleaseInfo info;
-                if (apiUrl.contains("/releases/latest") || apiUrl.contains("/releases/tags/")) {
-                    info = UpdateManifest.GitHubReleaseInfo.fromJson(json);
-                } else {
-                    List<UpdateManifest.GitHubReleaseInfo> list =
-                            UpdateManifest.GitHubReleaseInfo.fromJsonArray(json);
-                    info = list.isEmpty() ? null : list.get(0);
+                String target = manifest.getVersion();
+                List<UpdateManifest.GitHubReleaseInfo> result = new ArrayList<>();
+                for (UpdateManifest.GitHubReleaseInfo info : all) {
+                    String v = info.tagName;
+                    // Eski "v2.0-beta.N" gibi etiketler semver'e uymaz; karşılaştırmayı yanıltmasın.
+                    if (!v.matches("[vV]?\\d+\\.\\d+\\.\\d+")) continue;
+                    if (isNewerVersion(v, target)) continue;
+                    if (isNewerVersion(v, currentVersion) || sameVersion(v, target)) result.add(info);
                 }
+                result.sort((a, b) -> isNewerVersion(a.tagName, b.tagName) ? -1
+                        : sameVersion(a.tagName, b.tagName) ? 0 : 1);
 
-                if (info == null) throw new IOException("Release bilgisi parse edilemedi.");
-                log.info("Release bilgisi alındı: {} ({})", info.tagName, info.publishedAt);
-                return info;
+                if (result.isEmpty()) throw new IOException("Sürüm notu bulunamadı.");
+                log.info("{} sürümün notu alındı (v{} → v{})", result.size(), currentVersion, target);
+                return result;
 
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }, POOL).thenApply(info -> {
-            onSuccess.accept(info);
-            return info;
+        }, POOL).thenApply(list -> {
+            onSuccess.accept(list);
+            return list;
         }).exceptionally(ex -> {
             Exception cause = ex.getCause() instanceof Exception
                     ? (Exception) ex.getCause() : new Exception(ex);
-            log.warn("fetchReleaseInfo hatası: {}", cause.getMessage());
+            log.warn("fetchReleaseNotes hatası: {}", cause.getMessage());
             onError.accept(cause);
             return null;
         });
+    }
+
+    /**
+     * Tüm sürümlerin notlarını getirir. Önce release'e eklenen release-notes.json okunur
+     * (manifestle aynı yerde; GitHub API'nin girişsiz 60 istek/saat sınırına takılmaz),
+     * o yoksa GitHub API'sinin sürüm listesi kullanılır.
+     */
+    private List<UpdateManifest.GitHubReleaseInfo> downloadReleaseList(String apiUrl, boolean includePrerelease)
+            throws IOException {
+        int slash = manifestUrl.lastIndexOf('/');
+        if (slash > 0) {
+            String notesUrl = manifestUrl.substring(0, slash + 1) + "release-notes.json";
+            try {
+                log.info("Sürüm notları dosyası indiriliyor: {}", notesUrl);
+                List<UpdateManifest.GitHubReleaseInfo> list =
+                        UpdateManifest.GitHubReleaseInfo.fromJsonArray(downloadText(notesUrl), includePrerelease);
+                if (!list.isEmpty()) return list;
+            } catch (IOException e) {
+                log.info("Sürüm notları dosyası alınamadı ({}), GitHub API'sine geçiliyor.", e.getMessage());
+            }
+        }
+        // Manifest eski istemciler için tek sürüm adresini (/releases/latest) taşır;
+        // ara sürümler için liste uç noktası kullanılır.
+        String listUrl = apiUrl.replaceFirst("/releases/(latest|tags/.*)$", "/releases") + "?per_page=50";
+        log.info("GitHub sürüm notları çekiliyor: {}", listUrl);
+        return UpdateManifest.GitHubReleaseInfo.fromJsonArray(downloadGitHubApi(listUrl), includePrerelease);
+    }
+
+    /**
+     * Beta kanalı: ön sürümler dahil en yüksek sürümün manifest adresi. Manifest adresi GitHub
+     * release biçiminde değilse (kendi sunucu) ya da liste alınamazsa kararlı adrese düşülür;
+     * beta açık diye güncelleme denetimi hiç çalışmaz hale gelmesin.
+     */
+    private String resolveBetaManifestUrl() {
+        Matcher m = GITHUB_RELEASE_URL.matcher(manifestUrl);
+        if (!m.matches()) return manifestUrl;
+        String repo = m.group(1);
+        try {
+            UpdateManifest.GitHubReleaseInfo newest = null;
+            for (UpdateManifest.GitHubReleaseInfo info : downloadReleaseList(
+                    "https://api.github.com/repos/" + repo + "/releases/latest", true)) {
+                if (!info.tagName.matches("[vV]?\\d+\\.\\d+\\.\\d+")) continue;
+                if (newest == null || isNewerVersion(info.tagName, newest.tagName)) newest = info;
+            }
+            if (newest == null || !newest.prerelease) return manifestUrl;
+            log.info("Beta kanalı: ön sürüm {} denetleniyor.", newest.tagName);
+            return "https://github.com/" + repo + "/releases/download/" + newest.tagName + "/" + m.group(2);
+        } catch (IOException e) {
+            log.warn("Beta sürüm listesi alınamadı ({}), kararlı manifest kullanılıyor.", e.getMessage());
+            return manifestUrl;
+        }
     }
 
     /**
@@ -523,6 +594,18 @@ public class UpdateManager {
         }
     }
 
+    /** Yanıtı baytı baytına döner (imza doğrulaması için satır sonları korunur). */
+    private byte[] downloadBytes(String urlStr) throws IOException {
+        String bustedUrl = urlStr + (urlStr.contains("?") ? "&" : "?")
+                + "_t=" + System.currentTimeMillis();
+        HttpURLConnection conn = followRedirects(bustedUrl, READ_TIMEOUT_MS, false);
+        try (InputStream in = conn.getInputStream()) {
+            return in.readAllBytes();
+        } finally {
+            conn.disconnect();
+        }
+    }
+
     private String downloadGitHubApi(String urlStr) throws IOException {
         String bustedUrl = urlStr + (urlStr.contains("?") ? "&" : "?")
                 + "_t=" + System.currentTimeMillis();
@@ -538,8 +621,32 @@ public class UpdateManager {
         }
     }
 
+    /**
+     * Dosyayı indirir; bağlantı kopması gibi geçici hatalarda artan bekleme ile
+     * {@link #DOWNLOAD_ATTEMPTS} kez dener. İptal edilirse yeniden denenmez.
+     */
     private void downloadFile(String urlStr, File dest,
                               Consumer<Long> onBytesRead) throws IOException {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                downloadFileOnce(urlStr, dest, onBytesRead);
+                return;
+            } catch (IOException e) {
+                if (cancelRequested || attempt >= DOWNLOAD_ATTEMPTS) throw e;
+                log.warn("İndirme hatası (deneme {}/{}): {} — yeniden denenecek",
+                        attempt, DOWNLOAD_ATTEMPTS, e.getMessage());
+                try {
+                    Thread.sleep(2_000L * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+    }
+
+    private void downloadFileOnce(String urlStr, File dest,
+                                  Consumer<Long> onBytesRead) throws IOException {
         HttpURLConnection conn = followRedirects(urlStr, DOWNLOAD_TIMEOUT_MS, false);
         try (InputStream in  = conn.getInputStream();
              OutputStream out = Files.newOutputStream(dest.toPath())) {
