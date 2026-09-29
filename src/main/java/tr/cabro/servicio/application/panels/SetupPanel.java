@@ -8,6 +8,7 @@ import tr.cabro.servicio.application.MainUI;
 import tr.cabro.servicio.application.component.AmbientLights;
 import tr.cabro.servicio.application.component.FormKit;
 import tr.cabro.servicio.application.component.detail.DetailKit;
+import tr.cabro.servicio.application.panels.setting.BackupRestoreDialog;
 import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.ErrorHandler;
@@ -73,6 +74,8 @@ public class SetupPanel extends Form {
         lead.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground; background: null; margin: 0,0,0,0");
         p.add(lead, "gaptop 4, wmin 0");
 
+        p.add(restoreRow(), "gaptop 16");
+
         p.add(new JSeparator(), "gaptop 18, gapbottom 16");
 
         p.add(DetailKit.title("İşletme"));
@@ -103,6 +106,24 @@ public class SetupPanel extends Form {
             @Override public void actionPerformed(ActionEvent e) { if (btnSave.isEnabled()) save(); }
         });
         return p;
+    }
+
+    /**
+     * Yeni bilgisayara taşınırken ya da yeniden kurulumda: yeni işletme ve PIN oluşturmak yerine eski
+     * yedekle devam edilir. Yedek geri yüklenince yedekteki PIN ile giriş ekranı açılır.
+     */
+    private JComponent restoreRow() {
+        JPanel row = new JPanel(new MigLayout("insets 10 12 10 12, fillx, gap 10", "[grow][]", "[center]"));
+        row.putClientProperty(FlatClientProperties.STYLE, "arc: 12; background: fade($Component.accentColor,8%)");
+        JLabel text = new JLabel("<html><b>Daha önce Servicio kullandınız mı?</b><br>"
+                + "Yedeğinizi yükleyin; verileriniz ve PIN'iniz olduğu gibi gelir.</html>");
+        text.putClientProperty(FlatClientProperties.STYLE, "font: -1");
+        JButton restore = DetailKit.secondaryButton("Yedekten yükle…", "icons/archive-restore.svg", null);
+        restore.setToolTipText("Başka bir bilgisayardan ya da USB bellekten Servicio yedeğini (.zip ya da .db) seçin");
+        restore.addActionListener(e -> BackupRestoreDialog.chooseFile(this, FormManager::resetAfterRestore));
+        row.add(text, "wmin 0");
+        row.add(restore);
+        return row;
     }
 
     private JComponent photoRow() {

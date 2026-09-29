@@ -3,6 +3,9 @@ package tr.cabro.servicio.application.system;
 import lombok.Getter;
 import raven.modal.Drawer;
 import raven.modal.ModalDialog;
+import raven.modal.Toast;
+import tr.cabro.servicio.application.utils.Toasts;
+import tr.cabro.servicio.i18n.Messages;
 import raven.modal.component.SimpleModalBorder;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.About;
@@ -205,6 +208,18 @@ public class FormManager {
         pendingModals = AppModal.captureOpenAndClear();
         lock();
         ModalDialog.closeAllModalImmediately();
+    }
+
+    /**
+     * Yedek geri yüklendikten sonra: açık tüm modallar (Ayarlar dahil) kilit sonrası geri gelmemek üzere
+     * kapatılır, eski verili formlar temizlenir ve giriş ekranına dönülür.
+     */
+    public static void resetAfterRestore() {
+        AppModal.captureOpenAndClear();
+        pendingModals = null;
+        ModalDialog.closeAllModalImmediately();
+        logout();
+        SwingUtilities.invokeLater(() -> Toasts.show(frame, Toast.Type.SUCCESS, Messages.get("backup.restore.done")));
     }
 
     /** PIN doğrulandıktan sonra tek giriş noktası: kaldığı yere döner, varsa bekleyen modalı yeniden açar. */

@@ -170,7 +170,7 @@ public final class Servicio {
         BackupMode current = AppSettings.get().getBackup().getMode();
         for (BackupMode m : modes) {
             if (current == m) {
-                DatabaseManager.backup();
+                BackupManager.createQuietly(BackupManager.Kind.AUTO);
                 break;
             }
         }

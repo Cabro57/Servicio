@@ -71,6 +71,11 @@ public final class CryptoUtil {
         }
     }
 
+    /** Yedekten geri yüklemede anahtar dosyası değişince bellekteki anahtar unutulur. */
+    public static synchronized void resetKeyCache() {
+        cachedKey = null;
+    }
+
     private static synchronized SecretKey getOrCreateKey() throws Exception {
         if (cachedKey != null) return cachedKey;
 

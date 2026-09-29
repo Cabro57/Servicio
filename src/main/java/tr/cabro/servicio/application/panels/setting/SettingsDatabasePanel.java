@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.SystemFileChooser;
@@ -8,7 +9,7 @@ import raven.modal.Toast;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.database.BackupScheduler;
-import tr.cabro.servicio.database.DatabaseManager;
+import tr.cabro.servicio.database.BackupManager;
 import tr.cabro.servicio.i18n.AppLocale;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.i18n.Messages;
@@ -22,12 +23,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -55,10 +54,12 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
     private JLabel intervalLabel;
     private JLabel nextBackupLabel;
     private JTextField folderField;
-    private DefaultListModel<File> backupModel;
-    private JList<File> backupList;
+    private DefaultListModel<BackupManager.Entry> backupModel;
+    private JList<BackupManager.Entry> backupList;
     private JButton restoreButton;
     private JLabel emptyLabel;
+    /** Veri klasörüne düşmüş yedekler; yol karşılaştırması disk erişimi gerektirdiği için arka planda hesaplanır. */
+    private Set<File> fallbackFiles = Set.of();
 
     public SettingsDatabasePanel() {
         setLayout(new MigLayout("fill, insets 0", "[grow, fill]", "[top]"));
@@ -172,15 +173,21 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
         restoreButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         restoreButton.setEnabled(false);
         restoreButton.addActionListener(e -> restoreSelectedBackup());
+        JButton fromFile = new JButton("Dosyadan geri yükle…", new Ikon("icons/folder-search.svg", 16));
+        fromFile.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
+        fromFile.setToolTipText("Başka bir klasördeki ya da USB bellekteki yedeği seçin");
+        fromFile.addActionListener(e -> BackupRestoreDialog.chooseFile(this, this::afterRestore));
 
         JPanel backups = SettingsKit.stack();
         backups.add(emptyLabel);
         backups.add(listScroll, "h 90:220:220, wmin 0");
-        JPanel restoreRow = new JPanel(new MigLayout("insets 0, gap 10", "[][grow]", "[center]"));
+        JPanel restoreRow = new JPanel(new MigLayout("insets 0, gap 8, hidemode 3", "[][]", "[center]"));
         restoreRow.setOpaque(false);
         restoreRow.add(restoreButton);
-        restoreRow.add(SettingsKit.note("Mevcut veriler seçilen yedekle değiştirilir; geri alınamaz."), "wmin 0");
+        restoreRow.add(fromFile);
         backups.add(restoreRow, "wmin 0");
+        backups.add(SettingsKit.wrappingNote("Geri yüklemeden önce mevcut verinin yedeği otomatik alınır. Otomatik yedeklerden "
+                + "en yeni 20 tanesi ve son 30 günün her gününden biri saklanır; elle alınan yedekler silinmez."), "wmin 0, wmax 420");
         SettingsKit.section(page, "Yedekler", "En yeni yedek en üstte. Geri yüklemeden sonra yeniden giriş yapılır.", backups);
 
         return page;
@@ -227,42 +234,51 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
 
         // Klasör USB ya da ağ sürücüsünde olabilir; listeleme EDT'yi bekletmesin.
         CompletableFuture.supplyAsync(() -> {
-            File[] files = dir.listFiles((d, name) -> name.endsWith(".db") || name.endsWith(".sql"));
-            return files == null ? List.<File>of()
-                    : Arrays.stream(files).sorted(Comparator.comparingLong(File::lastModified).reversed()).toList();
-        }).thenAccept(sorted -> SwingUtilities.invokeLater(() -> {
+            List<BackupManager.Entry> entries = BackupManager.listAll();
+            Set<File> fallback = entries.stream().filter(BackupManager::isInFallback)
+                    .map(BackupManager.Entry::file).collect(Collectors.toSet());
+            return new BackupState(entries, fallback, BackupManager.currentProblem());
+        }).thenAccept(state -> SwingUtilities.invokeLater(() -> {
             // Bu arada klasör değiştiyse eski sonuç gösterilmez.
-            if (dir.equals(AppSettings.getBackupDir())) showBackups(sorted);
+            if (!dir.equals(AppSettings.getBackupDir())) return;
+            fallbackFiles = state.fallback();
+            showBackups(state.entries(), state.problem());
         }));
     }
 
-    private void showBackups(List<File> sorted) {
+    private record BackupState(List<BackupManager.Entry> entries, Set<File> fallback, String problem) {
+    }
+
+    private void showBackups(List<BackupManager.Entry> sorted, String problem) {
         backupModel.clear();
         sorted.forEach(backupModel::addElement);
         boolean empty = sorted.isEmpty();
         emptyLabel.setVisible(empty);
         backupList.getParent().getParent().setVisible(!empty);
-        restoreButton.getParent().setVisible(!empty);
+        restoreButton.setVisible(!empty);
         restoreButton.setEnabled(false);
 
-        updateStatus(empty ? null : sorted.get(0), sorted.size());
+        updateStatus(empty ? null : sorted.get(0), sorted.size(), problem);
         revalidate();
         repaint();
     }
 
-    private void updateStatus(File latest, int count) {
+    private void updateStatus(BackupManager.Entry latest, int count, String problem) {
         if (latest == null) {
             statusIcon.setIcon(new Ikon("icons/circle-x.svg", 20, "Servicio.dangerColor"));
             statusTitle.setText("Hiç yedek yok");
-            statusDetail.setText("Bilgisayar arızalanırsa veriler kurtarılamaz. Şimdi bir yedek alın.");
+            statusDetail.setText(problem != null ? problem
+                    : "Bilgisayar arızalanırsa veriler kurtarılamaz. Şimdi bir yedek alın.");
             return;
         }
-        Duration age = Duration.between(Instant.ofEpochMilli(latest.lastModified()), Instant.now());
-        boolean stale = age.toDays() >= STALE_DAYS;
-        statusIcon.setIcon(new Ikon(stale ? "icons/triangle-alert.svg" : "icons/circle-check.svg", 20,
-                stale ? "Servicio.warningColor" : "Servicio.successColor"));
+        Duration age = Duration.between(latest.createdAt(), LocalDateTime.now());
+        boolean warn = age.toDays() >= STALE_DAYS || problem != null;
+        statusIcon.setIcon(new Ikon(warn ? "icons/triangle-alert.svg" : "icons/circle-check.svg", 20,
+                warn ? "Servicio.warningColor" : "Servicio.successColor"));
         statusTitle.setText("Son yedek " + relative(age));
-        statusDetail.setText(dateTime(latest) + " · " + fileSize(latest.length()) + " · toplam " + count + " yedek");
+        String detail = latest.createdAt().format(DateFormats.dateTime()) + " · " + fileSize(latest.file().length())
+                + " · toplam " + count + " yedek";
+        statusDetail.setText(problem != null ? problem : detail);
     }
 
     // ------------------------------------------------------------------ eylemler
@@ -270,27 +286,30 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
     private void backupNow() {
         backupNowButton.setEnabled(false);
         backupNowButton.setText("Yedekleniyor…");
-        new SwingWorker<Boolean, Void>() {
+        new SwingWorker<File, Void>() {
             @Override
-            protected Boolean doInBackground() {
-                return DatabaseManager.backup();
+            protected File doInBackground() throws Exception {
+                return BackupManager.create(BackupManager.Kind.MANUAL);
             }
 
             @Override
             protected void done() {
                 backupNowButton.setEnabled(true);
                 backupNowButton.setText("Şimdi yedekle");
-                boolean ok;
+                File created = null;
                 try {
-                    ok = get();
+                    created = get();
                 } catch (Exception ex) {
-                    ok = false;
+                    Servicio.getLogger().error("Elle yedek alınamadı", ex);
                 }
                 refreshBackups();
                 refreshSchedule();
-                if (ok && !backupModel.isEmpty()) {
+                if (created != null && BackupManager.isInFallback(created)) {
+                    Toasts.show(SettingsDatabasePanel.this, Toast.Type.WARNING,
+                            "Yedek klasörüne ulaşılamadı; yedek veri klasörüne alındı: " + created.getName());
+                } else if (created != null) {
                     Toasts.show(SettingsDatabasePanel.this, Toast.Type.SUCCESS,
-                            Messages.get("toast.backup.done", backupModel.get(0).getName()));
+                            Messages.get("toast.backup.done", created.getName()));
                 } else {
                     Toasts.show(SettingsDatabasePanel.this, Toast.Type.ERROR, Messages.get("toast.backup.failed"));
                 }
@@ -299,24 +318,17 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
     }
 
     private void restoreSelectedBackup() {
-        File selected = backupList.getSelectedValue();
+        BackupManager.Entry selected = backupList.getSelectedValue();
         if (selected == null) {
             DialogHelper.error(this, "backup.select.required");
             return;
         }
+        BackupRestoreDialog.show(this, selected.file(), this::afterRestore);
+    }
 
-        DictionaryDialogs.confirm(this, "Yedek geri yüklensin mi?",
-                "Şu anki veriler \"" + selected.getName() + "\" yedeğindeki haliyle değiştirilir. Yedekten sonra girilen "
-                        + "kayıtlar kaybolur; bu işlem geri alınamaz. Emin değilseniz önce \"Şimdi yedekle\" ile güncel bir yedek alın.",
-                "Geri yükle", () -> {
-                    // Bilerek EDT'de: geri yükleme sürerken başka ekranlar kapanan havuza sorgu atmasın.
-                    DatabaseManager.restore(selected);
-                    return java.util.concurrent.CompletableFuture.completedFuture(null);
-                }, () -> {
-                    // Tüm formları sıfırla — eski cached data'yı temizle
-                    FormManager.lock(); // Kilit ekranına at, stack temizlensin
-                    DialogHelper.info(this, "backup.restore.done");
-                });
+    private void afterRestore() {
+        // Ayarlar penceresi kapanır, eski verili formlar temizlenir, giriş ekranına dönülür.
+        FormManager.resetAfterRestore();
     }
 
     private void chooseFolder() {
@@ -331,11 +343,6 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
     }
 
     // ------------------------------------------------------------------ biçimlendirme
-
-    private static String dateTime(File file) {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(file.lastModified()), ZoneId.systemDefault())
-                .format(DateFormats.dateTime());
-    }
 
     private static String relative(Duration age) {
         long minutes = age.toMinutes();
@@ -353,8 +360,8 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
         return String.format(AppLocale.formatLocale(), "%.1f MB", bytes / (1024.0 * 1024.0));
     }
 
-    /** Yedek satırı: solda tarih, altında yaş; sağda boyut. */
-    private static final class BackupRenderer extends JPanel implements ListCellRenderer<File> {
+    /** Yedek satırı: solda tarih ve tür, altında yaş ve dosya adı; sağda boyut. */
+    private final class BackupRenderer extends JPanel implements ListCellRenderer<BackupManager.Entry> {
         private final JLabel date = new JLabel();
         private final JLabel age = new JLabel();
         private final JLabel size = new JLabel();
@@ -370,12 +377,13 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
         }
 
         @Override
-        public Component getListCellRendererComponent(JList<? extends File> list, File file, int index,
-                                                      boolean selected, boolean focused) {
-            date.setText(dateTime(file));
-            age.setText(relative(Duration.between(Instant.ofEpochMilli(file.lastModified()), Instant.now()))
-                    + " · " + file.getName());
-            size.setText(fileSize(file.length()));
+        public Component getListCellRendererComponent(JList<? extends BackupManager.Entry> list, BackupManager.Entry entry,
+                                                      int index, boolean selected, boolean focused) {
+            date.setText(entry.createdAt().format(DateFormats.dateTime()) + " · " + entry.kind().getLabel()
+                    + (entry.appVersion() != null ? " · v" + entry.appVersion() : ""));
+            age.setText(relative(Duration.between(entry.createdAt(), LocalDateTime.now())) + " · " + entry.file().getName()
+                    + (fallbackFiles.contains(entry.file()) ? " · veri klasöründe" : ""));
+            size.setText(fileSize(entry.file().length()));
 
             Color fg = selected ? list.getSelectionForeground() : list.getForeground();
             Color muted = selected ? list.getSelectionForeground() : UIManager.getColor("Label.disabledForeground");

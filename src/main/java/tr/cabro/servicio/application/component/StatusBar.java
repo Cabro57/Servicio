@@ -10,19 +10,17 @@ import tr.cabro.servicio.application.system.AllForms;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.system.QuickAction;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.database.BackupManager;
 import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.util.Format;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Arrays;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -207,31 +205,30 @@ public class StatusBar extends JPanel {
      * arka planda yapılır.
      */
     private void refreshBackup() {
-        File dir = AppSettings.getBackupDir();
-        CompletableFuture.supplyAsync(() -> latestBackup(dir))
-                .thenAccept(latest -> SwingUtilities.invokeLater(() -> showBackup(latest)));
+        CompletableFuture.supplyAsync(BackupManager::latestBackupTime)
+                .thenCombine(CompletableFuture.supplyAsync(BackupManager::currentProblem), BackupView::new)
+                .thenAccept(view -> SwingUtilities.invokeLater(() -> showBackup(view.latest(), view.problem())));
     }
 
-    static long latestBackup(File dir) {
-        File[] files = dir.listFiles((d, name) -> name.endsWith(".db") || name.endsWith(".sql"));
-        return files == null ? 0 : Arrays.stream(files).mapToLong(File::lastModified).max().orElse(0);
+    private record BackupView(LocalDateTime latest, String problem) {
     }
 
-    private void showBackup(long latest) {
+    private void showBackup(LocalDateTime latest, String problem) {
         String text;
         String color;
         String icon;
-        if (latest == 0) {
+        if (latest == null) {
             text = "Yedek yok";
             color = "Servicio.dangerColor";
             icon = "icons/triangle-alert.svg";
         } else {
-            Duration age = Duration.between(Instant.ofEpochMilli(latest), Instant.now());
+            Duration age = Duration.between(latest, LocalDateTime.now());
             boolean stale = age.toDays() >= BACKUP_STALE_DAYS;
             text = "Yedek " + relative(age);
-            color = stale ? "Servicio.warningColor" : null;
-            icon = stale ? "icons/triangle-alert.svg" : "icons/database-backup.svg";
+            color = stale || problem != null ? "Servicio.warningColor" : null;
+            icon = color != null ? "icons/triangle-alert.svg" : "icons/database-backup.svg";
         }
+        backup.setToolTipText(problem != null ? problem : "Yedekleme ayarlarını aç");
         backup.setText(text);
         backup.setIcon(new Ikon(icon, 13, color != null ? color : "Label.disabledForeground"));
         backup.putClientProperty(FlatClientProperties.STYLE, "arc: 8; margin: 2,8,2,8; iconTextGap: 6; font: -1;"

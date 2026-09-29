@@ -3,6 +3,9 @@ package tr.cabro.servicio.database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationInfo;
+import org.flywaydb.core.api.MigrationInfoService;
+import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.jdbi.v3.core.HandleCallback;
 import org.jdbi.v3.core.HandleConsumer;
@@ -14,35 +17,33 @@ import tr.cabro.servicio.database.argument.LocalDateTimeArgumentFactory;
 import tr.cabro.servicio.database.mapper.SQLiteBigDecimalMapper;
 import tr.cabro.servicio.database.mapper.SQLiteDateMapper;
 import tr.cabro.servicio.database.mapper.SQLiteDateTimeMapper;
-import tr.cabro.servicio.service.ServiceManager;
-import tr.cabro.servicio.settings.AppSettings;
 
 import java.io.File;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class DatabaseManager {
 
     private static HikariDataSource dataSource;
     private static final String DB_FILE_NAME = "database.db";
     private static Jdbi jdbi;
+    private static volatile boolean restoring;
+    private static volatile String latestSchemaVersion;
 
     // --- BAŞLATMA VE AYARLAR (Config + Initializer Birleşimi) ---
 
     public static void initialize() {
         try {
             // 1. Klasör kontrolü
-            File dbFolder = new File(Servicio.getInstance().getDataFolder(), "database");
+            File dbFile = databaseFile();
+            File dbFolder = dbFile.getParentFile();
             if (!dbFolder.exists()) dbFolder.mkdirs();
 
-            File dbFile = new File(dbFolder, DB_FILE_NAME);
             boolean isFirstRun = !dbFile.exists();
             String dbPath = dbFile.getAbsolutePath();
 
@@ -63,27 +64,40 @@ public class DatabaseManager {
 
             dataSource = new HikariDataSource(config);
 
-            jdbi = Jdbi.create(dataSource);
+            // Jdbi bir kez kurulur ve bağlantıyı her seferinde o anki havuzdan ister. Geri yüklemede havuz
+            // yenilense de servislerin ve ekranların elindeki repository'ler kapanmış havuza bağlı kalmaz.
+            if (jdbi == null) {
+                jdbi = Jdbi.create(() -> getConnection());
 
-            // Gerekli eklentileri yükle
-            jdbi.installPlugin(new SqlObjectPlugin());
-            jdbi.installPlugin(new SQLitePlugin());
-            jdbi.registerArgument(new LocalDateTimeArgumentFactory());
-            jdbi.registerColumnMapper(LocalDateTime.class, new SQLiteDateTimeMapper());
-            jdbi.registerColumnMapper(LocalDate.class, new SQLiteDateMapper());
-            jdbi.registerColumnMapper(BigDecimal.class, new SQLiteBigDecimalMapper());
-
-            // 4. Migration (Flyway) ve İlk Yedek
-            if (!isFirstRun) {
-                Servicio.getLogger().info("Migration öncesi güvenlik yedeği alınıyor...");
-                backup("pre-migrate");
+                // Gerekli eklentileri yükle
+                jdbi.installPlugin(new SqlObjectPlugin());
+                jdbi.installPlugin(new SQLitePlugin());
+                jdbi.registerArgument(new LocalDateTimeArgumentFactory());
+                jdbi.registerColumnMapper(LocalDateTime.class, new SQLiteDateTimeMapper());
+                jdbi.registerColumnMapper(LocalDate.class, new SQLiteDateMapper());
+                jdbi.registerColumnMapper(BigDecimal.class, new SQLiteBigDecimalMapper());
             }
 
+            // 4. Migration (Flyway) ve migration öncesi yedek
             Flyway flyway = Flyway.configure()
                     .dataSource(dataSource)
                     .locations("classpath:db/migration")
                     .baselineOnMigrate(true)
                     .load();
+
+            MigrationInfoService info = flyway.info();
+            latestSchemaVersion = Arrays.stream(info.all())
+                    .filter(m -> m.getState().isResolved() && m.getVersion() != null)
+                    .map(MigrationInfo::getVersion)
+                    .max(Comparator.naturalOrder())
+                    .map(MigrationVersion::getVersion)
+                    .orElse(null);
+
+            // Yalnızca gerçekten bekleyen migration varsa; her açılışta alınıp bir öncekini ezmesin.
+            if (!isFirstRun && info.pending().length > 0) {
+                Servicio.getLogger().info("Migration öncesi güvenlik yedeği alınıyor...");
+                BackupManager.createQuietly(BackupManager.Kind.PRE_MIGRATE);
+            }
 
             MigrateResult result = flyway.migrate();
 
@@ -93,7 +107,7 @@ public class DatabaseManager {
             }
 
         } catch (Exception e) {
-            Servicio.getLogger().error("Veritabanı başlatma hatası: {}", e.getMessage());
+            Servicio.getLogger().error("Veritabanı başlatma hatası", e);
             throw new RuntimeException(e);
         }
     }
@@ -105,6 +119,7 @@ public class DatabaseManager {
     }
 
     public static Connection getConnection() throws SQLException {
+        if (restoring) throw new SQLException("Yedek geri yükleniyor; veritabanı geçici olarak kapalı.");
         if (dataSource == null || dataSource.isClosed()) initialize();
         return dataSource.getConnection();
     }
@@ -123,6 +138,7 @@ public class DatabaseManager {
     }
 
     public static Jdbi getJdbi() {
+        if (restoring) throw new IllegalStateException("Yedek geri yükleniyor; veritabanı geçici olarak kapalı.");
         if (jdbi == null) initialize();
         return jdbi;
     }
@@ -151,65 +167,28 @@ public class DatabaseManager {
         getJdbi().useTransaction(consumer);
     }
 
-    // --- YEDEKLEME VE GERİ YÜKLEME İŞLEMLERİ ---
+    // --- GERİ YÜKLEME DESTEĞİ (bkz. BackupManager) ---
 
-    /** Canlı yedek alır; başarılıysa {@code true}. Hata loglanır, çağıranı durdurmaz. */
-    public static boolean backup(String fileName) {
-        try {
-            File backupDir = AppSettings.getBackupDir();
-            backupDir.mkdirs();
-
-            if (fileName == null || fileName.trim().isEmpty()) {
-                fileName = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmmss"));
-            }
-            if (!fileName.endsWith(".db")) fileName += ".db";
-
-            String targetPath = new File(backupDir, fileName).getAbsolutePath().replace("\\", "/");
-
-            try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
-                File existingFile = new File(targetPath);
-                if (existingFile.exists()) existingFile.delete();
-
-                // Canlı yedek alma komutu
-                stmt.execute("VACUUM INTO '" + targetPath + "'");
-            }
-            Servicio.getLogger().info("Yedek alındı: {}", fileName);
-            return true;
-
-        } catch (Exception e) {
-            Servicio.getLogger().error("Yedekleme başarısız: {}", e.getMessage());
-            return false;
-        }
+    /** Canlı veritabanı dosyası. */
+    public static File databaseFile() {
+        return new File(new File(Servicio.getInstance().getDataFolder(), "database"), DB_FILE_NAME);
     }
 
-    public static boolean backup() {
-        return backup(null);
+    /** Uygulamanın bildiği en yeni şema sürümü (ör. "28"); daha yeni sürümün yedeğini reddetmek için. */
+    public static String getLatestSchemaVersion() {
+        return latestSchemaVersion;
     }
 
-    // DatabaseManager.java
-    public static void restore(File backupFile) {
-        if (!backupFile.exists()) return;
+    /**
+     * Havuzu kapatır ve geri yükleme bitene kadar yeniden açılmasını engeller. Bu sırada bağlantı
+     * isteyen arka plan işi, kapalı havuzu sessizce eski dosyayla yeniden açmak yerine hata alır.
+     */
+    static void beginRestore() {
+        restoring = true;
+        shutdown();
+    }
 
-        Servicio.getLogger().warn("Geri yükleme başlatılıyor. Veritabanı kapatılıyor...");
-
-        try {
-            shutdown();
-
-            File dbFile = new File(Servicio.getInstance().getDataFolder() + "/database", DB_FILE_NAME);
-            Files.copy(backupFile.toPath(), dbFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
-            new File(dbFile.getAbsolutePath() + "-wal").delete();
-            new File(dbFile.getAbsolutePath() + "-shm").delete();
-
-            initialize();           // 1. DB havuzunu yenile
-            ServiceManager.initialize(); // 2. Servisleri yeni JDBI ile yeniden bağla
-
-            Servicio.getLogger().info("Geri yükleme başarılı: {}", backupFile.getName());
-
-        } catch (Exception e) {
-            Servicio.getLogger().error("Geri yükleme kritik hata: {}", e.getMessage());
-            initialize();
-            ServiceManager.initialize();
-        }
+    static void endRestore() {
+        restoring = false;
     }
 }

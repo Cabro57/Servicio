@@ -55,3 +55,9 @@ packaging/dist/
 
 # Manifest imzasi release.ps1 tarafindan uretilir, release ekidir
 /update-manifest.json.sig
+
+# Claude Code kisisel ayarlari (yayin izinleri)
+/.claude/settings.local.json
+
+### Yerel ürünleştirme planı (commit edilmez) ###
+docs/URUNLESTIRME_PLANI.md
