@@ -9,9 +9,11 @@ import java.util.Arrays;
 @Getter
 @EnumByName
 public enum ServiceStatus implements Visualizable {
-    // Renkler durumun ANLAMINI taşır: altı durumun altısı da ayrı renk alır.
+    // Renkler durumun ANLAMINI taşır: yedi durumun yedisi de ayrı renk alır.
     // Eskiden READY, DELIVERED ve WAITING_FOR_PART yeşilin üç tonuydu — bloke bir cihaz
     // ile teslim edilmiş bir cihaz listede aynı görünüyordu ve renk kanalı bilgi taşımıyordu.
+    /** Başlangıç durumu: cihaz teslim alındı, işe henüz başlanmadı. */
+    ACCEPTED("Kabul Edildi", "icons/clipboard-list.svg", BadgeColor.TEAL),
     /** Üzerinde çalışılıyor — süregelen iş. */
     UNDER_REPAIR("Tamirde", "icons/wrench.svg", BadgeColor.BLUE),
     /** Bitti, müşteri aranacak — kullanıcıdan hamle bekleyen tek durum. */
@@ -32,6 +34,11 @@ public enum ServiceStatus implements Visualizable {
         this.displayName = displayName;
         this.iconPath = iconPath;
         this.badgeColor = badgeColor;
+    }
+
+    /** Teslim edilmiş ya da iade edilmiş kayıt kapalıdır: durum, kalemler ve notlar değiştirilemez. */
+    public boolean isClosed() {
+        return this == DELIVERED || this == RETURN;
     }
 
     public static ServiceStatus of(String name) {

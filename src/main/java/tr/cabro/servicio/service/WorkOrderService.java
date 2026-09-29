@@ -15,7 +15,10 @@ import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.model.enums.StockItemKind;
 import tr.cabro.servicio.service.exception.ValidationException;
 
+import tr.cabro.servicio.util.Format;
+
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -34,6 +37,9 @@ public class WorkOrderService {
     private final PaymentRepository paymentRepository;
 
     private static final int IN_CHUNK = 500;
+
+    /** Saat farkı / dakika yuvarlaması için gelecek tarih kontrolünde tanınan pay. */
+    private static final Duration FUTURE_TOLERANCE = Duration.ofMinutes(5);
 
     public WorkOrderService(WorkOrderRepository workOrderRepository,
                             ServiceItemRepository itemRepository,
@@ -87,6 +93,12 @@ public class WorkOrderService {
      * Cihaz zaten sistemdeyse (deviceId dolu) doğrudan servisi ekler.
      */
     private CompletableFuture<WorkOrder> saveNew(WorkOrder workOrder) {
+        if (workOrder.getServiceStatus() != null && workOrder.getServiceStatus().isClosed()) {
+            throw new ValidationException("Yeni servis kaydı teslim edildi ya da iade durumunda açılamaz.");
+        }
+        if (workOrder.getReceivedAt() != null) {
+            requireNotFuture(workOrder.getReceivedAt(), LocalDateTime.now());
+        }
         if (workOrder.getDeviceId() == null) {
             // Önce cihazı kaydet, ID'yi al, sonra servisi ekle
             return deviceService.save(workOrder.getDevice(), false)
@@ -106,21 +118,43 @@ public class WorkOrderService {
      * Cihaz nesnesi varsa onu da günceller; cihaz yoksa sadece servisi günceller.
      */
     private CompletableFuture<WorkOrder> saveUpdate(WorkOrder workOrder) {
-        if (workOrder.getDevice() != null && workOrder.getDeviceId() != null) {
-            // Cihazı güncelle, sonra servisi güncelle
-            return deviceService.save(workOrder.getDevice(), true)
-                    .thenCompose(updatedDevice -> updateWorkOrder(workOrder));
-        } else {
-            return updateWorkOrder(workOrder);
-        }
+        // Kapalı kayıtta cihaz da güncellenmesin diye kontrol zincirin başında.
+        return DbExecutor.run(() -> requireOpen(workOrderRepository, workOrder.getId()))
+                .thenCompose(ignored -> {
+                    if (workOrder.getDevice() != null && workOrder.getDeviceId() != null) {
+                        // Cihazı güncelle, sonra servisi güncelle
+                        return deviceService.save(workOrder.getDevice(), true)
+                                .thenCompose(updatedDevice -> updateWorkOrder(workOrder));
+                    }
+                    return updateWorkOrder(workOrder);
+                });
     }
 
+    /**
+     * Kayıt her zaman "Kabul Edildi" geçmiş satırıyla başlar (teslim alma tarihi). İstenen başlangıç
+     * durumu farklıysa (ör. doğrudan tamire alındı) aynı anda ikinci bir geçiş yazılır.
+     */
     private CompletableFuture<WorkOrder> insertWorkOrder(WorkOrder workOrder) {
-        return DbExecutor.supply(() -> {
-            Long id = workOrderRepository.insert(workOrder);
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime receivedAt = workOrder.getReceivedAt() != null ? workOrder.getReceivedAt() : now;
+            ServiceStatus initial = workOrder.getServiceStatus() != null ? workOrder.getServiceStatus() : ServiceStatus.ACCEPTED;
+            workOrder.setServiceStatus(initial);
+
+            Long id = handle.attach(WorkOrderRepository.class).insert(workOrder);
+            WorkOrderStatusHistoryRepository history = handle.attach(WorkOrderStatusHistoryRepository.class);
+            history.insert(id, ServiceStatus.ACCEPTED, receivedAt, now);
+            if (initial != ServiceStatus.ACCEPTED) {
+                history.insert(id, initial, receivedAt, now);
+            }
+
             workOrder.setId(id);
+            workOrder.setReceivedAt(receivedAt);
+            workOrder.setStatusChangedAt(receivedAt);
+            if (initial == ServiceStatus.UNDER_REPAIR) workOrder.setRepairStartedAt(receivedAt);
+            if (initial == ServiceStatus.READY) workOrder.setReadyAt(receivedAt);
             return workOrder;
-        });
+        }));
     }
 
     private CompletableFuture<WorkOrder> updateWorkOrder(WorkOrder workOrder) {
@@ -131,19 +165,115 @@ public class WorkOrderService {
     }
 
     public CompletableFuture<Void> updateStatus(Long id, ServiceStatus newStatus) {
+        return updateStatus(id, newStatus, null);
+    }
+
+    /**
+     * Durumu değiştirir ve geçişi durum geçmişine yazar.
+     *
+     * @param changedAt geçişin gerçekleştiği an; null ise şimdi. Bir önceki geçişten önce ve
+     *                  gelecekte olamaz.
+     */
+    public CompletableFuture<Void> updateStatus(Long id, ServiceStatus newStatus, LocalDateTime changedAt) {
         if (id == null || newStatus == null) {
             throw new ValidationException("ID ve durum boş olamaz.");
         }
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime at = changedAt != null ? changedAt : now;
+        requireNotFuture(at, now);
 
-        LocalDateTime deliveryDate = (newStatus == ServiceStatus.DELIVERED || newStatus == ServiceStatus.RETURN)
-                ? LocalDateTime.now()
-                : null;
-
-        // "İade" durumunda servisin parçaları stoğa döner, başka duruma geçince yeniden düşülür;
-        // stok yetmezse durum değişmez (tek transaction).
+        // "İade" durumunda servisin parçaları stoğa döner; stok yetmezse durum değişmez (tek transaction).
         return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
-            handle.attach(WorkOrderRepository.class).updateStatus(id, newStatus, deliveryDate, LocalDateTime.now());
+            WorkOrderRepository repo = handle.attach(WorkOrderRepository.class);
+            ServiceStatus current = requireOpen(repo, id);
+            if (current == newStatus) return;
+
+            WorkOrderStatusHistoryRepository history = handle.attach(WorkOrderStatusHistoryRepository.class);
+            List<WorkOrderStatusHistory> rows = history.findByWorkOrderId(id);
+            if (!rows.isEmpty()) {
+                requireNotBefore(at, rows.get(rows.size() - 1));
+            }
+            history.insert(id, newStatus, at, now);
+            repo.updateStatus(id, newStatus, now);
             syncStock(handle, id, false);
+        }));
+    }
+
+    /**
+     * Teslimi ya da iadeyi geri alır: kapanış geçişi geçmişten silinir, kayıt bir önceki durumuna
+     * döner ve yeniden düzenlenebilir. Yeni bir geçiş yazılmaz; önceki durumun tarihi (ör. hazır
+     * olma) olduğu gibi kalır. İadeden dönüşte parçalar yeniden stoktan düşülür; stok yetmezse
+     * hiçbir şey değişmez.
+     *
+     * @return kaydın döndüğü durum
+     */
+    public CompletableFuture<ServiceStatus> reopen(Long id) {
+        if (id == null) {
+            throw new ValidationException("ID boş olamaz.");
+        }
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
+            WorkOrderRepository repo = handle.attach(WorkOrderRepository.class);
+            ServiceStatus current = repo.findStatus(id)
+                    .orElseThrow(() -> new ValidationException("Servis kaydı bulunamadı."));
+            if (!current.isClosed()) {
+                throw new ValidationException("Servis kaydı zaten açık.");
+            }
+
+            WorkOrderStatusHistoryRepository history = handle.attach(WorkOrderStatusHistoryRepository.class);
+            List<WorkOrderStatusHistory> rows = history.findByWorkOrderId(id);
+            if (rows.isEmpty() || rows.get(rows.size() - 1).getStatus() != current) {
+                throw new ValidationException("Durum geçmişi tutarsız; teslim geri alınamadı.");
+            }
+            ServiceStatus previous = rows.size() >= 2 ? rows.get(rows.size() - 2).getStatus() : ServiceStatus.ACCEPTED;
+
+            history.delete(rows.get(rows.size() - 1).getId());
+            repo.updateStatus(id, previous, LocalDateTime.now());
+            syncStock(handle, id, false);
+            return previous;
+        }));
+    }
+
+    /** Servis kaydının durum geçişleri, eskiden yeniye. */
+    public CompletableFuture<List<WorkOrderStatusHistory>> getStatusHistory(Long workOrderId) {
+        return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle ->
+                handle.attach(WorkOrderStatusHistoryRepository.class).findByWorkOrderId(workOrderId)));
+    }
+
+    /**
+     * Bir durum geçişinin tarihini düzeltir (ör. teslim alma tarihi = "Kabul Edildi" satırı).
+     * Yeni tarih komşu geçişlerin arasında kalmalı; geçişlerin sırası değiştirilemez.
+     */
+    public CompletableFuture<Void> updateStatusDate(Long historyId, LocalDateTime changedAt) {
+        if (historyId == null || changedAt == null) {
+            throw new ValidationException("Geçmiş kaydı ve tarih boş olamaz.");
+        }
+        requireNotFuture(changedAt, LocalDateTime.now());
+
+        return DbExecutor.run(() -> DatabaseManager.useTransaction(handle -> {
+            WorkOrderStatusHistoryRepository history = handle.attach(WorkOrderStatusHistoryRepository.class);
+            WorkOrderStatusHistory row = history.findById(historyId)
+                    .orElseThrow(() -> new ValidationException("Durum geçmişi kaydı bulunamadı."));
+            requireOpen(handle.attach(WorkOrderRepository.class), row.getWorkOrderId());
+
+            List<WorkOrderStatusHistory> rows = history.findByWorkOrderId(row.getWorkOrderId());
+            int index = -1;
+            for (int i = 0; i < rows.size(); i++) {
+                if (rows.get(i).getId().equals(historyId)) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index > 0) {
+                requireNotBefore(changedAt, rows.get(index - 1));
+            }
+            if (index >= 0 && index < rows.size() - 1) {
+                WorkOrderStatusHistory next = rows.get(index + 1);
+                if (changedAt.isAfter(next.getChangedAt())) {
+                    throw new ValidationException("Tarih, sonraki durumun (" + next.getStatus().getDisplayName()
+                            + ", " + Format.formatDate(next.getChangedAt()) + ") tarihinden sonra olamaz.");
+                }
+            }
+            history.updateChangedAt(historyId, changedAt);
         }));
     }
 
@@ -151,9 +281,40 @@ public class WorkOrderService {
         if (id == null) {
             throw new ValidationException("ID boş olamaz.");
         }
-        return DbExecutor.run(() ->
-                workOrderRepository.updateDetectedFault(id, detectedFault, LocalDateTime.now())
-        );
+        return DbExecutor.run(() -> {
+            requireOpen(workOrderRepository, id);
+            workOrderRepository.updateDetectedFault(id, detectedFault, LocalDateTime.now());
+        });
+    }
+
+    // =========================================================================
+    // KİLİT VE TARİH KURALLARI
+    // =========================================================================
+
+    /**
+     * Kayıt kapalıysa (teslim edildi / iade) {@link ValidationException} fırlatır; açıksa mevcut durumu döner.
+     * Ödemeler bu kilidin dışındadır: teslimden sonra tahsilat yapılabilir.
+     */
+    private static ServiceStatus requireOpen(WorkOrderRepository repo, Long workOrderId) {
+        ServiceStatus status = repo.findStatus(workOrderId)
+                .orElseThrow(() -> new ValidationException("Servis kaydı bulunamadı."));
+        if (status.isClosed()) {
+            throw new ValidationException("Teslim edilmiş ya da iade edilmiş servis kaydı değiştirilemez.");
+        }
+        return status;
+    }
+
+    private static void requireNotFuture(LocalDateTime at, LocalDateTime now) {
+        if (at.isAfter(now.plus(FUTURE_TOLERANCE))) {
+            throw new ValidationException("Durum tarihi gelecekte olamaz.");
+        }
+    }
+
+    private static void requireNotBefore(LocalDateTime at, WorkOrderStatusHistory previous) {
+        if (at.isBefore(previous.getChangedAt())) {
+            throw new ValidationException("Tarih, önceki durumun (" + previous.getStatus().getDisplayName()
+                    + ", " + Format.formatDate(previous.getChangedAt()) + ") tarihinden önce olamaz.");
+        }
     }
 
     /**
@@ -257,7 +418,7 @@ public class WorkOrderService {
         return DbExecutor.supply(() -> {
             Map<ServiceStatus, Long> counts = new EnumMap<>(ServiceStatus.class);
             for (ServiceStatus status : ServiceStatus.values()) {
-                if (status != ServiceStatus.DELIVERED && status != ServiceStatus.RETURN) counts.put(status, 0L);
+                if (!status.isClosed()) counts.put(status, 0L);
             }
             workOrderRepository.countOpenGroupedByStatus().forEach(row -> {
                 if (row.getLabel() == null || row.getValue() == null) return;
@@ -453,6 +614,7 @@ public class WorkOrderService {
 
     public CompletableFuture<WorkOrderItem> addItem(WorkOrderItem item) {
         return DbExecutor.supply(() -> DatabaseManager.inTransaction(handle -> {
+            requireOpen(handle.attach(WorkOrderRepository.class), item.getServiceId());
             item.setWarehouseId(isStockPart(item)
                     ? stockService.resolveWarehouse(handle, item.getWarehouseId(), true) : null);
             ServiceItemRepository items = handle.attach(ServiceItemRepository.class);
@@ -467,6 +629,7 @@ public class WorkOrderService {
             ServiceItemRepository items = handle.attach(ServiceItemRepository.class);
             WorkOrderItem oldItem = items.findById(updatedItem.getId())
                     .orElseThrow(() -> new ValidationException("Güncellenecek kalem bulunamadı."));
+            requireOpen(handle.attach(WorkOrderRepository.class), oldItem.getServiceId());
             if (isStockPart(updatedItem)) {
                 // Depo değişmediyse pasif olması engel değil (eski kalemin adedi düzeltilebilsin).
                 boolean warehouseChanged = updatedItem.getWarehouseId() != null
@@ -490,6 +653,7 @@ public class WorkOrderService {
             ServiceItemRepository items = handle.attach(ServiceItemRepository.class);
             WorkOrderItem item = items.findById(itemId)
                     .orElseThrow(() -> new ValidationException("Silinecek kalem bulunamadı."));
+            requireOpen(handle.attach(WorkOrderRepository.class), item.getServiceId());
             items.delete(itemId);
             syncStock(handle, item.getServiceId(), false);
 
@@ -514,6 +678,7 @@ public class WorkOrderService {
 
     public CompletableFuture<WorkOrderNote> addNote(WorkOrderNote note) {
         return DbExecutor.supply(() -> {
+            requireOpen(workOrderRepository, note.getServiceId());
             Long id = noteRepository.insert(note);
             note.setId(id);
             return note;
@@ -521,7 +686,10 @@ public class WorkOrderService {
     }
 
     public CompletableFuture<Void> deleteNote(Long id) {
-        return DbExecutor.run(() -> noteRepository.delete(id));
+        return DbExecutor.run(() -> {
+            noteRepository.findServiceId(id).ifPresent(serviceId -> requireOpen(workOrderRepository, serviceId));
+            noteRepository.delete(id);
+        });
     }
 
     public CompletableFuture<List<WorkOrderNote>> getNotes(Long serviceId) {

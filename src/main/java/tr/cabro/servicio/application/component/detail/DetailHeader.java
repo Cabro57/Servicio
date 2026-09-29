@@ -185,6 +185,19 @@ public class DetailHeader extends JPanel {
 
     /** Tam genişlik kırmızı uyarı satırı; {@code null} gizler. */
     public void setWarning(String text, String tooltip) {
+        setNotice(text, tooltip, "icons/triangle-alert.svg", "Servicio.dangerColor", true);
+    }
+
+    /**
+     * Uyarı satırının genel hâli: aynı yerde, farklı anlamla (ör. kilitli kayıt için soluk kilit
+     * satırı). {@code null} metin satırı gizler.
+     *
+     * @param colorKey ikon ve yazı rengi (tema anahtarı)
+     * @param bold     yalnızca dikkat isteyen satırlar kalın yazılır
+     */
+    public void setNotice(String text, String tooltip, String iconPath, String colorKey, boolean bold) {
+        warning.setIcon(new Ikon(iconPath, 16, colorKey));
+        warning.putClientProperty(FlatClientProperties.STYLE, (bold ? "font: bold; " : "") + "foreground: $" + colorKey);
         warning.setText(text != null ? text : "");
         warning.setToolTipText(tooltip);
         warning.setVisible(text != null && !text.isBlank());

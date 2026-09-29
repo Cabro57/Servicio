@@ -118,13 +118,14 @@ public class FormWorkOrders extends AbstractTableForm {
     private static final String VIEW_ALL = "all";
     private static final String VIEW_OPEN = "open";
     private static final String STATUS_KEY = "s.service_status";
-    private static final ServiceStatus[] OPEN_STATUSES = {ServiceStatus.UNDER_REPAIR, ServiceStatus.WAITING_FOR_PART,
-            ServiceStatus.ANOTHER_SERVICE, ServiceStatus.READY};
+    private static final ServiceStatus[] OPEN_STATUSES = {ServiceStatus.ACCEPTED, ServiceStatus.UNDER_REPAIR,
+            ServiceStatus.WAITING_FOR_PART, ServiceStatus.ANOTHER_SERVICE, ServiceStatus.READY};
 
     @Override
     protected void initViews() {
         addView(VIEW_ALL, "Tümü");
         addView(VIEW_OPEN, "Atölyede");
+        addView(ServiceStatus.ACCEPTED.name(), "Kabul edildi");
         addView(ServiceStatus.UNDER_REPAIR.name(), "Tamirde");
         addView(ServiceStatus.WAITING_FOR_PART.name(), "Parça bekliyor");
         addView(ServiceStatus.READY.name(), "Teslime hazır");
@@ -514,17 +515,12 @@ public class FormWorkOrders extends AbstractTableForm {
                 s -> s.getServiceStatus() == ServiceStatus.RETURN ? SemanticColor.danger()
                         : isLingering(s) ? SemanticColor.warning() : null));
 
-        // Ücret: toplam kalın; altında ödeme çipi, kısmi/fazla ödemede fark.
+        // Ücret: yalnızca alınacak tutar (kalan, uyarı renginde) ve altında ödeme çipi. Toplam/ödenen
+        // dökümü üzerine gelince ipucunda; eskiden "₺1.250 kalan" + "Kısmi Ödeme" yan yana sığmıyordu.
         table.getColumnModel().getColumn(4).setCellRenderer(new AmountChipCellRenderer<WorkOrder>()
-                .amount(s -> s.getTotalServiceAmount().signum() == 0 ? null : s.getTotalServiceAmount(), RowParts.Money.NEUTRAL)
+                .amount(s -> s.getRemainingAmount().signum() > 0 ? s.getRemainingAmount() : null, RowParts.Money.OWED)
                 .chip(FormWorkOrders::paymentChip)
-                .caption(s -> {
-                    BigDecimal total = s.getTotalServiceAmount(), paid = s.getTotalPaid();
-                    if (paid.signum() > 0 && paid.compareTo(total) < 0) return Format.formatPrice(total.subtract(paid)) + " kalan";
-                    if (paid.compareTo(total) > 0 && total.signum() > 0) return Format.formatPrice(paid.subtract(total)) + " fazla";
-                    return null;
-                })
-                .captionColor(s -> s.getTotalPaid().compareTo(s.getTotalServiceAmount()) < 0 ? "Servicio.warningColor" : "Servicio.infoColor"));
+                .tooltip(FormWorkOrders::paymentTooltip));
 
         TableActionColumnSupport.install(table, 6, tableModal, new TableActionColumnSupport.Handlers<WorkOrder>() {
             @Override
@@ -560,6 +556,21 @@ public class FormWorkOrders extends AbstractTableForm {
         return tr.cabro.servicio.application.utils.ServiceBadges.payment(s);
     }
 
+    /** Ücret hücresinin ipucu: toplam, ödenen ve kalan (ya da fazla ödeme) alt alta, sağa yaslı. */
+    private static String paymentTooltip(WorkOrder s) {
+        BigDecimal total = s.getTotalServiceAmount(), paid = s.getTotalPaid();
+        if (total.signum() == 0 && paid.signum() == 0) return null;
+        BigDecimal diff = total.subtract(paid);
+        String last = diff.signum() >= 0 ? row("Kalan", Format.formatPrice(diff)) : row("Fazla ödeme", Format.formatPrice(diff.negate()));
+        return "<html><table cellpadding=0 cellspacing=2>"
+                + row("Toplam", Format.formatPrice(total)) + row("Ödenen", Format.formatPrice(paid)) + last
+                + "</table></html>";
+    }
+
+    private static String row(String label, String value) {
+        return "<tr><td>" + label + "</td><td align=right>&nbsp;&nbsp;&nbsp;<b>" + value + "</b></td></tr>";
+    }
+
     /** Teslim edilmiş işin garanti bilgisi (alt satıra eklenir). */
     private static String warranty(WorkOrder s) {
         if (s.getWarrantyEndDate() == null) return "";
@@ -570,7 +581,8 @@ public class FormWorkOrders extends AbstractTableForm {
 
     /** Kayıttan bu yana geçen gün (teslim edilmişse de bugüne göre; yalnızca açık işlerde anlamlıdır). */
     private static long openDays(WorkOrder s) {
-        return java.time.temporal.ChronoUnit.DAYS.between(s.getCreatedAt().toLocalDate(), java.time.LocalDate.now());
+        java.time.LocalDateTime received = s.getReceivedAt() != null ? s.getReceivedAt() : s.getCreatedAt();
+        return java.time.temporal.ChronoUnit.DAYS.between(received.toLocalDate(), java.time.LocalDate.now());
     }
 
     /** Atölyede 7 günü aşmış açık iş: satır soluk kalmasın, süre uyarı rengine dönsün. */

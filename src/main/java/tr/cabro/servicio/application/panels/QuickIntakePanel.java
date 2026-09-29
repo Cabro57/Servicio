@@ -14,6 +14,7 @@ import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.enums.DeviceAccessType;
 import tr.cabro.servicio.model.enums.ServiceStatus;
+import tr.cabro.servicio.application.component.DateTimeField;
 import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
@@ -64,6 +65,8 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
     private DeviceFormPanel deviceFormPanel;
     private DeviceAccessField deviceAccessField;
     private JTextArea reportedFaultArea;
+    private JPanel receivedSection;
+    private DateTimeField receivedAtField;
     private int customerLoadToken;
 
     // -------------------------------------------------------------------------
@@ -145,7 +148,7 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
     private JPanel buildRightColumn() {
         JPanel col = column();
-        col.setLayout(new MigLayout("insets 0, fillx, filly, wrap, hidemode 3", "[grow, fill]", "[][][][][][grow, fill]"));
+        col.setLayout(new MigLayout("insets 0, fillx, filly, wrap, hidemode 3", "[grow, fill]", "[][][][][][grow, fill][]"));
 
         // --- Ekran kilidi ---
         col.add(sectionTitle("Ekran Kilidi"));
@@ -177,6 +180,15 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         JScrollPane faultScroll = new JScrollPane(reportedFaultArea);
         faultScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         col.add(faultScroll, "hmin 110");
+
+        // --- Teslim alma --- (yalnızca yeni kayıtta; sonradan servis sayfasındaki durum geçmişinden düzeltilir)
+        receivedSection = new JPanel(new MigLayout("insets 0, fillx, wrap", "[grow, fill]", "[]2[]8[]"));
+        receivedSection.setOpaque(false);
+        receivedSection.add(sectionTitle("Teslim Alma"));
+        receivedSection.add(hint("Cihaz daha önce bırakıldıysa tarihi ve saati düzeltin."));
+        receivedAtField = new DateTimeField();
+        receivedSection.add(receivedAtField);
+        col.add(receivedSection, "gaptop 22");
         return col;
     }
 
@@ -258,10 +270,11 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
 
         data.setReportedFault(reportedFaultArea.getText().trim());
 
-        // Sadece yeni kayıtta oluşturma tarihi ve durum set edilir
+        // Sadece yeni kayıtta oluşturma tarihi, teslim alma tarihi ve başlangıç durumu set edilir
         if (data.getId() == null || data.getId() == 0) {
             data.setCreatedAt(LocalDateTime.now());
-            data.setServiceStatus(ServiceStatus.UNDER_REPAIR);
+            data.setReceivedAt(receivedAtField.getValue());
+            data.setServiceStatus(ServiceStatus.ACCEPTED);
         }
 
         return data;
@@ -272,6 +285,9 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         if (data == null) return;
 
         deviceFormPanel.setCurrentWorkOrderId(data.getId());
+        boolean isNew = data.getId() == null || data.getId() == 0;
+        receivedSection.setVisible(isNew);
+        if (isNew) receivedAtField.setValue(LocalDateTime.now());
         if (data.getCustomer() != null) {
             customerCombo.setSelectedItem(data.getCustomer());
         }
@@ -299,6 +315,7 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         deviceFormPanel.clear();
         deviceAccessField.clear();
         reportedFaultArea.setText("");
+        receivedAtField.setValue(LocalDateTime.now());
         hideCustomerError();
     }
 

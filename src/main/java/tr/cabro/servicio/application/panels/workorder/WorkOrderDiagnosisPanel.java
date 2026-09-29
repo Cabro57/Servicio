@@ -22,13 +22,16 @@ public class WorkOrderDiagnosisPanel extends JPanel {
     private final WorkOrder workOrder;
     private final WorkOrderService workOrderService;
     private final Runnable onDiagnosisChanged;
+    private final boolean locked;
     private final WorkOrderPanelSupport.StepMarker stepMarker =
             new WorkOrderPanelSupport.StepMarker(1, "Arıza tespiti yazıldı", "Teknisyen tespiti henüz yazılmadı");
 
     private JTextArea txtDetectedFault;
 
-    public WorkOrderDiagnosisPanel(WorkOrder workOrder, Runnable onDiagnosisChanged) {
+    /** @param locked teslim/iade edilmiş kayıt: tespit ve notlar yalnızca okunur. */
+    public WorkOrderDiagnosisPanel(WorkOrder workOrder, boolean locked, Runnable onDiagnosisChanged) {
         this.workOrder = workOrder;
+        this.locked = locked;
         this.workOrderService = ServiceManager.getWorkOrderService();
         this.onDiagnosisChanged = onDiagnosisChanged;
         build();
@@ -52,17 +55,18 @@ public class WorkOrderDiagnosisPanel extends JPanel {
         fault.add(WorkOrderPanelSupport.createCaption("Müşteri şikâyeti"));
         String reported = workOrder.getReportedFault();
         boolean hasReported = reported != null && !reported.isBlank();
-        JTextArea txtReported = new JTextArea(hasReported ? reported : "Belirtilmemiş");
-        txtReported.setEditable(false);
-        txtReported.setFocusable(false);
-        txtReported.setOpaque(false);
-        txtReported.setLineWrap(true);
-        txtReported.setWrapStyleWord(true);
-        txtReported.putClientProperty(FlatClientProperties.STYLE, hasReported
-                ? "font: bold; border: 0,0,0,0" : "border: 0,0,0,0; foreground: $Label.disabledForeground");
-        fault.add(txtReported, "wmin 0");
+        fault.add(readOnlyText(hasReported ? reported : "Belirtilmemiş", hasReported), "wmin 0");
 
         fault.add(WorkOrderPanelSupport.createCaption("Teknisyen tespiti"));
+        if (locked) {
+            // Kapalı kayıtta tespit düzenleme kutusu değil, şikâyetle aynı düz metin.
+            String detected = workOrder.getDetectedFault();
+            boolean hasDetected = detected != null && !detected.isBlank();
+            fault.add(readOnlyText(hasDetected ? detected : "Yazılmadı", hasDetected), "wmin 0");
+            add(fault, "wmin 0, hmin 0, growy");
+            add(new WorkOrderNotesPanel(workOrder, true), "wmin 0, aligny top");
+            return;
+        }
         txtDetectedFault = WorkOrderPanelSupport.createHintArea("Tespit edilen arızayı ve yapılacak işi yazın…");
         txtDetectedFault.setText(workOrder.getDetectedFault() != null ? workOrder.getDetectedFault() : "");
         txtDetectedFault.getAccessibleContext().setAccessibleName("Teknisyen tespiti");
@@ -76,7 +80,19 @@ public class WorkOrderDiagnosisPanel extends JPanel {
         fault.add(btnSave, "growx 0, al right");
 
         add(fault, "wmin 0, hmin 0, growy");
-        add(new WorkOrderNotesPanel(workOrder), "wmin 0, aligny top");
+        add(new WorkOrderNotesPanel(workOrder, false), "wmin 0, aligny top");
+    }
+
+    private static JTextArea readOnlyText(String text, boolean present) {
+        JTextArea area = new JTextArea(text);
+        area.setEditable(false);
+        area.setFocusable(false);
+        area.setOpaque(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.putClientProperty(FlatClientProperties.STYLE, present
+                ? "font: bold; border: 0,0,0,0" : "border: 0,0,0,0; foreground: $Label.disabledForeground");
+        return area;
     }
 
     private void saveDetectedFault() {

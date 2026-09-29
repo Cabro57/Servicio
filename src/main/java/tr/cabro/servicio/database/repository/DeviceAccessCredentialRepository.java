@@ -34,7 +34,7 @@ public interface DeviceAccessCredentialRepository {
 
     @SqlQuery("SELECT dac.id, dac.work_order_id, dac.access_type, dac.secret_encrypted AS secret, dac.set_at, dac.purged_at, dac.created_at " +
             "FROM device_access_credentials dac " +
-            "JOIN work_orders wo ON wo.id = dac.work_order_id " +
+            "JOIN v_work_orders wo ON wo.id = dac.work_order_id " +
             "WHERE dac.secret_encrypted IS NOT NULL AND dac.purged_at IS NULL " +
             "AND wo.delivery_date IS NOT NULL AND wo.delivery_date <= :cutoff")
     List<DeviceAccessCredential> findExpiredSince(@Bind("cutoff") LocalDateTime cutoff);

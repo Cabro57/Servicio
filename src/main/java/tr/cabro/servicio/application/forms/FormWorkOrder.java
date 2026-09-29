@@ -12,6 +12,7 @@ import tr.cabro.servicio.application.panels.workorder.WorkOrderDiagnosisPanel;
 import tr.cabro.servicio.application.panels.workorder.WorkOrderInfoPanel;
 import tr.cabro.servicio.application.panels.workorder.WorkOrderItemsPanel;
 import tr.cabro.servicio.application.panels.workorder.WorkOrderPaymentsPanel;
+import tr.cabro.servicio.application.panels.workorder.WorkOrderStatusDialogs;
 import tr.cabro.servicio.application.system.AllForms;
 import tr.cabro.servicio.application.system.AppModal;
 import tr.cabro.servicio.application.system.DocumentExportModal;
@@ -64,6 +65,9 @@ public class FormWorkOrder extends Form {
     private StatusButton statusButton;
     private Badge urgentBadge;
     private JButton btnWhatsApp;
+    private JButton btnReopen;
+    private JButton btnEdit;
+    private JButton btnPrimary;
 
     // --- Gövde: solda adımlar (arıza/tespit, kalemler, ödemeler), sağda sabit ray (tutar, dosya, zaman) ---
     private WorkOrderInfoPanel infoPanel;
@@ -120,7 +124,7 @@ public class FormWorkOrder extends Form {
         // Ray gövdeyle kaymaz: tutar ve dosya, iş aşağıda sürerken de görünür kalır.
         infoPanel = new WorkOrderInfoPanel(initialWorkOrder, () -> {
             if (paymentsPanel != null) paymentsPanel.focusAmount();
-        });
+        }, this::formRefresh);
 
         JPanel content = new JPanel(new MigLayout("insets 0, fill, gap 16", "[grow, fill][320!, fill]", "[grow, fill]"));
         content.setOpaque(false);
@@ -149,9 +153,12 @@ public class FormWorkOrder extends Form {
         btnGenerateDoc.setToolTipText("Servis formu, teklif, fiş…");
         btnGenerateDoc.addActionListener(e -> showDocumentMenu(btnGenerateDoc));
         btnWhatsApp = header.addAction("WhatsApp", "icons/message-circle.svg", this::openWhatsAppModal);
-        header.addAction("Düzenle", "icons/pencil.svg", this::openEditModal);
+        // Yalnızca kapalı (teslim/iade) kayıtta görünür; metni hydrateHeader kapanış türüne göre yazar.
+        btnReopen = header.addAction("Teslimi geri al", "icons/undo-2.svg", this::reopen);
+        btnReopen.setVisible(false);
+        btnEdit = header.addAction("Düzenle", "icons/pencil.svg", this::openEditModal);
         header.addActionComponent(buildDeleteButton());
-        header.setPrimary("Parça / İşçilik Ekle", "icons/plus.svg", () -> {
+        btnPrimary = header.setPrimary("Parça / İşçilik Ekle", "icons/plus.svg", () -> {
             if (itemsPanel != null) itemsPanel.openItemAddModal();
         });
 
@@ -206,54 +213,96 @@ public class FormWorkOrder extends Form {
                 () -> FormManager.showForm(AllForms.getForm(FormWorkOrders.class)));
     }
 
-    /** Durum menüsünden seçilen yeni durumu kaydeder; hata olursa rozet eski durumda kalır. */
+    /**
+     * Durum menüsünden seçilen yeni durum, geçiş tarihi sorularak kaydedilir; teslim ve iade
+     * ayrıca kaydın kilitleneceğini söyler. Kaydedilince sayfa yeniden okunur (kilit, tarihler).
+     */
     private void changeStatus(ServiceStatus newStatus) {
         if (newStatus == null || workOrder == null || workOrder.getServiceStatus() == newStatus) return;
         ServiceStatus previous = workOrder.getServiceStatus();
-        workOrderService.updateStatus(workOrder.getId(), newStatus)
-                .thenAccept(unused -> SwingUtilities.invokeLater(() -> {
-                    workOrder.setServiceStatus(newStatus);
-                    workOrder.setStatusChangedAt(java.time.LocalDateTime.now());
-                    statusButton.setStatus(newStatus);
-                    infoPanel.refresh(workOrder);
-                    tr.cabro.servicio.util.SoundPlayer.statusChanged();
-                    // "İade" parçaları stoğa döndürür, geri açmak yeniden düşer (WorkOrderService.syncStock).
-                    boolean hasParts = workOrder.getItems() != null && workOrder.getItems().stream()
-                            .anyMatch(i -> i.getItemType() == tr.cabro.servicio.model.enums.ItemType.PART && i.getPartId() != null);
-                    if (hasParts && (newStatus == ServiceStatus.RETURN || previous == ServiceStatus.RETURN)) {
-                        Toasts.show(this, Toast.Type.INFO, newStatus == ServiceStatus.RETURN
-                                ? "Servisteki parçalar stoğa geri döndü." : "Servisteki parçalar yeniden stoktan düşüldü.");
-                    }
-                }))
-                .exceptionally(ex -> ErrorHandler.handle(this, "Servis durumu güncellenemedi", ex));
+        WorkOrderStatusDialogs.changeStatus(this, workOrder.getId(), newStatus, workOrder.getStatusChangedAt(), () -> {
+            tr.cabro.servicio.util.SoundPlayer.statusChanged();
+            notifyStockMove(newStatus == ServiceStatus.RETURN, previous == ServiceStatus.RETURN);
+            formRefresh();
+        });
+    }
+
+    /** Teslim ya da iade geri alınır; kayıt bir önceki durumuna döner ve kilidi açılır. */
+    private void reopen() {
+        ServiceStatus closed = workOrder.getServiceStatus();
+        if (closed == null || !closed.isClosed()) return;
+        WorkOrderStatusDialogs.reopen(this, workOrder.getId(), closed, previous -> {
+            tr.cabro.servicio.util.SoundPlayer.statusChanged();
+            notifyStockMove(false, closed == ServiceStatus.RETURN);
+            Toasts.show(this, Toast.Type.SUCCESS, "Kayıt yeniden açıldı: " + previous.getDisplayName());
+            formRefresh();
+        });
+    }
+
+    /** "İade" parçaları stoğa döndürür, geri açmak yeniden düşer (WorkOrderService.syncStock). */
+    private void notifyStockMove(boolean returnedToStock, boolean takenFromStock) {
+        boolean hasParts = workOrder.getItems() != null && workOrder.getItems().stream()
+                .anyMatch(i -> i.getItemType() == tr.cabro.servicio.model.enums.ItemType.PART && i.getPartId() != null);
+        if (!hasParts || returnedToStock == takenFromStock) return;
+        Toasts.show(this, Toast.Type.INFO, returnedToStock
+                ? "Servisteki parçalar stoğa geri döndü." : "Servisteki parçalar yeniden stoktan düşüldü.");
     }
 
     private void hydrateHeader() {
         header.setTitle("SRV-" + workOrder.getId());
 
         ServiceStatus currentStatus = workOrder.getServiceStatus() != null
-                ? workOrder.getServiceStatus() : ServiceStatus.UNDER_REPAIR;
-        statusButton.setStatus(currentStatus);
+                ? workOrder.getServiceStatus() : ServiceStatus.ACCEPTED;
+        boolean closed = currentStatus.isClosed();
+        statusButton.setStatus(currentStatus, closed);
         urgentBadge.setVisible("URGENT".equalsIgnoreCase(workOrder.getUrgencyStatus()));
 
         Customer c = workOrder.getCustomer();
         Device d = workOrder.getDevice();
         String since = null;
-        if (workOrder.getCreatedAt() != null) {
-            long days = java.time.temporal.ChronoUnit.DAYS.between(workOrder.getCreatedAt().toLocalDate(),
+        java.time.LocalDateTime received = workOrder.getReceivedAt() != null ? workOrder.getReceivedAt() : workOrder.getCreatedAt();
+        if (received != null) {
+            long days = java.time.temporal.ChronoUnit.DAYS.between(received.toLocalDate(),
                     workOrder.getDeliveryDate() != null ? workOrder.getDeliveryDate().toLocalDate() : java.time.LocalDate.now());
-            // Tarihlerin tamamı raydaki zaman kartında; şeritte kısa özet kalır ki tek satıra sığsın.
+            // Tarihlerin tamamı raydaki durum geçmişinde; şeritte kısa özet kalır ki tek satıra sığsın.
+            String closedWord = currentStatus == ServiceStatus.RETURN ? "İade " : "Teslim ";
             since = workOrder.getDeliveryDate() != null
-                    ? "Teslim " + workOrder.getDeliveryDate().format(DateFormats.shortDate())
+                    ? closedWord + workOrder.getDeliveryDate().format(DateFormats.shortDate())
                     : (days <= 0 ? "Bugün geldi" : days + " gündür serviste");
         }
         header.setMeta(c != null ? c.getFullName() : "Müşterisiz kayıt",
                 d != null ? d.getBrand() + " " + d.getModel() : null,
                 since);
 
+        applyLock(currentStatus);
+
         boolean hasPhone = c != null && c.getPhoneNumber1() != null && !c.getPhoneNumber1().isBlank();
         btnWhatsApp.setEnabled(hasPhone);
         btnWhatsApp.setToolTipText(hasPhone ? "Müşteriye şablonlu WhatsApp mesajı gönder" : "Müşterinin telefonu kayıtlı değil");
+    }
+
+    /**
+     * Teslim/iade edilmiş kayıt kilitlidir: kalem ekleme (birincil) ve düzenleme kapanır, şeridin
+     * altında kilidin nedeni yazar ve "geri al" belirir. Ödeme alma ve belge açıktır.
+     */
+    private void applyLock(ServiceStatus status) {
+        boolean closed = status.isClosed();
+        boolean returned = status == ServiceStatus.RETURN;
+        btnPrimary.setVisible(!closed);
+        btnEdit.setEnabled(!closed);
+        btnEdit.setToolTipText(closed ? "Kayıt kilitli; düzenlemek için önce " + (returned ? "iadeyi" : "teslimi") + " geri alın" : null);
+        btnReopen.setVisible(closed);
+        btnReopen.setText(returned ? "İadeyi geri al" : "Teslimi geri al");
+        btnReopen.setToolTipText("Kaydı bir önceki durumuna döndürür ve kilidi açar");
+        if (closed) {
+            String when = workOrder.getDeliveryDate() != null
+                    ? " " + workOrder.getDeliveryDate().format(DateFormats.dateTime()) : "";
+            header.setNotice((returned ? "İade edildi" : "Teslim edildi") + when
+                            + "  ·  Kayıt kilitli: parça, işçilik, not ve tespit değiştirilemez. Ödeme alınabilir.",
+                    null, "icons/lock.svg", "Label.disabledForeground", false);
+        } else {
+            header.setNotice(null, null, "icons/lock.svg", "Label.disabledForeground", false);
+        }
     }
 
     /** Kalem ya da ödeme değişince: raydaki tutarlar ve adım işaretleri yeniden okunur. */
@@ -401,10 +450,11 @@ public class FormWorkOrder extends Form {
     private void buildWorkArea() {
         workColumn.removeAll();
 
-        diagnosisPanel = new WorkOrderDiagnosisPanel(workOrder, this::refreshSteps);
+        boolean locked = workOrder.getServiceStatus() != null && workOrder.getServiceStatus().isClosed();
+        diagnosisPanel = new WorkOrderDiagnosisPanel(workOrder, locked, this::refreshSteps);
         paymentsPanel = new WorkOrderPaymentsPanel(workOrder);
         paymentsPanel.setOnChanged(this::hydrateMoney);
-        itemsPanel = new WorkOrderItemsPanel(workOrder, paymentsPanel::refresh);
+        itemsPanel = new WorkOrderItemsPanel(workOrder, locked, paymentsPanel::refresh);
 
         workColumn.add(diagnosisPanel, "growx");
         workColumn.add(itemsPanel, "growx");
@@ -425,18 +475,23 @@ public class FormWorkOrder extends Form {
      */
     private static final class StatusButton extends JButton {
         private static final int CHEVRON = 12;
-        private ServiceStatus status = ServiceStatus.UNDER_REPAIR;
+        private ServiceStatus status = ServiceStatus.ACCEPTED;
+        private boolean locked;
 
         StatusButton(java.util.function.Consumer<ServiceStatus> onSelect) {
-            setToolTipText("Servis durumunu değiştir");
             getAccessibleContext().setAccessibleName("Servis durumu");
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setFocusPainted(false);
             addActionListener(e -> {
+                if (locked) return;
                 JPopupMenu menu = new JPopupMenu();
                 for (ServiceStatus st : ServiceStatus.values()) {
+                    // Teslim ve iade kaydı kapatır: ayraçla ayrılır ki kilitleyen seçim göze çarpsın.
+                    if (st == ServiceStatus.DELIVERED) menu.addSeparator();
                     JMenuItem item = new JMenuItem(st.getDisplayName(), badgeIcon(st, 16));
-                    if (st == status) item.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+                    if (st == status) {
+                        item.putClientProperty(FlatClientProperties.STYLE, "font: bold");
+                        item.setEnabled(false);
+                    }
                     item.addActionListener(ev -> onSelect.accept(st));
                     menu.add(item);
                 }
@@ -445,8 +500,12 @@ public class FormWorkOrder extends Form {
             applyStyle();
         }
 
-        void setStatus(ServiceStatus status) {
+        /** Kilitli (teslim/iade) kayıtta rozet menü açmaz; ok yerine kilit ikonu çizilir. */
+        void setStatus(ServiceStatus status, boolean locked) {
             this.status = status;
+            this.locked = locked;
+            setCursor(Cursor.getPredefinedCursor(locked ? Cursor.DEFAULT_CURSOR : Cursor.HAND_CURSOR));
+            setToolTipText(locked ? "Kayıt kilitli; durumu değiştirmek için önce geri alın" : "Servis durumunu değiştir");
             applyStyle();
         }
 
@@ -461,10 +520,12 @@ public class FormWorkOrder extends Form {
             setText(status.getDisplayName());
             setIcon(badgeIcon(status, 14));
             setIconTextGap(6);
-            // Yandaki "Acil" rozetiyle aynı boy ve yuvarlaklık; sağda ok için yer bırakılır.
+            // Yandaki "Acil" rozetiyle aynı boy ve yuvarlaklık; sağda ok (ya da kilit) için yer bırakılır.
+            // Kilitliyken üzerine gelince koyulaşmaz: tıklanacak bir şey yok.
+            String feedback = locked ? " hoverBackground: " + bg + "; pressedBackground: " + bg
+                    : " hoverBackground: darken(" + bg + ",5%); pressedBackground: darken(" + bg + ",10%)";
             putClientProperty(FlatClientProperties.STYLE, BadgePalette.style(status.getBadgeColor(),
-                    "arc: 999; border: 2,10,2," + (CHEVRON + 16) + "; font: bold +0;"
-                            + " hoverBackground: darken(" + bg + ",5%); pressedBackground: darken(" + bg + ",10%)"));
+                    "arc: 999; border: 2,10,2," + (CHEVRON + 16) + "; font: bold +0;" + feedback));
             revalidate();
             repaint();
         }
@@ -473,7 +534,7 @@ public class FormWorkOrder extends Form {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (status == null) return;
-            Ikon chevron = new Ikon("icons/chevron-down.svg", CHEVRON);
+            Ikon chevron = new Ikon(locked ? "icons/lock.svg" : "icons/chevron-down.svg", CHEVRON);
             chevron.setColorFilter(new com.formdev.flatlaf.extras.FlatSVGIcon.ColorFilter(
                     col -> BadgePalette.foreground(status.getBadgeColor())));
             chevron.paintIcon(this, g, getWidth() - CHEVRON - 10, (getHeight() - CHEVRON) / 2);

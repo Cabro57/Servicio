@@ -46,6 +46,7 @@ public class WorkOrderItemsPanel extends JPanel {
     private final WorkOrder workOrder;
     private final WorkOrderService workOrderService;
     private final Runnable onItemsChanged;
+    private final boolean locked;
 
     private GenericTableModel<WorkOrderItem> itemsTableModel;
     private JPanel itemsTableContainer;
@@ -53,8 +54,10 @@ public class WorkOrderItemsPanel extends JPanel {
     private final WorkOrderPanelSupport.StepMarker stepMarker =
             new WorkOrderPanelSupport.StepMarker(2, "Kalemler girildi", "Henüz parça veya işçilik yok");
 
-    public WorkOrderItemsPanel(WorkOrder workOrder, Runnable onItemsChanged) {
+    /** @param locked teslim/iade edilmiş kayıt: kalem eklenemez, düzenlenemez, silinemez. */
+    public WorkOrderItemsPanel(WorkOrder workOrder, boolean locked, Runnable onItemsChanged) {
         this.workOrder = workOrder;
+        this.locked = locked;
         this.workOrderService = ServiceManager.getWorkOrderService();
         this.onItemsChanged = onItemsChanged;
         build();
@@ -68,18 +71,18 @@ public class WorkOrderItemsPanel extends JPanel {
         btnAddPart.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; iconTextGap: 4");
         btnAddPart.setToolTipText("Parça veya işçilik ekle");
         btnAddPart.addActionListener(e -> openItemAddModal());
-        add(WorkOrderPanelSupport.createStepHeader(stepMarker, "Parça ve işçilik", btnAddPart), "span 2, growx, wrap");
+        add(WorkOrderPanelSupport.createStepHeader(stepMarker, "Parça ve işçilik", locked ? null : btnAddPart), "span 2, growx, wrap");
 
         // --- Tablo ---
 
         // Seri no ayrı (çoğunlukla boş) bir kolon değil, kalem adının altında soluk satır.
-        List<ColumnDef<WorkOrderItem>> columnDefs = Arrays.asList(
+        List<ColumnDef<WorkOrderItem>> columnDefs = new java.util.ArrayList<>(Arrays.asList(
                 new ColumnDef<WorkOrderItem>("Tür", ItemType.class, WorkOrderItem::getItemType).alignment(SwingConstants.LEADING),
                 new ColumnDef<WorkOrderItem>("Kalem", WorkOrderItem.class, item -> item).alignment(SwingConstants.LEADING),
                 new ColumnDef<WorkOrderItem>("Adet", Integer.class, WorkOrderItem::getQuantity).alignment(SwingConstants.CENTER),
-                new ColumnDef<WorkOrderItem>("Tutar", BigDecimal.class, WorkOrderItem::getTotalPrice).alignment(SwingConstants.TRAILING),
-                ColumnDef.<WorkOrderItem>actionColumn("")
-        );
+                new ColumnDef<WorkOrderItem>("Tutar", BigDecimal.class, WorkOrderItem::getTotalPrice).alignment(SwingConstants.TRAILING)
+        ));
+        if (!locked) columnDefs.add(ColumnDef.<WorkOrderItem>actionColumn(""));
 
         itemsTableModel = new GenericTableModel<>(columnDefs);
 
@@ -102,15 +105,17 @@ public class WorkOrderItemsPanel extends JPanel {
         itemsTable.getColumnModel().getColumn(3).setCellRenderer(
                 new tr.cabro.servicio.application.renderer.MoneyCellRenderer(tr.cabro.servicio.application.renderer.MoneyCellRenderer.Mode.NEUTRAL));
 
-        // Düzenle/sil düğmeleri her satırda görünür (kalem işlemi sık ve hedefli).
-        itemsTable.getColumnModel().getColumn(4).setMaxWidth(96);
-        itemsTable.getColumnModel().getColumn(4).setMinWidth(96);
-        DynamicActionColumnSupport.install(itemsTable, 4, itemsTableModel, List.of(
-                DynamicActionColumnSupport.button("icons/pencil.svg", SemanticColor.info(), "Kalemi düzenle",
-                        this::openItemEditModal),
-                DynamicActionColumnSupport.button("icons/trash-2.svg", SemanticColor.danger(), "Kalemi sil",
-                        this::confirmDeleteItem)
-        ));
+        // Düzenle/sil düğmeleri her satırda görünür (kalem işlemi sık ve hedefli); kapalı kayıtta yok.
+        if (!locked) {
+            itemsTable.getColumnModel().getColumn(4).setMaxWidth(96);
+            itemsTable.getColumnModel().getColumn(4).setMinWidth(96);
+            DynamicActionColumnSupport.install(itemsTable, 4, itemsTableModel, List.of(
+                    DynamicActionColumnSupport.button("icons/pencil.svg", SemanticColor.info(), "Kalemi düzenle",
+                            this::openItemEditModal),
+                    DynamicActionColumnSupport.button("icons/trash-2.svg", SemanticColor.danger(), "Kalemi sil",
+                            this::confirmDeleteItem)
+            ));
+        }
 
         // JScrollPane KALDILIRDI. Yerine normal JPanel kullanıyoruz.
         itemsTableContainer = new JPanel(new MigLayout("insets 0, gap 0", "[grow, fill]", "[]0[]"));
@@ -151,6 +156,7 @@ public class WorkOrderItemsPanel extends JPanel {
 
     /** Kalem ekleme penceresi; kimlik şeridindeki birincil düğme de bunu açar. */
     public void openItemAddModal() {
+        if (locked) return;
         WorkOrderItemModal.open(this, workOrder, saved -> {
             workOrder.getItems().addAll(saved);
             populateItemsTable();

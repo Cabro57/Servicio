@@ -34,6 +34,9 @@ public final class TemplateTokenBuilder {
         t.put("toplam_tutar", Format.formatPrice(wo.getTotalServiceAmount()));
         t.put("odenen_tutar", Format.formatPrice(wo.getTotalPaid()));
         t.put("kalan_tutar", Format.formatPrice(wo.getRemainingAmount()));
+        t.put("teslim_alma_tarihi", wo.getReceivedAt() != null ? Format.formatDate(wo.getReceivedAt()) : "-");
+        t.put("tamir_baslama_tarihi", wo.getRepairStartedAt() != null ? Format.formatDate(wo.getRepairStartedAt()) : "-");
+        t.put("hazir_tarihi", wo.getReadyAt() != null ? Format.formatDate(wo.getReadyAt()) : "-");
         t.put("teslim_tarihi", wo.getDeliveryDate() != null ? Format.formatDate(wo.getDeliveryDate()) : "-");
         t.put("bugunun_tarihi", Format.formatDate(LocalDate.now()));
         t.put("isletme_adi", shop != null && shop.getBusinessName() != null ? shop.getBusinessName() : "-");

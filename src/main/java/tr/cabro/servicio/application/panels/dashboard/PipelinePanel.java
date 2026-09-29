@@ -15,12 +15,12 @@ import java.util.Map;
 /**
  * Servis hattı: atölyedeki (teslim/iade edilmemiş) cihazların duruma göre dağılımı.
  * Her aşama tıklanınca Servisler listesini o duruma süzülmüş olarak açar.
- * Sıra işin akışıdır: Tamirde → Parça Bekliyor → Başka Serviste → Hazır; bugün açılanlar başlıkta.
+ * Sıra işin akışıdır: Kabul Edildi → Tamirde → Parça Bekliyor → Başka Serviste → Hazır; bugün açılanlar başlıkta.
  */
 public class PipelinePanel extends JPanel {
 
     private static final ServiceStatus[] STAGES = {
-            ServiceStatus.UNDER_REPAIR, ServiceStatus.WAITING_FOR_PART,
+            ServiceStatus.ACCEPTED, ServiceStatus.UNDER_REPAIR, ServiceStatus.WAITING_FOR_PART,
             ServiceStatus.ANOTHER_SERVICE, ServiceStatus.READY
     };
 

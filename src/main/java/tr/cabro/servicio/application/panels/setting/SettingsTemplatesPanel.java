@@ -38,7 +38,8 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
     private static final String[][][] TOKEN_GROUPS = {
             {{"Müşteri"}, {"Ad soyad", "musteri_adi"}, {"Telefon", "musteri_telefon"}},
             {{"Cihaz"}, {"Cihaz", "cihaz_bilgisi"}, {"Marka", "cihaz_marka"}, {"Model", "cihaz_model"}, {"Seri no", "cihaz_seri_no"}},
-            {{"Servis"}, {"Servis no", "servis_no"}, {"Arıza", "ariza_aciklamasi"}, {"Durum", "servis_durumu"}, {"Teslim tarihi", "teslim_tarihi"}, {"Bugün", "bugunun_tarihi"}},
+            {{"Servis"}, {"Servis no", "servis_no"}, {"Arıza", "ariza_aciklamasi"}, {"Durum", "servis_durumu"}, {"Teslim alma", "teslim_alma_tarihi"},
+                    {"Tamire başlama", "tamir_baslama_tarihi"}, {"Hazır olma", "hazir_tarihi"}, {"Teslim tarihi", "teslim_tarihi"}, {"Bugün", "bugunun_tarihi"}},
             {{"Ücret"}, {"Toplam", "toplam_tutar"}, {"Ödenen", "odenen_tutar"}, {"Kalan", "kalan_tutar"}},
             {{"İşletme"}, {"İşletme adı", "isletme_adi"}, {"Telefon", "isletme_telefon"}, {"Adres", "isletme_adres"}},
     };
@@ -316,6 +317,9 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
         t.put("toplam_tutar", Format.formatPrice(new java.math.BigDecimal("3200")));
         t.put("odenen_tutar", Format.formatPrice(new java.math.BigDecimal("1000")));
         t.put("kalan_tutar", Format.formatPrice(new java.math.BigDecimal("2200")));
+        t.put("teslim_alma_tarihi", Format.formatDate(LocalDate.now().minusDays(2)));
+        t.put("tamir_baslama_tarihi", Format.formatDate(LocalDate.now().minusDays(1)));
+        t.put("hazir_tarihi", Format.formatDate(LocalDate.now()));
         t.put("teslim_tarihi", Format.formatDate(LocalDate.now().plusDays(1)));
         t.put("bugunun_tarihi", Format.formatDate(LocalDate.now()));
         t.put("isletme_adi", shop != null && shop.getBusinessName() != null ? shop.getBusinessName() : "İşletmeniz");

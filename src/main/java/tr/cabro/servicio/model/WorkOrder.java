@@ -39,6 +39,22 @@ public class WorkOrder {
     @ColumnName("warranty_end_date")
     private LocalDateTime warrantyEndDate;
 
+    // --- DURUM TARİHLERİ (v_work_orders view'ı durum geçmişinden türetir, bkz. V27) ---
+    // Yazma yalnızca work_order_status_history üzerinden yapılır; bu alanlar salt okunurdur.
+
+    /** Teslim alma (ACCEPTED) anı. Yeni kayıtta insert öncesi doldurulursa ilk geçmiş satırına yazılır. */
+    @ColumnName("received_at")
+    private LocalDateTime receivedAt;
+
+    /** İlk "Tamirde" geçişi; hiç tamire alınmadıysa null. */
+    @ColumnName("repair_started_at")
+    private LocalDateTime repairStartedAt;
+
+    /** Son "Hazır" geçişi; hiç hazır olmadıysa null. */
+    @ColumnName("ready_at")
+    private LocalDateTime readyAt;
+
+    /** Teslim ya da iade anı; kayıt kapalı değilse null. */
     @ColumnName("delivery_date")
     private LocalDateTime deliveryDate;
 
@@ -51,7 +67,7 @@ public class WorkOrder {
     @ColumnName("updated_at")
     private LocalDateTime updatedAt;
 
-    /** Durumun son değiştiği an; V23 öncesi kayıtlarda bilinmiyorsa null. */
+    /** Durumun son değiştiği an (en son geçmiş satırı). */
     @ColumnName("status_changed_at")
     private LocalDateTime statusChangedAt;
 

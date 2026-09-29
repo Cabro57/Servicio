@@ -31,6 +31,8 @@ public enum BadgeColor {
     GRAY("#E2E8F0", "#1E293B", "#2A2F3A", "#CBD5E1"),
     /** Kullanıcıdan hamle bekleyen — "hazır, müşteriyi ara" gibi eylem çağrısı taşıyan durumlar. */
     PURPLE("#EDE4FF", "#5B21B6", "#2E1E52", "#C4B0FF"),
+    /** Yeni gelen, sıraya alınmış — henüz üzerinde çalışılmıyor ("Kabul Edildi"). */
+    TEAL("#CCFBF1", "#115E59", "#0B3B37", "#5EEAD4"),
     ;
 
     private final String backgroundHex;

@@ -23,6 +23,7 @@ public class AmountChipCellRenderer<T> extends JPanel implements TableCellRender
     private Function<T, String> caption = t -> null;
     private Function<T, String> captionColor = t -> null;
     private Function<T, RowParts.Badge> chip = t -> null;
+    private Function<T, String> tooltip = t -> null;
 
     private final JLabel amountL = new JLabel();
     private final JLabel captionL = new JLabel();
@@ -56,6 +57,8 @@ public class AmountChipCellRenderer<T> extends JPanel implements TableCellRender
     public AmountChipCellRenderer<T> caption(Function<T, String> f) { this.caption = f; return this; }
     public AmountChipCellRenderer<T> captionColor(Function<T, String> f) { this.captionColor = f; return this; }
     public AmountChipCellRenderer<T> chip(Function<T, RowParts.Badge> f) { this.chip = f; return this; }
+    /** Hücrenin üzerine gelince gösterilen ayrıntı (ör. toplam/ödenen/kalan dökümü); HTML olabilir. */
+    public AmountChipCellRenderer<T> tooltip(Function<T, String> f) { this.tooltip = f; return this; }
 
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
@@ -77,10 +80,13 @@ public class AmountChipCellRenderer<T> extends JPanel implements TableCellRender
             amountL.setText("");
             captionL.setText("");
             chipView.set(null);
+            setToolTipText(null);
             return this;
         }
 
         BigDecimal v = amount.apply(item);
+        // Tutar ya da açıklama yoksa satır yer kaplamaz; çip hücrede dikey ortalanır.
+        amountL.setVisible(v != null);
         if (v == null) {
             amountL.setText("");
         } else {
@@ -110,10 +116,12 @@ public class AmountChipCellRenderer<T> extends JPanel implements TableCellRender
 
         String cap = caption.apply(item);
         captionL.setText(cap != null ? cap : "");
+        captionL.setVisible(cap != null && !cap.isBlank());
         String key = captionColor.apply(item);
         Color capColor = key != null ? UIManager.getColor(key) : null;
         captionL.setForeground(capColor != null ? capColor : muted);
         chipView.set(chip.apply(item));
+        setToolTipText(tooltip.apply(item));
         return this;
     }
 }

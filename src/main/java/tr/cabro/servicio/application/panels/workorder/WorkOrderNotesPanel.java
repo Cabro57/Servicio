@@ -36,9 +36,12 @@ public class WorkOrderNotesPanel extends JPanel {
     private final WorkOrderService workOrderService;
 
     private JPanel notesListPanel;
+    private final boolean locked;
 
-    public WorkOrderNotesPanel(WorkOrder workOrder) {
+    /** @param locked teslim/iade edilmiş kayıt: not eklenemez, silinemez. */
+    public WorkOrderNotesPanel(WorkOrder workOrder, boolean locked) {
         this.workOrder = workOrder;
+        this.locked = locked;
         this.workOrderService = ServiceManager.getWorkOrderService();
         build();
     }
@@ -53,6 +56,7 @@ public class WorkOrderNotesPanel extends JPanel {
         notesListPanel.setOpaque(false);
         populateNotesList();
         add(notesListPanel, "wmin 0");
+        if (locked) return;
 
         JTextArea txtNewNote = WorkOrderPanelSupport.createHintArea("Not yazın…");
         txtNewNote.setLineWrap(true);
@@ -152,8 +156,12 @@ public class WorkOrderNotesPanel extends JPanel {
         String author = note.getTechnicianId() == null ? "Sistem" : "Teknisyen";
         String when = note.getCreatedAt() != null ? note.getCreatedAt().format(df) : "—";
 
-        noteRow.add(lblNote, "growx, wmin 0, aligny top");
-        noteRow.add(btnDeleteNote, "top, spany 2, wrap");
+        if (locked) {
+            noteRow.add(lblNote, "growx, wmin 0, aligny top, span 2, wrap");
+        } else {
+            noteRow.add(lblNote, "growx, wmin 0, aligny top");
+            noteRow.add(btnDeleteNote, "top, spany 2, wrap");
+        }
         noteRow.add(WorkOrderPanelSupport.createCaption(author + "  ·  " + when), "wmin 0");
 
         notesListPanel.add(noteRow, "growx, wmin 0");

@@ -11,6 +11,8 @@ import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.WorkOrder;
+import tr.cabro.servicio.model.WorkOrderStatusHistory;
+import tr.cabro.servicio.model.enums.ServiceStatus;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.util.Format;
 import tr.cabro.servicio.util.PhoneHelper;
@@ -28,7 +30,7 @@ import java.util.List;
 /**
  * İş emri sayfasının sağ rayı: gövdeyle birlikte kaymaz, para ve dosya bilgisi hep görünür.
  * Üstten alta: tutar kartı (kalan, toplam, ödenen, "Tahsilat Al"), dosya kartı (müşteri + cihaz,
- * erişim kodu) ve zaman kartı (geliş, durum değişimi, tahmini bitiş, teslim).
+ * erişim kodu) ve durum geçmişi kartı (her geçiş tarihiyle; açık kayıtta tarih tıklanıp düzeltilir).
  * Arıza/tespit artık gövdedeki "1 Arıza ve tespit" adımında ({@link WorkOrderDiagnosisPanel}).
  */
 public class WorkOrderInfoPanel extends JPanel {
@@ -49,14 +51,17 @@ public class WorkOrderInfoPanel extends JPanel {
     private String currentAccessSecret; // düz metin — sadece "göster"e basılınca gösterilir
     private boolean accessRevealed;
 
-    // --- Zaman kartı ---
+    // --- Durum geçmişi kartı ---
     private Timeline timeline;
+    private final Runnable onDatesChanged;
 
     /**
-     * @param onCollect "Tahsilat Al" düğmesi: gövdedeki ödeme adımına kaydırıp tutarı odaklar.
+     * @param onCollect      "Tahsilat Al" düğmesi: gövdedeki ödeme adımına kaydırıp tutarı odaklar.
+     * @param onDatesChanged bir geçişin tarihi düzeltilince (şeritteki özet de yenilensin diye)
      */
-    public WorkOrderInfoPanel(WorkOrder workOrder, Runnable onCollect) {
+    public WorkOrderInfoPanel(WorkOrder workOrder, Runnable onCollect, Runnable onDatesChanged) {
         this.workOrder = workOrder;
+        this.onDatesChanged = onDatesChanged;
         setOpaque(false);
         setLayout(new MigLayout("insets 0, wrap, fillx, gapy 16", "[grow, fill]", ""));
         add(createMoneyCard(onCollect));
@@ -247,43 +252,41 @@ public class WorkOrderInfoPanel extends JPanel {
     // =========================================================================
 
     private JPanel createTimeCard() {
-        JPanel card = DetailKit.card("Zaman", null);
+        JPanel card = DetailKit.card("Durum geçmişi", null);
         timeline = new Timeline();
         card.add(timeline, "wmin 0");
         return card;
     }
 
+    /** Geçmiş her yenilemede veritabanından okunur; tarih düzeltmeleri ve geri almalar hemen görünür. */
     private void refreshTime() {
-        DateTimeFormatter f = DateFormats.dateTime();
-        LocalDateTime created = workOrder.getCreatedAt();
-        LocalDateTime changed = workOrder.getStatusChangedAt();
-        LocalDateTime delivered = workOrder.getDeliveryDate();
-        LocalDateTime estimated = created != null ? created.plusDays(3) : null;
-        LocalDateTime now = LocalDateTime.now();
-
-        // Gerçekleşen olaylar tarih sırasıyla; tahmini bitiş kayıtlı bir tarih değil (geliş + 3 gün
-        // varsayımı), bu yüzden hiçbir zaman "oldu" gösterilmez: soluk, boş halka. Teslimden sonra düşer.
-        List<Timeline.Entry> entries = new ArrayList<>();
-        java.util.Map<Timeline.Entry, LocalDateTime> when = new java.util.HashMap<>();
-        if (created != null) put(entries, when, new Timeline.Entry("Geliş", created.format(f), true), created);
-        if (changed != null) {
-            String status = workOrder.getServiceStatus() != null ? workOrder.getServiceStatus().getDisplayName() : "Durum";
-            put(entries, when, new Timeline.Entry(status, changed.format(f), true), changed);
-        }
-        if (delivered != null) {
-            put(entries, when, new Timeline.Entry("Teslim", delivered.format(f), true), delivered);
-        } else if (estimated != null) {
-            put(entries, when, new Timeline.Entry("Tahmini bitiş", "~ " + estimated.format(DateFormats.shortDate()), false), estimated);
-        }
-        entries.sort(java.util.Comparator.comparing(when::get));
-        if (delivered == null) entries.add(new Timeline.Entry("Teslim", "Teslim edilmedi", false));
-        timeline.setEntries(entries);
+        if (workOrder.getId() == null) return;
+        Long id = workOrder.getId();
+        ServiceManager.getWorkOrderService().getStatusHistory(id)
+                .thenAccept(rows -> SwingUtilities.invokeLater(() -> {
+                    if (workOrder.getId() != null && workOrder.getId().equals(id)) showHistory(rows);
+                }))
+                .exceptionally(ex -> {
+                    Servicio.getLogger().error("Durum geçmişi yüklenemedi", ex);
+                    return null;
+                });
     }
 
-    private static void put(List<Timeline.Entry> list, java.util.Map<Timeline.Entry, LocalDateTime> when,
-                            Timeline.Entry e, LocalDateTime at) {
-        list.add(e);
-        when.put(e, at);
+    /**
+     * Gerçekleşen geçişler eskiden yeniye, dolu noktayla. Kayıt açıkken sonda boş halkalı
+     * "Teslim · Teslim edilmedi" durur ve tarihler tıklanıp düzeltilebilir; kapalı kayıt kilitlidir.
+     */
+    private void showHistory(List<WorkOrderStatusHistory> rows) {
+        boolean closed = workOrder.getServiceStatus() != null && workOrder.getServiceStatus().isClosed();
+        DateTimeFormatter f = DateFormats.dateTime();
+        List<Timeline.Entry> entries = new ArrayList<>();
+        for (WorkOrderStatusHistory row : rows) {
+            String label = row.getStatus() == ServiceStatus.ACCEPTED ? "Teslim alındı" : row.getStatus().getDisplayName();
+            Runnable edit = closed ? null : () -> WorkOrderStatusDialogs.editDate(this, row, onDatesChanged);
+            entries.add(new Timeline.Entry(label, row.getChangedAt().format(f), true, edit));
+        }
+        if (!closed) entries.add(new Timeline.Entry("Teslim", "Teslim edilmedi", false, null));
+        timeline.setEntries(entries);
     }
 
     /**
@@ -294,12 +297,13 @@ public class WorkOrderInfoPanel extends JPanel {
         private static final int GUTTER = 20;
         private static final int DOT = 9;
 
-        record Entry(String label, String value, boolean reached) {}
+        /** @param onEdit null değilse değer tıklanabilir (tarihi düzelt). */
+        record Entry(String label, String value, boolean reached, Runnable onEdit) {}
 
         private final List<Boolean> reached = new ArrayList<>();
 
         Timeline() {
-            super(new MigLayout("insets 0 " + GUTTER + " 0 0, wrap, fillx, gap 12 10", "[shrink 0][grow, right]", ""));
+            super(new MigLayout("insets 0 " + GUTTER + " 0 0, wrap, fillx, gap 12 6", "[shrink 0][grow, right]", ""));
             setOpaque(false);
         }
 
@@ -308,14 +312,40 @@ public class WorkOrderInfoPanel extends JPanel {
             reached.clear();
             for (Entry e : entries) {
                 add(DetailKit.muted(e.label()), "wmin 0");
-                JLabel value = new JLabel(e.value());
-                value.putClientProperty(FlatClientProperties.STYLE, e.reached()
-                        ? "font: bold" : "foreground: $Label.disabledForeground");
-                add(value, "wmin 0");
+                add(e.onEdit() != null ? editableValue(e) : plainValue(e), "wmin 0");
                 reached.add(e.reached());
             }
             revalidate();
             repaint();
+        }
+
+        private static JLabel plainValue(Entry e) {
+            JLabel value = new JLabel(e.value());
+            value.putClientProperty(FlatClientProperties.STYLE, e.reached()
+                    ? "font: bold" : "foreground: $Label.disabledForeground");
+            return value;
+        }
+
+        /**
+         * Düzeltilebilir tarih: düz satır gibi görünür (kalın değer), üzerine gelince zemin ve soluk
+         * kalem ikonu belirir; satırın kendisi hedeftir, ayrı bir düzenle düğmesi yoktur.
+         */
+        private static JButton editableValue(Entry e) {
+            JButton value = new JButton(e.value());
+            value.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+            value.putClientProperty(FlatClientProperties.STYLE, "font: bold; arc: 8; margin: 1,6,1,6; iconTextGap: 6");
+            value.setHorizontalTextPosition(SwingConstants.LEADING);
+            value.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            value.setToolTipText(e.label() + " tarihini düzelt");
+            value.getAccessibleContext().setAccessibleName(e.label() + " tarihi " + e.value() + ", düzelt");
+            Icon pencil = new Ikon("icons/pencil.svg", 12, "Label.disabledForeground");
+            value.getModel().addChangeListener(ev -> value.setIcon(value.getModel().isRollover() || value.hasFocus() ? pencil : null));
+            value.addFocusListener(new java.awt.event.FocusAdapter() {
+                @Override public void focusGained(java.awt.event.FocusEvent ev) { value.setIcon(pencil); }
+                @Override public void focusLost(java.awt.event.FocusEvent ev) { value.setIcon(null); }
+            });
+            value.addActionListener(ev -> e.onEdit().run());
+            return value;
         }
 
         @Override

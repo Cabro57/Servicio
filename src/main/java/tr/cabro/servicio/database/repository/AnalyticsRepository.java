@@ -128,7 +128,7 @@ public class AnalyticsRepository {
                 " SELECT " + bucket.sql("created_at") + " AS k, COUNT(*) AS o, 0 AS d FROM work_orders" +
                 "  WHERE is_deleted = 0 AND " + range("created_at") + " GROUP BY k" +
                 " UNION ALL" +
-                " SELECT " + bucket.sql("delivery_date") + " AS k, 0, COUNT(*) FROM work_orders" +
+                " SELECT " + bucket.sql("delivery_date") + " AS k, 0, COUNT(*) FROM v_work_orders" +
                 "  WHERE is_deleted = 0 AND service_status = 'DELIVERED' AND " + range("delivery_date") + " GROUP BY k" +
                 ") GROUP BY k ORDER BY k";
         return list(sql, from, to, (rs, ctx) -> new FlowPoint(rs.getString("k"), rs.getLong("opened"), rs.getLong("delivered")));
@@ -137,10 +137,11 @@ public class AnalyticsRepository {
     public ServiceStats serviceStats(LocalDate from, LocalDate to) {
         String sql = "SELECT" +
                 " (SELECT COUNT(*) FROM work_orders WHERE is_deleted = 0 AND " + range("created_at") + ") AS opened," +
-                " (SELECT COUNT(*) FROM work_orders WHERE is_deleted = 0 AND service_status = 'DELIVERED' AND " + range("delivery_date") + ") AS delivered," +
-                " (SELECT COUNT(*) FROM work_orders WHERE is_deleted = 0 AND service_status = 'RETURN'" +
-                "   AND " + range("COALESCE(status_changed_at, updated_at)") + ") AS returned," +
-                " (SELECT AVG(julianday(delivery_date) - julianday(created_at)) FROM work_orders" +
+                " (SELECT COUNT(*) FROM v_work_orders WHERE is_deleted = 0 AND service_status = 'DELIVERED' AND " + range("delivery_date") + ") AS delivered," +
+                " (SELECT COUNT(*) FROM v_work_orders WHERE is_deleted = 0 AND service_status = 'RETURN'" +
+                "   AND " + range("delivery_date") + ") AS returned," +
+                // Serviste kalma süresi teslim almadan teslime kadar (kayıt açılış anı değil).
+                " (SELECT AVG(julianday(delivery_date) - julianday(received_at)) FROM v_work_orders" +
                 "   WHERE is_deleted = 0 AND service_status = 'DELIVERED' AND " + range("delivery_date") + ") AS avg_days," +
                 " (SELECT AVG(t) FROM (SELECT SUM(i.unit_price * i.quantity) AS t FROM work_orders wo" +
                 "   JOIN work_order_items i ON i.service_id = wo.id WHERE wo.is_deleted = 0 AND " + range("wo.created_at") +
@@ -163,8 +164,8 @@ public class AnalyticsRepository {
     private List<Breakdown> breakdown(String table, String fk, LocalDate from, LocalDate to) {
         String sql = "SELECT g.name AS name, COUNT(*) AS cnt," +
                 " COALESCE(SUM((SELECT SUM(i.unit_price * i.quantity) FROM work_order_items i WHERE i.service_id = wo.id)), 0) AS revenue," +
-                " AVG(CASE WHEN wo.service_status = 'DELIVERED' THEN julianday(wo.delivery_date) - julianday(wo.created_at) END) AS avg_days" +
-                " FROM work_orders wo JOIN devices d ON d.id = wo.device_id JOIN " + table + " g ON g.id = " + fk +
+                " AVG(CASE WHEN wo.service_status = 'DELIVERED' THEN julianday(wo.delivery_date) - julianday(wo.received_at) END) AS avg_days" +
+                " FROM v_work_orders wo JOIN devices d ON d.id = wo.device_id JOIN " + table + " g ON g.id = " + fk +
                 " WHERE wo.is_deleted = 0 AND " + range("wo.created_at") +
                 " GROUP BY g.id ORDER BY cnt DESC, revenue DESC";
         return list(sql, from, to, (rs, ctx) -> new Breakdown(rs.getString("name"), rs.getLong("cnt"),

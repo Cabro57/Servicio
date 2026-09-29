@@ -22,13 +22,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+// Okumalar v_work_orders view'ından yapılır: durum tarihleri (teslim alma, teslim vb.) geçmişten
+// türetilip WorkOrder alanlarına eşlenir. Yazmalar work_orders tablosuna gider.
 @RegisterBeanMapper(WorkOrder.class)
 public interface WorkOrderRepository extends SqlObject {
 
     @SqlUpdate("INSERT INTO work_orders (customer_id, device_id, technician_id, reported_fault, " +
-            "urgency_status, service_status, warranty_end_date, delivery_date, created_at, updated_at, status_changed_at) " +
+            "urgency_status, service_status, warranty_end_date, created_at, updated_at) " +
             "VALUES (:customerId, :deviceId, :technicianId, :reportedFault, " +
-            ":urgencyStatus, :serviceStatus, :warrantyEndDate, :deliveryDate, :createdAt, :updatedAt, :createdAt)")
+            ":urgencyStatus, :serviceStatus, :warrantyEndDate, :createdAt, :updatedAt)")
     @GetGeneratedKeys
     Long insert(@BindBean WorkOrder workOrder);
 
@@ -38,11 +40,11 @@ public interface WorkOrderRepository extends SqlObject {
             "WHERE id=:id")
     void update(@BindBean WorkOrder workOrder);
 
-    @SqlUpdate("UPDATE work_orders SET service_status=:status, delivery_date=:deliveryDate, updated_at=:updatedAt, " +
-            "status_changed_at=CASE WHEN service_status IS :status THEN status_changed_at ELSE :updatedAt END WHERE id=:id")
+    // Durum tarihleri work_order_status_history'de tutulur (bkz. WorkOrderStatusHistoryRepository);
+    // burada yalnızca mevcut durum güncellenir — liste filtreleri ve sayaçlar bu sütunu kullanır.
+    @SqlUpdate("UPDATE work_orders SET service_status=:status, updated_at=:updatedAt WHERE id=:id")
     void updateStatus(@Bind("id") Long id,
                       @Bind("status") ServiceStatus status,
-                      @Bind("deliveryDate") LocalDateTime deliveryDate,
                       @Bind("updatedAt") LocalDateTime updatedAt);
 
     @SqlQuery("SELECT service_status FROM work_orders WHERE id = :id")
@@ -53,36 +55,36 @@ public interface WorkOrderRepository extends SqlObject {
                              @Bind("detectedFault") String detectedFault,
                              @Bind("updatedAt") LocalDateTime updatedAt);
 
-    @SqlQuery("SELECT * FROM work_orders WHERE id = :id")
+    @SqlQuery("SELECT * FROM v_work_orders WHERE id = :id")
     Optional<WorkOrder> findById(@Bind("id") Long id);
 
     @SqlUpdate("DELETE FROM work_orders WHERE id = :id")
     void delete(@Bind("id") Long id);
 
-    @SqlQuery("SELECT * FROM work_orders ORDER BY created_at DESC")
+    @SqlQuery("SELECT * FROM v_work_orders ORDER BY created_at DESC")
     List<WorkOrder> findAll();
 
-    @SqlQuery("SELECT * FROM work_orders WHERE customer_id = :customerId ORDER BY created_at DESC")
+    @SqlQuery("SELECT * FROM v_work_orders WHERE customer_id = :customerId ORDER BY created_at DESC")
     List<WorkOrder> findByCustomerId(@Bind("customerId") Long customerId);
 
-    @SqlQuery("SELECT * FROM work_orders WHERE device_id = :deviceId ORDER BY created_at DESC")
+    @SqlQuery("SELECT * FROM v_work_orders WHERE device_id = :deviceId ORDER BY created_at DESC")
     List<WorkOrder> findByDeviceId(@Bind("deviceId") Long deviceId);
 
-    @SqlQuery("SELECT DISTINCT wo.* FROM work_orders wo " +
+    @SqlQuery("SELECT DISTINCT wo.* FROM v_work_orders wo " +
             "INNER JOIN work_order_items woi ON woi.service_id = wo.id " +
             "WHERE woi.part_id = :partId ORDER BY wo.created_at DESC")
     List<WorkOrder> findByPartId(@Bind("partId") Long partId);
 
-    @SqlQuery("SELECT * FROM work_orders WHERE service_status IN (<statuses>) ORDER BY created_at DESC")
+    @SqlQuery("SELECT * FROM v_work_orders WHERE service_status IN (<statuses>) ORDER BY created_at DESC")
     List<WorkOrder> findByStatuses(@BindList("statuses") List<ServiceStatus> statuses);
 
-    @SqlQuery("SELECT * FROM work_orders WHERE service_status NOT IN (<statuses>) ORDER BY created_at DESC")
+    @SqlQuery("SELECT * FROM v_work_orders WHERE service_status NOT IN (<statuses>) ORDER BY created_at DESC")
     List<WorkOrder> findByStatusesExcluded(@BindList("statuses") List<ServiceStatus> statuses);
 
     // Arama alanı sadece şikayet/notlarla sınırlı DEĞİL: müşteri adı/telefonu, cihaz marka/model/seri no
     // ve kayıt ID'si de kapsanmalı — sayfalama öncesi client-side arama tüm kolonları tarıyordu, bu kapsamı korur.
     String SEARCH_SELECT = "SELECT s.* ";
-    String SEARCH_FROM = "FROM work_orders s " +
+    String SEARCH_FROM = "FROM v_work_orders s " +
             "LEFT JOIN customers c ON c.id = s.customer_id " +
             "LEFT JOIN devices d ON d.id = s.device_id " +
             "LEFT JOIN device_brands db ON db.id = d.brand_id " +
@@ -102,7 +104,7 @@ public interface WorkOrderRepository extends SqlObject {
     // SAYFALAMA (LIMIT/OFFSET) — DB-tabanlı liste ekranları ve dashboard için
     // =========================================================================
 
-    @SqlQuery("SELECT * FROM work_orders ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
+    @SqlQuery("SELECT * FROM v_work_orders ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
     List<WorkOrder> findAllPaged(@Bind("limit") int limit, @Bind("offset") int offset);
 
     @SqlQuery("SELECT COUNT(*) FROM work_orders")
@@ -128,14 +130,14 @@ public interface WorkOrderRepository extends SqlObject {
     @SqlQuery("SELECT COUNT(*) " + SEARCH_FROM + SEARCH_WHERE + "AND s.service_status NOT IN (<statuses>)")
     long countSearchByStatusesExcluded(@Bind("search") String searchTerm, @BindList("statuses") List<ServiceStatus> statuses);
 
-    @SqlQuery("SELECT * FROM work_orders WHERE service_status IN (<statuses>) ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
+    @SqlQuery("SELECT * FROM v_work_orders WHERE service_status IN (<statuses>) ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
     List<WorkOrder> findByStatusesPaged(@BindList("statuses") List<ServiceStatus> statuses,
                                         @Bind("limit") int limit, @Bind("offset") int offset);
 
     @SqlQuery("SELECT COUNT(*) FROM work_orders WHERE service_status IN (<statuses>)")
     long countByStatuses(@BindList("statuses") List<ServiceStatus> statuses);
 
-    @SqlQuery("SELECT * FROM work_orders WHERE service_status NOT IN (<statuses>) ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
+    @SqlQuery("SELECT * FROM v_work_orders WHERE service_status NOT IN (<statuses>) ORDER BY created_at DESC LIMIT :limit OFFSET :offset")
     List<WorkOrder> findByStatusesExcludedPaged(@BindList("statuses") List<ServiceStatus> statuses,
                                                  @Bind("limit") int limit, @Bind("offset") int offset);
 
@@ -154,7 +156,7 @@ public interface WorkOrderRepository extends SqlObject {
 
     // "Bekleyen Tahsilatlar": kalan tutar > 0 olan iş emirleri. Kalan tutar v_document_balances
     // view'ından gelir (bkz. V19 migration) — belge toplamı - o belgeye tahsis edilmiş ödeme toplamı.
-    @SqlQuery("SELECT wo.* FROM work_orders wo " +
+    @SqlQuery("SELECT wo.* FROM v_work_orders wo " +
             "JOIN v_document_balances vb ON vb.document_type = 'WORK_ORDER' AND vb.document_id = wo.id " +
             "WHERE vb.remaining_amount > 0 " +
             "ORDER BY wo.created_at DESC LIMIT :limit OFFSET :offset")

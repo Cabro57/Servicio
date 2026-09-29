@@ -10,6 +10,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import tr.cabro.servicio.model.WorkOrderNote;
 
 import java.util.List;
+import java.util.Optional;
 
 @RegisterBeanMapper(WorkOrderNote.class)
 public interface ServiceNoteRepository {
@@ -26,6 +27,9 @@ public interface ServiceNoteRepository {
     // Liste ekranlarında her servis için ayrı sorgu atmamak için toplu sürüm.
     @SqlQuery("SELECT * FROM work_order_notes WHERE service_id IN (<serviceIds>) ORDER BY created_at DESC")
     List<WorkOrderNote> findByServiceIds(@BindList("serviceIds") List<Long> serviceIds);
+
+    @SqlQuery("SELECT service_id FROM work_order_notes WHERE id = :id")
+    Optional<Long> findServiceId(@Bind("id") Long id);
 
     // Yanlış yazılan bir notu silmek için
     @SqlUpdate("DELETE FROM work_order_notes WHERE id = :id")
