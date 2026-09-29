@@ -8,6 +8,7 @@ import tr.cabro.servicio.application.component.WrapLayout;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.DocumentTemplate;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.enums.TemplateType;
 import tr.cabro.servicio.service.DocumentTemplateService;
@@ -41,7 +42,10 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
             {{"Servis"}, {"Servis no", "servis_no"}, {"Arıza", "ariza_aciklamasi"}, {"Durum", "servis_durumu"}, {"Teslim alma", "teslim_alma_tarihi"},
                     {"Tamire başlama", "tamir_baslama_tarihi"}, {"Hazır olma", "hazir_tarihi"}, {"Teslim tarihi", "teslim_tarihi"}, {"Bugün", "bugunun_tarihi"}},
             {{"Ücret"}, {"Toplam", "toplam_tutar"}, {"Ödenen", "odenen_tutar"}, {"Kalan", "kalan_tutar"}},
-            {{"İşletme"}, {"İşletme adı", "isletme_adi"}, {"Telefon", "isletme_telefon"}, {"Adres", "isletme_adres"}},
+            {{"İşletme"}, {"İşletme adı", "isletme_adi"}, {"Telefon", "isletme_telefon"}, {"İkinci telefon", "isletme_telefon2"},
+                    {"Adres", "isletme_adres"}, {"E-posta", "isletme_eposta"}, {"Web sitesi", "isletme_web"},
+                    {"Çalışma saatleri", "calisma_saatleri"}},
+            {{"Ödeme bilgisi"}, {"IBAN", "iban"}, {"Banka", "banka"}, {"Hesap sahibi", "hesap_sahibi"}},
     };
 
     private final DocumentTemplateService templateService;
@@ -296,14 +300,14 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
     // -------------------------------------------------------------------------
 
     private void loadShopForPreview() {
-        ServiceManager.getUserService().get(1L).thenAccept(shop -> SwingUtilities.invokeLater(() -> {
+        ServiceManager.getBusinessService().get().thenAccept(shop -> SwingUtilities.invokeLater(() -> {
             sampleTokens = sampleTokens(shop.orElse(null));
             updatePreview();
         })).exceptionally(ex -> null);
     }
 
     /** Önizleme için örnek servis kaydı; işletme alanları gerçek işletme bilgisinden gelir. */
-    private static Map<String, String> sampleTokens(User shop) {
+    private static Map<String, String> sampleTokens(Business shop) {
         Map<String, String> t = new LinkedHashMap<>();
         t.put("musteri_adi", "Ayşe Yılmaz");
         t.put("musteri_telefon", "+90 532 123 45 67");
@@ -325,6 +329,7 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
         t.put("isletme_adi", shop != null && shop.getBusinessName() != null ? shop.getBusinessName() : "İşletmeniz");
         t.put("isletme_telefon", shop != null && shop.getPhoneNumber() != null ? PhoneHelper.formatForDisplay(shop.getPhoneNumber()) : "+90 212 000 00 00");
         t.put("isletme_adres", shop != null && shop.getAddress() != null ? shop.getAddress() : "İşletme adresi");
+        tr.cabro.servicio.service.TemplateTokenBuilder.putBusinessExtras(t, shop, "—");
         return t;
     }
 

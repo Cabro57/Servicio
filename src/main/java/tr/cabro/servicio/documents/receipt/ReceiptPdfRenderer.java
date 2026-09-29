@@ -18,7 +18,7 @@ public class ReceiptPdfRenderer {
 
     public File render(ReceiptContent content, File outFile) throws IOException, DocumentException {
         ThermalSlip slip = ThermalSlip.create()
-                .shopHeader(content.getShopName(), content.getShopPhone(), content.getShopAddress())
+                .shopHeader(content.getShopName(), content.getShopPhone(), content.getShopAddress(), content.getShopTaxLine())
                 .titleBand(content.getDocumentTitle())
                 .documentLine(content.getDocumentNumber(), content.getDate())
                 .field("Müşteri", notBlank(content.getCustomerName()) ? content.getCustomerName() : "Perakende")

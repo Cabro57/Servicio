@@ -11,6 +11,7 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.documents.PdfDocumentBuilder;
 import tr.cabro.servicio.documents.receipt.ReceiptContent;
 import tr.cabro.servicio.documents.receipt.ReceiptPdfRenderer;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 import tr.cabro.servicio.settings.AppSettings;
@@ -84,7 +85,7 @@ public class SettingsPrintingPanel extends JPanel {
     }
 
     private void openTestSlip() {
-        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
+        ServiceManager.getBusinessService().get().thenAccept(shopOpt -> {
             try {
                 File pdf = new ReceiptPdfRenderer().render(sampleContent(shopOpt.orElse(null)),
                         PdfDocumentBuilder.tempFile("deneme-fisi"));
@@ -100,7 +101,7 @@ public class SettingsPrintingPanel extends JPanel {
         }).exceptionally(ex -> ErrorHandler.handle(this, "Deneme fişi için işletme bilgisi alınamadı", ex));
     }
 
-    private static ReceiptContent sampleContent(User shop) {
+    private static ReceiptContent sampleContent(Business shop) {
         ReceiptContent content = new ReceiptContent();
         content.setDocumentTitle("Deneme Fişi");
         content.setDocumentNumber("SAT-0000");
@@ -110,6 +111,7 @@ public class SettingsPrintingPanel extends JPanel {
             content.setShopName(shop.getBusinessName());
             content.setShopPhone(shop.getPhoneNumber());
             content.setShopAddress(shop.getAddress());
+            content.setShopTaxLine(shop.getTaxLine());
         }
         content.getLines().add(new ReceiptContent.Line("Temperli Cam Ekran Koruyucu", 2, new BigDecimal("150.00"), new BigDecimal("300.00")));
         content.getLines().add(new ReceiptContent.Line("USB-C Hızlı Şarj Kablosu 1 m", 1, new BigDecimal("249.90"), new BigDecimal("249.90")));

@@ -15,6 +15,7 @@ import tr.cabro.servicio.application.panels.QuickIntakePanel;
 import tr.cabro.servicio.application.panels.customer.CustomerActivity;
 import tr.cabro.servicio.application.panels.customer.CustomerHeaderPanel;
 import tr.cabro.servicio.application.panels.customer.CustomerListSection;
+import tr.cabro.servicio.application.panels.customer.CustomerInfoPanel;
 import tr.cabro.servicio.application.panels.customer.CustomerNotePanel;
 import tr.cabro.servicio.application.panels.customer.CustomerOverviewPanel;
 import tr.cabro.servicio.application.panels.customer.CustomerSectionNav;
@@ -80,6 +81,7 @@ public class FormCustomer extends Form {
 
     private CustomerHeaderPanel header;
     private CustomerSectionNav nav;
+    private CustomerInfoPanel infoPanel;
     private CustomerNotePanel notePanel;
     private final JPanel sections = new JPanel(new CardLayout());
 
@@ -118,13 +120,16 @@ public class FormCustomer extends Form {
         nav.addSection(SECTION_DEVICES, "Cihazlar", "icons/tablet-smartphone.svg", "Ctrl+5");
         nav.addSection(SECTION_SECONDHAND, "2.El Alım-Satım", "icons/handshake.svg", "Ctrl+6");
         nav.setCount(SECTION_OVERVIEW, null);
-        // Sol kolon: bölüm menüsü ve altında müşteri notu.
+        // Sol kolon: bölüm menüsü, altında müşteri bilgileri ve notu.
+        infoPanel = new CustomerInfoPanel(this::openEditModal);
         notePanel = new CustomerNotePanel(this::openEditModal);
         JPanel left = new JPanel(new MigLayout("insets 0, wrap, fillx, gapy 16", "[grow, fill]", "[][]"));
         left.setOpaque(false);
         left.add(nav);
+        left.add(infoPanel, "wmin 0");
         left.add(notePanel, "wmin 0");
-        add(left, "aligny top, growx, wmin 0");
+        // 1366x768de menü + bilgi + not kartı yüksekliği aşabilir: sol kolon kendi içinde kayar.
+        add(tr.cabro.servicio.application.component.detail.DetailKit.scroll(left), "grow, wmin 0, hmin 0");
 
         sections.setOpaque(false);
         overview = new CustomerOverviewPanel(this::openWorkOrder, this::openDocument, this::openActivity,
@@ -312,6 +317,7 @@ public class FormCustomer extends Form {
 
     private void refreshData() {
         header.setCustomer(customer);
+        infoPanel.setCustomer(customer);
         notePanel.setNote(customer.getNote());
         Long id = customer.getId();
 

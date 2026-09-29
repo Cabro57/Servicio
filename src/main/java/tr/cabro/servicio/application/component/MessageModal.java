@@ -71,6 +71,7 @@ public final class MessageModal extends Modal {
     private final JPanel footer = new JPanel(new MigLayout("insets 0, gap 8", "push[][]", "[center]"));
     private String primaryText;
     private Runnable primaryAction;
+    private boolean primaryEnabled = true;
     private String secondaryText;
     private Runnable secondaryAction;
     private boolean secondaryVisible = true;
@@ -114,6 +115,19 @@ public final class MessageModal extends Modal {
         this.primaryText = label;
         this.primaryAction = action;
         return this;
+    }
+
+    /**
+     * Pencere açıkken birincil düğmenin metnini ve etkinliğini değiştirir (ör. seçime göre
+     * "Teslim et" / "Durumu değiştir"). Açılmadan önce çağrılırsa açılışta uygulanır.
+     */
+    public void updatePrimary(String label, boolean enabled) {
+        if (label != null) this.primaryText = label;
+        this.primaryEnabled = enabled;
+        if (primary != null) {
+            if (label != null) primary.setText(label);
+            primary.setEnabled(enabled);
+        }
     }
 
     /** İkincil düğmenin metni ve eylemi (varsayılan "Vazgeç", eylemsiz). */
@@ -167,6 +181,7 @@ public final class MessageModal extends Modal {
         String label = primaryText != null ? primaryText : Messages.get("dialog.button.ok");
         primary = tone == Tone.DANGER ? dangerButton(label) : DetailKit.primaryButton(label, null, null);
         primary.addActionListener(e -> finish(primaryAction));
+        primary.setEnabled(primaryEnabled);
         footer.add(primary);
     }
 

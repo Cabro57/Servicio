@@ -16,6 +16,7 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import tr.cabro.servicio.documents.PdfFonts;
 import tr.cabro.servicio.i18n.DateFormats;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.settings.ReceiptPaperWidth;
@@ -101,17 +102,18 @@ public class ThermalSlip {
     // Bölümler
     // -------------------------------------------------------------------------
 
-    /** İşletme adı büyük ve ortalı, altında adres ve telefon. */
-    public ThermalSlip shopHeader(String name, String phone, String address) {
+    /** İşletme adı büyük ve ortalı, altında adres, telefon ve (varsa) vergi satırı. */
+    public ThermalSlip shopHeader(String name, String phone, String address, String taxLine) {
         if (notBlank(name)) add(centered(name, shopFont, 0f, 2f));
         if (notBlank(address)) add(centered(address, smallFont, 0f, 0.5f));
         if (notBlank(phone)) add(centered(PhoneHelper.formatForDisplay(phone), boldFont, 0.5f, 0f));
+        if (notBlank(taxLine)) add(centered(taxLine, smallFont, 0.5f, 0f));
         return space(4f);
     }
 
-    public ThermalSlip shopHeader(User shop) {
+    public ThermalSlip shopHeader(Business shop) {
         if (shop == null) return this;
-        return shopHeader(shop.getBusinessName(), shop.getPhoneNumber(), shop.getAddress());
+        return shopHeader(shop.getBusinessName(), shop.getPhoneNumber(), shop.getAddress(), shop.getTaxLine());
     }
 
     /** Siyah zemin üstüne beyaz belge adı — fişin en belirgin satırı. */

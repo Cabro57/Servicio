@@ -200,8 +200,14 @@ public class SetupPanel extends Form {
 
         btnSave.setEnabled(false);
         btnSave.setText("Kaydediliyor…");
-        User newUser = new User("", "", email, pin, company, "", selectedPhotoName);
-        ServiceManager.getUserService().save(newUser, false).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+        User newUser = new User("", "", email, pin, selectedPhotoName);
+        // Kurulumdaki "İşletme" bölümü: ad ve e-posta işletme bilgisine de yazılır (belge antedi).
+        tr.cabro.servicio.model.Business business = new tr.cabro.servicio.model.Business();
+        business.setBusinessName(company);
+        business.setEmail(email.isEmpty() ? null : email);
+        ServiceManager.getUserService().save(newUser, false)
+                .thenCompose(saved -> ServiceManager.getBusinessService().save(business))
+                .thenAccept(saved -> SwingUtilities.invokeLater(() -> {
             Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.setup.completed"));
             // Doğrudan sisteme al ve inaktif monitörü başlat
             FormManager.login();

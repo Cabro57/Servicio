@@ -1,5 +1,6 @@
 package tr.cabro.servicio.documents;
 
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrderItem;
 import tr.cabro.servicio.util.PhoneHelper;
@@ -29,7 +30,7 @@ public class RtfDocumentWriter implements DocumentWriter {
     private final File outFile;
     private final StringBuilder body = new StringBuilder();
 
-    RtfDocumentWriter(File outFile, User shop, String title, String documentNumber, String date) {
+    RtfDocumentWriter(File outFile, Business shop, String title, String documentNumber, String date) {
         this.outFile = outFile;
         writeMasthead(shop, title, documentNumber, date);
     }
@@ -42,13 +43,13 @@ public class RtfDocumentWriter implements DocumentWriter {
     // Künye
     // -------------------------------------------------------------------------
 
-    private void writeMasthead(User shop, String title, String documentNumber, String date) {
+    private void writeMasthead(Business shop, String title, String documentNumber, String date) {
         int left = CONTENT_WIDTH * 47 / 100;
-        Para[] leftParas = {
-                new Para("\\sa40", run(shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : " ", 25, true, INK)),
-                new Para("", shop != null && notBlank(shop.getAddress()) ? run(shop.getAddress(), 15, false, MUTED) : ""),
-                new Para("", run(contactLine(shop), 15, false, MUTED))
-        };
+        // PDF künyesiyle aynı sıra, her bilgi kendi satırında.
+        java.util.List<Para> leftList = new java.util.ArrayList<>();
+        leftList.add(new Para("\\sa40", run(shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : " ", 25, true, INK)));
+        for (String line : DocxDocumentWriter.mastheadLines(shop)) leftList.add(new Para("", run(line, 15, false, MUTED)));
+        Para[] leftParas = leftList.toArray(new Para[0]);
         Para[] rightParas = {
                 new Para("\\qr\\sa120", run(title, 32, true, INK)),
                 new Para("\\qr\\sa20", run("BELGE NO   ", 14, false, MUTED) + run(documentNumber, 19, true, INK)),
@@ -56,17 +57,6 @@ public class RtfDocumentWriter implements DocumentWriter {
         };
         body.append(tableRow(new int[]{left, CONTENT_WIDTH - left}, new String[]{"", ""}, leftParas, rightParas));
         body.append(para("\\sa120\\brdrb\\brdrs\\brdrw30\\brsp80\\brdrcf1", ""));
-    }
-
-    private static String contactLine(User shop) {
-        if (shop == null) return "";
-        StringBuilder sb = new StringBuilder();
-        if (notBlank(shop.getPhoneNumber())) sb.append(PhoneHelper.formatForDisplay(shop.getPhoneNumber()));
-        if (notBlank(shop.getEmail())) {
-            if (sb.length() > 0) sb.append("   \u00b7   ");
-            sb.append(shop.getEmail());
-        }
-        return sb.toString();
     }
 
     // -------------------------------------------------------------------------

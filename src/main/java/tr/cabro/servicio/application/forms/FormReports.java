@@ -19,6 +19,7 @@ import tr.cabro.servicio.application.utils.Toasts;
 import tr.cabro.servicio.documents.PdfDocumentBuilder;
 import tr.cabro.servicio.i18n.AppLocale;
 import tr.cabro.servicio.i18n.Messages;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.reports.Report;
 import tr.cabro.servicio.reports.Report.Col;
@@ -341,8 +342,8 @@ public class FormReports extends Form {
     private void openPdf() {
         Report report = current;
         if (report == null || !pdfButton.isEnabled()) return;
-        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
-            User shop = shopOpt.orElse(null);
+        ServiceManager.getBusinessService().get().thenAccept(shopOpt -> {
+            Business shop = shopOpt.orElse(null);
             try {
                 File pdf = ReportExporter.pdf(report, shop, PdfDocumentBuilder.tempFile(ReportExporter.fileBaseName(report)));
                 SwingUtilities.invokeLater(() -> {

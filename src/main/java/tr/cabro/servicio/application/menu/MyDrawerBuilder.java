@@ -27,6 +27,7 @@ import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.forms.*;
 import tr.cabro.servicio.model.User;
+import tr.cabro.servicio.service.ServiceManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -98,11 +99,30 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
             icon.setIcon(new FlatSVGIcon("drawer/image/avatar_male.svg", 100, 100));
         }
 
-        data.setTitle(user.getBusinessName());
-        data.setDescription(user.getEmail());
+        // Başlıkta işletme adı: bellekte yoksa okunur, gelince başlık güncellenir.
+        data.setTitle(ServiceManager.getBusinessService().cachedName());
+        if (ServiceManager.getBusinessService().cached() == null) {
+            ServiceManager.getBusinessService().get().thenAccept(b -> setBusinessName(b.map(x -> x.getBusinessName()).orElse("")));
+        }
+        // İşletme adının altında kişi: profilde ad yazılmışsa ad soyad, yoksa e-posta.
+        String person = ((user.getName() != null ? user.getName() : "") + " "
+                + (user.getSurname() != null ? user.getSurname() : "")).trim();
+        data.setDescription(!person.isEmpty() ? person : user.getEmail());
         header.setSimpleHeaderData(data);
 
         rebuildMenu();
+    }
+
+    /** Menü başlığındaki işletme adını değiştirir (İşletme Bilgileri kaydedilince). */
+    public void setBusinessName(String name) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            SwingUtilities.invokeLater(() -> setBusinessName(name));
+            return;
+        }
+        SimpleHeader header = (SimpleHeader) getHeader();
+        SimpleHeaderData data = header.getSimpleHeaderData();
+        data.setTitle(name != null ? name : "");
+        header.setSimpleHeaderData(data);
     }
 
     /** Menü bileşen ağacını değiştirdiği için yalnızca EDT'de çalışır (bkz. {@link #setUser}). */

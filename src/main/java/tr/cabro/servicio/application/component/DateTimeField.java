@@ -24,8 +24,19 @@ public class DateTimeField extends JPanel {
     private final TimePicker timePicker = new TimePicker();
     private LocalDate earliest;
 
+    private final boolean withTime;
+
     public DateTimeField() {
-        super(new MigLayout("insets 0, gap 8, fillx", "[grow 65, fill][grow 35, fill]", "[]"));
+        this(true);
+    }
+
+    /**
+     * @param withTime false ise yalnızca tarih seçilir (saat alanı gösterilmez); {@link #getValue}
+     *                 günün başını döner, saati çağıran belirler (ör. tahsilat: bugünse şu an).
+     */
+    public DateTimeField(boolean withTime) {
+        super(new MigLayout("insets 0, gap 8, fillx", withTime ? "[grow 65, fill][grow 35, fill]" : "[grow, fill]", "[]"));
+        this.withTime = withTime;
         setOpaque(false);
 
         datePicker.setDateFormat("dd/MM/yyyy");
@@ -40,7 +51,7 @@ public class DateTimeField extends JPanel {
         timeEditor.getAccessibleContext().setAccessibleName("Saat");
 
         add(dateEditor, "wmin 0");
-        add(timeEditor, "wmin 0");
+        if (withTime) add(timeEditor, "wmin 0");
         setValue(LocalDateTime.now());
     }
 
@@ -55,7 +66,7 @@ public class DateTimeField extends JPanel {
     public LocalDateTime getValue() {
         LocalDate date = datePicker.getSelectedDate();
         if (date == null) return null;
-        LocalTime time = timePicker.isTimeSelected() ? timePicker.getSelectedTime() : LocalTime.MIDNIGHT;
+        LocalTime time = withTime && timePicker.isTimeSelected() ? timePicker.getSelectedTime() : LocalTime.MIDNIGHT;
         return LocalDateTime.of(date, time.truncatedTo(ChronoUnit.MINUTES));
     }
 

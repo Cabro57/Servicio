@@ -1,8 +1,11 @@
 package tr.cabro.servicio.application.panels.workorder;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.DateTimeField;
 import tr.cabro.servicio.application.component.MessageModal;
+import tr.cabro.servicio.application.themes.BadgePalette;
+import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.model.WorkOrderStatusHistory;
@@ -24,37 +27,147 @@ public final class WorkOrderStatusDialogs {
 
     private WorkOrderStatusDialogs() {}
 
+    /** Açık (kaydı kilitlemeyen) durumlar, iş akışı sırasıyla; kapatanlar ayrı grupta gelir. */
+    private static final ServiceStatus[] OPEN_ORDER = {
+            ServiceStatus.ACCEPTED, ServiceStatus.UNDER_REPAIR, ServiceStatus.WAITING_FOR_PART,
+            ServiceStatus.READY, ServiceStatus.ANOTHER_SERVICE};
+    private static final ServiceStatus[] CLOSING_ORDER = {ServiceStatus.DELIVERED, ServiceStatus.RETURN};
+
     /**
-     * Yeni durumu seçilen tarihle kaydeder. Teslim ve iade kaydı kilitlediği için uyarı tonunda
-     * açılır ve ne kilitleneceğini söyler; diğer geçişler yalnızca tarih sorar.
+     * Durum değiştirme penceresi: yeni durum ve geçiş tarihi tek pencerede seçilir. Durumlar
+     * rozet renginde karolar olarak dizilir; teslim ve iade "Kaydı kapatır" başlığı altında ayrı
+     * durur, seçilince kilidin ne getireceği yazılır ve birincil düğme eylemin adını alır
+     * ("Teslim et", "İade et"). Seçim yapılana kadar birincil düğme kapalıdır.
      *
-     * @param since bir önceki geçişin tarihi (takvimde daha eskisi seçilemez); bilinmiyorsa null
+     * @param since     bir önceki geçişin tarihi (takvimde daha eskisi seçilemez); bilinmiyorsa null
+     * @param onChanged kaydedilen yeni durumla çağrılır
      */
-    public static void changeStatus(Component parent, Long workOrderId, ServiceStatus newStatus,
-                                    LocalDateTime since, Runnable onChanged) {
+    public static void changeStatus(Component parent, Long workOrderId, ServiceStatus current,
+                                    LocalDateTime since, Consumer<ServiceStatus> onChanged) {
         DateTimeField field = new DateTimeField();
         field.setEarliest(since);
+        JLabel dateCaption = WorkOrderPanelSupport.createCaption("Geçiş tarihi");
+        LockNote lockNote = new LockNote();
 
-        boolean closing = newStatus.isClosed();
-        String title = closing
-                ? (newStatus == ServiceStatus.DELIVERED ? "Cihaz teslim edilsin mi?" : "Servis iade edilsin mi?")
-                : "Durum: " + newStatus.getDisplayName();
-        String message = closing
-                ? "Kayıt kilitlenir: parça, işçilik, not ve arıza tespiti değiştirilemez. Ödeme almaya devam edebilirsiniz."
-                        + (newStatus == ServiceStatus.RETURN ? " Servisteki parçalar stoğa geri döner." : "")
-                : "Geçiş ne zaman oldu? Şimdi değilse tarihi ve saati düzeltin.";
-        String action = switch (newStatus) {
+        MessageModal modal = MessageModal.of(MessageModal.Tone.INPUT, "Servis durumunu değiştir",
+                "Şu an " + current.getDisplayName() + ". Yeni durumu seçin; şimdi olmadıysa tarihi düzeltin.");
+        ServiceStatus[] selected = new ServiceStatus[1];
+
+        ButtonGroup group = new ButtonGroup();
+        JPanel choices = new JPanel(new MigLayout("insets 0, wrap 2, fillx, gap 6 6, hidemode 3",
+                "[grow, fill, sg tile][grow, fill, sg tile]", ""));
+        choices.setOpaque(false);
+        JToggleButton first = null;
+        for (ServiceStatus st : OPEN_ORDER) {
+            JToggleButton tile = statusTile(st, st == current, group, () -> {
+                selected[0] = st;
+                onPick(st, modal, dateCaption, lockNote);
+            });
+            choices.add(tile);
+            if (first == null && tile.isEnabled()) first = tile;
+        }
+        JLabel closingCaption = WorkOrderPanelSupport.createCaption("Kaydı kapatır");
+        // Açık durum sayısı tek olduğunda başlık boş kalan hücreye düşmesin: her zaman yeni satırdan başlar.
+        choices.add(closingCaption, "newline, span 2, gaptop 8");
+        for (ServiceStatus st : CLOSING_ORDER) {
+            choices.add(statusTile(st, st == current, group, () -> {
+                selected[0] = st;
+                onPick(st, modal, dateCaption, lockNote);
+            }));
+        }
+
+        JPanel body = new JPanel(new MigLayout("insets 0, wrap, fillx, gap 0 4, hidemode 3", "[grow, fill]", ""));
+        body.setOpaque(false);
+        body.add(choices, "wmin 0");
+        body.add(lockNote, "wmin 0, gaptop 6");
+        body.add(dateCaption, "gaptop 10");
+        body.add(field, "growx, wmin 0");
+
+        modal.extra(body)
+                .focus(first)
+                .primary("Durumu değiştir", () -> {
+                    ServiceStatus target = selected[0];
+                    if (target == null) return;
+                    submit(parent, "Servis durumu güncellenemedi",
+                            () -> service().updateStatus(workOrderId, target, field.getValue()),
+                            () -> onChanged.accept(target));
+                });
+        modal.updatePrimary(null, false);
+        modal.show(parent);
+    }
+
+    /** Seçime göre tarih etiketi, kilit notu ve birincil düğmenin adı güncellenir. */
+    private static void onPick(ServiceStatus st, MessageModal modal, JLabel dateCaption, LockNote lockNote) {
+        dateCaption.setText(switch (st) {
+            case DELIVERED -> "Teslim tarihi";
+            case RETURN -> "İade tarihi";
+            default -> "Geçiş tarihi";
+        });
+        lockNote.showFor(st);
+        modal.updatePrimary(switch (st) {
             case DELIVERED -> "Teslim et";
             case RETURN -> "İade et";
             default -> "Durumu değiştir";
-        };
+        }, true);
+    }
 
-        MessageModal.of(closing ? MessageModal.Tone.WARNING : MessageModal.Tone.INPUT, title, message)
-                .extra(labeled(closing ? "Teslim tarihi" : "Geçiş tarihi", field))
-                .focus(field.focusTarget())
-                .primary(action, () -> submit(parent, "Servis durumu güncellenemedi",
-                        () -> service().updateStatus(workOrderId, newStatus, field.getValue()), onChanged))
-                .show(parent);
+    /**
+     * Bir durum karosu: rozet renginde ikon ve ad, ince çizgili yuvarlak kutu. Seçilince rozetin
+     * zemini ve yazı rengiyle dolar. Şu anki durum seçilemez ve "şu an" diye işaretlenir.
+     */
+    private static JToggleButton statusTile(ServiceStatus st, boolean isCurrent, ButtonGroup group, Runnable onSelect) {
+        Ikon icon = new Ikon(st.getIconPath(), 16);
+        icon.setColorFilter(new com.formdev.flatlaf.extras.FlatSVGIcon.ColorFilter(
+                c -> BadgePalette.foreground(st.getBadgeColor())));
+        JToggleButton tile = new JToggleButton(isCurrent ? st.getDisplayName() + "  ·  şu an" : st.getDisplayName(), icon);
+        tile.setHorizontalAlignment(SwingConstants.LEADING);
+        tile.setIconTextGap(8);
+        tile.setFocusPainted(false);
+        String base = "arc: 10; margin: 8,10,8,10; focusWidth: 0; innerFocusWidth: 1; borderWidth: 1;"
+                + " borderColor: $Component.borderColor; background: $Table.background;"
+                + " hoverBackground: $Servicio.rowHoverBackground;"
+                + " selectedBackground: " + BadgePalette.backgroundHex(st.getBadgeColor()) + ";"
+                + " selectedForeground: " + BadgePalette.foregroundHex(st.getBadgeColor()) + ";"
+                + " disabledText: $Label.disabledForeground";
+        tile.putClientProperty(FlatClientProperties.STYLE, base);
+        if (isCurrent) {
+            tile.setEnabled(false);
+            tile.setToolTipText("Kaydın şu anki durumu");
+        }
+        tile.addItemListener(e -> tile.putClientProperty(FlatClientProperties.STYLE,
+                tile.isSelected() ? base + "; font: bold" : base));
+        tile.addActionListener(e -> onSelect.run());
+        group.add(tile);
+        return tile;
+    }
+
+    /** Teslim/iade seçilince beliren uyarı satırı: kilit ikonu ve kilidin getirdiği kısıtlar. */
+    private static final class LockNote extends JPanel {
+        private final JTextArea text = new JTextArea();
+
+        LockNote() {
+            super(new MigLayout("insets 0, gap 8, fillx", "[][grow, fill]", "[top]"));
+            setOpaque(false);
+            text.setLineWrap(true);
+            text.setWrapStyleWord(true);
+            text.setEditable(false);
+            text.setFocusable(false);
+            text.setOpaque(false);
+            text.setBorder(BorderFactory.createEmptyBorder());
+            text.putClientProperty(FlatClientProperties.STYLE,
+                    "background: null; margin: 0,0,0,0; font: -1; foreground: $Servicio.warningColor");
+            add(new JLabel(new Ikon("icons/lock.svg", 14, "Servicio.warningColor")), "gaptop 1");
+            add(text, "wmin 0");
+            setVisible(false);
+        }
+
+        void showFor(ServiceStatus st) {
+            setVisible(st.isClosed());
+            if (!st.isClosed()) return;
+            text.setText("Kayıt kilitlenir: parça, işçilik, not ve arıza tespiti değiştirilemez. Ödeme alınabilir."
+                    + (st == ServiceStatus.RETURN ? " Servisteki parçalar stoğa geri döner." : ""));
+            revalidate();
+        }
     }
 
     /** Bir geçişin tarihini düzeltir; yeni tarih komşu geçişlerin arasında kalmalıdır. */

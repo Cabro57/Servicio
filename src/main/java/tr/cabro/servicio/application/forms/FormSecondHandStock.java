@@ -49,6 +49,7 @@ import tr.cabro.servicio.documents.DeviceTransactionFormType;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.DeviceTransaction;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.enums.DeviceTransactionType;
 import tr.cabro.servicio.service.DeviceService;
@@ -367,13 +368,31 @@ public class FormSecondHandStock extends AbstractTableForm {
             item.addActionListener(e -> openDocumentModal(type, transaction));
             popup.add(item);
         }
-        popup.show(this, 0, 0);
+        // Menü, tıklanan satırın işlem hücresinin altında açılır; satır bulunamazsa imlecin yanında.
+        Rectangle cell = actionCellOf(transaction);
+        if (cell != null) {
+            popup.show(table, cell.x, cell.y + cell.height);
+        } else {
+            Point mouse = table.getMousePosition();
+            popup.show(table, mouse != null ? mouse.x : 0, mouse != null ? mouse.y : 0);
+        }
+    }
+
+    /** İşlemin tablodaki işlem (düğme) hücresinin sınırları; görünür değilse null. */
+    private Rectangle actionCellOf(DeviceTransaction transaction) {
+        for (int modelRow = 0; modelRow < tableModel.getRowCount(); modelRow++) {
+            if (tableModel.getItemAt(modelRow) != transaction) continue;
+            int viewRow = table.convertRowIndexToView(modelRow);
+            if (viewRow < 0) return null;
+            return table.getCellRect(viewRow, table.getColumnModel().getColumnCount() - 1, true);
+        }
+        return null;
     }
 
     /** İmza isimleri ve metinler düzenlenip belge açılır ya da farklı kaydedilir. */
     private void openDocumentModal(DeviceTransactionFormType type, DeviceTransaction transaction) {
-        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> SwingUtilities.invokeLater(() -> {
-            User shop = shopOpt.orElse(null);
+        ServiceManager.getBusinessService().get().thenAccept(shopOpt -> SwingUtilities.invokeLater(() -> {
+            Business shop = shopOpt.orElse(null);
             String customerName = transaction.getCustomer() != null ? transaction.getCustomer().getFullName() : "";
             DocumentExportModal.Spec spec = new DocumentExportModal.Spec(
                     type.getDisplayName(), type.getFileSlug() + "-DT" + transaction.getId(),

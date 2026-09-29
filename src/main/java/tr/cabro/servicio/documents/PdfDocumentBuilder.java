@@ -19,6 +19,7 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfWriter;
 import tr.cabro.servicio.Servicio;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrderItem;
 import tr.cabro.servicio.util.Format;
@@ -113,7 +114,7 @@ public class PdfDocumentBuilder implements DocumentWriter {
      * @param documentNumber belge numarası ("SRV-12", "DT-4")
      * @param date           belgenin tarihi, biçimlenmiş
      */
-    public static PdfDocumentBuilder create(File outFile, User shop, String title,
+    public static PdfDocumentBuilder create(File outFile, Business shop, String title,
                                             String documentNumber, String date) throws IOException, DocumentException {
         String shopName = shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : "";
         String footer = (shopName.isEmpty() ? "" : shopName + "   ·   ") + title + "   ·   " + documentNumber;
@@ -131,7 +132,7 @@ public class PdfDocumentBuilder implements DocumentWriter {
      * Rapor belgesini açar: künyedeki kutuda belge no yerine dönem ve oluşturulma zamanı yazar.
      * Gövde {@link #figures} ve {@link #table} ile doldurulur.
      */
-    public static PdfDocumentBuilder createReport(File outFile, User shop, String title,
+    public static PdfDocumentBuilder createReport(File outFile, Business shop, String title,
                                                   String period, String generatedAt) throws IOException, DocumentException {
         String shopName = shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : "";
         String footer = (shopName.isEmpty() ? "" : shopName + "   ·   ") + title + "   ·   " + period;
@@ -156,7 +157,7 @@ public class PdfDocumentBuilder implements DocumentWriter {
     // Künye
     // -------------------------------------------------------------------------
 
-    private void addMasthead(User shop, String title, String firstLabel, String firstValue,
+    private void addMasthead(Business shop, String title, String firstLabel, String firstValue,
                              String secondLabel, String secondValue) throws DocumentException, IOException {
         PdfPTable head = new PdfPTable(new float[]{MASTHEAD_LEFT, MASTHEAD_RIGHT});
         head.setWidthPercentage(100);
@@ -191,7 +192,7 @@ public class PdfDocumentBuilder implements DocumentWriter {
         document.add(rule(1.5f, INK, 10f, 4f));
     }
 
-    private PdfPCell shopBlock(User shop) throws IOException, DocumentException {
+    private PdfPCell shopBlock(Business shop) throws IOException, DocumentException {
         PdfPCell cell = bare();
         cell.setVerticalAlignment(Element.ALIGN_TOP);
 
@@ -217,26 +218,47 @@ public class PdfDocumentBuilder implements DocumentWriter {
 
         PdfPCell text = bare();
         text.addElement(new Paragraph(shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : " ", shopFont));
-        if (shop != null && notBlank(shop.getAddress())) {
-            Paragraph address = new Paragraph(shop.getAddress(), smallFont);
-            address.setSpacingBefore(3f);
-            text.addElement(address);
-        }
-        StringBuilder contact = new StringBuilder();
-        if (shop != null && notBlank(shop.getPhoneNumber())) contact.append(PhoneHelper.formatForDisplay(shop.getPhoneNumber()));
-        if (shop != null && notBlank(shop.getEmail())) {
-            if (contact.length() > 0) contact.append("   ·   ");
-            contact.append(shop.getEmail());
-        }
-        if (contact.length() > 0) {
-            Paragraph c = new Paragraph(contact.toString(), smallFont);
-            c.setSpacingBefore(1.5f);
-            text.addElement(c);
+        // İletişim: her bilgi kendi satırında, solunda küçük bir ikon. Eskiden tek satıra
+        // "·" ile diziliyordu; dar sütunda telefon numarası ortasından bölünüyordu.
+        if (shop != null) {
+            boolean first = true;
+            first = infoLine(text, "icons/map-pin.svg", shop.getAddress(), first);
+            // Her numara kendi satırında: yan yana dizilince dar sütunda ikincisi alta kayıp
+            // tek numara gibi okunuyordu.
+            first = infoLine(text, "icons/phone.svg", notBlank(shop.getPhoneNumber()) ? PhoneHelper.formatForDisplay(shop.getPhoneNumber()) : null, first);
+            first = infoLine(text, "icons/phone.svg", notBlank(shop.getPhoneNumber2()) ? PhoneHelper.formatForDisplay(shop.getPhoneNumber2()) : null, first);
+            first = infoLine(text, "icons/mail.svg", shop.getEmail(), first);
+            first = infoLine(text, "icons/globe.svg", shop.getWebsite(), first);
+            first = infoLine(text, "icons/clock.svg", shop.getWorkingHours(), first);
+            infoLine(text, "icons/landmark.svg", shop.getTaxLine(), first);
         }
         inner.addCell(text);
 
         cell.addElement(inner);
         return cell;
+    }
+
+    /**
+     * Künyede ikonlu bir bilgi satırı; boş değer yazılmaz. Sıra: adres, telefonlar, e-posta, web,
+     * çalışma saatleri, vergi. İkon neyin ne olduğunu söyler, etiket gerekmez.
+     *
+     * @return sonraki satır için "ilk satır mı" bilgisi
+     */
+    private boolean infoLine(PdfPCell cell, String iconPath, String value, boolean first) {
+        if (!notBlank(value)) return first;
+        // Numara satır sonunda bölünmesin: boşluklar bölünmez boşluk olur.
+        String textValue = iconPath.endsWith("phone.svg") ? value.trim().replace(' ', (char) 0x00A0) : value.trim();
+        Paragraph line = new Paragraph();
+        line.setLeading(10.5f);
+        line.setSpacingBefore(first ? 4f : 0.5f);
+        Image icon = PdfIcons.get(iconPath, MUTED, 7f);
+        if (icon != null) {
+            line.add(new Chunk(icon, 0f, -1f, false));
+            line.add(new Chunk("  ", smallFont));
+        }
+        line.add(new Chunk(textValue, smallFont));
+        cell.addElement(line);
+        return false;
     }
 
     private void addMetaRow(PdfPTable meta, String label, String value, boolean first) {
@@ -297,6 +319,70 @@ public class PdfDocumentBuilder implements DocumentWriter {
             table.addCell(filler);
         }
         document.add(table);
+    }
+
+    /**
+     * Banka hesap bilgileri, e-faturalardaki düzende: diğer bölümler gibi başlıklı, altında
+     * başlık satırı çizgili küçük bir tablo (Banka · Hesap sahibi · IBAN) ve tek satırlık açıklama.
+     * IBAN kalın ama gövde boyunda; göze batmaz, arayan kolayca bulur.
+     * <pre>
+     * BANKA HESAP BİLGİLERİ
+     * ───────────────────────────────────────────────────────────
+     * BANKA            HESAP SAHİBİ       IBAN
+     * Ziraat Bankası   Samet Özen         TR51 0001 0006 3182 3672 0050 01
+     * Havale / EFT ile ödemede açıklamaya SRV-572 yazınız. Ödenecek tutar: 1.250,00 ₺
+     * </pre>
+     * IBAN yoksa hiçbir şey basılmaz.
+     */
+    @Override
+    public void paymentInstructions(Business shop, String reference, BigDecimal amountDue) throws DocumentException {
+        if (shop == null || !shop.hasBankAccount()) return;
+        section("Banka Hesap Bilgileri");
+
+        String holder = notBlank(shop.getAccountHolder()) ? shop.getAccountHolder().trim()
+                : (notBlank(shop.getBusinessName()) ? shop.getBusinessName().trim() : null);
+        PdfPTable table = new PdfPTable(new float[]{1.1f, 1.2f, 2.2f});
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(2f);
+        table.setKeepTogether(true);
+        for (String h : new String[]{"Banka", "Hesap Sahibi", "IBAN"}) {
+            PdfPCell c = new PdfPCell(new Phrase(h.toUpperCase(TR), labelFont));
+            c.setBorder(Rectangle.BOTTOM);
+            c.setBorderWidthBottom(0.5f);
+            c.setBorderColorBottom(RULE);
+            c.setPaddingLeft(0f);
+            c.setPaddingBottom(4f);
+            table.addCell(c);
+        }
+        table.addCell(bankCell(notBlank(shop.getBankName()) ? shop.getBankName().trim() : "—", bodyFont));
+        table.addCell(bankCell(holder != null ? holder : "—", bodyFont));
+        table.addCell(bankCell(Business.formatIban(shop.getIban()).replace(' ', (char) 0x00A0), boldFont));
+
+        Paragraph note = new Paragraph();
+        note.add(new Chunk("Havale / EFT ile ödemede açıklamaya ", smallFont));
+        note.add(new Chunk(reference, new Font(boldFont.getBaseFont(), smallFont.getSize(), Font.NORMAL, INK)));
+        note.add(new Chunk(" yazınız.", smallFont));
+        if (amountDue != null && amountDue.signum() > 0) {
+            note.add(new Chunk("   Ödenecek tutar: ", smallFont));
+            note.add(new Chunk(money(amountDue), new Font(boldFont.getBaseFont(), smallFont.getSize(), Font.NORMAL, INK)));
+        }
+        PdfPCell noteCell = bare();
+        noteCell.setColspan(3);
+        noteCell.setPaddingTop(5f);
+        noteCell.addElement(note);
+        table.addCell(noteCell);
+        document.add(table);
+    }
+
+    private PdfPCell bankCell(String text, Font font) {
+        PdfPCell c = new PdfPCell(new Phrase(text, font));
+        c.setBorder(Rectangle.BOTTOM);
+        c.setBorderWidthBottom(0.5f);
+        c.setBorderColorBottom(RULE);
+        c.setPaddingLeft(0f);
+        c.setPaddingTop(5f);
+        c.setPaddingBottom(6f);
+        return c;
     }
 
     /** Tam genişlikte tek bir form alanı. */

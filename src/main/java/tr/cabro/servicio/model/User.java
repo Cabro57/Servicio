@@ -14,25 +14,18 @@ public class User {
     private String email;
     private String password;
 
-    private String businessName;
-    private String phoneNumber;
-    private String address;
+    // İşletme bilgileri (ad, telefon, adres, logo…) V28'den beri Business / business_profile'da.
 
-    // İşletme logosu — "logos/" alt klasöründeki dosya adı (opsiyonel, PDF belge antetinde kullanılır)
-    private String logoPath;
-
-    // YENİ EKLENDİ: Profil resminin dosya adı veya yolu (Örn: "avatar_1.png")
+    // Profil resminin "profiles/" alt klasöründeki dosya adı
     private String profilePicture;
 
     private LocalDateTime createdAt;
 
-    public User(String name, String surname, String email, String password, String businessName, String phoneNumber, String profilePicture) {
+    public User(String name, String surname, String email, String password, String profilePicture) {
         this.name = name;
         this.surname = surname;
         this.email = email;
         this.password = password;
-        this.businessName = businessName;
-        this.phoneNumber = phoneNumber;
         this.profilePicture = profilePicture;
         this.createdAt = LocalDateTime.now();
     }
@@ -42,8 +35,6 @@ public class User {
         this.surname = "";
         this.email = "";
         this.password = "";
-        this.businessName = "";
-        this.phoneNumber = "";
         this.profilePicture = "default_avatar.svg"; // Yeni eklenen kullanıcıların varsayılan bir resmi olsun
         this.createdAt = LocalDateTime.now();
     }

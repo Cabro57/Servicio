@@ -2,6 +2,7 @@ package tr.cabro.servicio.service;
 
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.util.Format;
@@ -17,7 +18,7 @@ public final class TemplateTokenBuilder {
     private TemplateTokenBuilder() {
     }
 
-    public static Map<String, String> fromWorkOrder(WorkOrder wo, User shop) {
+    public static Map<String, String> fromWorkOrder(WorkOrder wo, Business shop) {
         Map<String, String> t = new HashMap<>();
         Customer c = wo.getCustomer();
         Device d = wo.getDevice();
@@ -42,7 +43,23 @@ public final class TemplateTokenBuilder {
         t.put("isletme_adi", shop != null && shop.getBusinessName() != null ? shop.getBusinessName() : "-");
         t.put("isletme_telefon", shop != null && shop.getPhoneNumber() != null ? PhoneHelper.formatForDisplay(shop.getPhoneNumber()) : "-");
         t.put("isletme_adres", shop != null && shop.getAddress() != null ? shop.getAddress() : "-");
+        putBusinessExtras(t, shop, "-");
 
         return t;
+    }
+
+    /** V28 ile eklenen işletme alanları; boşsa {@code empty} yazılır. */
+    public static void putBusinessExtras(Map<String, String> t, Business shop, String empty) {
+        t.put("isletme_telefon2", shop != null && notBlank(shop.getPhoneNumber2()) ? PhoneHelper.formatForDisplay(shop.getPhoneNumber2()) : empty);
+        t.put("isletme_eposta", shop != null && notBlank(shop.getEmail()) ? shop.getEmail() : empty);
+        t.put("isletme_web", shop != null && notBlank(shop.getWebsite()) ? shop.getWebsite() : empty);
+        t.put("iban", shop != null && notBlank(shop.getIban()) ? Business.formatIban(shop.getIban()) : empty);
+        t.put("banka", shop != null && notBlank(shop.getBankName()) ? shop.getBankName() : empty);
+        t.put("hesap_sahibi", shop != null && notBlank(shop.getAccountHolder()) ? shop.getAccountHolder() : empty);
+        t.put("calisma_saatleri", shop != null && notBlank(shop.getWorkingHours()) ? shop.getWorkingHours() : empty);
+    }
+
+    private static boolean notBlank(String s) {
+        return s != null && !s.isBlank();
     }
 }

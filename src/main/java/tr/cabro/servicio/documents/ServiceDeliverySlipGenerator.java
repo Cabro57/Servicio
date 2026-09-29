@@ -3,6 +3,7 @@ package tr.cabro.servicio.documents;
 import tr.cabro.servicio.documents.receipt.ThermalSlip;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.WorkOrderItem;
@@ -19,7 +20,7 @@ import java.time.LocalDateTime;
 public class ServiceDeliverySlipGenerator implements ServiceFormGenerator {
 
     @Override
-    public File generate(WorkOrder workOrder, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception {
+    public File generate(WorkOrder workOrder, Business shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception {
         Customer customer = workOrder.getCustomer();
         Device device = workOrder.getDevice();
         String code = "SRV-" + workOrder.getId();

@@ -3,6 +3,7 @@ package tr.cabro.servicio.documents;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.DeviceTransaction;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 
 import java.io.File;
@@ -15,7 +16,7 @@ public class SaleContractFormGenerator implements DeviceTransactionFormGenerator
 
 
     @Override
-    public File generate(DeviceTransaction transaction, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception {
+    public File generate(DeviceTransaction transaction, Business shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception {
         Customer party = transaction.getCustomer();
         Device device = transaction.getDevice();
 
@@ -31,6 +32,7 @@ public class SaleContractFormGenerator implements DeviceTransactionFormGenerator
                     {"Satış Bedeli", PdfDocumentBuilder.money(transaction.getPrice())},
                     {"Garanti Süresi", transaction.getWarrantyMonths() != null ? transaction.getWarrantyMonths() + " ay" : "Garantisiz"}
             });
+            pdf.paymentInstructions(shop, "DT-" + transaction.getId(), transaction.getPrice());
 
             pdf.section("Beyan");
             pdf.terms(request.text(DocumentText.SALE_CONTRACT_NOTE));

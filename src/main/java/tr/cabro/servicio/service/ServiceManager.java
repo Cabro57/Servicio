@@ -14,6 +14,7 @@ public final class ServiceManager {
     @Getter private static SupplierService supplierService;
     @Getter private static DeviceService deviceService;
     @Getter private static UserService userService;
+    @Getter private static BusinessService businessService;
 
     // --- YENİ EKLENEN YÖNETİCİLER ---
     @Getter private static DeviceDictionaryManager deviceDictionaryManager;
@@ -67,6 +68,7 @@ public final class ServiceManager {
         stockService = new StockService(stockLedgerRepo);
         warehouseService = new WarehouseService(warehouseRepo);
         userService = new UserService(userRepo);
+        businessService = new BusinessService(jdbi.onDemand(BusinessRepository.class));
 
         // --- Yeni Servislerin Başlatılması ---
         deviceDictionaryManager = new DeviceDictionaryManager(dictRepo);

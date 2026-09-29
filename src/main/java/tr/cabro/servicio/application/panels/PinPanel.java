@@ -11,6 +11,7 @@ import tr.cabro.servicio.application.system.Form;
 import tr.cabro.servicio.application.system.FormManager;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.i18n.AppLocale;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.service.ServiceManager;
 
@@ -191,20 +192,20 @@ public class PinPanel extends Form {
     }
 
     private void loadBusiness() {
-        ServiceManager.getUserService().get(1L).thenAccept(user -> SwingUtilities.invokeLater(() ->
-                applyBusiness(user.orElse(null)))).exceptionally(ex -> {
+        ServiceManager.getBusinessService().get().thenAccept(business -> SwingUtilities.invokeLater(() ->
+                applyBusiness(business.orElse(null)))).exceptionally(ex -> {
             Servicio.getLogger().warn("Kilit ekranı için işletme bilgisi okunamadı", ex);
             return null;
         });
     }
 
-    private void applyBusiness(User user) {
-        String name = user != null && user.getBusinessName() != null && !user.getBusinessName().isBlank()
-                ? user.getBusinessName() : "Servicio";
+    private void applyBusiness(tr.cabro.servicio.model.Business business) {
+        String name = business != null && business.getBusinessName() != null && !business.getBusinessName().isBlank()
+                ? business.getBusinessName() : "Servicio";
         businessName.setText(name);
         Icon icon = null;
-        if (user != null && user.getLogoPath() != null && !user.getLogoPath().isBlank()) {
-            File file = new File(new File(Servicio.getInstance().getDataFolder(), "logos"), user.getLogoPath());
+        if (business != null && business.getLogoPath() != null && !business.getLogoPath().isBlank()) {
+            File file = new File(new File(Servicio.getInstance().getDataFolder(), "logos"), business.getLogoPath());
             if (file.isFile()) {
                 ImageIcon raw = new ImageIcon(file.getAbsolutePath());
                 icon = tr.cabro.servicio.application.utils.ScaledImageIcon.ofHeight(raw.getImage(), UIScale.scale(28));

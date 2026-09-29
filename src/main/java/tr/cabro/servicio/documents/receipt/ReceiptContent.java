@@ -5,6 +5,7 @@ import lombok.Setter;
 import tr.cabro.servicio.model.Payment;
 import tr.cabro.servicio.model.Sale;
 import tr.cabro.servicio.model.SaleItem;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.enums.SaleType;
 
@@ -28,6 +29,7 @@ public class ReceiptContent {
     private String shopName;
     private String shopPhone;
     private String shopAddress;
+    private String shopTaxLine;
 
     private final List<Line> lines = new ArrayList<>();
     private BigDecimal subtotal = BigDecimal.ZERO;
@@ -41,7 +43,7 @@ public class ReceiptContent {
     public record PaymentLine(String methodLabel, BigDecimal amount) {}
 
     /** Bir {@link Sale} + o satışa uygulanan ödemelerden fiş içeriği üretir (satış VEYA iade fişi). */
-    public static ReceiptContent fromSale(Sale sale, List<Payment> payments, User shop) {
+    public static ReceiptContent fromSale(Sale sale, List<Payment> payments, Business shop) {
         ReceiptContent content = new ReceiptContent();
         boolean isReturn = sale.getType() == SaleType.RETURN;
 
@@ -54,6 +56,7 @@ public class ReceiptContent {
             content.setShopName(shop.getBusinessName());
             content.setShopPhone(shop.getPhoneNumber());
             content.setShopAddress(shop.getAddress());
+            content.setShopTaxLine(shop.getTaxLine());
         }
 
         if (sale.getItems() != null) {

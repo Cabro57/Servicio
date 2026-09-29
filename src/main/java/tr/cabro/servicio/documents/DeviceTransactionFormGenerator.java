@@ -1,6 +1,7 @@
 package tr.cabro.servicio.documents;
 
 import tr.cabro.servicio.model.DeviceTransaction;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 
 import java.io.File;
@@ -12,5 +13,5 @@ import java.io.File;
  */
 public interface DeviceTransactionFormGenerator {
 
-    File generate(DeviceTransaction transaction, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception;
+    File generate(DeviceTransaction transaction, Business shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception;
 }

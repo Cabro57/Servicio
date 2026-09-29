@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -330,7 +331,7 @@ public class FormSale extends Form {
         if (loadedSale == null) return;
 
         ServiceManager.getPaymentService().getPaymentsForTarget(AllocationTargetType.SALE, sale.getId())
-                .thenAccept(payments -> ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
+                .thenAccept(payments -> ServiceManager.getBusinessService().get().thenAccept(shopOpt -> {
                     try {
                         ReceiptContent content = ReceiptContent.fromSale(loadedSale, payments, shopOpt.orElse(null));
                         File outFile = File.createTempFile("servicio-satis-fis-SAT" + sale.getId() + "-", ".pdf");

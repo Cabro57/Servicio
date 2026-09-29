@@ -1,5 +1,6 @@
 package tr.cabro.servicio.documents;
 
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrder;
 
@@ -11,5 +12,5 @@ import java.io.File;
  */
 public interface ServiceFormGenerator {
 
-    File generate(WorkOrder workOrder, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception;
+    File generate(WorkOrder workOrder, Business shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception;
 }

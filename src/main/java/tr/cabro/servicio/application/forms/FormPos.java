@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -1898,7 +1899,7 @@ public class FormPos extends Form {
 
     /** Termal fiş PDF'i (genişlik Ayarlar > Yazdırma'dan) üretilip varsayılan PDF görüntüleyicide açılır. */
     private void printReceipt(Sale sale, List<Payment> payments, BigDecimal changeGiven) {
-        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
+        ServiceManager.getBusinessService().get().thenAccept(shopOpt -> {
             try {
                 ReceiptContent content = ReceiptContent.fromSale(sale, payments, shopOpt.orElse(null));
                 content.setChangeGiven(changeGiven);

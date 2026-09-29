@@ -2,6 +2,7 @@ package tr.cabro.servicio.reports;
 
 import tr.cabro.servicio.documents.PdfDocumentBuilder;
 import tr.cabro.servicio.i18n.AppLocale;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.reports.Report.Col;
 import tr.cabro.servicio.reports.Report.Figure;
@@ -49,7 +50,7 @@ public final class ReportExporter {
 
     // ── PDF ─────────────────────────────────────────────────────────────────
 
-    public static File pdf(Report report, User shop, File out) throws Exception {
+    public static File pdf(Report report, Business shop, File out) throws Exception {
         PdfDocumentBuilder pdf = PdfDocumentBuilder.createReport(out, shop, report.kind().title(),
                 report.periodText(), generatedAt());
         try {

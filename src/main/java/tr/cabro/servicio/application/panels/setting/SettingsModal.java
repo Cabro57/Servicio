@@ -123,8 +123,8 @@ public class SettingsModal extends JPanel {
                 "kur döviz dolar euro sterlin tcmb",
                 SettingsExchangeRatePanel::new);
 
-        page("Sistem", "Güvenlik", "Ekran kilidi ve cihaz erişim bilgilerinin saklanma süresi.", "shield-user.svg",
-                "kilit ekran şifre pin desen erişim güvenlik",
+        page("Sistem", "Güvenlik", "Ekran kilidi, kilit PIN'i ve cihaz erişim bilgilerinin saklanma süresi.", "shield-user.svg",
+                "kilit ekran şifre pin değiştir desen erişim güvenlik",
                 SettingsSecurityPanel::new);
         page("Sistem", "Yedekleme", "Veritabanı yedekleri, otomatik yedekleme ve geri yükleme.", "database-backup.svg",
                 "yedek yedekleme geri yükle klasör veritabanı",

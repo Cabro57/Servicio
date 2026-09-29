@@ -62,10 +62,10 @@ public class FormWorkOrder extends Form {
 
     // --- Kimlik şeridi ---
     private DetailHeader header;
-    private StatusButton statusButton;
+    private Badge statusBadge;
     private Badge urgentBadge;
     private JButton btnWhatsApp;
-    private JButton btnReopen;
+    private JButton btnStatus;
     private JButton btnEdit;
     private JButton btnPrimary;
 
@@ -140,22 +140,21 @@ public class FormWorkOrder extends Form {
     private void createHeaderPanel() {
         header = new DetailHeader(() -> FormManager.showForm(AllForms.getForm(FormWorkOrders.class)));
 
-        statusButton = new StatusButton(this::changeStatus);
+        statusBadge = new Badge(ServiceStatus.ACCEPTED).setShowIcon(true);
         urgentBadge = new Badge(new tr.cabro.servicio.model.contract.Visualizable() {
             @Override public String getDisplayName() { return "Acil"; }
             @Override public String getIconPath() { return "icons/triangle-alert.svg"; }
             @Override public tr.cabro.servicio.model.enums.BadgeColor getBadgeColor() { return tr.cabro.servicio.model.enums.BadgeColor.RED; }
         }).setShowIcon(true);
-        header.addBadge(statusButton);
+        header.addBadge(statusBadge);
         header.addBadge(urgentBadge);
 
+        // Açık kayıtta durum penceresini açar; teslim/iade edilmiş kayıtta aynı yerde "geri al" olur.
+        btnStatus = header.addAction("Durum", "icons/arrow-right.svg", this::onStatusAction);
         JButton btnGenerateDoc = header.addAction("Belge", "icons/file-text.svg", null);
         btnGenerateDoc.setToolTipText("Servis formu, teklif, fiş…");
         btnGenerateDoc.addActionListener(e -> showDocumentMenu(btnGenerateDoc));
         btnWhatsApp = header.addAction("WhatsApp", "icons/message-circle.svg", this::openWhatsAppModal);
-        // Yalnızca kapalı (teslim/iade) kayıtta görünür; metni hydrateHeader kapanış türüne göre yazar.
-        btnReopen = header.addAction("Teslimi geri al", "icons/undo-2.svg", this::reopen);
-        btnReopen.setVisible(false);
         btnEdit = header.addAction("Düzenle", "icons/pencil.svg", this::openEditModal);
         header.addActionComponent(buildDeleteButton());
         btnPrimary = header.setPrimary("Parça / İşçilik Ekle", "icons/plus.svg", () -> {
@@ -213,14 +212,19 @@ public class FormWorkOrder extends Form {
                 () -> FormManager.showForm(AllForms.getForm(FormWorkOrders.class)));
     }
 
+    /** Kimlik şeridindeki durum düğmesi: açık kayıtta durum penceresi, kapalı kayıtta geri alma. */
+    private void onStatusAction() {
+        ServiceStatus current = workOrder.getServiceStatus() != null ? workOrder.getServiceStatus() : ServiceStatus.ACCEPTED;
+        if (current.isClosed()) reopen();
+        else changeStatus(current);
+    }
+
     /**
-     * Durum menüsünden seçilen yeni durum, geçiş tarihi sorularak kaydedilir; teslim ve iade
-     * ayrıca kaydın kilitleneceğini söyler. Kaydedilince sayfa yeniden okunur (kilit, tarihler).
+     * Yeni durum ve geçiş tarihi tek pencerede seçilir; teslim ve iade ayrıca kaydın kilitleneceğini
+     * söyler. Kaydedilince sayfa yeniden okunur (kilit, tarihler).
      */
-    private void changeStatus(ServiceStatus newStatus) {
-        if (newStatus == null || workOrder == null || workOrder.getServiceStatus() == newStatus) return;
-        ServiceStatus previous = workOrder.getServiceStatus();
-        WorkOrderStatusDialogs.changeStatus(this, workOrder.getId(), newStatus, workOrder.getStatusChangedAt(), () -> {
+    private void changeStatus(ServiceStatus previous) {
+        WorkOrderStatusDialogs.changeStatus(this, workOrder.getId(), previous, workOrder.getStatusChangedAt(), newStatus -> {
             tr.cabro.servicio.util.SoundPlayer.statusChanged();
             notifyStockMove(newStatus == ServiceStatus.RETURN, previous == ServiceStatus.RETURN);
             formRefresh();
@@ -254,7 +258,7 @@ public class FormWorkOrder extends Form {
         ServiceStatus currentStatus = workOrder.getServiceStatus() != null
                 ? workOrder.getServiceStatus() : ServiceStatus.ACCEPTED;
         boolean closed = currentStatus.isClosed();
-        statusButton.setStatus(currentStatus, closed);
+        statusBadge.setVisualizable(currentStatus);
         urgentBadge.setVisible("URGENT".equalsIgnoreCase(workOrder.getUrgencyStatus()));
 
         Customer c = workOrder.getCustomer();
@@ -291,9 +295,9 @@ public class FormWorkOrder extends Form {
         btnPrimary.setVisible(!closed);
         btnEdit.setEnabled(!closed);
         btnEdit.setToolTipText(closed ? "Kayıt kilitli; düzenlemek için önce " + (returned ? "iadeyi" : "teslimi") + " geri alın" : null);
-        btnReopen.setVisible(closed);
-        btnReopen.setText(returned ? "İadeyi geri al" : "Teslimi geri al");
-        btnReopen.setToolTipText("Kaydı bir önceki durumuna döndürür ve kilidi açar");
+        btnStatus.setText(closed ? (returned ? "İadeyi geri al" : "Teslimi geri al") : "Durum");
+        btnStatus.setIcon(new Ikon(closed ? "icons/undo-2.svg" : "icons/arrow-right.svg", 16, "Label.foreground"));
+        btnStatus.setToolTipText(closed ? "Kaydı bir önceki durumuna döndürür ve kilidi açar" : "Servis durumunu değiştir");
         if (closed) {
             String when = workOrder.getDeliveryDate() != null
                     ? " " + workOrder.getDeliveryDate().format(DateFormats.dateTime()) : "";
@@ -352,8 +356,8 @@ public class FormWorkOrder extends Form {
 
     /** İmza isimleri, garanti ve metinler düzenlenip belge açılır ya da farklı kaydedilir. */
     private void openDocumentModal(ServiceFormType type) {
-        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> SwingUtilities.invokeLater(() -> {
-            User shop = shopOpt.orElse(null);
+        ServiceManager.getBusinessService().get().thenAccept(shopOpt -> SwingUtilities.invokeLater(() -> {
+            Business shop = shopOpt.orElse(null);
             DocumentExportModal.Spec spec = new DocumentExportModal.Spec(
                     type.getDisplayName(), type.getFileSlug() + "-SRV" + workOrder.getId(),
                     type.getLeftSignerLabel(), defaultSignerName(type.getLeftSignerLabel(), shop),
@@ -368,7 +372,7 @@ public class FormWorkOrder extends Form {
      * İmza etiketi "İşletme" içeriyorsa işletme adını, "Müşteri" içeriyorsa müşteri adını
      * varsayılan olarak doldurur — kullanıcı isterse üzerine yazabilir.
      */
-    private String defaultSignerName(String signerLabel, User shop) {
+    private String defaultSignerName(String signerLabel, Business shop) {
         if (signerLabel == null) return "";
         if (signerLabel.contains("İşletme") && shop != null && shop.getBusinessName() != null) {
             return shop.getBusinessName();
@@ -388,11 +392,11 @@ public class FormWorkOrder extends Form {
 
         CompletableFuture<List<DocumentTemplate>> templatesFuture =
                 ServiceManager.getDocumentTemplateService().getByType(TemplateType.WHATSAPP_MESSAGE);
-        CompletableFuture<Optional<User>> shopFuture = ServiceManager.getUserService().get(1L);
+        CompletableFuture<Optional<Business>> shopFuture = ServiceManager.getBusinessService().get();
 
         CompletableFuture.allOf(templatesFuture, shopFuture).thenAccept(v -> {
             List<DocumentTemplate> templates = templatesFuture.join();
-            User shop = shopFuture.join().orElse(null);
+            Business shop = shopFuture.join().orElse(null);
             Map<String, String> tokens = TemplateTokenBuilder.fromWorkOrder(workOrder, shop);
 
             SwingUtilities.invokeLater(() -> {
@@ -462,89 +466,5 @@ public class FormWorkOrder extends Form {
         refreshSteps();
         workColumn.revalidate();
         workColumn.repaint();
-    }
-
-    // =========================================================================
-    // DURUM ROZETİ (tıklanınca durum menüsü)
-    // =========================================================================
-
-    /**
-     * Kimlik şeridindeki durum: rozet görünümünde düğme (durum ikonu + ad + aşağı ok). Tıklanınca
-     * durum listesini açar; eskiden ayrı bir açılır kutu şeridi genişletip işlemleri ikinci satıra
-     * itiyordu. Renkler {@link BadgePalette}'ten; tema değişince {@link #updateUI()} yeniden okur.
-     */
-    private static final class StatusButton extends JButton {
-        private static final int CHEVRON = 12;
-        private ServiceStatus status = ServiceStatus.ACCEPTED;
-        private boolean locked;
-
-        StatusButton(java.util.function.Consumer<ServiceStatus> onSelect) {
-            getAccessibleContext().setAccessibleName("Servis durumu");
-            setFocusPainted(false);
-            addActionListener(e -> {
-                if (locked) return;
-                JPopupMenu menu = new JPopupMenu();
-                for (ServiceStatus st : ServiceStatus.values()) {
-                    // Teslim ve iade kaydı kapatır: ayraçla ayrılır ki kilitleyen seçim göze çarpsın.
-                    if (st == ServiceStatus.DELIVERED) menu.addSeparator();
-                    JMenuItem item = new JMenuItem(st.getDisplayName(), badgeIcon(st, 16));
-                    if (st == status) {
-                        item.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-                        item.setEnabled(false);
-                    }
-                    item.addActionListener(ev -> onSelect.accept(st));
-                    menu.add(item);
-                }
-                menu.show(this, 0, getHeight() + 4);
-            });
-            applyStyle();
-        }
-
-        /** Kilitli (teslim/iade) kayıtta rozet menü açmaz; ok yerine kilit ikonu çizilir. */
-        void setStatus(ServiceStatus status, boolean locked) {
-            this.status = status;
-            this.locked = locked;
-            setCursor(Cursor.getPredefinedCursor(locked ? Cursor.DEFAULT_CURSOR : Cursor.HAND_CURSOR));
-            setToolTipText(locked ? "Kayıt kilitli; durumu değiştirmek için önce geri alın" : "Servis durumunu değiştir");
-            applyStyle();
-        }
-
-        @Override
-        public void updateUI() {
-            super.updateUI();
-            if (status != null) applyStyle();
-        }
-
-        private void applyStyle() {
-            String bg = BadgePalette.backgroundHex(status.getBadgeColor());
-            setText(status.getDisplayName());
-            setIcon(badgeIcon(status, 14));
-            setIconTextGap(6);
-            // Yandaki "Acil" rozetiyle aynı boy ve yuvarlaklık; sağda ok (ya da kilit) için yer bırakılır.
-            // Kilitliyken üzerine gelince koyulaşmaz: tıklanacak bir şey yok.
-            String feedback = locked ? " hoverBackground: " + bg + "; pressedBackground: " + bg
-                    : " hoverBackground: darken(" + bg + ",5%); pressedBackground: darken(" + bg + ",10%)";
-            putClientProperty(FlatClientProperties.STYLE, BadgePalette.style(status.getBadgeColor(),
-                    "arc: 999; border: 2,10,2," + (CHEVRON + 16) + "; font: bold +0;" + feedback));
-            revalidate();
-            repaint();
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            if (status == null) return;
-            Ikon chevron = new Ikon(locked ? "icons/lock.svg" : "icons/chevron-down.svg", CHEVRON);
-            chevron.setColorFilter(new com.formdev.flatlaf.extras.FlatSVGIcon.ColorFilter(
-                    col -> BadgePalette.foreground(status.getBadgeColor())));
-            chevron.paintIcon(this, g, getWidth() - CHEVRON - 10, (getHeight() - CHEVRON) / 2);
-        }
-
-        private static Icon badgeIcon(ServiceStatus st, int size) {
-            Ikon icon = new Ikon(st.getIconPath(), size);
-            icon.setColorFilter(new com.formdev.flatlaf.extras.FlatSVGIcon.ColorFilter(
-                    col -> BadgePalette.foreground(st.getBadgeColor())));
-            return icon;
-        }
     }
 }

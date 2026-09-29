@@ -80,6 +80,41 @@ public class UserService {
         });
     }
 
+    /**
+     * Kilit PIN'ini değiştirir. Mevcut PIN veritabanındaki güncel kayda karşı doğrulanır;
+     * yanlışsa {@code false} döner ve hiçbir şey yazılmaz. Yeni PIN 6 haneli rakam olmalıdır.
+     * Yalnızca şifre alanı yazılır, işletme ve profil bilgilerine dokunulmaz.
+     */
+    public CompletableFuture<Boolean> changePin(Long userId, String currentPin, String newPin) {
+        return DbExecutor.supply(() -> {
+            if (newPin == null || !newPin.matches("\\d{6}")) {
+                throw new ValidationException("Yeni PIN 6 haneli rakamlardan oluşmalıdır.");
+            }
+            User user = repository.findById(userId).orElseThrow(() -> new ValidationException("Kullanıcı bulunamadı."));
+            if (!PasswordUtil.verify(currentPin, user.getPassword())) return false;
+            user.setPassword(PasswordUtil.hash(newPin));
+            repository.update(user);
+            return true;
+        });
+    }
+
+    /**
+     * Profil bilgilerini (ad, soyad, e-posta, profil resmi) günceller. Kayıt veritabanından taze
+     * okunur ve yalnızca bu alanlar değişir; aynı satırda duran işletme bilgileri ve PIN,
+     * başka bir pencerede değişmiş olsa bile eski kopyayla ezilmez.
+     */
+    public CompletableFuture<User> updateProfile(Long userId, String name, String surname, String email, String profilePicture) {
+        return DbExecutor.supply(() -> {
+            User user = repository.findById(userId).orElseThrow(() -> new ValidationException("Kullanıcı bulunamadı."));
+            user.setName(name);
+            user.setSurname(surname);
+            user.setEmail(email);
+            user.setProfilePicture(profilePicture);
+            repository.update(user);
+            return user;
+        });
+    }
+
     // Sistemde kayıtlı bir işletme sahibi var mı?
     public CompletableFuture<Boolean> hasSetupCompleted() {
         return DbExecutor.supply(() -> {

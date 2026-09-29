@@ -1,5 +1,6 @@
 package tr.cabro.servicio.documents;
 
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrderItem;
 import tr.cabro.servicio.util.PhoneHelper;
@@ -32,7 +33,7 @@ public class DocxDocumentWriter implements DocumentWriter {
     private final File outFile;
     private final StringBuilder body = new StringBuilder();
 
-    DocxDocumentWriter(File outFile, User shop, String title, String documentNumber, String date) {
+    DocxDocumentWriter(File outFile, Business shop, String title, String documentNumber, String date) {
         this.outFile = outFile;
         writeMasthead(shop, title, documentNumber, date);
     }
@@ -41,12 +42,11 @@ public class DocxDocumentWriter implements DocumentWriter {
     // Künye
     // -------------------------------------------------------------------------
 
-    private void writeMasthead(User shop, String title, String documentNumber, String date) {
+    private void writeMasthead(Business shop, String title, String documentNumber, String date) {
         StringBuilder left = new StringBuilder();
         left.append(p(run(shop != null && notBlank(shop.getBusinessName()) ? shop.getBusinessName() : " ", 25, true, null), null, 0, 40));
-        if (shop != null && notBlank(shop.getAddress())) left.append(p(run(shop.getAddress(), 15, false, MUTED), null, 0, 0));
-        String contact = contactLine(shop);
-        if (!contact.isEmpty()) left.append(p(run(contact, 15, false, MUTED), null, 0, 0));
+        // PDF künyesiyle aynı sıra, her bilgi kendi satırında (Word'de ikon yok, ön ek var).
+        for (String line : mastheadLines(shop)) left.append(p(run(line, 15, false, MUTED), null, 0, 0));
 
         String right = p(run(title, 32, true, null), "right", 0, 120)
                 + p(run("BELGE NO   ", 14, false, MUTED) + run(documentNumber, 19, true, null), "right", 0, 20)
@@ -58,15 +58,18 @@ public class DocxDocumentWriter implements DocumentWriter {
         body.append(p("", null, 0, 120, bottomBorder(12, "000000")));
     }
 
-    private static String contactLine(User shop) {
-        if (shop == null) return "";
-        StringBuilder sb = new StringBuilder();
-        if (notBlank(shop.getPhoneNumber())) sb.append(PhoneHelper.formatForDisplay(shop.getPhoneNumber()));
-        if (notBlank(shop.getEmail())) {
-            if (sb.length() > 0) sb.append("   ·   ");
-            sb.append(shop.getEmail());
-        }
-        return sb.toString();
+    /** Adres, telefonlar, e-posta, web, çalışma saatleri, vergi; boşlar atlanır. */
+    static java.util.List<String> mastheadLines(Business shop) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        if (shop == null) return lines;
+        if (notBlank(shop.getAddress())) lines.add(shop.getAddress().trim());
+        if (notBlank(shop.getPhoneNumber())) lines.add("Tel: " + PhoneHelper.formatForDisplay(shop.getPhoneNumber()));
+        if (notBlank(shop.getPhoneNumber2())) lines.add("Tel: " + PhoneHelper.formatForDisplay(shop.getPhoneNumber2()));
+        if (notBlank(shop.getEmail())) lines.add("E-posta: " + shop.getEmail().trim());
+        if (notBlank(shop.getWebsite())) lines.add("Web: " + shop.getWebsite().trim());
+        if (notBlank(shop.getWorkingHours())) lines.add("Çalışma saatleri: " + shop.getWorkingHours().trim());
+        if (shop.getTaxLine() != null) lines.add(shop.getTaxLine());
+        return lines;
     }
 
     // -------------------------------------------------------------------------

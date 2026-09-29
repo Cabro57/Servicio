@@ -4,6 +4,7 @@ import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
 import tr.cabro.servicio.model.DeviceTransaction;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.util.PhoneHelper;
 
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 public class DeviceExpertiseFormGenerator implements DeviceTransactionFormGenerator {
 
     @Override
-    public File generate(DeviceTransaction transaction, User shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception {
+    public File generate(DeviceTransaction transaction, Business shop, DocumentRequest request, DocumentFormat format, File outFile) throws Exception {
         Customer seller = transaction.getCustomer();
         Device device = transaction.getDevice();
 

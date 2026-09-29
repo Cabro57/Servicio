@@ -1,5 +1,6 @@
 package tr.cabro.servicio.documents;
 
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrderItem;
 
@@ -16,7 +17,7 @@ import java.util.List;
 public interface DocumentWriter {
 
     /** Belgeyi açar ve künyeyi (işletme, belge adı, belge no, tarih) basar. */
-    static DocumentWriter open(DocumentFormat format, File outFile, User shop, String title,
+    static DocumentWriter open(DocumentFormat format, File outFile, Business shop, String title,
                                String documentNumber, String date) throws Exception {
         return switch (format) {
             case PDF -> PdfDocumentBuilder.create(outFile, shop, title, documentNumber, date);
@@ -44,6 +45,26 @@ public interface DocumentWriter {
 
     /** Elle işaretlenecek seçenekler. */
     void choices(String... options) throws Exception;
+
+    /**
+     * Banka hesap bilgileri (e-fatura düzeninde): banka, hesap sahibi, IBAN, (varsa) ödenecek
+     * tutar ve açıklamaya yazılacak belge numarası. İşletmenin IBAN'ı yoksa hiçbir şey basılmaz.
+     * PDF kendi tablosunu çizer; Word/RTF bu varsayılanla bölüm + alanlar olarak yazar.
+     *
+     * @param reference açıklamaya yazılacak belge no ("SRV-572")
+     * @param amountDue ödenecek tutar; null ya da sıfırsa satır basılmaz
+     */
+    default void paymentInstructions(Business shop, String reference, BigDecimal amountDue) throws Exception {
+        if (shop == null || !shop.hasBankAccount()) return;
+        section("Banka Hesap Bilgileri");
+        fields(new String[][]{
+                {"Banka", shop.getBankName()},
+                {"Hesap Sahibi", shop.getAccountHolder() != null ? shop.getAccountHolder() : shop.getBusinessName()},
+                {"IBAN", Business.formatIban(shop.getIban())},
+                {"Ödenecek Tutar", amountDue != null && amountDue.signum() > 0 ? PdfDocumentBuilder.money(amountDue) : null}
+        });
+        terms("Havale / EFT ile ödemede açıklamaya " + reference + " yazınız.");
+    }
 
     /** İki taraflı imza alanı. */
     void signatures(String leftLabel, String leftName, String rightLabel, String rightName) throws Exception;

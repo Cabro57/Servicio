@@ -3,6 +3,7 @@ package tr.cabro.servicio.documents;
 import tr.cabro.servicio.documents.receipt.ThermalSlip;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Payment;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrder;
 
@@ -20,7 +21,7 @@ import java.math.BigDecimal;
  */
 public class PaymentReceiptFormGenerator {
 
-    public File generate(WorkOrder workOrder, Payment payment, User shop) throws Exception {
+    public File generate(WorkOrder workOrder, Payment payment, Business shop) throws Exception {
         Customer customer = workOrder.getCustomer();
         File outFile = PdfDocumentBuilder.tempFile("tahsilat-fis-SRV" + workOrder.getId());
 

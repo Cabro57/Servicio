@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.panels.workorder;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
+import tr.cabro.servicio.application.component.DateTimeField;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.CurrencyField;
@@ -15,6 +16,7 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.documents.PaymentReceiptFormGenerator;
 import tr.cabro.servicio.model.Payment;
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.enums.BadgeColor;
@@ -152,7 +154,7 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
     private JPanel buildPaymentInputRow() {
         // Tahsilat satırı: yöntem + tutar (kalan tutarla dolu gelir) + ekle — tek satırda, kart içinde kart yok.
-        JPanel inputRow = new JPanel(new MigLayout("insets 0, fillx, gap 8", "[][170!][grow, fill][]", "[center]"));
+        JPanel inputRow = new JPanel(new MigLayout("insets 0, fillx, gap 8", "[][150!][grow, fill][140!][]", "[center]"));
         inputRow.setOpaque(false);
         inputRow.add(WorkOrderPanelSupport.createMutedLabel("Tahsilat"));
 
@@ -170,6 +172,9 @@ public class WorkOrderPaymentsPanel extends JPanel {
         txtAmount.getAccessibleContext().setAccessibleName("Tahsilat tutarı");
         txtAmount.setValue(workOrder.getRemainingAmount());
 
+        // Ödemenin alındığı gün: önceden alınan ödeme için düzeltilir (saat sorulmaz).
+        DateTimeField dateField = new DateTimeField(false);
+
         JButton btnAddPayment = new JButton("Tahsilat Ekle", new Ikon("icons/hand-coins.svg", 16, "Label.foreground"));
         btnAddPayment.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 6,12,6,12; iconTextGap: 6");
 
@@ -182,13 +187,14 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
             Long customerId = workOrder.getCustomer() != null ? workOrder.getCustomer().getId() : null;
             workOrderService.addPayment(workOrder.getId(), customerId, amt,
-                    (PaymentType) cmbMethod.getSelectedItem(), null, LocalDateTime.now())
+                    (PaymentType) cmbMethod.getSelectedItem(), null, paymentMoment(dateField.getValue()))
                     .thenAccept(saved -> SwingUtilities.invokeLater(() -> {
                 workOrder.getPayments().add(saved);
 
                 populatePaymentsTable();
 
                 txtAmount.setValue(workOrder.getRemainingAmount());
+                dateField.setValue(LocalDateTime.now());
 
                 refresh();
                 Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.payment.added"));
@@ -198,8 +204,18 @@ public class WorkOrderPaymentsPanel extends JPanel {
 
         inputRow.add(cmbMethod, "growx");
         inputRow.add(txtAmount, "growx");
+        inputRow.add(dateField, "growx");
         inputRow.add(btnAddPayment);
         return inputRow;
+    }
+
+    /**
+     * Yalnızca gün seçilen tahsilatın anı: bugünse (ya da boşsa) kayıt anı; geçmiş bir günse
+     * o günün öğlen 12:00'ı (kasa raporu güne göre toplar, saat bilinmiyor).
+     */
+    public static LocalDateTime paymentMoment(LocalDateTime pickedDay) {
+        if (pickedDay == null || !pickedDay.toLocalDate().isBefore(java.time.LocalDate.now())) return LocalDateTime.now();
+        return pickedDay.toLocalDate().atTime(12, 0);
     }
 
     private void confirmDeletePayment(Payment payment) {
@@ -217,8 +233,8 @@ public class WorkOrderPaymentsPanel extends JPanel {
     }
 
     private void printPaymentReceipt(Payment payment) {
-        ServiceManager.getUserService().get(1L).thenAccept(shopOpt -> {
-            User shop = shopOpt.orElse(null);
+        ServiceManager.getBusinessService().get().thenAccept(shopOpt -> {
+            Business shop = shopOpt.orElse(null);
             try {
                 File pdf = new PaymentReceiptFormGenerator().generate(workOrder, payment, shop);
                 SwingUtilities.invokeLater(() -> {

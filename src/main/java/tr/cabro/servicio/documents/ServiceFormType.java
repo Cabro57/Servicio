@@ -1,5 +1,6 @@
 package tr.cabro.servicio.documents;
 
+import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.model.User;
 import tr.cabro.servicio.model.WorkOrder;
 
@@ -100,7 +101,7 @@ public enum ServiceFormType {
         return thermal ? EnumSet.of(DocumentFormat.PDF) : EnumSet.allOf(DocumentFormat.class);
     }
 
-    public File generate(WorkOrder workOrder, User shop, DocumentRequest request,
+    public File generate(WorkOrder workOrder, Business shop, DocumentRequest request,
                          DocumentFormat format, File outFile) throws Exception {
         return generator.generate(workOrder, shop, request, format, outFile);
     }

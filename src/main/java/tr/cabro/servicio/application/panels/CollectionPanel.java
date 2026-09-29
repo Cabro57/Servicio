@@ -75,6 +75,7 @@ public class CollectionPanel extends JPanel {
     private JButton btnFull, btnHalf;
     private SegmentedButtons<PaymentType> methods;
     private JPanel docList;
+    private tr.cabro.servicio.application.component.DateTimeField dateField;
     private JLabel lblSummary;
     private JButton btnSave;
 
@@ -100,8 +101,8 @@ public class CollectionPanel extends JPanel {
     }
 
     private void init() {
-        setLayout(new MigLayout("fillx, insets 4 20 16 20, gap 12 10, hidemode 3", "[pref!][grow, fill]", "[][]10[]16[]6[grow, fill]14[]"));
-        setPreferredSize(new Dimension(660, 560));
+        setLayout(new MigLayout("fillx, insets 4 20 16 20, gap 12 10, hidemode 3", "[pref!][grow, fill]", "[][]10[][]16[]6[grow, fill]14[]"));
+        setPreferredSize(new Dimension(660, 600));
 
         // --- Müşteri + borç ---
         customerBox = new CustomerSelectBox(e -> NewCustomerModal.push(modalId, c -> customerBox.appendCustomer(c)));
@@ -153,6 +154,11 @@ public class CollectionPanel extends JPanel {
         methods.setSelected(PaymentType.CASH);
         add(caption("Yöntem"), "aligny center");
         add(methods, "growx 0, wrap");
+
+        // --- Tarih --- Ödeme bugün değil de önceden alındıysa (defterden işlerken) tarih düzeltilir.
+        dateField = new tr.cabro.servicio.application.component.DateTimeField(false);
+        add(caption("Tarih"), "aligny center");
+        add(dateField, "growx 0, w 170!, wrap");
 
         // --- Açık belgeler ---
         JLabel docsTitle = new JLabel("Açık belgeler");
@@ -207,6 +213,11 @@ public class CollectionPanel extends JPanel {
                 if (btnSave.isEnabled()) save();
             }
         });
+    }
+
+    /** Tahsilat anı: yalnızca gün seçilir; bugünse (ya da boşsa) şu an, geçmiş günse öğlen 12:00. */
+    private LocalDateTime chosenDate() {
+        return tr.cabro.servicio.application.panels.workorder.WorkOrderPaymentsPanel.paymentMoment(dateField.getValue());
     }
 
     private static JLabel caption(String text) {
@@ -444,7 +455,7 @@ public class CollectionPanel extends JPanel {
         btnSave.setEnabled(false);
         try {
             paymentService.recordCollection(customer.getId(), amount, methods.getSelected(),
-                            null, LocalDateTime.now(), allocations)
+                            null, chosenDate(), allocations)
                     .thenAccept(payment -> SwingUtilities.invokeLater(() -> {
                         Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.collection.completed"));
                         tr.cabro.servicio.util.SoundPlayer.payment();

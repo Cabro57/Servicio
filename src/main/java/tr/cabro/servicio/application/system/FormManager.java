@@ -251,11 +251,7 @@ public class FormManager {
     }
 
     public static void showProfile() {
-        AppModal.showModal(frame,
-                new SimpleModalBorder(new ProfileSettingsPanel(), "Profil Ayarları"),
-                ModalDialog.createOption(),
-                ProfileSettingsPanel.MODAL_ID
-        );
+        ProfileSettingsPanel.show(frame);
     }
 
     /**
