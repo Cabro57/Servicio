@@ -1,5 +1,6 @@
 package tr.cabro.servicio.application.system;
 
+import tr.cabro.servicio.application.utils.PrintActions;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -11,6 +12,7 @@ import tr.cabro.servicio.documents.DocumentRequest;
 import tr.cabro.servicio.documents.DocumentText;
 import tr.cabro.servicio.documents.DocumentTexts;
 import tr.cabro.servicio.documents.PdfDocumentBuilder;
+import tr.cabro.servicio.documents.print.PdfPrinter;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.util.DesktopHelper;
 import tr.cabro.servicio.util.DialogHelper;
@@ -38,12 +40,17 @@ import java.util.regex.Pattern;
  * {@link DocumentText} metinleri (varsayılanlar Ayarlar &gt; Belge Metinleri'nden gelir).
  * "Varsayılan olarak kaydet" işaretlenirse değişiklikler sonraki belgeler için de saklanır.
  * <p>
- * Çıktı: "Aç / Yazdır" geçici bir PDF açar; "Farklı Kaydet…" dosya seçtirip seçilen filtreye
- * göre PDF, Word ya da RTF yazar (termal fişlerde yalnızca PDF).
+ * Çıktı: "Aç" geçici bir PDF'i varsayılan görüntüleyicide açar; "Yazdır" PDF'i diyalogsuz, gerçek
+ * boyutta Ayarlar &gt; Yazdırma'daki yazıcıya basar (termal fiş fiş yazıcısına, A4 belge A4 yazıcısına);
+ * "Farklı Kaydet…" dosya seçtirip seçilen filtreye göre PDF, Word ya da RTF yazar (termal fişlerde
+ * yalnızca PDF).
  */
 public final class DocumentExportModal {
 
     private static final String MODAL_ID = "document_export_modal";
+
+    /** "Yazdır" düğmesinin eylem kodu; raven'ın hazır kodlarıyla (0-2) çakışmaz. */
+    private static final int PRINT_OPTION = 3;
 
     /** Son kaydedilen klasör; oturum boyunca hatırlanır. */
     private static File lastDirectory;
@@ -63,10 +70,12 @@ public final class DocumentExportModal {
      * @param warrantyDays   garanti günü ve garanti notu alanı gösterilsin mi
      * @param texts          düzenlenebilir metinler
      * @param formats        kaydedilebilen biçimler
+     * @param thermal        termal fiş mi; "Yazdır" fiş yazıcısına, değilse A4 yazıcısına gider
      */
     public record Spec(String title, String fileBaseName,
                        String leftLabel, String leftDefault, String rightLabel, String rightDefault,
-                       boolean warrantyDays, List<DocumentText> texts, Set<DocumentFormat> formats) {
+                       boolean warrantyDays, List<DocumentText> texts, Set<DocumentFormat> formats,
+                       boolean thermal) {
     }
 
     private DocumentExportModal() {
@@ -75,7 +84,8 @@ public final class DocumentExportModal {
     public static void show(Component owner, Spec spec, Producer producer) {
         Form form = new Form(spec);
         SimpleModalBorder.Option[] options = {
-                new SimpleModalBorder.Option("Aç / Yazdır", SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option("Aç", SimpleModalBorder.YES_OPTION),
+                new SimpleModalBorder.Option("Yazdır", PRINT_OPTION),
                 new SimpleModalBorder.Option("Farklı Kaydet…", SimpleModalBorder.NO_OPTION),
                 new SimpleModalBorder.Option("İptal", SimpleModalBorder.CANCEL_OPTION)
         };
@@ -83,6 +93,10 @@ public final class DocumentExportModal {
             if (action == SimpleModalBorder.YES_OPTION) {
                 DocumentRequest request = form.collect();
                 produceAsync(owner, producer, request, DocumentFormat.PDF, null);
+            } else if (action == PRINT_OPTION) {
+                DocumentRequest request = form.collect();
+                PrintActions.print(owner, spec.thermal() ? PdfPrinter.Role.RECEIPT : PdfPrinter.Role.DOCUMENT, spec.title(),
+                        () -> producer.produce(request, DocumentFormat.PDF, PdfDocumentBuilder.tempFile("belge")));
             } else if (action == SimpleModalBorder.NO_OPTION) {
                 File target = chooseFile(owner, spec);
                 if (target == null) {

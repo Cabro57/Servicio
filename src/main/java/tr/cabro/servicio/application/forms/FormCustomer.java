@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.forms;
 
 import tr.cabro.servicio.application.panels.workorder.WorkOrderDeleteDialog;
 import tr.cabro.servicio.application.utils.Toasts;
+import tr.cabro.servicio.application.utils.PrintActions;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -580,6 +581,7 @@ public class FormCustomer extends Form {
                         String msg = isEdit ? Messages.get("toast.workorder.updated") : Messages.get("toast.workorder.created");
                         Toasts.saved(this, msg);
                         refreshData();
+                        if (!isEdit) PrintActions.autoPrintIntakeSlip(this, saved);
                         if (openDetail) FormManager.showForm(new FormWorkOrder(saved));
                     })
             ).exceptionally(ex -> {

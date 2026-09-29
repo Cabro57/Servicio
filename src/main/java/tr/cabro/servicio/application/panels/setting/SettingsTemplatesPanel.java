@@ -4,7 +4,7 @@ import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
-import tr.cabro.servicio.application.component.WrapLayout;
+import tr.cabro.servicio.application.component.ChipRow;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.DocumentTemplate;
@@ -156,21 +156,14 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
         box.setOpaque(false);
         box.add(SettingsKit.note("Alan eklemek için tıklayın; gönderirken servis kaydının bilgisiyle dolar."));
         for (String[][] group : TOKEN_GROUPS) {
-            JPanel row = WrapLayout.panel(6, 4);
-            row.setOpaque(false);
             JLabel cap = new JLabel(group[0][0]);
             cap.putClientProperty(FlatClientProperties.STYLE, "font: -1 bold; foreground: $Label.disabledForeground");
             cap.setPreferredSize(new Dimension(56, cap.getPreferredSize().height));
-            row.add(cap);
+            // Sığmayan çipler alt satıra kaymaz, satır sonundaki "Diğer" menüsüne girer.
+            ChipRow row = new ChipRow(cap);
             for (int i = 1; i < group.length; i++) {
-                String label = group[i][0];
                 String key = group[i][1];
-                JButton chip = new JButton(label);
-                chip.putClientProperty(FlatClientProperties.STYLE, "arc: 999; margin: 2,10,2,10; font: -1");
-                chip.setToolTipText("{" + key + "}");
-                chip.setFocusable(false);
-                chip.addActionListener(e -> insertToken(key));
-                row.add(chip);
+                row.addChip(group[i][0], "{" + key + "}", () -> insertToken(key));
             }
             box.add(row, "wmin 0");
         }

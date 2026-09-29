@@ -398,7 +398,7 @@ public class FormSecondHandStock extends AbstractTableForm {
                     type.getDisplayName(), type.getFileSlug() + "-DT" + transaction.getId(),
                     type.getLeftSignerLabel(), shop != null ? shop.getBusinessName() : "",
                     type.getRightSignerLabel(), customerName,
-                    false, type.getEditableTexts(), type.getSupportedFormats());
+                    false, type.getEditableTexts(), type.getSupportedFormats(), false);
             DocumentExportModal.show(this, spec,
                     (request, format, outFile) -> type.generate(transaction, shop, request, format, outFile));
         })).exceptionally(ex -> ErrorHandler.handle(this, "Belge penceresi açılamadı", ex));

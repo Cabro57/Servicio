@@ -140,11 +140,35 @@ public class AppConfig {
     @Setter
     public static class Printing {
 
+        public static final int MAX_COPIES = 5;
+
         /** Termal fişlerin (satış, iade, tahsilat, kabul/teslim fişi) basılacağı rulo genişliği. */
         private ReceiptPaperWidth receiptPaperWidth = ReceiptPaperWidth.MM_80;
 
+        /** Termal fişlerin gönderileceği yazıcının adı; boşsa sistem varsayılanı. */
+        private String receiptPrinter = "";
+
+        /** A4 belgelerin (formlar, raporlar) gönderileceği yazıcının adı; boşsa sistem varsayılanı. */
+        private String documentPrinter = "";
+
+        /** Doğrudan yazdırılan her fişin kaç kopya basılacağı. */
+        private int receiptCopies = 1;
+
+        /** Doğrudan yazdırılan her A4 belgenin kaç kopya basılacağı. */
+        private int documentCopies = 1;
+
+        /** POS'ta satış tamamlanınca fiş PDF açılmak yerine doğrudan fiş yazıcısına basılır. */
+        private boolean autoPrintSaleReceipt;
+
+        /** Yeni servis kaydında cihaz kabul fişi doğrudan fiş yazıcısına basılır. */
+        private boolean autoPrintIntakeSlip;
+
         void normalize() {
             if (receiptPaperWidth == null) receiptPaperWidth = ReceiptPaperWidth.MM_80;
+            if (receiptPrinter == null) receiptPrinter = "";
+            if (documentPrinter == null) documentPrinter = "";
+            receiptCopies = Math.max(1, Math.min(MAX_COPIES, receiptCopies));
+            documentCopies = Math.max(1, Math.min(MAX_COPIES, documentCopies));
         }
     }
 

@@ -362,7 +362,7 @@ public class FormWorkOrder extends Form {
                     type.getDisplayName(), type.getFileSlug() + "-SRV" + workOrder.getId(),
                     type.getLeftSignerLabel(), defaultSignerName(type.getLeftSignerLabel(), shop),
                     type.getRightSignerLabel(), defaultSignerName(type.getRightSignerLabel(), shop),
-                    type.hasWarrantyDays(), type.getEditableTexts(), type.getSupportedFormats());
+                    type.hasWarrantyDays(), type.getEditableTexts(), type.getSupportedFormats(), type.isThermal());
             DocumentExportModal.show(this, spec,
                     (request, format, outFile) -> type.generate(workOrder, shop, request, format, outFile));
         })).exceptionally(ex -> ErrorHandler.handle(this, "Belge penceresi açılamadı", ex));

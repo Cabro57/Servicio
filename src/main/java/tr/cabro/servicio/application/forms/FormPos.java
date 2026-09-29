@@ -20,9 +20,12 @@ import tr.cabro.servicio.application.tablemodal.GenericTableModel;
 import tr.cabro.servicio.application.themes.SemanticColor;
 import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.application.utils.Ikon;
+import tr.cabro.servicio.application.utils.PrintActions;
 import tr.cabro.servicio.application.utils.SystemForm;
+import tr.cabro.servicio.documents.print.PdfPrinter;
 import tr.cabro.servicio.documents.receipt.ReceiptContent;
 import tr.cabro.servicio.documents.receipt.ReceiptPdfRenderer;
+import tr.cabro.servicio.settings.AppSettings;
 import tr.cabro.servicio.i18n.AppLocale;
 import tr.cabro.servicio.i18n.Messages;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
@@ -1897,7 +1900,10 @@ public class FormPos extends Form {
         for (JButton button : paymentButtons) button.setEnabled(!value);
     }
 
-    /** Termal fiş PDF'i (genişlik Ayarlar > Yazdırma'dan) üretilip varsayılan PDF görüntüleyicide açılır. */
+    /**
+     * Termal fiş PDF'i (genişlik Ayarlar > Yazdırma'dan) üretilir. Otomatik yazdırma açıksa doğrudan
+     * fiş yazıcısına basılır, değilse varsayılan PDF görüntüleyicide açılır.
+     */
     private void printReceipt(Sale sale, List<Payment> payments, BigDecimal changeGiven) {
         ServiceManager.getBusinessService().get().thenAccept(shopOpt -> {
             try {
@@ -1908,6 +1914,10 @@ public class FormPos extends Form {
                 outFile.deleteOnExit();
                 new ReceiptPdfRenderer().render(content, outFile);
 
+                if (AppSettings.get().getPrinting().isAutoPrintSaleReceipt()) {
+                    PrintActions.print(this, PdfPrinter.Role.RECEIPT, "Satış Fişi SAT-" + sale.getId(), () -> outFile);
+                    return;
+                }
                 SwingUtilities.invokeLater(() -> DesktopHelper.openFile(outFile));
             } catch (Exception ex) {
                 Servicio.getLogger().error("Satış fişi oluşturma hatası", ex);
