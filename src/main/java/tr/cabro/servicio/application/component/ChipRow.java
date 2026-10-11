@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.component;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 import tr.cabro.servicio.application.utils.Ikon;
@@ -64,7 +66,7 @@ public class ChipRow extends JPanel {
             item.addActionListener(e -> chip.action().run());
             menu.add(item);
         }
-        menu.show(more, 0, more.getHeight());
+        Popups.showBelow(menu, more);
     }
 
     /** Öğeleri soldan dizer; sığmayan çipleri gizleyip "Diğer" menüsüne bırakır. */

@@ -65,7 +65,6 @@ class DictionaryList<T> extends JPanel {
         scroll.getViewport().setOpaque(false);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "width: 8");
         // Tercih edilen yükseklik bilerek küçük: liste sayfayı uzatmasın, kendi içinde kaysın.
         scroll.setPreferredSize(new Dimension(200, 200));
         add(scroll);

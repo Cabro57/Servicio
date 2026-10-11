@@ -148,8 +148,6 @@ public class FormDashboard extends Form {
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE,
-                "width: 5; trackArc: $ScrollBar.thumbArc; trackInsets: 0,0,0,0; thumbInsets: 0,0,0,0");
         return scroll;
     }
 

@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.forms.base;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.table.ListSummary;
@@ -155,7 +157,6 @@ public abstract class AbstractTableForm extends Form {
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "width: 8");
 
         // Tablo ile durum paneli aynı yeri paylaşır: veri varken tablo, yokken
         // "yükleniyor / eşleşme yok / hiç kayıt yok" paneli görünür.
@@ -413,7 +414,7 @@ public abstract class AbstractTableForm extends Form {
             group.add(item);
             menu.add(item);
         }
-        menu.show(sortButton, 0, sortButton.getHeight() + 4);
+        Popups.showBelow(menu, sortButton);
     }
 
     private void updateSortButton() {

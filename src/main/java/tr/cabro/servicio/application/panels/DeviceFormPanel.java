@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
@@ -397,7 +399,7 @@ public class DeviceFormPanel extends JPanel {
                     item.addActionListener(ev -> chooseSuggested(d));
                     menu.add(item);
                 }
-                menu.show(more, 0, more.getHeight() + 2);
+                Popups.showBelow(menu, more);
             });
             previousDeviceChips.add(more);
         }

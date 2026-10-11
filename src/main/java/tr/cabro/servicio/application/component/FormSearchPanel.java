@@ -72,12 +72,6 @@ public class FormSearchPanel extends JPanel {
         add(new JSeparator(), "height 2!");
         JScrollPane scrollPane = new JScrollPane(panelResult);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
-
-        scrollPane.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "" +
-                "trackArc:$ScrollBar.thumbArc;" +
-                "thumbInsets:0,3,0,3;" +
-                "trackInsets:0,3,0,3;" +
-                "width:12;");
         add(scrollPane);
         add(new JSeparator(), "height 2!");
         add(createKeyHints(), "gap 17 17 4 6");

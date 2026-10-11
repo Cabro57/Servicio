@@ -234,14 +234,17 @@ public final class MessageModal extends Modal {
         JButton b = new JButton(text);
         b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,14,7,14; font: bold;"
                 + " borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
-                + " background: $Servicio.dangerColor; foreground: $Servicio.onDangerForeground;"
-                + " hoverBackground: darken($Servicio.dangerColor,6%); pressedBackground: darken($Servicio.dangerColor,12%)");
+                + " background: $Servicio.dangerFill; foreground: $Servicio.onDangerForeground;"
+                + " hoverBackground: darken($Servicio.dangerFill,6%); pressedBackground: darken($Servicio.dangerFill,12%)");
         return b;
     }
 
     /**
-     * Tonun ikon karosu: 40px, 12px yuvarlatılmış, tonun renginin soluk zemini üstünde aynı renkte
-     * 20px ikon. Renk her boyamada temadan okunur, tema/vurgu değişince doğru çizilir.
+     * Tonun ikon karosu: 40px, 12px yuvarlatılmış "mühür". Zemin, tonun rengi kart yüzeyine
+     * ({@code Table.background}) karıştırılarak elde edilir, pencerenin gri zeminine saydam boya
+     * sürülmez; saydam boya gri üstünde bulanık, kirli bir ton veriyordu. Kenarda tonun 1px ince
+     * halkası karoyu keskinleştirir. İkon tonun kendi renginde, 20px. Renkler her boyamada temadan
+     * okunur, tema/vurgu değişince doğru çizilir.
      */
     private static final class ToneTile extends JComponent {
 
@@ -257,13 +260,18 @@ public final class MessageModal extends Modal {
         protected void paintComponent(Graphics g) {
             Color base = UIManager.getColor(tone.colorKey);
             if (base == null) base = UIManager.getColor("Label.foreground");
+            Color surface = UIManager.getColor("Table.background");
             boolean dark = com.formdev.flatlaf.FlatLaf.isLafDark();
             Graphics2D g2 = (Graphics2D) g.create();
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(ColorFunctions.fade(base, dark ? 0.20f : 0.12f));
                 float arc = UIScale.scale(12f);
+                float line = UIScale.scale(1f);
+                g2.setColor(ColorFunctions.mix(base, surface, dark ? 0.16f : 0.09f));
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), arc, arc));
+                g2.setColor(ColorFunctions.mix(base, surface, dark ? 0.38f : 0.26f));
+                g2.setStroke(new BasicStroke(line));
+                g2.draw(new RoundRectangle2D.Float(line / 2, line / 2, getWidth() - line, getHeight() - line, arc - line, arc - line));
             } finally {
                 g2.dispose();
             }

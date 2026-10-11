@@ -107,13 +107,14 @@ public class CustomerSelectBox extends JPanel {
     private void initPopup() {
         popupMenu = new JPopupMenu();
         popupMenu.setFocusable(false);
-        popupMenu.setLayout(new MigLayout("fill, insets 4, hidemode 3", "[grow, fill]", "[grow, fill][pref]"));
+        popupMenu.setLayout(new MigLayout("fill, insets 0, hidemode 3", "[grow, fill]", "[grow, fill][pref]"));
 
         listModel = new DefaultListModel<>();
         list = new JList<>(listModel);
         list.setCellRenderer(new Renderer());
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setFocusable(false); // Odak metin alanında kalır; oklar listeyi gezdirir.
+        list.setBackground(UIManager.getColor("Table.background"));
 
         listScroll = new JScrollPane(list);
         listScroll.setFocusable(false);
@@ -387,13 +388,14 @@ public class CustomerSelectBox extends JPanel {
                 flag.setIcon(null);
             }
 
-            Color bg = selected ? UIManager.getColor("List.selectionBackground") : UIManager.getColor("List.background");
-            Color fg = selected ? UIManager.getColor("List.selectionForeground") : UIManager.getColor("List.foreground");
-            Color muted = selected ? fg : UIManager.getColor("Label.disabledForeground");
+            // Seçim tüm açılır menülerle aynı nötr ton; yazı rengi değişmez (tek vurgu kuralı).
+            Color bg = selected ? UIManager.getColor("Servicio.menuSelectionBackground") : UIManager.getColor("Table.background");
+            Color fg = UIManager.getColor("List.foreground");
+            Color muted = UIManager.getColor("Label.disabledForeground");
             row.setBackground(bg);
             name.setForeground(fg);
             detail.setForeground(muted);
-            flag.setForeground(c.isProblematic() && !selected ? UIManager.getColor("Servicio.dangerColor") : muted);
+            flag.setForeground(c.isProblematic() ? UIManager.getColor("Servicio.dangerColor") : muted);
             return row;
         }
     }

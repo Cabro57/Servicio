@@ -237,7 +237,6 @@ public class SettingsModal extends JPanel {
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "width: 5");
         return scroll;
     }
 
@@ -342,7 +341,6 @@ public class SettingsModal extends JPanel {
             scroll.setBorder(BorderFactory.createEmptyBorder());
             scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
             scroll.getVerticalScrollBar().setUnitIncrement(16);
-            scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "width: 5");
             contentPanel.add(scroll, id);
             return created;
         });

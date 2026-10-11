@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.component;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
@@ -135,6 +137,7 @@ public class PeriodNavigator extends JPanel {
         });
         content.add(apply);
         popup.add(content);
+        Popups.blend(content);
     }
 
     private void addPreset(JPanel panel, String text, java.util.function.Supplier<LocalDate[]> range) {
@@ -151,7 +154,7 @@ public class PeriodNavigator extends JPanel {
     private void showPopup() {
         if (from.equals(to)) picker.setSelectedDate(from);
         else picker.setSelectedDateRange(from, to);
-        popup.show(dateButton, 0, dateButton.getHeight() + UIScale.scale(4));
+        Popups.showBelow(popup, dateButton);
     }
 
     /** Dönemi değiştirir ve dinleyiciyi çağırır; gelecek gün bugüne çekilir, aynı dönem yok sayılır. */

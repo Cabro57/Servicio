@@ -97,6 +97,17 @@ public class ListTable extends JTable {
                 setHoverRow(-1);
             }
 
+            // Açılır menü tetiği Windows'ta bırakmada, Linux'ta basmada gelir; ikisi de dinlenir.
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) showRowMenu(rowAtPoint(e.getPoint()), e.getX(), e.getY());
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) showRowMenu(rowAtPoint(e.getPoint()), e.getX(), e.getY());
+            }
+
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (rowOpener == null || !SwingUtilities.isLeftMouseButton(e) || e.getClickCount() != 1) return;
@@ -124,6 +135,69 @@ public class ListTable extends JTable {
                 if (row >= 0) openRow(row);
             }
         });
+
+        // Klavyeden aynı menü: Shift+F10 / menü tuşu, seçili satırın altında açılır.
+        String menuKey = "servicio.showRowMenu";
+        InputMap im = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_F10, KeyEvent.SHIFT_DOWN_MASK), menuKey);
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_CONTEXT_MENU, 0), menuKey);
+        getActionMap().put(menuKey, new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                int row = getSelectedRow();
+                if (row < 0) return;
+                Rectangle cell = getCellRect(row, 0, true);
+                showRowMenu(row, getVisibleRect().x + UIScale.scale(24), cell.y + cell.height, true);
+            }
+        });
+    }
+
+    private void showRowMenu(int row, int x, int y) {
+        showRowMenu(row, x, y, false);
+    }
+
+    /**
+     * Şeritteki satır işlemlerini sağ tık menüsü ({@link RowActionMenu}) olarak gösterir. Satır önce
+     * seçilir ki işlemin hangi kayda uygulanacağı tabloda da görünsün.
+     */
+    private void showRowMenu(int row, int x, int y, boolean fromKeyboard) {
+        if (row < 0 || row >= getRowCount() || !strip.hasActions()) return;
+        if (isEditing()) getCellEditor().cancelCellEditing();
+        if (!isRowSelected(row)) setRowSelectionInterval(row, row);
+        String[] id = rowIdentity(row);
+        JPopupMenu menu = RowActionMenu.build(strip.actions, row, id[0], id[1]);
+        menu.show(this, x, y);
+        if (fromKeyboard) RowActionMenu.armFirst(menu);
+    }
+
+    /**
+     * Menü başlığı için satırın kimliği: görünür ilk iki metinli kolonun üst satırı (ör. "SRV-681",
+     * "Canan Köse"). Formlara ayrıca bir şey sorulmaz; renderer'ın zaten gösterdiği metin okunur.
+     */
+    private String[] rowIdentity(int row) {
+        String[] out = new String[2];
+        int found = 0;
+        for (int col = 0; col < getColumnCount() && found < 2; col++) {
+            if (convertColumnIndexToModel(col) == actionColumn || getColumnModel().getColumn(col).getWidth() <= 0) continue;
+            String text = firstText(prepareRenderer(getCellRenderer(row, col), row, col));
+            if (!RowActionMenu.isBlank(text)) out[found++] = text;
+        }
+        return out;
+    }
+
+    private static String firstText(Component c) {
+        if (c instanceof JLabel label) {
+            String t = label.getText();
+            if (t != null && t.startsWith("<html")) t = t.replaceAll("<[^>]*>", " ").replaceAll("\\s+", " ");
+            return t == null ? null : t.trim();
+        }
+        if (c instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                String t = firstText(child);
+                if (!RowActionMenu.isBlank(t)) return t;
+            }
+        }
+        return null;
     }
 
     /** Satırı açan eylem; görünüm (view) satır indeksini alır. */

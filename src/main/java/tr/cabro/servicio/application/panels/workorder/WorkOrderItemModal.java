@@ -290,7 +290,6 @@ public class WorkOrderItemModal extends JPanel {
         scroll.setOpaque(false);
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "width: 8");
 
         emptyTitle = new JLabel("Yükleniyor…");
         emptyTitle.putClientProperty(FlatClientProperties.STYLE, "font: bold");
@@ -623,7 +622,6 @@ public class WorkOrderItemModal extends JPanel {
         basketScroll.setOpaque(false);
         basketScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         basketScroll.getVerticalScrollBar().setUnitIncrement(16);
-        basketScroll.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "width: 8");
         JPanel card = new JPanel(new MigLayout("insets 4 12 4 12, fill", "[grow, fill]", "[grow, fill]"));
         card.putClientProperty(FlatClientProperties.STYLE_CLASS, "listCard");
         card.add(basketScroll);

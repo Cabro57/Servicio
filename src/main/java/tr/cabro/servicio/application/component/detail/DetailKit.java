@@ -136,7 +136,6 @@ public final class DetailKit {
         sp.getViewport().setOpaque(false);
         sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         sp.getVerticalScrollBar().setUnitIncrement(16);
-        sp.getVerticalScrollBar().putClientProperty(FlatClientProperties.STYLE, "width: 8");
         return sp;
     }
 

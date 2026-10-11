@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.component.AppSplashScreen;
 import tr.cabro.servicio.application.themes.LafService;
+import tr.cabro.servicio.application.themes.ToastTheme;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.util.AppLock;
 import tr.cabro.servicio.util.DataDirResolver;
@@ -94,5 +95,6 @@ public final class ApplicationBootstrap {
         FlatLaf.setPreferredLightFontFamily(FlatRobotoFont.FAMILY_LIGHT);
         FlatLaf.setPreferredSemiboldFontFamily(FlatRobotoFont.FAMILY_SEMIBOLD);
         LafService.setup();
+        ToastTheme.install();
     }
 }

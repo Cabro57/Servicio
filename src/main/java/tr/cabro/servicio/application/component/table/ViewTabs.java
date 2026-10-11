@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.component.table;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.util.UIScale;
 
@@ -49,7 +51,7 @@ public class ViewTabs extends JPanel {
             item.addActionListener(e -> select(key, true));
             menu.add(item);
         }
-        menu.show(more, 0, more.getHeight());
+        Popups.showBelow(menu, more);
     }
 
     /**

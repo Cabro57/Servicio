@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import tr.cabro.servicio.application.panels.workorder.WorkOrderDeleteDialog;
 import tr.cabro.servicio.application.utils.Toasts;
 import tr.cabro.servicio.application.utils.PrintActions;
@@ -173,7 +175,7 @@ public class FormWorkOrders extends AbstractTableForm {
                 group.add(item);
                 menu.add(item);
             }
-            menu.show(payButton, 0, payButton.getHeight() + 4);
+            Popups.showBelow(menu, payButton);
         });
         updatePayButton();
         return payButton;
@@ -238,8 +240,9 @@ public class FormWorkOrders extends AbstractTableForm {
                 new ColumnDef<WorkOrder>("Servis", WorkOrder.class, s -> s).alignment(SwingConstants.LEADING),
                 new ColumnDef<WorkOrder>("Müşteri", Customer.class, WorkOrder::getCustomer).alignment(SwingConstants.LEADING)
                         .lookupFilter("s.customer_id", Lookups.customers()),
-                new ColumnDef<WorkOrder>("Cihaz ve şikâyet", WorkOrder.class, s -> s).alignment(SwingConstants.LEADING)
+                new ColumnDef<WorkOrder>("Cihaz", WorkOrder.class, s -> s).alignment(SwingConstants.LEADING)
                         .lookupFilter("d.device_type_id", Lookups.deviceTypes()),
+                new ColumnDef<WorkOrder>("Şikâyet", String.class, FormWorkOrders::faultText).alignment(SwingConstants.LEADING),
                 new ColumnDef<WorkOrder>("Geliş", WorkOrder.class, s -> s).alignment(SwingConstants.LEADING).dateRangeFilter("s.created_at"),
                 new ColumnDef<WorkOrder>("Ücret", WorkOrder.class, s -> s).alignment(SwingConstants.TRAILING),
                 ColumnDef.<WorkOrder>badge("Durum", ServiceStatus.class, WorkOrder::getServiceStatus).enumFilter("s.service_status", ServiceStatus.class),
@@ -255,16 +258,18 @@ public class FormWorkOrders extends AbstractTableForm {
         table.getColumnModel().getColumn(0).setMinWidth(130);
         table.getColumnModel().getColumn(1).setPreferredWidth(200);
         table.getColumnModel().getColumn(1).setMinWidth(150);
-        table.getColumnModel().getColumn(2).setPreferredWidth(320);
-        table.getColumnModel().getColumn(2).setMinWidth(200);
-        table.getColumnModel().getColumn(3).setPreferredWidth(150);
-        table.getColumnModel().getColumn(3).setMinWidth(130);
-        table.getColumnModel().getColumn(4).setPreferredWidth(170);
-        table.getColumnModel().getColumn(4).setMinWidth(150);
-        table.getColumnModel().getColumn(5).setPreferredWidth(150);
-        table.getColumnModel().getColumn(5).setMinWidth(145);
-        table.getColumnModel().getColumn(6).setMinWidth(96);
-        table.getColumnModel().getColumn(6).setMaxWidth(96);
+        table.getColumnModel().getColumn(2).setPreferredWidth(220);
+        table.getColumnModel().getColumn(2).setMinWidth(160);
+        table.getColumnModel().getColumn(3).setPreferredWidth(220);
+        table.getColumnModel().getColumn(3).setMinWidth(120);
+        table.getColumnModel().getColumn(4).setPreferredWidth(150);
+        table.getColumnModel().getColumn(4).setMinWidth(130);
+        table.getColumnModel().getColumn(5).setPreferredWidth(170);
+        table.getColumnModel().getColumn(5).setMinWidth(150);
+        table.getColumnModel().getColumn(6).setPreferredWidth(150);
+        table.getColumnModel().getColumn(6).setMinWidth(145);
+        table.getColumnModel().getColumn(7).setMinWidth(96);
+        table.getColumnModel().getColumn(7).setMaxWidth(96);
 
         addSort(WorkOrderRepository.Sort.NEWEST.name(), "En yeni");
         addSort(WorkOrderRepository.Sort.OLDEST.name(), "En eski");
@@ -293,15 +298,21 @@ public class FormWorkOrders extends AbstractTableForm {
             Device d = s == null ? null : ((WorkOrder) s).getDevice();
             return d == null ? "" : d.getBrand() + " " + d.getModel();
         }));
-        sorter.setComparator(3, Comparator.comparing(s -> {
+        sorter.setComparator(DATE_COLUMN, Comparator.comparing(s -> {
             LocalDateTime date = s == null ? null : ((WorkOrder) s).getCreatedAt();
             return date != null ? date : LocalDateTime.MIN;
         }));
-        sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(3, SortOrder.DESCENDING)));
+        sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(DATE_COLUMN, SortOrder.DESCENDING)));
+    }
+
+    /** Şikâyet sütununun metni: satır sonları/fazla boşluklar tek boşluğa indirilir. */
+    private static String faultText(WorkOrder s) {
+        String fault = s.getReportedFault();
+        return fault == null ? "" : fault.replaceAll("\\s+", " ").trim();
     }
 
     /** Tarih kolonunun indeksi (setupTable'daki kolon sırası). */
-    private static final int DATE_COLUMN = 3;
+    private static final int DATE_COLUMN = 4;
 
     /**
      * Listeyi durum(lar)a süzerek gösterir (ana sayfadaki servis hattı, dikkat kuyruğu ve alt
@@ -491,19 +502,33 @@ public class FormWorkOrders extends AbstractTableForm {
                 c -> c != null ? c.getFullName() : "Müşterisiz kayıt",
                 c -> c != null ? PhoneHelper.formatForDisplay(c.getPhoneNumber1()) : ""));
 
-        // Cihaz kalın, altında şikâyet (yoksa seri no).
+        // Cihaz kalın, altında yalnızca seri no; şikâyet yandaki ayrı sütunda.
         table.getColumnModel().getColumn(2).setCellRenderer(new MultiLineTableCellRenderer<WorkOrder>(
                 s -> s.getDevice() != null ? s.getDevice().getBrand() + " " + s.getDevice().getModel() : "Bilinmeyen cihaz",
                 s -> {
-                    String fault = s.getReportedFault();
-                    if (fault != null && !fault.isBlank()) return fault.replaceAll("\\s+", " ").trim();
                     Device d = s.getDevice();
                     return d != null && d.getSerialNo() != null && !d.getSerialNo().isBlank()
-                            ? "SN " + d.getSerialNo() : "Şikâyet girilmemiş";
+                            ? "SN " + d.getSerialNo() : "Seri no yok";
                 }));
 
+        // Şikâyet: soluk tek satır; sığmayan metin ipucunda tam görünür.
+        table.getColumnModel().getColumn(3).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object value, boolean isSelected,
+                                                           boolean hasFocus, int row, int column) {
+                super.getTableCellRendererComponent(t, value, isSelected, false, row, column);
+                String text = value != null ? value.toString() : "";
+                setText(text.isEmpty() ? "Şikâyet girilmemiş" : text);
+                setToolTipText(text.isEmpty() ? null : text);
+                setBackground(TableRendererSupport.rowBackground(t, row, isSelected));
+                setForeground(isSelected ? t.getSelectionForeground() : UIManager.getColor("Label.disabledForeground"));
+                setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
+                return this;
+            }
+        });
+
         // Geliş günü + ne zamandır serviste / teslim / iade; açık iş 7 günü aşınca uyarı rengi; teslimde garanti.
-        table.getColumnModel().getColumn(3).setCellRenderer(new MultiLineTableCellRenderer<WorkOrder>(
+        table.getColumnModel().getColumn(4).setCellRenderer(new MultiLineTableCellRenderer<WorkOrder>(
                 s -> s.getCreatedAt() != null ? RowParts.day(s.getCreatedAt()) : "Tarih yok",
                 s -> {
                     String deliv = s.getDeliveryDate() != null ? Format.formatDate(s.getDeliveryDate()) : "-";
@@ -519,12 +544,12 @@ public class FormWorkOrders extends AbstractTableForm {
 
         // Ücret: yalnızca alınacak tutar (kalan, uyarı renginde) ve altında ödeme çipi. Toplam/ödenen
         // dökümü üzerine gelince ipucunda; eskiden "₺1.250 kalan" + "Kısmi Ödeme" yan yana sığmıyordu.
-        table.getColumnModel().getColumn(4).setCellRenderer(new AmountChipCellRenderer<WorkOrder>()
+        table.getColumnModel().getColumn(5).setCellRenderer(new AmountChipCellRenderer<WorkOrder>()
                 .amount(s -> s.getRemainingAmount().signum() > 0 ? s.getRemainingAmount() : null, RowParts.Money.OWED)
                 .chip(FormWorkOrders::paymentChip)
                 .tooltip(FormWorkOrders::paymentTooltip));
 
-        TableActionColumnSupport.install(table, 6, tableModal, new TableActionColumnSupport.Handlers<WorkOrder>() {
+        TableActionColumnSupport.install(table, 7, tableModal, new TableActionColumnSupport.Handlers<WorkOrder>() {
             @Override
             public void onEdit(WorkOrder wo) {
                 if (wo != null) openEditModal(wo);

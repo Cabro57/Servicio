@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.component;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.application.utils.Ikon;
 
@@ -122,6 +124,6 @@ public class CurrencyField extends JFormattedTextField {
 
         int width = Math.max(getWidth(), 170);
         popup.setPreferredSize(new Dimension(width, popup.getPreferredSize().height));
-        popup.show(this, 0, getHeight());
+        Popups.showBelow(popup, this);
     }
 }

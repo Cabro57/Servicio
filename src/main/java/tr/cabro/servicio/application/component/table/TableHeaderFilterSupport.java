@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.component.table;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import lombok.Setter;
 import net.miginfocom.swing.MigLayout;
 import raven.datetime.DatePicker;
@@ -155,6 +157,7 @@ public class TableHeaderFilterSupport<T> {
         }
 
         popup.add(content, BorderLayout.CENTER);
+        Popups.blend(content);
         popup.show(table.getTableHeader(), cellRect.x, cellRect.y + cellRect.height);
     }
 
@@ -224,7 +227,6 @@ public class TableHeaderFilterSupport<T> {
         JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.setPreferredSize(new Dimension(280, 220));
-        scroll.getVerticalScrollBar().putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, "width: 8");
         panel.add(scroll, "growx");
 
         JPanel buttons = new JPanel(new MigLayout("insets 0", "[grow][]"));

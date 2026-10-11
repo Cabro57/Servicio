@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.forms;
 
+import tr.cabro.servicio.application.utils.Popups;
+
 import tr.cabro.servicio.application.panels.workorder.WorkOrderDeleteDialog;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
@@ -341,17 +343,14 @@ public class FormWorkOrder extends Form {
             if (type.isThermal() && !thermalGroupStarted) {
                 // A4 belgeler üstte, termal fişler ayraçtan sonra kendi başlığı altında.
                 popup.addSeparator();
-                JLabel groupLabel = new JLabel("Termal Fiş (" + AppSettings.get().getPrinting().getReceiptPaperWidth() + ")");
-                groupLabel.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
-                groupLabel.setBorder(BorderFactory.createEmptyBorder(4, 10, 2, 10));
-                popup.add(groupLabel);
+                popup.add(Popups.groupLabel("Termal Fiş (" + AppSettings.get().getPrinting().getReceiptPaperWidth() + ")"));
                 thermalGroupStarted = true;
             }
             JMenuItem item = new JMenuItem(type.getDisplayName());
             item.addActionListener(e -> openDocumentModal(type));
             popup.add(item);
         }
-        popup.show(anchor, 0, anchor.getHeight());
+        Popups.showBelow(popup, anchor);
     }
 
     /** İmza isimleri, garanti ve metinler düzenlenip belge açılır ya da farklı kaydedilir. */
