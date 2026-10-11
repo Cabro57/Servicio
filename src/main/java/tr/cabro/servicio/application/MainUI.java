@@ -3,6 +3,7 @@ package tr.cabro.servicio.application;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
+import raven.modal.layout.FrameModalLayout;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.menu.MyDrawerBuilder;
 import tr.cabro.servicio.application.component.MessageModal;
@@ -28,6 +29,8 @@ public class MainUI extends JFrame {
         // FlatLaf pencere dekorasyonlarını (Title bar) etkinleştirir
         getRootPane().putClientProperty(FlatClientProperties.FULL_WINDOW_CONTENT, true);
 
+        // Çekmece kurulmadan önce: raven içerik bölmesini kurulum anında yakalar.
+        setContentPane(new DrawerAwareContentPane());
         Drawer.installDrawer(this, MyDrawerBuilder.getInstance());
         User user = new User();
         MyDrawerBuilder.getInstance().setUser(user);
@@ -97,5 +100,44 @@ public class MainUI extends JFrame {
                 })
                 .show(this);
         // "Vazgeç", Esc veya pencere kapatılırsa hiçbir şey yapma, uygulama açık kalır.
+    }
+
+    /**
+     * İçerik bölmesinin yatay konumunu ve genişliğini yalnızca raven'ın {@link FrameModalLayout}'una bırakır.
+     * <p>
+     * İki yerleşim aynı bölmeyi sırayla konumlandırıyordu: FlatLaf'ın kök yerleşimi tam genişliğe, hemen
+     * ardından raven'ın katman yerleşimi çekmece payı düşülmüş genişliğe. Kök geçersiz olduğunda (pencerede
+     * herhangi bir {@code revalidate}, ör. bir etiketin metni, modal geçiş animasyonunun her karesi) bölme iki
+     * kez boyut değiştiriyor; her seferinde tüm arayüz yeniden yerleşip tüm pencere yeniden çiziliyordu.
+     * Açık bir modalın arkasında bu, kare başına 30-40 ms ve sürekli kasma demekti.
+     * <p>
+     * Kök yerleşiminden gelen çağrıda yalnızca dikey konum ve yükseklik alınır; raven bunları kendi
+     * hesabına girdi olarak kullanır ({@code contentPane.getY()/getHeight()}).
+     */
+    private static final class DrawerAwareContentPane extends JPanel {
+
+        DrawerAwareContentPane() {
+            super(new BorderLayout());
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
+        public void reshape(int x, int y, int w, int h) {
+            if (getWidth() > 0 && isRootLayoutCall()) {
+                x = getX();
+                w = getWidth();
+            }
+            super.reshape(x, y, w, h);
+        }
+
+        private boolean isRootLayoutCall() {
+            JRootPane root = getRootPane();
+            if (root == null || root.getLayout() == null) return false;
+            // Çekmece kurulmamışsa genişliği başka kimse vermez; kök yerleşimi olduğu gibi uygulanır.
+            if (!(root.getLayeredPane().getLayout() instanceof FrameModalLayout)) return false;
+            Class<?> rootLayout = root.getLayout().getClass();
+            return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+                    .walk(frames -> frames.limit(8).anyMatch(f -> f.getDeclaringClass() == rootLayout));
+        }
     }
 }

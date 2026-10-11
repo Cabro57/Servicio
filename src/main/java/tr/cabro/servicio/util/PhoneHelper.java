@@ -34,8 +34,24 @@ public class PhoneHelper {
         }
     }
 
+    /**
+     * libphonenumber ayrıştırması liste/tablo renderer'larında her çizimde tekrarlanıyordu; aynı
+     * numara hep aynı sonucu verdiği için sonuç önbelleğe alınır. Sınırsız büyümesin diye taşınca temizlenir.
+     */
+    private static final Map<String, String> DISPLAY_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int DISPLAY_CACHE_LIMIT = 5000;
+
     public static String formatForDisplay(String e164Number) {
         if (e164Number == null || e164Number.isEmpty()) return "";
+        String cached = DISPLAY_CACHE.get(e164Number);
+        if (cached != null) return cached;
+        if (DISPLAY_CACHE.size() >= DISPLAY_CACHE_LIMIT) DISPLAY_CACHE.clear();
+        String formatted = formatUncached(e164Number);
+        DISPLAY_CACHE.put(e164Number, formatted);
+        return formatted;
+    }
+
+    private static String formatUncached(String e164Number) {
         try {
             if (!e164Number.startsWith("+")) e164Number = "+" + e164Number;
             Phonenumber.PhoneNumber number = phoneUtil.parse(e164Number, null);

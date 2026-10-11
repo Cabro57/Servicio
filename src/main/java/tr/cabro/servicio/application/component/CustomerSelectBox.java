@@ -271,15 +271,19 @@ public class CustomerSelectBox extends JPanel {
     // -------------------------------------------------------------------------
 
     private void filterList(String text) {
-        listModel.clear();
         String query = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
         String queryDigits = nationalDigits(query);
 
+        List<Customer> found = new ArrayList<>();
         for (Customer c : allCustomers) {
             if (c == null) continue;
-            if (listModel.getSize() >= MAX_RESULTS) break;
-            if (query.isEmpty() || matches(c, query, queryDigits)) listModel.addElement(c);
+            if (found.size() >= MAX_RESULTS) break;
+            if (query.isEmpty() || matches(c, query, queryDigits)) found.add(c);
         }
+        // Tek tek addElement her eklemede JList'in tüm satırları yeniden ölçmesini tetikliyordu
+        // (200 satırda ~20 bin renderer çağrısı, açılışta 300 ms+ EDT takılması). addAll tek olay üretir.
+        listModel.clear();
+        listModel.addAll(found);
         if (listModel.getSize() > 0) list.setSelectedIndex(0);
         listScroll.setVisible(listModel.getSize() > 0);
         emptyLabel.setVisible(listModel.getSize() == 0);
@@ -356,6 +360,9 @@ public class CustomerSelectBox extends JPanel {
         private final JLabel name = new JLabel();
         private final JLabel detail = new JLabel();
         private final JLabel flag = new JLabel();
+        // Her çizimde yeni Ikon kurmak, classpath'te kaynak aramasına (dosya sistemi erişimi) yol açıyordu.
+        private final Ikon problemIcon = new Ikon("icons/triangle-alert.svg", 0.75f, "Servicio.dangerColor");
+        private final Ikon corporateIcon = new Ikon("icons/building-2.svg", 0.75f);
 
         Renderer() {
             name.putClientProperty(FlatClientProperties.STYLE, "font: bold");
@@ -379,10 +386,10 @@ public class CustomerSelectBox extends JPanel {
 
             if (c.isProblematic()) {
                 flag.setText("Sorunlu");
-                flag.setIcon(new Ikon("icons/triangle-alert.svg", 0.75f, "Servicio.dangerColor"));
+                flag.setIcon(problemIcon);
             } else if (c.getType() == CustomerType.KURUMSAL) {
                 flag.setText("Kurumsal");
-                flag.setIcon(new Ikon("icons/building-2.svg", 0.75f));
+                flag.setIcon(corporateIcon);
             } else {
                 flag.setText("");
                 flag.setIcon(null);

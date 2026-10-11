@@ -11,6 +11,7 @@ import tr.cabro.servicio.application.themes.ToastTheme;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.util.AppLock;
 import tr.cabro.servicio.util.DataDirResolver;
+import tr.cabro.servicio.util.EdtStallMonitor;
 
 import javax.swing.*;
 import java.io.File;
@@ -49,6 +50,9 @@ public final class ApplicationBootstrap {
                     Messages.get("app.already.running.title"), JOptionPane.WARNING_MESSAGE);
             return;
         }
+
+        // EDT'yi bekleten olayları loga yazan izleyici; ilk pencereden önce takılmalı
+        EdtStallMonitor.install();
 
         // 2. Splash'i hemen göster (EDT)
         final AppSplashScreen splash = new AppSplashScreen();
