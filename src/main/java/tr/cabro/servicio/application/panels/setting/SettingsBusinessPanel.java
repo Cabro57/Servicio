@@ -13,6 +13,7 @@ import tr.cabro.servicio.application.utils.Toasts;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Business;
 import tr.cabro.servicio.service.ServiceManager;
+import tr.cabro.servicio.application.component.PhoneField;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.util.ProfileImageStore;
 
@@ -47,15 +48,23 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
     private static final int LOGO_W = 150;
     private static final int LOGO_H = 84;
 
-    /** Alan ↔ model eşlemesi: yükleme, kirli denetimi ve kayıt aynı listeden yürür. */
-    private record Binding(JTextComponent field, Function<Business, String> get, BiConsumer<Business, String> set) {}
+    /**
+     * Alan ↔ model eşlemesi: yükleme, kirli denetimi ve kayıt aynı listeden yürür. {@code read}/{@code write}
+     * alanın değerini okur/yazar; düz metin alanlarında metnin kendisi, telefonda kayıt biçimi (E.164).
+     */
+    private record Binding(JTextComponent field, Function<Business, String> get, BiConsumer<Business, String> set,
+                           Function<JTextComponent, String> read, BiConsumer<JTextComponent, String> write) {
+        String value() {
+            return read.apply(field);
+        }
+    }
 
     private final List<Binding> bindings = new ArrayList<>();
     private final Map<JTextComponent, JLabel> errors = new LinkedHashMap<>();
 
     private final JTextField txtName = field("Örn. Cabro Teknik Servis");
-    private final JTextField txtPhone = field("0212 000 00 00");
-    private final JTextField txtPhone2 = field("05xx xxx xx xx");
+    private final PhoneField txtPhone = phoneField();
+    private final PhoneField txtPhone2 = phoneField();
     private final JTextField txtEmail = field("info@isletmeniz.com");
     private final JTextField txtWebsite = field("isletmeniz.com");
     private final JTextField txtAddress = field("Mahalle, cadde, no · ilçe / il");
@@ -81,8 +90,8 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
         setOpaque(false);
 
         bind(txtName, Business::getBusinessName, Business::setBusinessName);
-        bind(txtPhone, Business::getPhoneNumber, Business::setPhoneNumber);
-        bind(txtPhone2, Business::getPhoneNumber2, Business::setPhoneNumber2);
+        bindPhone(txtPhone, Business::getPhoneNumber, Business::setPhoneNumber);
+        bindPhone(txtPhone2, Business::getPhoneNumber2, Business::setPhoneNumber2);
         bind(txtEmail, Business::getEmail, Business::setEmail);
         bind(txtWebsite, Business::getWebsite, Business::setWebsite);
         bind(txtAddress, Business::getAddress, Business::setAddress);
@@ -117,8 +126,8 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
 
         JPanel identity = FormKit.grid(2);
         identity.add(FormKit.cell("İşletme adı", txtName, error(txtName)), "span 2");
-        identity.add(FormKit.cell("Telefon", txtPhone, null));
-        identity.add(FormKit.cell("İkinci telefon", txtPhone2, null));
+        identity.add(FormKit.cell("Telefon", txtPhone, error(txtPhone)));
+        identity.add(FormKit.cell("İkinci telefon", txtPhone2, error(txtPhone2)));
         identity.add(FormKit.cell("E-posta", txtEmail, error(txtEmail)));
         identity.add(FormKit.cell("Web sitesi", txtWebsite, null));
         identity.add(FormKit.cell("Adres", txtAddress, null), "span 2");
@@ -199,7 +208,35 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
     }
 
     private void bind(JTextComponent field, Function<Business, String> get, BiConsumer<Business, String> set) {
-        bindings.add(new Binding(field, get, set));
+        bindings.add(new Binding(field, get, set, f -> f.getText().trim(), JTextComponent::setText));
+    }
+
+    private PhoneField phoneField() {
+        PhoneField field = new PhoneField();
+        field.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { changed(); }
+            @Override public void removeUpdate(DocumentEvent e) { changed(); }
+            @Override public void changedUpdate(DocumentEvent e) { }
+        });
+        return field;
+    }
+
+    /**
+     * Telefon: kayıtta E.164, alanda ülke + gruplanmış numara. Eski kayıtlar ("905…", "0212…") yüklenirken
+     * çözülür; yazılmış ama geçersiz bir numara olduğu gibi okunur ki kirli sayılsın ve doğrulamaya takılsın.
+     */
+    private void bindPhone(PhoneField field, Function<Business, String> get, BiConsumer<Business, String> set) {
+        Function<Business, String> canonical = b -> {
+            String raw = get.apply(b);
+            String e164 = PhoneHelper.toE164(raw);
+            return e164 != null ? e164 : raw;
+        };
+        bindings.add(new Binding(field, canonical, set,
+                f -> {
+                    String e164 = ((PhoneField) f).getNormalizedNumber();
+                    return e164 != null ? e164 : f.getText().trim();
+                },
+                (f, v) -> ((PhoneField) f).setNumber(v)));
     }
 
     // ------------------------------------------------------------------ durum
@@ -208,7 +245,7 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
         ServiceManager.getBusinessService().get().thenAccept(opt -> SwingUtilities.invokeLater(() -> {
             current = opt.orElseGet(Business::new);
             loading = true;
-            for (Binding b : bindings) b.field().setText(nvl(b.get().apply(current)));
+            for (Binding b : bindings) b.write().accept(b.field(), nvl(b.get().apply(current)));
             selectedLogoName = current.getLogoPath();
             showLogo(selectedLogoName);
             loading = false;
@@ -223,7 +260,7 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
         if (current == null) return;
         boolean dirty = !Objects.equals(nvl(selectedLogoName), nvl(current.getLogoPath()));
         for (Binding b : bindings) {
-            if (!b.field().getText().trim().equals(nvl(b.get().apply(current)))) dirty = true;
+            if (!b.value().equals(nvl(b.get().apply(current)))) dirty = true;
         }
         btnSave.setEnabled(dirty);
     }
@@ -232,7 +269,7 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
     private Business snapshot() {
         Business b = new Business();
         for (Binding binding : bindings) {
-            String v = binding.field().getText().trim();
+            String v = binding.value();
             binding.set().accept(b, v);
             if (v.isEmpty() && binding.field() != txtIban) binding.set().accept(b, null);
         }
@@ -256,6 +293,12 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
         if (!taxNo.isEmpty() && !taxNo.matches("\\d{10}|\\d{11}")) {
             JComponent f = FormKit.fail(txtTaxNumber, errors.get(txtTaxNumber), "VKN 10, TC kimlik no 11 hanedir.");
             if (first == null) first = f;
+        }
+        for (PhoneField phone : new PhoneField[]{txtPhone, txtPhone2}) {
+            if (!phone.getText().isBlank() && phone.getNormalizedNumber() == null) {
+                JComponent f = FormKit.fail(phone, errors.get(phone), "Numara bu ülke için geçerli değil; ülkeyi ya da numarayı düzeltin.");
+                if (first == null) first = f;
+            }
         }
         String iban = txtIban.getText().trim();
         if (!iban.isEmpty() && !isValidIban(normalizeIban(iban))) {

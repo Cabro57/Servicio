@@ -3,6 +3,7 @@ package tr.cabro.servicio.application.component;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.model.Customer;
+import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
 import java.awt.*;
@@ -37,7 +38,8 @@ public class CustomerCellRenderer extends DefaultListCellRenderer {
             Customer customer = (Customer) value;
 
             String name = customer.getFirstName() != null ? customer.getFullName() : "İsimsiz";
-            String phone = customer.getPhoneNumber1() != null ? customer.getPhoneNumber1() : "Telefon Yok";
+            String phone = customer.getPhoneNumber1() != null && !customer.getPhoneNumber1().isBlank()
+                    ? PhoneHelper.formatForDisplay(customer.getPhoneNumber1()) : "Telefon yok";
 
             topLabel.setText(name);
             bottomLabel.setText(phone);

@@ -303,7 +303,7 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
     private static Map<String, String> sampleTokens(Business shop) {
         Map<String, String> t = new LinkedHashMap<>();
         t.put("musteri_adi", "Ayşe Yılmaz");
-        t.put("musteri_telefon", "+90 532 123 45 67");
+        t.put("musteri_telefon", PhoneHelper.formatForDisplay("+905321234567"));
         t.put("cihaz_bilgisi", "Apple iPhone 13");
         t.put("cihaz_marka", "Apple");
         t.put("cihaz_model", "iPhone 13");
@@ -320,7 +320,7 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
         t.put("teslim_tarihi", Format.formatDate(LocalDate.now().plusDays(1)));
         t.put("bugunun_tarihi", Format.formatDate(LocalDate.now()));
         t.put("isletme_adi", shop != null && shop.getBusinessName() != null ? shop.getBusinessName() : "İşletmeniz");
-        t.put("isletme_telefon", shop != null && shop.getPhoneNumber() != null ? PhoneHelper.formatForDisplay(shop.getPhoneNumber()) : "+90 212 000 00 00");
+        t.put("isletme_telefon", shop != null && shop.getPhoneNumber() != null ? PhoneHelper.formatForDisplay(shop.getPhoneNumber()) : PhoneHelper.formatForDisplay("+902123456789"));
         t.put("isletme_adres", shop != null && shop.getAddress() != null ? shop.getAddress() : "İşletme adresi");
         tr.cabro.servicio.service.TemplateTokenBuilder.putBusinessExtras(t, shop, "—");
         return t;
