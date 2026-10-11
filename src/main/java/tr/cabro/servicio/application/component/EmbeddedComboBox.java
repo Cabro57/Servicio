@@ -1,7 +1,7 @@
 package tr.cabro.servicio.application.component;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.ui.FlatComboBoxUI;
+import tr.cabro.servicio.application.themes.FitComboBoxUI;
 
 import javax.swing.*;
 import java.awt.*;
@@ -32,7 +32,7 @@ public class EmbeddedComboBox<T> extends JComboBox<T> {
         ((EmbeddedComboBoxUI) getUI()).setEmbeddedComponent(embeddedComponent = component);
     }
 
-    private static class EmbeddedComboBoxUI extends FlatComboBoxUI {
+    private static class EmbeddedComboBoxUI extends FitComboBoxUI {
 
         private final JPanel panel;
 

@@ -78,9 +78,11 @@ public final class LafService {
         }
 
         putFontSize(ui.getFontSizeDelta());
+        FitComboBoxUI.install();
 
         UIManager.addPropertyChangeListener(e -> {
             if (e.getPropertyName().equals("lookAndFeel")) {
+                FitComboBoxUI.install();
                 AppSettings.get().getUi().setLafClassName(UIManager.getLookAndFeel().getClass().getName());
                 AppSettings.save();
             }
