@@ -94,10 +94,14 @@ components:
     backgroundColor: "{colors.accent-default-light}"
     textColor: "#FFFFFF"
     rounded: "{rounded.row}"
-    padding: "7px 14px"
+    padding: "6px 14px"
   secondary-button:
     rounded: "{rounded.row}"
-    padding: "7px 12px"
+    padding: "6px 14px"
+  text-field:
+    rounded: "{rounded.row}"
+    padding: "6px 10px"
+    height: "30px"
   period-toggle-selected:
     backgroundColor: "{colors.accent-default-light}"
     textColor: "#FFFFFF"
@@ -207,15 +211,17 @@ Flat. No shadows anywhere; separation comes from the card surface (tinted on hom
 
 ## Shapes
 
-Rounded, soft rectangles on a fixed radius ladder: keycap 6, controls/toggles/view tabs/change badges 8, row buttons, secondary and detail primary buttons and search fields 10, quick actions, the list "Yeni …" button and pipeline stages 12, cards and status badges 15. Borders are hairlines only.
+Rounded, soft rectangles on a fixed radius ladder: keycap 6, toggles/view tabs/change badges 8, every form control (text, password and formatted fields, combos, spinners, text-area frames, search fields, the phone field and every bordered button) and row buttons 10, quick actions and pipeline stages 12, cards and status badges 15. Borders are hairlines only.
+
+**The One Control Rule.** Fields, combos, spinners and buttons share one height (vertical margin 6, about 30px at 100%) and one 10px corner, set once in `themes/FlatLaf.properties` ("Kontroller": `Component.arc`, `TextComponent.arc`, `Button.arc`, `*.margin`, `ComboBox.padding`). UI code never writes `arc`/`margin` on a control; it states meaning only, through `Inputs` (`search`, `primary`, `danger`, `secondary`, `fieldIcon`) or the `primary` / `danger` style classes. Deliberate exceptions carry their own style: the POS barcode and product search, the collection amount field, the home quick-action strip, compact in-row icon buttons and toolbar-type buttons.
 
 ## Components
 
 ### Buttons
-- **Quick action (primary):** accent fill, `$Servicio.onAccentForeground` text and icon, 16px icon + bold label + keycap, arc 12, margin 9 14 9 12; hover darkens accent 6%, pressed 12%. One per screen. The list page "Yeni …" button uses the same anatomy (margin 8 14 8 12).
+- **Quick action (primary):** accent fill, `$Servicio.onAccentForeground` text and icon, 16px icon + bold label + keycap, arc 12, margin 9 14 9 12; hover darkens accent 6%, pressed 12%. One per screen, home strip only.
 - **Quick action (secondary):** default button, same anatomy with `Label.foreground` icon and muted keycap.
-- **Detail primary:** `DetailKit.primaryButton`: accent fill, on-accent bold label and 16px icon, arc 10, margin 7 14, same hover/pressed darkening; the `QuickAction` overload adds the on-accent keycap. The rightmost action of the identity bar.
-- **Secondary action:** default button arc 10, margin 7 12, with a 16px `Label.foreground` icon ("Kasa Raporu", "Düzenle", row "Tahsilat").
+- **Primary:** style class `primary` (`Inputs.primary`, `DetailKit.primaryButton`): accent fill, on-accent bold label and 16px icon, control height and corner, hover darkens accent 6%, pressed 12%. The `QuickAction` overload adds the on-accent keycap; the list page "Yeni …" button is that overload. Used for the identity-bar primary, modal and settings "Kaydet", "Tahsil Et", "Uygula" in filter popups and the empty-state action. **Danger:** style class `danger` (`Inputs.danger`), same anatomy on `$Servicio.dangerFill`.
+- **Secondary action:** default button with no style of its own (`Inputs.secondary`, `DetailKit.secondaryButton`), 16px `Label.foreground` icon, icon-text gap 6 from `Button.iconTextGap` ("Kasa Raporu", "Düzenle", card-header "Ekle").
 - **Row button:** transparent, arc 10, no border, margin 4 8; background appears on hover. Used for every list row, pipeline stage and receivables line so the whole row is the target.
 - **Link:** toolbar-type text button in accent, margin 2 6 ("Tümünü gör", "Müşteriye git", "Tekrar dene").
 
@@ -233,8 +239,9 @@ Rounded, soft rectangles on a fixed radius ladder: keycap 6, controls/toggles/vi
 - **Fact rows:** muted label left, bold value right-aligned, gap 12 8; empty values read "—".
 
 ### Inputs / Fields
-- **List search:** arc 10, margin 3 8, leading 16px muted search icon, clear button, placeholder naming what it searches ("Müşteri, cihaz, seri no veya SRV no ara…").
-- **Phone field:** `PhoneField`, one text field with a leading country selector inside the same border: an 18px 4:3 flag (2px corners, hairline frame), "+code", a 12px muted chevron, then a half-height hairline and 8px before the number. The selector takes a toolbar hover background (pressed while the list is open) and never takes focus. Clicking it, or Alt+↓ / F4 in the field, opens `PhoneCountryPicker` in the popup shell: a borderless search row ("Ülke ya da alan kodu ara"; matches name with Turkish letters folded, ISO code, or dialing code "49"/"+49") over a hairline, then 34px rows (20px flag, name, muted "+code" right), the business's own country pinned first under a hairline, the current country in bold; ↑↓ PgUp/PgDn, Enter, Esc. The number groups as you type in the country's format; the placeholder is that country's example mobile without the country code ("501 234 56 78"). Typing or pasting "+49 …" or "0049 …" switches the country; a leading trunk 0 is accepted and dropped on blur. Backspace over a group space deletes the digit before it. Invalid shows the FlatLaf error outline; disabled dims the flag to 40%. Stored as E.164.
+- **Field:** every text field, password field, combo and spinner is the plain control (One Control Rule); multi-line fields sit in `FormKit.areaScroll`, whose frame takes the same 10px corner. In-field icons are 16px muted (`Inputs.fieldIcon`).
+- **Search:** one field everywhere (`Inputs.search`): list pages, settings lists, the item modal, the customer picker, and the search rows of popups (phone country list, column filter). Leading 16px muted search icon, clear button, placeholder naming what it searches ("Müşteri, cihaz, seri no veya SRV no ara…"). The command palette field is the only borderless one.
+- **Phone field:** `PhoneField`, one text field with a leading country selector inside the same border: an 18px 4:3 flag (2px corners, hairline frame), "+code", a 12px muted chevron, then a half-height hairline and 8px before the number. The selector takes a toolbar hover background (pressed while the list is open) and never takes focus. Clicking it, or Alt+↓ / F4 in the field, opens `PhoneCountryPicker` in the popup shell: exactly as wide as the field (220px floor), the standard search field ("Ülke ya da alan kodu ara"; matches name with Turkish letters folded, ISO code, or dialing code "49"/"+49") 6px above the list, then 34px rows (20px flag, name, muted "+code" right), the business's own country pinned first under a hairline, the current country in bold; ↑↓ PgUp/PgDn, Enter, Esc. The number groups as you type in the country's format; the placeholder is that country's example mobile without the country code ("501 234 56 78"). Typing or pasting "+49 …" or "0049 …" switches the country; a leading trunk 0 is accepted and dropped on blur. Backspace over a group space deletes the digit before it. Invalid shows the FlatLaf error outline; disabled dims the flag to 40%. Stored as E.164.
 - **Phone display:** every screen, PDF, receipt and template goes through `PhoneHelper.formatForDisplay`: numbers in the business's region read national ("0532 111 22 33", "(0212) 345 67 89"), other countries international ("+49 30 1234567"). Legacy values ("905…", "0212…") are parsed, never prefixed blindly.
 - **Command palette field:** borderless, transparent, leading search icon, clear button, placeholder "Müşteri, servis, parça ara ya da bir işlem yaz…"; results between hairline separators, keycap hints below ("↑ ↓ gez", "Enter aç / çalıştır", "Esc kapat").
 
@@ -281,7 +288,7 @@ Base −2 muted text in a 1px `$Component.borderColor` outline, arc 6, padding 1
 Raven `Toast`, themed by `ToastTheme` (installed at bootstrap, reapplied on every look-and-feel change). The library's own palette (#1EA97C, #3B82F6, #CC8925, #FF5757 and tinted grounds) is replaced: every type is the same neutral card (library ground, 1px `$Component.borderColor` outline, 12px radius, soft shadow), message text in `Label.foreground`, no type label, muted close button. Color lives only in the icon, taken from the semantic tokens (success / info / warning / danger), so a toast's green is the same green as money and badges. Call through `Toasts` (adds the sounds).
 
 ### Popup Menus
-One shell for every `JPopupMenu` (row menu, "Diğer", sort, pay filter, document/"Form" menu, header filters, period picker, currency, customer picker) and combo dropdowns, set globally in `themes/FlatLaf.properties` ("Acilir menuler"): `$Table.background` ground, 1px `$Component.borderColor`, 12px radius, 5px inset. Items: margin 7 12 7 16, icon-text gap 10, arc 8. Hover/keyboard selection is the opaque neutral `Servicio.menuSelectionBackground` (light `darken($Table.background,7%)`, dark `lighten(…,8%)`); text keeps its color. Never an accent fill. Group headers inside a menu are `Popups.groupLabel` (muted −1). Menus opened from a button use `Popups.showBelow` (left-aligned, 4px gap). A menu holding panels calls `Popups.blend` so panel grounds do not frame inside the popup.
+One shell for every `JPopupMenu` (row menu, "Diğer", sort, pay filter, document/"Form" menu, header filters, period picker, currency, customer picker) and combo dropdowns, set globally in `themes/FlatLaf.properties` ("Acilir menuler"): `$Table.background` ground, 1px `$Component.borderColor`, 12px radius, 5px inset. Items: margin 7 12 7 16, icon-text gap 10, arc 8. Hover/keyboard selection is the opaque neutral `Servicio.menuSelectionBackground` (light `darken($Table.background,7%)`, dark `lighten(…,8%)`); text keeps its color. Never an accent fill. Combo dropdowns put their 5px side inset on the selection (`ComboBox.selectionInsets`), not the list (`ComboBox.popupInsets` 5,0,5,0), so an item's text starts exactly under the combo's value. Group headers inside a menu are `Popups.groupLabel` (muted −1). Menus opened from a button use `Popups.showBelow` (left-aligned, 4px gap). A menu holding panels calls `Popups.blend` so panel grounds do not frame inside the popup.
 
 ### Empty State
 Two centered lines inside the card: bold headline stating what is absent, muted −1 hint saying how it fills ("Bugün henüz hareket yok"). Error variant adds a "Tekrar dene" link. Loading uses the same shell ("Yükleniyor…").

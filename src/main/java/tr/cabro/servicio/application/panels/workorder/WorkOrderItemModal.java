@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels.workorder;
 
+import tr.cabro.servicio.application.component.Inputs;
+
 import tr.cabro.servicio.model.enums.CategoryScope;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
@@ -174,11 +176,7 @@ public class WorkOrderItemModal extends JPanel {
         modeTabs.setOnChange(this::switchMode);
         left.add(modeTabs, "growx 0");
 
-        txtSearch = new JTextField();
-        txtSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg", 16, "Label.disabledForeground"));
-        txtSearch.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
-        txtSearch.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        txtSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Parça adı, barkod ya da uyumlu model ara…");
+        txtSearch = Inputs.search("Parça adı, barkod ya da uyumlu model ara…");
         txtSearch.getAccessibleContext().setAccessibleName("Katalogda ara");
         txtSearch.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { applyFilters(); }
@@ -207,7 +205,6 @@ public class WorkOrderItemModal extends JPanel {
         partFilters.add(cmbModel);
         partFilters.add(cmbPartSort);
         cmbWarehouse = new JComboBox<>();
-        cmbWarehouse.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
         cmbWarehouse.setMinimumSize(new Dimension(0, cmbWarehouse.getMinimumSize().height));
         cmbWarehouse.setToolTipText("Eklenen parçalar bu depodan düşülür; stok adetleri bu depoya göredir");
         cmbWarehouse.setRenderer(new DefaultListCellRenderer() {
@@ -234,7 +231,6 @@ public class WorkOrderItemModal extends JPanel {
         cmbLaborCategory = filterCombo("Tüm kategoriler");
         cmbLaborType = new JComboBox<>();
         cmbLaborType.addItem(new DeviceType(null, "Tüm cihaz türleri", 0));
-        cmbLaborType.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
         cmbLaborType.setPrototypeDisplayValue(new DeviceType(null, "Tüm cihaz türleri", 0));
         cmbLaborType.setMinimumSize(new Dimension(0, cmbLaborType.getMinimumSize().height));
         cmbLaborType.addActionListener(e -> { if (!populating) loadLabors(); });
@@ -323,7 +319,6 @@ public class WorkOrderItemModal extends JPanel {
 
     private JComboBox<String> filterCombo(String all) {
         JComboBox<String> c = new JComboBox<>(new String[]{all});
-        c.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
         c.setPrototypeDisplayValue(all); // en uzun öğe (ör. uzun model listesi) sütunu genişletmesin
         c.setMinimumSize(new Dimension(0, c.getMinimumSize().height));
         c.addActionListener(e -> { if (!populating) applyFilters(); });
@@ -332,7 +327,6 @@ public class WorkOrderItemModal extends JPanel {
 
     private JComboBox<String> sortCombo(String... options) {
         JComboBox<String> c = new JComboBox<>(options);
-        c.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
         c.setToolTipText("Sıralama");
         c.setPrototypeDisplayValue("Fiyat: düşükten yükseğe");
         c.setMinimumSize(new Dimension(0, c.getMinimumSize().height));
@@ -532,7 +526,6 @@ public class WorkOrderItemModal extends JPanel {
 
         form.add(WorkOrderPanelSupport.createCaption("Ad"));
         nameField = new JTextField();
-        nameField.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
         nameField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Örn. Ekran değişimi, batarya, lehim işçiliği");
         form.add(nameField, "gapbottom 8");
 
@@ -548,7 +541,6 @@ public class WorkOrderItemModal extends JPanel {
         form.add(costRow);
 
         JButton add = new JButton("Eklenecekler'e ekle", new Ikon("icons/plus.svg", 16, "Label.foreground"));
-        add.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,14,7,14; iconTextGap: 6");
         add.addActionListener(e -> addManual());
         form.add(add, "gaptop 12, growx 0");
         nameField.addActionListener(e -> addManual());
@@ -558,7 +550,6 @@ public class WorkOrderItemModal extends JPanel {
     private static CurrencyField tryField() {
         CurrencyField f = new CurrencyField();
         f.setAvailableCurrencies(List.of("TRY"));
-        f.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,4");
         return f;
     }
 
@@ -654,9 +645,6 @@ public class WorkOrderItemModal extends JPanel {
                 + " border: 1,5,1,5,fade($Servicio.onAccentForeground,40%),1,6");
         btnSave.add(lblSaveText);
         btnSave.add(key);
-        btnSave.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 9,16,9,14; borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
-                + " background: $Component.accentColor; hoverBackground: darken($Component.accentColor,6%);"
-                + " pressedBackground: darken($Component.accentColor,12%)");
         btnSave.getAccessibleContext().setAccessibleName("Kalemleri ekle");
         btnSave.addActionListener(e -> save());
         styleSave(true);
@@ -674,11 +662,10 @@ public class WorkOrderItemModal extends JPanel {
         lblSaveText.putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: "
                 + (enabled ? "$Servicio.onAccentForeground" : "$Label.disabledForeground"));
         keyChip.setVisible(enabled);
+        btnSave.putClientProperty(FlatClientProperties.STYLE_CLASS, enabled ? "primary" : null);
         btnSave.putClientProperty(FlatClientProperties.STYLE, enabled
-                ? "arc: 10; margin: 9,16,9,14; borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
-                + " background: $Component.accentColor; hoverBackground: darken($Component.accentColor,6%);"
-                + " pressedBackground: darken($Component.accentColor,12%)"
-                : "arc: 10; margin: 9,16,9,14; borderWidth: 0; focusWidth: 0;"
+                ? "margin: 6,14,6,12"
+                : "margin: 6,14,6,12; borderWidth: 0; focusWidth: 0;"
                 + " disabledBackground: fade($Label.foreground,7%); background: fade($Label.foreground,7%)");
         btnSave.repaint();
     }
@@ -800,7 +787,7 @@ public class WorkOrderItemModal extends JPanel {
         // Birim fiyat (satırda düzenlenir)
         l.priceField = tryField();
         l.priceField.setValue(l.unit.doubleValue());
-        l.priceField.putClientProperty(FlatClientProperties.STYLE, "arc: 8; margin: 2,6,2,2");
+        l.priceField.putClientProperty(FlatClientProperties.STYLE, "margin: 2,6,2,2");
         l.priceField.getAccessibleContext().setAccessibleName(l.name + " birim fiyat");
         l.priceField.addPropertyChangeListener("value", e -> {
             l.unit = money(l.priceField);
@@ -818,7 +805,7 @@ public class WorkOrderItemModal extends JPanel {
         if (l.type == ItemType.PART) {
             // Garanti takibi için seri no; her parça satırında, katalogtan da elle girişten de yazılır.
             l.serialField = new JTextField(l.serialNo);
-            l.serialField.putClientProperty(FlatClientProperties.STYLE, "arc: 8; margin: 2,8,2,8");
+            l.serialField.putClientProperty(FlatClientProperties.STYLE, "margin: 2,8,2,8");
             l.serialField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Seri no (isteğe bağlı)");
             l.serialField.getAccessibleContext().setAccessibleName(l.name + " seri no");
             row.add(l.serialField, "span 3, growx, wmin 0, wrap");

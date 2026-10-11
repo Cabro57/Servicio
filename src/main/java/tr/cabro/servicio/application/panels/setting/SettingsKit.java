@@ -1,6 +1,5 @@
 package tr.cabro.servicio.application.panels.setting;
 
-import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.FormKit;
 import tr.cabro.servicio.application.utils.Ikon;
@@ -99,7 +98,6 @@ final class SettingsKit {
     /** Sayfa başlığındaki eylem düğmesi (Ekle, Şimdi yedekle…). */
     static JButton headerButton(String text, String iconPath) {
         JButton b = new JButton(text, iconPath != null ? new Ikon(iconPath, 16) : null);
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         return b;
     }
 

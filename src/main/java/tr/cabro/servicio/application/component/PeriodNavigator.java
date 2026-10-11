@@ -124,7 +124,7 @@ public class PeriodNavigator extends JPanel {
         content.add(picker);
 
         JButton apply = new JButton("Aralığı uygula");
-        apply.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 6,12,6,12; font: bold");
+        apply.putClientProperty(FlatClientProperties.STYLE_CLASS, "primary");
         apply.addActionListener(e -> {
             LocalDate[] range = picker.getSelectedDateRange();
             if (range == null) {

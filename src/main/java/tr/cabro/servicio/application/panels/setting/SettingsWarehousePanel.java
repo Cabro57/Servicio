@@ -1,12 +1,13 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.component.Inputs;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.FormKit;
 import tr.cabro.servicio.application.component.MessageModal;
 import tr.cabro.servicio.application.component.detail.DetailKit;
 import tr.cabro.servicio.application.utils.ErrorHandler;
-import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.StockLevel;
 import tr.cabro.servicio.model.Warehouse;
 import tr.cabro.servicio.service.ServiceManager;
@@ -104,11 +105,7 @@ public class SettingsWarehousePanel extends JPanel implements SettingsModal.Head
         right.add(contentList, "grow, hmin 0");
         add(right, "grow, hmin 260, wmin 0");
 
-        search.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Depoda ara");
-        search.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
-                new Ikon("icons/search.svg", 14, "Label.disabledForeground"));
-        search.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        search.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
+        Inputs.search(search, "Depoda ara");
         search.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { contentList.filter(search.getText()); }
             @Override public void removeUpdate(DocumentEvent e) { contentList.filter(search.getText()); }

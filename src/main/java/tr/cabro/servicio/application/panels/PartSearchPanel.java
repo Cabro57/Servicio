@@ -1,13 +1,13 @@
 package tr.cabro.servicio.application.panels;
 
-import com.formdev.flatlaf.FlatClientProperties;
+import tr.cabro.servicio.application.component.Inputs;
+
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.renderer.ProfileTableRenderer;
 import tr.cabro.servicio.application.renderer.TableHeaderAlignment;
 import tr.cabro.servicio.application.renderer.TooltipCellRenderer;
 import tr.cabro.servicio.application.tablemodal.ColumnDef;
 import tr.cabro.servicio.application.tablemodal.GenericTableModel;
-import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.model.Part;
 import tr.cabro.servicio.model.dictionary.DeviceType;
 import tr.cabro.servicio.service.DeviceDictionaryManager;
@@ -236,9 +236,7 @@ public class PartSearchPanel extends JPanel {
 
         productTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 
-        searchField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ara...");
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/search.svg"));
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        Inputs.search(searchField, "Parça adı ya da barkod ara…");
     }
 
     private JButton allPartsButton;

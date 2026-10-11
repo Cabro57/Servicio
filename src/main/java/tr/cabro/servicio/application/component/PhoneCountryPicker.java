@@ -3,7 +3,6 @@ package tr.cabro.servicio.application.component;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
-import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.Popups;
 import tr.cabro.servicio.util.PhoneHelper;
 import tr.cabro.servicio.util.PhoneHelper.CountryCode;
@@ -21,7 +20,7 @@ import java.util.function.Consumer;
 
 /**
  * Telefon alanının ülke listesi: ortak açılır menü kabuğunda (bkz. DESIGN.md "Popup Menus") üstte
- * bir arama satırı, altında ~250 ülke. İşletmenin ülkesi en üstte ve altında ince bir çizgiyle
+ * ortak arama alanı ({@link Inputs#search}), altında ~250 ülke. İşletmenin ülkesi en üstte ve altında ince bir çizgiyle
  * ayrılır; kalanlar alfabe sırasında. Ad, ISO kodu ya da alan koduyla aranır ("alm", "de", "49").
  * <p>
  * Odak arama satırındadır: ↑/↓ ve PgUp/PgDn gezer, Enter seçer, Esc kapatır. Fare satırın üzerine
@@ -31,10 +30,11 @@ final class PhoneCountryPicker {
 
     private static final int VISIBLE_ROWS = 8;
     private static final int ROW_HEIGHT = 34;
-    private static final int MIN_WIDTH = 320;
+    /** Alan çok darsa listenin inebileceği en dar genişlik; normalde liste alanla birebir aynı genişliktedir. */
+    private static final int MIN_WIDTH = 220;
 
     private final JPopupMenu popup = new JPopupMenu();
-    private final JTextField search = new JTextField();
+    private final JTextField search = Inputs.search("Ülke ya da alan kodu ara");
     private final DefaultListModel<CountryCode> model = new DefaultListModel<>();
     private final JList<CountryCode> list = new JList<>(model);
     private final JLabel empty = new JLabel("Eşleşen ülke yok");
@@ -47,12 +47,6 @@ final class PhoneCountryPicker {
     private PhoneCountryPicker(String current, Consumer<CountryCode> onPick) {
         this.current = current;
         this.onPick = onPick;
-
-        search.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ülke ya da alan kodu ara");
-        search.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
-                new Ikon("icons/search.svg", 16, "Label.disabledForeground"));
-        search.putClientProperty(FlatClientProperties.STYLE,
-                "borderWidth: 0; focusWidth: 0; innerFocusWidth: 0; background: $Table.background; margin: 6,8,6,8");
 
         list.setCellRenderer(new Row());
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -70,9 +64,9 @@ final class PhoneCountryPicker {
         empty.setHorizontalAlignment(SwingConstants.CENTER);
         empty.setVisible(false);
 
-        JPanel content = new JPanel(new MigLayout("insets 0, gap 0, hidemode 3", "[grow, fill]", "[][]4[]"));
+        // Arama satırı uygulamadaki her arama alanıyla aynı (çerçeveli, 10px köşe); liste altında.
+        JPanel content = new JPanel(new MigLayout("insets 2 2 0 2, gap 0, hidemode 3", "[grow, fill]", "[]6[]"));
         content.add(search, "wrap");
-        content.add(new JSeparator(), "wrap");
         content.add(scroll, "wrap");
         content.add(empty, "h " + UIScale.scale(ROW_HEIGHT * 2) + "!");
         popup.setLayout(new BorderLayout());
@@ -95,7 +89,10 @@ final class PhoneCountryPicker {
      */
     static void show(JComponent field, String currentRegion, Consumer<CountryCode> onPick, Runnable onClose) {
         PhoneCountryPicker picker = new PhoneCountryPicker(currentRegion, onPick);
-        int width = Math.max(field.getWidth(), UIScale.scale(MIN_WIDTH));
+        // Açılır menü kendi çerçevesini ve iç boşluğunu ekler; liste o pay düşülerek boyutlanır ki
+        // menünün dış kenarı alanın kenarlarıyla çakışsın.
+        Insets frame = picker.popup.getInsets();
+        int width = Math.max(field.getWidth(), UIScale.scale(MIN_WIDTH)) - frame.left - frame.right - UIScale.scale(4);
         picker.scroll.setPreferredSize(new Dimension(width, UIScale.scale(ROW_HEIGHT * VISIBLE_ROWS)));
         picker.popup.addPopupMenuListener(new PopupMenuListener() {
             @Override public void popupMenuWillBecomeVisible(PopupMenuEvent e) { }

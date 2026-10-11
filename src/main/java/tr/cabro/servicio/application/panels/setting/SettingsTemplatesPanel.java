@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.component.FormKit;
+
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
@@ -102,9 +104,7 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
         bodyArea.getDocument().addDocumentListener(onEdit);
 
         saveButton = new JButton("Kaydet");
-        saveButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 6,16,6,16; font: bold; borderWidth: 0; focusWidth: 0;"
-                + " background: $Component.accentColor; foreground: $Servicio.onAccentForeground;"
-                + " hoverBackground: darken($Component.accentColor,6%)");
+        saveButton.putClientProperty(FlatClientProperties.STYLE_CLASS, "primary");
         saveButton.addActionListener(e -> save());
         deleteButton = new JButton("Sil");
         deleteButton.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
@@ -116,7 +116,7 @@ public class SettingsTemplatesPanel extends JPanel implements SettingsModal.Head
         editor.add(SettingsKit.label("Şablon adı"));
         editor.add(nameField);
         editor.add(SettingsKit.label("Mesaj"));
-        JScrollPane bodyScroll = new JScrollPane(bodyArea);
+        JScrollPane bodyScroll = FormKit.areaScroll(bodyArea);
         editor.add(bodyScroll, "hmin 140");
         editor.add(buildTokenChips());
         editor.add(buildPreview());

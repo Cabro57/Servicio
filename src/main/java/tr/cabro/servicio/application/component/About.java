@@ -75,7 +75,6 @@ public class About extends JPanel {
 
         // --- Alt satır ---
         JButton copy = new JButton("Bilgileri kopyala", new Ikon("icons/clipboard-list.svg", 14, "Label.foreground"));
-        copy.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,10,5,10; iconTextGap: 6");
         copy.setToolTipText("Destek isterken yapıştırmak için sürüm ve sistem bilgisini panoya kopyalar");
         copy.addActionListener(e -> {
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(supportText(dataFolder)), null);

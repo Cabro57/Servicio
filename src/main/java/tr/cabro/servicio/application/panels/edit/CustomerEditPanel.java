@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import tr.cabro.servicio.application.component.FormKit;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import lombok.NonNull;
 import net.miginfocom.swing.MigLayout;
@@ -301,10 +303,10 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
         kurumsalOnly = new java.util.ArrayList<>();
         bireyselOnly = new java.util.ArrayList<>();
 
-        // Rayda bölüm adı, sağda üç eşit kolon. hidemode 3: gizlenen tip alanları hiç yer kaplamaz
+        // Rayda bölüm adı, sağda üç eşit kolon (880: telefon alanında bayrak + kod sonrası numara sığsın). hidemode 3: gizlenen tip alanları hiç yer kaplamaz
         // (CardLayout en büyük kartın boyunu ayırıp Bireysel'de boşluk bırakıyordu).
         JPanel form = new JPanel(new MigLayout(
-                "wrap 2, insets 16 20 12 20, fillx, hidemode 3, width 760:760:",
+                "wrap 2, insets 16 20 12 20, fillx, hidemode 3, width 880:880:",
                 "[150!]24[grow, fill]"));
 
         JScrollPane scroll = new JScrollPane(form);
@@ -562,9 +564,7 @@ public class CustomerEditPanel extends AbstractEditPanel<Customer> {
     }
 
     private static JScrollPane areaScroll(JTextArea area) {
-        JScrollPane sp = new JScrollPane(area);
-        sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        return sp;
+        return FormKit.areaScroll(area);
     }
 
     /** Hatalı alana yazılmaya başlanınca hata mesajı ve çerçeve kalkar. */

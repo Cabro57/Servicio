@@ -1,6 +1,5 @@
 package tr.cabro.servicio.application.panels.setting;
 
-import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.settings.AppSettings;
@@ -65,7 +64,6 @@ public class SettingsSoundPanel extends JPanel {
         test.setOpaque(false);
         for (SoundPlayer.Cue cue : SoundPlayer.Cue.values()) {
             JButton b = new JButton(cue.label(), new Ikon("icons/volume-2.svg", 14));
-            b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
             b.setToolTipText(cue.label() + " sesini dinle");
             b.addActionListener(e -> SoundPlayer.preview(cue));
             test.add(b, "sgx cue, growx");

@@ -2,6 +2,7 @@ package tr.cabro.servicio.application.component.detail;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
+import tr.cabro.servicio.application.component.Inputs;
 import tr.cabro.servicio.application.utils.Ikon;
 
 import javax.swing.*;
@@ -68,18 +69,13 @@ public final class DetailKit {
     }
 
     public static JButton secondaryButton(String text, String iconPath, Runnable action) {
-        JButton b = iconPath != null ? new JButton(text, new Ikon(iconPath, 16, "Label.foreground")) : new JButton(text);
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,12,7,12; iconTextGap: 6");
+        JButton b = Inputs.secondary(text, iconPath);
         if (action != null) b.addActionListener(e -> action.run());
         return b;
     }
 
     public static JButton primaryButton(String text, String iconPath, Runnable action) {
-        JButton b = iconPath != null ? new JButton(text, new Ikon(iconPath, 16, "Servicio.onAccentForeground")) : new JButton(text);
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,14,7,14; iconTextGap: 6; font: bold;"
-                + " borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
-                + " background: $Component.accentColor; foreground: $Servicio.onAccentForeground;"
-                + " hoverBackground: darken($Component.accentColor,6%); pressedBackground: darken($Component.accentColor,12%)");
+        JButton b = Inputs.primary(text, iconPath);
         if (action != null) b.addActionListener(e -> action.run());
         return b;
     }
@@ -108,9 +104,8 @@ public final class DetailKit {
             b.setToolTipText(text + " (" + shortcut.getShortcutText() + ")");
         }
         b.getAccessibleContext().setAccessibleName(text);
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,14,7,12; borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
-                + " background: $Component.accentColor; hoverBackground: darken($Component.accentColor,6%);"
-                + " pressedBackground: darken($Component.accentColor,12%)");
+        Inputs.primary(b);
+        b.putClientProperty(FlatClientProperties.STYLE, "margin: 6,14,6,12");
         if (action != null) b.addActionListener(e -> action.run());
         return b;
     }

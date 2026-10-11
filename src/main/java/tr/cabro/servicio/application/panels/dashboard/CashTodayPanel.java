@@ -65,7 +65,6 @@ public class CashTodayPanel extends JPanel {
 
         JButton report = new JButton(QuickAction.CASH_REPORT.getLabel(),
                 new Ikon(QuickAction.CASH_REPORT.getIconPath(), 16, "Label.foreground"));
-        report.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 6,12,6,12");
         report.setToolTipText(QuickAction.CASH_REPORT.getDescription() + " (" + QuickAction.CASH_REPORT.getShortcutText() + ")");
         report.addActionListener(e -> QuickAction.CASH_REPORT.run());
         card.add(report, "growx 0, al left");

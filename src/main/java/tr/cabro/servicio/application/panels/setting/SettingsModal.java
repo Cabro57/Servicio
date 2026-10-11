@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.component.Inputs;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
@@ -178,12 +180,7 @@ public class SettingsModal extends JPanel {
         JPanel nav = new JPanel(new MigLayout("wrap, insets 14 10 14 10, fillx, gap 0, hidemode 3", "[grow, fill]"));
         nav.putClientProperty(FlatClientProperties.STYLE_CLASS, "settingsNav");
 
-        searchField = new JTextField();
-        searchField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ayar ara");
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
-                new Ikon("icons/search.svg", 14, "Label.disabledForeground"));
-        searchField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        searchField.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
+        searchField = Inputs.search("Ayar ara");
         searchField.setToolTipText("Ayar adı ya da içeriği: \"barkod\", \"logo\", \"kilit\"… (Ctrl+F)");
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { filterNav(); }

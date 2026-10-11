@@ -229,14 +229,8 @@ public final class MessageModal extends Modal {
         return area;
     }
 
-    /** Tehlike dolgulu birincil düğme: DetailKit.primaryButton anatomisi, vurgu yerine tehlike rengi. */
     private static JButton dangerButton(String text) {
-        JButton b = new JButton(text);
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,14,7,14; font: bold;"
-                + " borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
-                + " background: $Servicio.dangerFill; foreground: $Servicio.onDangerForeground;"
-                + " hoverBackground: darken($Servicio.dangerFill,6%); pressedBackground: darken($Servicio.dangerFill,12%)");
-        return b;
+        return Inputs.danger(text);
     }
 
     /**

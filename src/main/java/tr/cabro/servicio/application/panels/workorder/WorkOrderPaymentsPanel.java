@@ -176,7 +176,6 @@ public class WorkOrderPaymentsPanel extends JPanel {
         DateTimeField dateField = new DateTimeField(false);
 
         JButton btnAddPayment = new JButton("Tahsilat Ekle", new Ikon("icons/hand-coins.svg", 16, "Label.foreground"));
-        btnAddPayment.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 6,12,6,12; iconTextGap: 6");
 
         btnAddPayment.addActionListener(e -> {
             BigDecimal amt = new BigDecimal(txtAmount.getValue().toString());

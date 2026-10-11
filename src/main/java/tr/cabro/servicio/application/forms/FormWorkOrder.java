@@ -169,7 +169,7 @@ public class FormWorkOrder extends Form {
     /** Yalnızca ikon: silme sık bir işlem değil, adı ipucunda; ikon tehlike renginde. */
     private JButton buildDeleteButton() {
         JButton b = new JButton(new Ikon("icons/trash-2.svg", 16, "Servicio.dangerColor"));
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,10,7,10");
+        b.putClientProperty(FlatClientProperties.STYLE, "margin: 6,8,6,8");
         b.setToolTipText("Servis kaydını sil");
         b.getAccessibleContext().setAccessibleName("Servis kaydını sil");
         b.addActionListener(e -> confirmDelete());

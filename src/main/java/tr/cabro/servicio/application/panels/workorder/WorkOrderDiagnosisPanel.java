@@ -75,7 +75,6 @@ public class WorkOrderDiagnosisPanel extends JPanel {
         fault.add(detectedScroll, "hmin 84, wmin 0");
 
         JButton btnSave = new JButton("Tespiti kaydet");
-        btnSave.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10");
         btnSave.addActionListener(e -> saveDetectedFault());
         fault.add(btnSave, "growx 0, al right");
 

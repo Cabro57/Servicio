@@ -70,7 +70,7 @@ public class CustomerSelectBox extends JPanel {
         field = new JTextField();
         field.getAccessibleContext().setAccessibleName("Müşteri ara ve seç");
         field.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Müşteri ara: ad, firma, telefon, TC veya C-no");
-        field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/user-search.svg", 0.85f));
+        field.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, Inputs.fieldIcon("icons/user-search.svg"));
         field.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
         // Temizle (x): seçimi kaldırır ve aramaya hazır bırakır.
         field.putClientProperty(FlatClientProperties.TEXT_FIELD_CLEAR_CALLBACK, (Runnable) () -> {
@@ -78,7 +78,6 @@ public class CustomerSelectBox extends JPanel {
             field.requestFocusInWindow();
             if (field.isFocusOwner()) openPopup();
         });
-        field.putClientProperty(FlatClientProperties.STYLE, "margin: 5,6,5,6");
 
         detailLabel = new JLabel();
         detailLabel.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");

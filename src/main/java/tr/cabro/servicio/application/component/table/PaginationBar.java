@@ -1,6 +1,5 @@
 package tr.cabro.servicio.application.component.table;
 
-import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.swingpack.JPagination;
 
@@ -30,7 +29,6 @@ public class PaginationBar extends JPanel {
 
         pageSizeCombo = new JComboBox<>(pageSizeOptions);
         pageSizeCombo.setSelectedItem(initialPageSize);
-        pageSizeCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
         pageSizeCombo.addActionListener(e -> onPageSizeChanged.accept((Integer) pageSizeCombo.getSelectedItem()));
 
         add(new JLabel("Sayfa başına:"));

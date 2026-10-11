@@ -229,11 +229,7 @@ public class FormSale extends Form {
             btnPrimary.setVisible(canCollect);
             btnCustomer.setVisible(full.getCustomer() != null);
             btnReturn.setVisible(!isReturn);
-            btnPrint.putClientProperty(FlatClientProperties.STYLE, canCollect
-                    ? "arc: 10; margin: 7,12,7,12; iconTextGap: 6"
-                    : "arc: 10; margin: 7,14,7,14; iconTextGap: 6; font: bold; borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
-                    + " background: $Component.accentColor; foreground: $Servicio.onAccentForeground;"
-                    + " hoverBackground: darken($Component.accentColor,6%); pressedBackground: darken($Component.accentColor,12%)");
+            btnPrint.putClientProperty(FlatClientProperties.STYLE_CLASS, canCollect ? null : "primary");
             btnPrint.setIcon(new tr.cabro.servicio.application.utils.Ikon("icons/printer.svg", 16,
                     canCollect ? "Label.foreground" : "Servicio.onAccentForeground"));
 

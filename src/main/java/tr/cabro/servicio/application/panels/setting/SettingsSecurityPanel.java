@@ -115,7 +115,6 @@ public class SettingsSecurityPanel extends JPanel {
         pair.add(FormKit.cell("Yeni PIN tekrar", txtNewPinRepeat, repeatPinError));
         form.add(pair, SettingsKit.FIELD);
 
-        btnChangePin.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         btnChangePin.setEnabled(false);
         btnChangePin.addActionListener(e -> changePin());
         form.add(btnChangePin, "gaptop 4, growx 0");

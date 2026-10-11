@@ -33,10 +33,8 @@ public class SettingsDocumentTextsPanel extends JPanel implements SettingsModal.
         setOpaque(false);
         add(createPage());
 
-        saveButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,16,5,16; font: bold; "
-                + "background: $Component.accentColor; foreground: $Servicio.onAccentForeground");
+        saveButton.putClientProperty(FlatClientProperties.STYLE_CLASS, "primary");
         saveButton.addActionListener(e -> save());
-        resetButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12");
         resetButton.setToolTipText("Alanlara uygulamanın hazır metinlerini yazar; kalıcı olması için Kaydet'e basın.");
         resetButton.addActionListener(e -> resetToDefaults());
 

@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.component.table;
 
+import tr.cabro.servicio.application.component.Inputs;
+
 import tr.cabro.servicio.application.utils.Popups;
 
 import lombok.Setter;
@@ -180,7 +182,7 @@ public class TableHeaderFilterSupport<T> {
 
         JPanel buttons = new JPanel(new MigLayout("insets 0", "[grow][]"));
         JButton clearButton = new JButton("Temizle");
-        JButton applyButton = new JButton("Uygula");
+        JButton applyButton = Inputs.primary("Uygula", null);
         buttons.add(clearButton);
         buttons.add(applyButton, "align right");
         panel.add(buttons, "growx");
@@ -215,11 +217,7 @@ public class TableHeaderFilterSupport<T> {
         Set<Long> selected = new java.util.LinkedHashSet<>(current != null && current.getIds() != null ? current.getIds() : Set.of());
 
         JPanel panel = new JPanel(new MigLayout("insets 10, wrap 1, gapy 6", "[fill,grow, 260:260:320]"));
-        JTextField search = new JTextField();
-        search.putClientProperty(com.formdev.flatlaf.FlatClientProperties.PLACEHOLDER_TEXT, def.getName() + " ara…");
-        search.putClientProperty(com.formdev.flatlaf.FlatClientProperties.TEXT_FIELD_LEADING_ICON,
-                new Ikon("icons/search.svg", 14, "Label.disabledForeground"));
-        search.putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
+        JTextField search = Inputs.search(def.getName() + " ara…");
         panel.add(search);
 
         JPanel list = new JPanel(new MigLayout("insets 0, wrap 1, gapy 2", "[fill,grow]"));
@@ -231,7 +229,7 @@ public class TableHeaderFilterSupport<T> {
 
         JPanel buttons = new JPanel(new MigLayout("insets 0", "[grow][]"));
         JButton clearButton = new JButton("Temizle");
-        JButton applyButton = new JButton("Uygula");
+        JButton applyButton = Inputs.primary("Uygula", null);
         buttons.add(clearButton);
         buttons.add(applyButton, "align right");
         panel.add(buttons, "growx");
@@ -304,7 +302,7 @@ public class TableHeaderFilterSupport<T> {
 
         JPanel buttons = new JPanel(new MigLayout("insets 0", "[grow][]"));
         JButton clearButton = new JButton("Temizle");
-        JButton applyButton = new JButton("Uygula");
+        JButton applyButton = Inputs.primary("Uygula", null);
         buttons.add(clearButton);
         buttons.add(applyButton, "align right");
         panel.add(buttons, "growx");

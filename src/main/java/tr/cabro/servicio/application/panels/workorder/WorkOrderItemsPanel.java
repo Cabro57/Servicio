@@ -68,7 +68,6 @@ public class WorkOrderItemsPanel extends JPanel {
         setLayout(new MigLayout("insets 14 16 12 16, fillx, hidemode 3", "[grow][]", "[]10[]"));
         // Birincil "Parça / İşçilik Ekle" kimlik şeridinde; burada aynı işin ikincil kısayolu.
         JButton btnAddPart = new JButton("Ekle", new Ikon("icons/plus.svg", 14, "Label.foreground"));
-        btnAddPart.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; iconTextGap: 4");
         btnAddPart.setToolTipText("Parça veya işçilik ekle");
         btnAddPart.addActionListener(e -> openItemAddModal());
         add(WorkOrderPanelSupport.createStepHeader(stepMarker, "Parça ve işçilik", locked ? null : btnAddPart), "span 2, growx, wrap");

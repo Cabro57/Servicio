@@ -192,9 +192,11 @@ public final class FormKit {
         return area;
     }
 
+    /** Çok satırlı alanın çerçevesi: tek satırlık alanlarla aynı 10px köşe (bkz. FlatLaf.properties "Kontroller"). */
     public static JScrollPane areaScroll(JTextArea area) {
         JScrollPane sp = new JScrollPane(area);
         sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        sp.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
         return sp;
     }
 

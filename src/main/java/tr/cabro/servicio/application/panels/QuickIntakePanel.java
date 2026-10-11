@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels;
 
+import tr.cabro.servicio.application.component.FormKit;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
@@ -177,8 +179,7 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         // AbstractEditPanel'de kurulur ve bu alanda da çalışır.
         reportedFaultArea.setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, null);
         reportedFaultArea.setFocusTraversalKeys(KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, null);
-        JScrollPane faultScroll = new JScrollPane(reportedFaultArea);
-        faultScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        JScrollPane faultScroll = FormKit.areaScroll(reportedFaultArea);
         col.add(faultScroll, "hmin 110");
 
         // --- Teslim alma --- (yalnızca yeni kayıtta; sonradan servis sayfasındaki durum geçmişinden düzeltilir)

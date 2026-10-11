@@ -1,11 +1,12 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.component.Inputs;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.application.component.table.ViewTabs;
 import tr.cabro.servicio.application.utils.ErrorHandler;
-import tr.cabro.servicio.application.utils.Ikon;
 import tr.cabro.servicio.application.utils.Toasts;
 import tr.cabro.servicio.i18n.Messages;
 import tr.cabro.servicio.model.Labor;
@@ -87,11 +88,7 @@ public class SettingsRepairPanel extends JPanel implements SettingsModal.HeaderA
         card.add(list, "grow, hmin 160");
         add(card, "grow");
 
-        search.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "İşçilik ara");
-        search.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
-                new Ikon("icons/search.svg", 14, "Label.disabledForeground"));
-        search.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        search.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
+        Inputs.search(search, "İşçilik ara");
         search.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { list.filter(search.getText()); }
             @Override public void removeUpdate(DocumentEvent e) { list.filter(search.getText()); }

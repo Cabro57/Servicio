@@ -76,7 +76,6 @@ public class SettingsExchangeRatePanel extends JPanel implements SettingsModal.H
         convertAmount.setValue(new BigDecimal("100"));
         convertAmount.addPropertyChangeListener("value", e -> updateConversion());
         convertCurrency = new JComboBox<>();
-        convertCurrency.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
         convertCurrency.addActionListener(e -> updateConversion());
         convertResult = new JLabel("—");
         convertResult.putClientProperty(FlatClientProperties.STYLE, "font: bold +3");

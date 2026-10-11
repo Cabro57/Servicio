@@ -136,14 +136,19 @@ public class OverlayScrollPaneUI extends FlatScrollPaneUI {
             JScrollPane sp = (JScrollPane) parent;
             Rectangle vp = viewport != null ? viewport.getBounds() : null;
             if (vp == null) return;
+            // Swing çubuğu görünüm alanı çerçevesinin (viewportBorder) dışına koyar. Alanı çubuğun yerine
+            // uzatırken bu çerçeve korunmalı; yoksa combo listesinin sağ iç boşluğu yutuluyor, seçili
+            // satır sağda kenara yapışıp solda boşluklu kalıyordu.
+            javax.swing.border.Border vpb = sp.getViewportBorder();
+            Insets vpbi = vpb != null ? vpb.getBorderInsets(sp) : new Insets(0, 0, 0, 0);
 
             if (vsb != null && vsb.isVisible() && vsb.getWidth() > 0) {
                 Rectangle b = vsb.getBounds();
                 if (b.x >= vp.x + vp.width) {
-                    vp.width = b.x + b.width - vp.x;
+                    vp.width = b.x + b.width - vp.x - vpbi.right;
                 } else if (b.x + b.width <= vp.x) {
-                    vp.width += vp.x - b.x;
-                    vp.x = b.x;
+                    vp.width += vp.x - b.x - vpbi.left;
+                    vp.x = b.x + vpbi.left;
                 }
                 if (colHead != null) {
                     Rectangle h = colHead.getBounds();
@@ -153,7 +158,7 @@ public class OverlayScrollPaneUI extends FlatScrollPaneUI {
             }
             if (hsb != null && hsb.isVisible() && hsb.getHeight() > 0) {
                 Rectangle b = hsb.getBounds();
-                if (b.y >= vp.y + vp.height) vp.height = b.y + b.height - vp.y;
+                if (b.y >= vp.y + vp.height) vp.height = b.y + b.height - vp.y - vpbi.bottom;
                 if (rowHead != null) {
                     Rectangle h = rowHead.getBounds();
                     rowHead.setBounds(h.x, vp.y, h.width, vp.height);

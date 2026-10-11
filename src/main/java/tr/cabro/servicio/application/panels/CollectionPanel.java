@@ -194,10 +194,7 @@ public class CollectionPanel extends JPanel {
         lblSummary = new JLabel(" ");
         lblSummary.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
         btnSave = new JButton("Tahsil Et", new Ikon("icons/hand-coins.svg", 16, "Servicio.onAccentForeground"));
-        btnSave.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 8,16,8,16; iconTextGap: 8; font: bold;"
-                + " borderWidth: 0; focusWidth: 0; innerFocusWidth: 1;"
-                + " background: $Component.accentColor; foreground: $Servicio.onAccentForeground;"
-                + " hoverBackground: darken($Component.accentColor,6%); pressedBackground: darken($Component.accentColor,12%)");
+        btnSave.putClientProperty(FlatClientProperties.STYLE_CLASS, "primary");
         btnSave.addActionListener(e -> save());
         JPanel footer = new JPanel(new MigLayout("insets 0, fillx, gap 12", "[grow][]", "[center]"));
         footer.setOpaque(false);

@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels.edit;
 
+import tr.cabro.servicio.application.component.Inputs;
+
 import tr.cabro.servicio.model.enums.CategoryScope;
 import tr.cabro.servicio.model.enums.StockItemKind;
 import tr.cabro.servicio.model.enums.SupplierRole;
@@ -133,9 +135,8 @@ public abstract class CatalogItemEditPanel<T> extends AbstractEditPanel<T> {
         JPanel grid = FormKit.grid(2);
 
         barcodeField = new JTextField();
-        barcodeField.putClientProperty(FlatClientProperties.STYLE, "font: +2");
         barcodeField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Okutun veya yazın");
-        barcodeField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, new Ikon("icons/barcode.svg", 0.9f));
+        barcodeField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON, Inputs.fieldIcon("icons/barcode.svg"));
         JButton generate = new JButton(new Ikon("icons/dices.svg", 0.85f));
         generate.setToolTipText("Barkodu olmayan kayıt için rastgele barkod üret");
         generate.getAccessibleContext().setAccessibleName("Rastgele barkod üret");

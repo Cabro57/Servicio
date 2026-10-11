@@ -69,7 +69,6 @@ public class WorkOrderNotesPanel extends JPanel {
         add(inputBox, "h 84!, wmin 0");
 
         JButton btnAddNote = new JButton("Not ekle", new Ikon("icons/plus.svg", 14, "Label.foreground"));
-        btnAddNote.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; iconTextGap: 4");
         btnAddNote.addActionListener(e -> {
             String text = txtNewNote.getText().trim();
             if (text.isEmpty()) {

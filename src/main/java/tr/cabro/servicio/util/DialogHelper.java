@@ -1,6 +1,5 @@
 package tr.cabro.servicio.util;
 
-import com.formdev.flatlaf.FlatClientProperties;
 import tr.cabro.servicio.application.component.MessageModal;
 import tr.cabro.servicio.application.component.MessageModal.Tone;
 import tr.cabro.servicio.i18n.Messages;
@@ -62,7 +61,6 @@ public final class DialogHelper {
     /** Serbest metin girişi için tek alanlı bir modal gösterir; "Tamam" seçilirse girilen metin {@code onConfirm}'e iletilir. */
     public static void prompt(Component parent, String titleKey, String labelKey, String initialValue, Consumer<String> onConfirm, Object... labelArgs) {
         JTextField field = new JTextField(initialValue != null ? initialValue : "");
-        field.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
         MessageModal.of(Tone.INPUT, Messages.get(titleKey), Messages.get(labelKey, labelArgs))
                 .extra(field)
                 .focus(field)

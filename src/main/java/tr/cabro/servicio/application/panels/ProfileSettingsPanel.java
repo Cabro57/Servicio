@@ -112,7 +112,6 @@ public final class ProfileSettingsPanel {
 
         lblName.putClientProperty(FlatClientProperties.STYLE, "font: bold +4");
         JButton btnChoose = new JButton("Resim seç…", new Ikon("icons/folder-search.svg", 16, "Label.foreground"));
-        btnChoose.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; iconTextGap: 6");
         btnChoose.addActionListener(e -> choosePhoto());
         btnRemovePhoto.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
         btnRemovePhoto.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; foreground: $Servicio.dangerColor");

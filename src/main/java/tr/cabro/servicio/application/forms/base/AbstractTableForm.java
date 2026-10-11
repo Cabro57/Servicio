@@ -4,6 +4,8 @@ import tr.cabro.servicio.application.utils.Popups;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
+import tr.cabro.servicio.application.component.Inputs;
+import tr.cabro.servicio.application.component.detail.DetailKit;
 import tr.cabro.servicio.application.component.table.ListSummary;
 import tr.cabro.servicio.application.component.table.ListTabBar;
 import tr.cabro.servicio.application.component.table.ListTable;
@@ -144,7 +146,6 @@ public abstract class AbstractTableForm extends Form {
         if (hasFilterCombo()) {
             filterCombo = createFilterCombo();
             if (filterCombo != null) {
-                filterCombo.putClientProperty(FlatClientProperties.STYLE, "arc: 10");
                 toolbar.add(filterCombo);
             }
         }
@@ -192,12 +193,7 @@ public abstract class AbstractTableForm extends Form {
     }
 
     private JTextField createSearchField() {
-        JTextField f = new JTextField(22);
-        f.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, getSearchPlaceholder());
-        f.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,8,5,8");
-        f.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
-                new Ikon("icons/search.svg", 16, "Label.disabledForeground"));
-        f.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        JTextField f = Inputs.search(new JTextField(22), getSearchPlaceholder());
         f.setToolTipText("Ara (Ctrl+F)");
         f.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { applyFilter(); }
@@ -209,39 +205,7 @@ public abstract class AbstractTableForm extends Form {
 
     /** Sayfanın tek vurgu dolgulu düğmesi: "Yeni …" + (varsa) Alt+harf kısayolu. */
     private JButton createPrimaryButton() {
-        // İçerik alt etiketlerde olduğundan boyut BasicButtonUI'dan değil yerleşimden alınır.
-        JButton b = new JButton() {
-            @Override
-            public Dimension getPreferredSize() {
-                return getLayout().preferredLayoutSize(this);
-            }
-
-            @Override
-            public Dimension getMinimumSize() {
-                return getLayout().minimumLayoutSize(this);
-            }
-        };
-        b.setLayout(new MigLayout("insets 0, gap 8, hidemode 3", "[][]", "[center]"));
-        JLabel label = new JLabel(getNewButtonText(),
-                new Ikon(getNewButtonIconPath(), 16, "Servicio.onAccentForeground"), SwingConstants.LEADING);
-        label.setIconTextGap(8);
-        label.putClientProperty(FlatClientProperties.STYLE, "font: bold; foreground: $Servicio.onAccentForeground");
-        b.add(label);
-        QuickAction qa = getNewQuickAction();
-        if (qa != null) {
-            JLabel key = new JLabel(qa.getShortcutText());
-            key.putClientProperty(FlatClientProperties.STYLE, "font: -2; foreground: fade($Servicio.onAccentForeground,85%);"
-                    + " background: fade($Servicio.onAccentForeground,12%);"
-                    + " border: 1,5,1,5,fade($Servicio.onAccentForeground,40%),1,6");
-            b.add(key);
-            b.setToolTipText(getNewButtonText() + " (" + qa.getShortcutText() + ")");
-        }
-        b.getAccessibleContext().setAccessibleName(getNewButtonText());
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 12; margin: 8,14,8,12; borderWidth: 0; focusWidth: 0;"
-                + " innerFocusWidth: 1; background: $Component.accentColor;"
-                + " hoverBackground: darken($Component.accentColor,6%); pressedBackground: darken($Component.accentColor,12%)");
-        b.addActionListener(e -> onNew());
-        return b;
+        return DetailKit.primaryButton(getNewButtonText(), getNewButtonIconPath(), this::onNew, getNewQuickAction());
     }
 
     /** Başlıkta birincil düğmenin soluna konan ikincil işlemler (ör. "Kasa Raporu"). */
@@ -249,12 +213,9 @@ public abstract class AbstractTableForm extends Form {
         return Collections.emptyList();
     }
 
-    /** İkincil başlık düğmesi: ikonlu, çerçeveli, arc 10. */
+    /** İkincil başlık düğmesi: ikonlu, çerçeveli. */
     protected static JButton secondaryButton(String text, String iconPath, Runnable action) {
-        JButton b = new JButton(text, new Ikon(iconPath, 16, "Label.foreground"));
-        b.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,12,7,12; iconTextGap: 6");
-        b.addActionListener(e -> action.run());
-        return b;
+        return DetailKit.secondaryButton(text, iconPath, action);
     }
 
     /** Birincil düğmenin kısayolu gösterilecekse ilgili {@link QuickAction}. */

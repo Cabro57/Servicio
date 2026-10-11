@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.system;
 
+import tr.cabro.servicio.application.component.FormKit;
+
 import tr.cabro.servicio.application.utils.PrintActions;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
@@ -358,9 +360,7 @@ public final class DocumentExportModal {
         }
 
         private static JScrollPane scroll(JTextArea area) {
-            JScrollPane sp = new JScrollPane(area);
-            sp.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-            return sp;
+            return FormKit.areaScroll(area);
         }
 
         private static String nvl(String s) {

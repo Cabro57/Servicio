@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels.customer;
 
+import tr.cabro.servicio.application.component.Inputs;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.application.component.Badge;
@@ -82,9 +84,7 @@ public class CustomerHeaderPanel extends JPanel {
         JButton btnEdit = secondaryButton("Düzenle", "icons/user-pen.svg", onEdit);
         JButton btnCollect = secondaryButton("Tahsilat Al", "icons/hand-coins.svg", onCollect);
 
-        JButton btnNewService = new JButton("Yeni Servis", new Ikon("icons/plus.svg", 0.9f, "Servicio.onAccentForeground"));
-        btnNewService.putClientProperty(FlatClientProperties.STYLE,
-                "background: $Component.accentColor; foreground: $Servicio.onAccentForeground; arc: 10; margin: 7,14,7,14; font: bold");
+        JButton btnNewService = Inputs.primary("Yeni Servis", "icons/plus.svg");
         btnNewService.addActionListener(e -> onNewService.run());
 
         JPanel actions = new JPanel(new MigLayout("insets 0, gap 8", "[][][][]", "[]"));
@@ -107,7 +107,6 @@ public class CustomerHeaderPanel extends JPanel {
 
     private static JButton secondaryButton(String text, String iconPath, Runnable action) {
         JButton button = new JButton(text, new Ikon(iconPath, 0.85f));
-        button.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 7,12,7,12; iconTextGap: 6");
         button.addActionListener(e -> action.run());
         return button;
     }

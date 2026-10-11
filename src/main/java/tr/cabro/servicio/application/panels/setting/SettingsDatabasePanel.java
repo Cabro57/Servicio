@@ -66,8 +66,7 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
         setOpaque(false);
         add(createPage());
 
-        backupNowButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,14,5,14; iconTextGap: 6; font: bold; "
-                + "background: $Component.accentColor; foreground: $Servicio.onAccentForeground");
+        backupNowButton.putClientProperty(FlatClientProperties.STYLE_CLASS, "primary");
         backupNowButton.addActionListener(e -> backupNow());
 
         refreshSchedule();
@@ -134,11 +133,9 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
         folderField = new JTextField();
         folderField.setEditable(false);
         JButton changeFolder = new JButton("Değiştir…");
-        changeFolder.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,12,4,12");
         changeFolder.addActionListener(e -> chooseFolder());
         JButton openFolder = new JButton(new Ikon("icons/folder.svg", 16));
         openFolder.setToolTipText("Klasörü aç");
-        openFolder.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,8,4,8");
         openFolder.addActionListener(e -> {
             File dir = AppSettings.getBackupDir();
             dir.mkdirs();
@@ -170,11 +167,9 @@ public class SettingsDatabasePanel extends JPanel implements SettingsModal.Heade
         emptyLabel = SettingsKit.note("Henüz yedek yok. Başlıktaki \"Şimdi yedekle\" ile ilk yedeği alın.");
 
         restoreButton = new JButton("Seçili yedeği geri yükle", new Ikon("icons/undo-2.svg", 16));
-        restoreButton.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         restoreButton.setEnabled(false);
         restoreButton.addActionListener(e -> restoreSelectedBackup());
         JButton fromFile = new JButton("Dosyadan geri yükle…", new Ikon("icons/folder-search.svg", 16));
-        fromFile.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         fromFile.setToolTipText("Başka bir klasördeki ya da USB bellekteki yedeği seçin");
         fromFile.addActionListener(e -> BackupRestoreDialog.chooseFile(this, this::afterRestore));
 

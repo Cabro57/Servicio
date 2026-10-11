@@ -1,7 +1,6 @@
 package tr.cabro.servicio.application.panels.setting;
 
 import tr.cabro.servicio.application.utils.Toasts;
-import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import tr.cabro.servicio.Servicio;
@@ -97,7 +96,6 @@ public class SettingsPrintingPanel extends JPanel {
         documentRows.add(SettingsKit.label("Kopya"));
         documentRows.add(copiesSpinner(printing.getDocumentCopies(), printing::setDocumentCopies), "growx 0, w 70!");
         JButton refresh = new JButton("Yazıcı listesini yenile", new Ikon("icons/refresh-cw.svg", 14));
-        refresh.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 4,10,4,10; iconTextGap: 6");
         refresh.addActionListener(e -> loadPrinters());
         documentRows.add(refresh, "skip, growx 0, gaptop 4");
         SettingsKit.section(page, "A4 yazıcısı",
@@ -121,10 +119,8 @@ public class SettingsPrintingPanel extends JPanel {
 
         // --- Deneme ---
         JButton printTest = new JButton("Deneme fişi yazdır", new Ikon("icons/printer.svg", 16));
-        printTest.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         printTest.addActionListener(e -> printTestSlip());
         JButton openTest = new JButton("PDF olarak aç", new Ikon("icons/file-text.svg", 16));
-        openTest.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         openTest.addActionListener(e -> openTestSlip());
 
         JPanel buttons = new JPanel(new MigLayout("insets 0, gapx 8", "[][]", "[]"));

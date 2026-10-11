@@ -104,8 +104,7 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
 
         add(createPage());
 
-        btnSave.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,16,5,16; font: bold; "
-                + "background: $Component.accentColor; foreground: $Servicio.onAccentForeground");
+        btnSave.putClientProperty(FlatClientProperties.STYLE_CLASS, "primary");
         btnSave.setEnabled(false);
         btnSave.addActionListener(e -> save());
 
@@ -168,7 +167,6 @@ public class SettingsBusinessPanel extends JPanel implements SettingsModal.Heade
         logoName = SettingsKit.note("");
 
         JButton btnChoose = new JButton("Logo seç…", new Ikon("icons/folder-search.svg", 16));
-        btnChoose.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 5,12,5,12; iconTextGap: 6");
         btnChoose.addActionListener(e -> selectLogo());
 
         btnRemoveLogo = new JButton("Kaldır");

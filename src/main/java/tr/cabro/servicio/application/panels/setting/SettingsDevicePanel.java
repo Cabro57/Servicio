@@ -1,5 +1,7 @@
 package tr.cabro.servicio.application.panels.setting;
 
+import tr.cabro.servicio.application.component.Inputs;
+
 import com.formdev.flatlaf.FlatClientProperties;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
@@ -116,11 +118,7 @@ public class SettingsDevicePanel extends JPanel implements SettingsModal.HeaderA
         brandHint.setIconTextGap(6);
         card.add(brandHint, "gapleft 8, wmin 0");
 
-        brandField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Marka ara ya da ekle");
-        brandField.putClientProperty(FlatClientProperties.TEXT_FIELD_LEADING_ICON,
-                new Ikon("icons/search.svg", 14, "Label.disabledForeground"));
-        brandField.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
-        brandField.putClientProperty(FlatClientProperties.STYLE, "arc: 10; margin: 3,8,3,8");
+        Inputs.search(brandField, "Marka ara ya da ekle");
         brandField.setToolTipText("Yazdıkça süzer; Enter listede olmayan markayı bu türe ekler");
         brandField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { onBrandQuery(); }

@@ -113,8 +113,7 @@ public class ReturnPanel extends JPanel {
         footer.add(lblReturnTotal);
 
         btnSave = new JButton("İadeyi Kaydet");
-        btnSave.putClientProperty(FlatClientProperties.STYLE,
-                "background: $Component.accentColor; foreground: #ffffff; arc: 10; margin: 8,14,8,14; font: bold");
+        btnSave.putClientProperty(FlatClientProperties.STYLE_CLASS, "primary");
         btnSave.addActionListener(e -> save());
         footer.add(btnSave);
 
