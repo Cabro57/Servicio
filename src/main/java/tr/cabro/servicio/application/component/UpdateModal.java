@@ -305,35 +305,20 @@ public class UpdateModal extends JPanel {
                 notes.add(versionHeader(info), first ? "" : "gaptop 18");
                 first = false;
             }
-            first = addLines(info.changeLines, first);
+            first = addNotes(info.body, first);
         }
         notes.revalidate();
         notes.repaint();
     }
 
-    /** Bir sürümün not satırlarını ekler; eklenen bir şey kalmadıysa "not yok" yazar. */
-    private boolean addLines(List<String> lines, boolean first) {
-        int before = notes.getComponentCount();
-        if (lines != null) {
-            for (String raw : lines) {
-                boolean heading = raw.startsWith("**") && raw.endsWith("**") && raw.length() > 4;
-                String text = plain(heading ? raw.substring(2, raw.length() - 2) : raw);
-                if (text.isEmpty()) continue;
-                if (heading) {
-                    JLabel h = new JLabel(text);
-                    h.putClientProperty(FlatClientProperties.STYLE, "font: bold");
-                    notes.add(h, first ? "" : "gaptop 12");
-                } else {
-                    notes.add(bullet(text), first ? "" : "gaptop 4");
-                }
-                first = false;
-            }
-        }
-        if (notes.getComponentCount() == before) {
+    /** Bir sürümün notunu HTML olarak ekler ({@link ReleaseNotesView}); not boşsa "not yok" yazar. */
+    private boolean addNotes(String body, boolean first) {
+        if (body == null || body.isBlank()) {
             notes.add(DetailKit.small("Bu sürüm için not yazılmamış."), first ? "" : "gaptop 4");
-            first = false;
+        } else {
+            notes.add(new ReleaseNotesView(body), (first ? "" : "gaptop 4, ") + "wmin 0");
         }
-        return first;
+        return false;
     }
 
     /** Sürüm başlığı: "2.12.0" + soluk yayın tarihi, altında ince ayraç. */
@@ -367,28 +352,6 @@ public class UpdateModal extends JPanel {
         notes.add(open, "gaptop 4, gapleft -6, growx 0");
         notes.revalidate();
         notes.repaint();
-    }
-
-    /** Madde: soluk nokta + kelimeden kırılan metin. */
-    private static JPanel bullet(String text) {
-        JPanel row = new JPanel(new MigLayout("insets 0, gap 8, fillx", "[][grow, fill]", "[top]"));
-        row.setOpaque(false);
-        JLabel dot = new JLabel("•");
-        dot.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
-        JTextArea body = FormKit.hint(text);
-        body.putClientProperty(FlatClientProperties.STYLE, "foreground: $Label.foreground; background: null; margin: 0,0,0,0");
-        row.add(dot);
-        row.add(body, "wmin 0");
-        return row;
-    }
-
-    /** GitHub notlarındaki satır içi Markdown işaretlerini temizler. */
-    private static String plain(String text) {
-        return text.replaceAll("\\[([^]]+)]\\([^)]*\\)", "$1")
-                .replace("**", "")
-                .replace("__", "")
-                .replace("`", "")
-                .trim();
     }
 
     // ------------------------------------------------------------------ yaşam döngüsü
