@@ -261,6 +261,10 @@ public class WorkOrderItemModal extends JPanel {
         // Sonuç listesi + boş durum
         resultList = new JList<>(listModel);
         resultList.setFixedCellHeight(PART_ROW_HEIGHT);
+        // Sabit genişlik de verilmezse JList her model olayında TÜM satırları renderer'dan ölçer; arama
+        // kutusuna her harfte yüzlerce parça için renderer çalışıp EDT'yi takıyordu. Dikey listede hücre
+        // zaten liste genişliğinde çizilir, bu değer yalnızca tercih edilen genişliği belirler.
+        resultList.setFixedCellWidth(1);
         resultList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         resultList.setCellRenderer(new EntryRenderer());
         resultList.setFocusable(false);
@@ -453,7 +457,7 @@ public class WorkOrderItemModal extends JPanel {
                 case 4 -> out.sort((a, b) -> Integer.compare(Math.max(b.stock(), 0), Math.max(a.stock(), 0)));
                 default -> { }
             }
-            out.forEach(listModel::addElement);
+            listModel.addAll(out); // tek olay; addElement döngüsü satır başına olay ve yeniden ölçüm tetikliyordu
             boolean active = category != null || supplier != null || modelFilter != null || compatibleOnly
                     || !inStockOnly || cmbPartSort.getSelectedIndex() != 0;
             resetPart.setVisible(active);
@@ -477,7 +481,7 @@ public class WorkOrderItemModal extends JPanel {
                 });
                 default -> out.sort((a, b) -> nz(a.name()).compareToIgnoreCase(nz(b.name())));
             }
-            out.forEach(listModel::addElement);
+            listModel.addAll(out);
             resetLabor.setVisible(category != null || pricedOnly || cmbLaborSort.getSelectedIndex() != 0
                     || cmbLaborType.getSelectedIndex() != defaultTypeIndex());
         }
