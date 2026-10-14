@@ -51,7 +51,7 @@ public class ThermalSlip {
     private static final float MM = 72f / 25.4f;
     private static final float TOP_MM = 3f;
     private static final float TEAR_OFF_MM = 14f;
-    private static final Locale TR = new Locale("tr", "TR");
+    private static final Locale TR = Locale.of("tr", "TR");
 
     private final ReceiptPaperWidth paper;
     private final float contentWidth;

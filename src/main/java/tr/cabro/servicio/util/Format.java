@@ -13,7 +13,7 @@ import java.util.Locale;
 public class Format {
 
     /** Serbest metin tarih ayrıştırması her zaman bu sabit biçimle yapılır — gösterim bölgesinden bağımsız. */
-    private static final Locale PARSE_LOCALE = new Locale("tr", "TR");
+    private static final Locale PARSE_LOCALE = Locale.of("tr", "TR");
 
     public static String formatPrice(BigDecimal price) {
         DecimalFormat df = new DecimalFormat("#,##0.00", DecimalFormatSymbols.getInstance(AppLocale.formatLocale()));

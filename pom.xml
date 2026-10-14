@@ -39,6 +39,16 @@
             </resource>
         </resources>
         <plugins>
+            <!-- Filtrelenen .properties dosyaları (i18n mesajları, version.properties) da UTF-8 okunur/yazılır;
+                 bu parametrenin kullanıcı özelliği yok, yalnızca eklenti yapılandırmasıyla verilebilir. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <propertiesEncoding>UTF-8</propertiesEncoding>
+                </configuration>
+            </plugin>
             <!-- JDK 23+ javac, classpath'teki annotation processor'ları kendiliğinden çalıştırmaz; Lombok
                  açıkça işlemci olarak verilmezse JDK 25 ile derlemede @Getter/@Data "cannot find symbol" verir. -->
             <plugin>

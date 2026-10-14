@@ -337,7 +337,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 action.consume();
                 return;
             }
-            Class<? extends Form> formClass = (Class<? extends Form>) itemClass;
+            Class<? extends Form> formClass = itemClass.asSubclass(Form.class); // üstte isAssignableFrom ile denetlendi
             FormManager.showForm(AllForms.getForm(formClass));
         });
 

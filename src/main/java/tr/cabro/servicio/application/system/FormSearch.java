@@ -43,6 +43,8 @@ public class FormSearch {
         }
     }
 
+    // Java'da jenerik dizi oluşturulamaz; listeye yalnızca Form alt sınıfları eklendiği için dönüşüm güvenli.
+    @SuppressWarnings("unchecked")
     private Class<? extends Form>[] getClassForms() {
         MenuItem[] menuItems = MyDrawerBuilder.getInstance().getSimpleMenuOption().getMenus();
         List<Class<?>> formClass = new ArrayList<>();

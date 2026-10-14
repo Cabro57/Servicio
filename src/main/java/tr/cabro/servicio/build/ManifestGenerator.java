@@ -2,7 +2,7 @@ package tr.cabro.servicio.build;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -385,7 +385,7 @@ public class ManifestGenerator {
 
     private static boolean isUrlReachable(String urlStr) {
         try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+            HttpURLConnection conn = (HttpURLConnection) URI.create(urlStr).toURL().openConnection();
             conn.setRequestMethod("HEAD");
             conn.setConnectTimeout(8000);
             conn.setReadTimeout(8000);

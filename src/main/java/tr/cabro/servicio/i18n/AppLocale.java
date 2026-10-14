@@ -33,14 +33,14 @@ public final class AppLocale {
     private static final String BUNDLE_BASE_NAME = "i18n.messages";
 
     private static final List<Locale> SUPPORTED_UI_LOCALES = List.of(
-            new Locale("tr"), new Locale("en")
+            Locale.of("tr"), Locale.of("en")
     );
 
     private static final List<Locale> SUPPORTED_FORMAT_LOCALES = List.of(
-            new Locale("tr", "TR"),
-            new Locale("en", "US"),
-            new Locale("en", "GB"),
-            new Locale("de", "DE")
+            Locale.of("tr", "TR"),
+            Locale.of("en", "US"),
+            Locale.of("en", "GB"),
+            Locale.of("de", "DE")
     );
 
     private static final Map<String, String> CURRENCY_SYMBOLS = Map.of(
@@ -50,8 +50,8 @@ public final class AppLocale {
             "GBP", "£"
     );
 
-    private static final Locale DEFAULT_UI_LOCALE = new Locale("tr");
-    private static final Locale DEFAULT_FORMAT_LOCALE = new Locale("tr", "TR");
+    private static final Locale DEFAULT_UI_LOCALE = Locale.of("tr");
+    private static final Locale DEFAULT_FORMAT_LOCALE = Locale.of("tr", "TR");
     private static final String DEFAULT_CURRENCY = "TRY";
 
     private static volatile Locale uiLocale = DEFAULT_UI_LOCALE;
@@ -145,7 +145,7 @@ public final class AppLocale {
     private static Locale resolveUiLocale(String saved) {
         if (saved == null || "auto".equals(saved)) {
             String osLanguage = Locale.getDefault().getLanguage();
-            return "en".equals(osLanguage) ? new Locale("en") : DEFAULT_UI_LOCALE;
+            return "en".equals(osLanguage) ? Locale.of("en") : DEFAULT_UI_LOCALE;
         }
         return SUPPORTED_UI_LOCALES.stream()
                 .filter(l -> l.getLanguage().equals(saved))

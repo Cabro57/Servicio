@@ -681,7 +681,7 @@ public class PdfDocumentBuilder implements DocumentWriter {
     // Yardımcılar
     // -------------------------------------------------------------------------
 
-    private static final Locale TR = new Locale("tr", "TR");
+    private static final Locale TR = Locale.of("tr", "TR");
 
     public static String money(BigDecimal value) {
         return Format.formatPrice(value != null ? value : BigDecimal.ZERO);

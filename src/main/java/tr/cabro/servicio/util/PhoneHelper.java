@@ -211,7 +211,7 @@ public class PhoneHelper {
         List<CountryCode> countries = new ArrayList<>();
         for (String region : phoneUtil.getSupportedRegions()) {
             int code = phoneUtil.getCountryCodeForRegion(region);
-            String name = new Locale("", region).getDisplayCountry(ui);
+            String name = Locale.of("", region).getDisplayCountry(ui);
             countries.add(new CountryCode(region, code, name));
         }
         Collator collator = Collator.getInstance(ui);
@@ -274,7 +274,7 @@ public class PhoneHelper {
     public static String fold(String s) {
         if (s == null) return "";
         StringBuilder sb = new StringBuilder(s.length());
-        for (char c : s.toLowerCase(new Locale("tr", "TR")).toCharArray()) {
+        for (char c : s.toLowerCase(Locale.of("tr", "TR")).toCharArray()) {
             sb.append(switch (c) {
                 case 'ı' -> 'i';
                 case 'ş' -> 's';

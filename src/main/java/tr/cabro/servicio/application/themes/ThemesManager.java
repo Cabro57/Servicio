@@ -21,6 +21,8 @@ public class ThemesManager {
     final List<ThemesInfo> bundledThemes = new ArrayList<>();
     final List<ThemesInfo> coreThemes = new ArrayList<>();
 
+    // themes.json yapısı sabit (ad → {name, dark, ...} nesnesi); Json.parse tipsiz Map döndürdüğü için dönüşüm kaçınılmaz.
+    @SuppressWarnings("unchecked")
     void loadThemes() {
         bundledThemes.clear();
         // create core themes

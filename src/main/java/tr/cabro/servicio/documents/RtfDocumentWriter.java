@@ -21,7 +21,7 @@ import java.util.Locale;
 public class RtfDocumentWriter implements DocumentWriter {
 
     private static final int CONTENT_WIDTH = 11906 - 2 * 1000;
-    private static final Locale TR = new Locale("tr", "TR");
+    private static final Locale TR = Locale.of("tr", "TR");
 
     // Renk tablosu sırası: 1 siyah, 2 soluk metin, 3 ince çizgi.
     private static final String INK = "\\cf1";

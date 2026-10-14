@@ -28,7 +28,7 @@ public class DocxDocumentWriter implements DocumentWriter {
     private static final int CONTENT_WIDTH = 11906 - 2 * 1000;
     private static final String MUTED = "555555";
     private static final String RULE = "AFAFAF";
-    private static final Locale TR = new Locale("tr", "TR");
+    private static final Locale TR = Locale.of("tr", "TR");
 
     private final File outFile;
     private final StringBuilder body = new StringBuilder();

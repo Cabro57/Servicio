@@ -6,7 +6,7 @@ import tr.cabro.servicio.util.DataDirResolver;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -665,6 +665,18 @@ public class UpdateManager {
     }
 
     /**
+     * Adresi URI'ye çevirir. Geçersiz adres (ör. kodlanmamış boşluk) {@link IllegalArgumentException}
+     * yerine IOException olur; çağıranlar ağ hatalarıyla aynı yoldan ele alır.
+     */
+    private static URI toUri(String s) throws IOException {
+        try {
+            return URI.create(s);
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Geçersiz adres: " + s, e);
+        }
+    }
+
+    /**
      * Redirect zincirini takip ederek HTTP 200 bağlantısı döner.
      * GitHub Releases ve Maven Central her ikisi de redirect kullanır.
      *
@@ -675,7 +687,7 @@ public class UpdateManager {
         String current = urlStr;
 
         for (int i = 0; i <= MAX_REDIRECTS; i++) {
-            HttpURLConnection conn = (HttpURLConnection) new URL(current).openConnection();
+            HttpURLConnection conn = (HttpURLConnection) toUri(current).toURL().openConnection();
             conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
             conn.setReadTimeout(readTimeout);
             conn.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -698,11 +710,8 @@ public class UpdateManager {
                 conn.disconnect();
                 if (loc == null || loc.isEmpty())
                     throw new IOException("Redirect konumu boş: " + current);
-                if (!loc.startsWith("http")) {
-                    URL base = new URL(current);
-                    loc = base.getProtocol() + "://" + base.getHost() + loc;
-                }
-                current = loc;
+                // Göreli konum ("/...") mevcut adrese göre çözülür; port ve şema korunur.
+                current = toUri(current).resolve(toUri(loc)).toString();
                 log.debug("Redirect {} → {}", code, current);
                 continue;
             }

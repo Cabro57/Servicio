@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -79,7 +79,7 @@ public class ExchangeRateManager {
         Map<String, BigDecimal> result = new LinkedHashMap<>();
         HttpURLConnection conn = null;
         try {
-            conn = (HttpURLConnection) new URL(TCMB_URL).openConnection();
+            conn = (HttpURLConnection) URI.create(TCMB_URL).toURL().openConnection();
             conn.setConnectTimeout(8000);
             conn.setReadTimeout(8000);
             conn.setRequestProperty("User-Agent", "Servicio/" + Servicio.getInstance().getAppVersion());
