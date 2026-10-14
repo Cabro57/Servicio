@@ -51,6 +51,8 @@ public class WorkOrderItemModal extends JPanel {
 
     private static final String MODAL_ID = "itemAddModal";
     private static final Locale TR = Locale.forLanguageTag("tr");
+    /** Parça satırı üç satırlıdır (ad, ayrıntı, uyumlu modeller); işçilik iki satırlı. */
+    private static final int PART_ROW_HEIGHT = 74, LABOR_ROW_HEIGHT = 56;
 
     private enum Mode { PART, LABOR, MANUAL }
 
@@ -128,6 +130,8 @@ public class WorkOrderItemModal extends JPanel {
     private final DefaultListModel<Entry> listModel = new DefaultListModel<>();
     private JList<Entry> resultList;
     private int hoverIndex = -1;
+    /** Aranan kelime ya da seçili model (küçük harf); parça satırında eşleşen model öne alınır. */
+    private String modelHint;
 
     private JPanel basketList;
     private JScrollPane basketScroll;
@@ -256,7 +260,7 @@ public class WorkOrderItemModal extends JPanel {
 
         // Sonuç listesi + boş durum
         resultList = new JList<>(listModel);
-        resultList.setFixedCellHeight(56);
+        resultList.setFixedCellHeight(PART_ROW_HEIGHT);
         resultList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         resultList.setCellRenderer(new EntryRenderer());
         resultList.setFocusable(false);
@@ -402,6 +406,7 @@ public class WorkOrderItemModal extends JPanel {
         partFilters.setVisible(mode == Mode.PART);
         laborFilters.setVisible(mode == Mode.LABOR);
         centerCards.show(centerHolder, manual ? "manual" : "catalog");
+        resultList.setFixedCellHeight(mode == Mode.LABOR ? LABOR_ROW_HEIGHT : PART_ROW_HEIGHT);
         lblHint.setText(manual ? "Enter eklenecekler listesine ekler  ·  Ctrl+Enter kaydeder" : "↑ ↓ gez  ·  Enter listeye ekle  ·  Ctrl+Enter kaydet");
         txtSearch.setText("");
         txtSearch.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT,
@@ -427,6 +432,8 @@ public class WorkOrderItemModal extends JPanel {
             String supplier = chosen(cmbSupplier) ? sel(cmbSupplier) : null;
             boolean inStockOnly = chkInStock.isSelected();
             boolean compatibleOnly = chkCompatible.isSelected();
+            // Satırdaki model listesinde öne alınacak terim: önce aranan kelime, yoksa model süzgeci.
+            modelHint = !needle.isEmpty() ? needle : modelFilter;
             List<Entry> out = new ArrayList<>();
             for (Entry e : parts) {
                 Part p = e.part();
@@ -1091,28 +1098,86 @@ public class WorkOrderItemModal extends JPanel {
     // KATALOG SATIRI
     // =========================================================================
 
-    /** Ad kalın, altında soluk ayrıntı; sağda fiyat (kalın) ve stok durumu. Satırın tamamı hedeftir. */
+    /**
+     * Uyumlu modelleri öne alınacak olan başta gelecek şekilde sıralar: önce bu cihazın modeli
+     * (uyumluluk), sonra aranan kelime / model süzgeci. İlk eleman vurgulanır.
+     */
+    private List<String> orderedModels(Part p) {
+        List<String> models = new ArrayList<>();
+        for (String m : nz(p.getModelCompatibility()).split(",")) if (!m.isBlank()) models.add(m.trim());
+        // Sonra öne alınan başa geçer: cihaz modeli en önde, hemen ardından aranan model.
+        for (String hint : new String[]{modelHint, deviceModel()}) {
+            if (hint == null || hint.isEmpty()) continue;
+            for (int i = 0; i < models.size(); i++) {
+                if (models.get(i).toLowerCase(TR).contains(hint)) {
+                    models.add(0, models.remove(i));
+                    break;
+                }
+            }
+        }
+        return models;
+    }
+
+    /** İş emrindeki cihazın modeli, küçük harf; yoksa boş. */
+    private String deviceModel() {
+        return workOrder.getDevice() != null ? nz(workOrder.getDevice().getModel()).trim().toLowerCase(TR) : "";
+    }
+
+    /**
+     * Ad kalın, altında soluk ayrıntı; sağda fiyat (kalın) ve stok durumu. Parçada üçüncü satır uyumlu
+     * modeller: bu cihazın modeli yeşil, aranan model kalın ve başta; sığmayan kısım "…" ile kesilir,
+     * tam liste ipucunda. Satırın tamamı hedeftir.
+     */
     private final class EntryRenderer extends JPanel implements ListCellRenderer<Entry> {
         private final JLabel name = new JLabel();
         private final JLabel detail = new JLabel();
         private final JLabel price = new JLabel();
         private final JLabel stock = new JLabel();
         private final JLabel plus = new JLabel(new Ikon("icons/plus.svg", 16, "Label.foreground"));
+        private final JLabel modelLead = new JLabel();
+        private final JLabel modelRest = new JLabel();
+        private final JPanel modelRow = new JPanel(new MigLayout("insets 0, gap 6 0, hidemode 3", "[][][0::, grow, fill]", "[center]"));
         private boolean active;
         private boolean selected;
 
         EntryRenderer() {
-            super(new MigLayout("insets 0 12 0 12, fillx, gap 10 0, aligny center", "[grow, fill][right][24!]", "[]2[]"));
+            super(new MigLayout("insets 0 12 0 12, fillx, gap 10 0, aligny center, hidemode 3", "[grow, fill][right][24!]", "[]2[]3[]"));
             setOpaque(false);
             name.putClientProperty(FlatClientProperties.STYLE, "font: bold");
             detail.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
             price.putClientProperty(FlatClientProperties.STYLE, "font: bold");
             stock.putClientProperty(FlatClientProperties.STYLE, "font: -1");
+            modelRest.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
+            modelRow.setOpaque(false);
+            modelRow.add(new JLabel(new Ikon("icons/tablet-smartphone.svg", 13, "Label.disabledForeground")));
+            modelRow.add(modelLead);
+            modelRow.add(modelRest, "wmin 0");
             add(name, "wmin 0");
             add(price);
-            add(plus, "spany 2, al center, wrap");
+            add(plus, "spany 3, al center, wrap");
             add(detail, "wmin 0");
-            add(stock);
+            add(stock, "wrap");
+            add(modelRow, "span 2, wmin 0");
+        }
+
+        private void showModels(Part p) {
+            List<String> models = orderedModels(p);
+            if (models.isEmpty()) {
+                modelLead.setText("Model belirtilmemiş");
+                modelLead.putClientProperty(FlatClientProperties.STYLE, "font: -1 italic; foreground: $Label.disabledForeground");
+                modelRest.setText(null);
+                setToolTipText(null);
+                return;
+            }
+            String lead = models.get(0), lower = lead.toLowerCase(TR);
+            String device = deviceModel();
+            boolean deviceMatch = !device.isEmpty() && lower.contains(device);
+            boolean hintMatch = modelHint != null && !modelHint.isEmpty() && lower.contains(modelHint);
+            modelLead.setText(lead);
+            modelLead.putClientProperty(FlatClientProperties.STYLE, deviceMatch ? "font: -1 bold; foreground: $Servicio.successColor"
+                    : hintMatch ? "font: -1 bold" : "font: -1; foreground: $Label.disabledForeground");
+            modelRest.setText(models.size() > 1 ? "· " + String.join(" · ", models.subList(1, models.size())) : null);
+            setToolTipText(models.size() > 1 ? "Uyumlu modeller: " + String.join(", ", models) : null);
         }
 
         @Override
@@ -1126,9 +1191,11 @@ public class WorkOrderItemModal extends JPanel {
             if (e.isPart()) {
                 Part p = e.part();
                 String cat = p.getCategory() != null ? p.getCategory().getName() : "";
-                String d = (nz(p.getBarcode()).isEmpty() ? "" : p.getBarcode()) + (cat.isEmpty() ? "" : (nz(p.getBarcode()).isEmpty() ? "" : " · ") + cat)
-                        + (e.compatible() ? " · bu cihaza uyumlu" : "");
+                // Cihaz uyumu artık model satırında (yeşil model) görünüyor; ayrıntıda tekrarlanmaz.
+                String d = (nz(p.getBarcode()).isEmpty() ? "" : p.getBarcode()) + (cat.isEmpty() ? "" : (nz(p.getBarcode()).isEmpty() ? "" : " · ") + cat);
                 detail.setText(d.isEmpty() ? " " : d);
+                modelRow.setVisible(true);
+                showModels(p);
                 int s = e.stock();
                 boolean out = s <= 0;
                 stock.setText(out ? "Tükendi" : (inBasket > 0 ? "Listede " + inBasket + " · " : "") + "Stok " + s);
@@ -1145,6 +1212,8 @@ public class WorkOrderItemModal extends JPanel {
                 stock.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
                 name.putClientProperty(FlatClientProperties.STYLE, "font: bold");
                 plus.setVisible(active);
+                modelRow.setVisible(false);
+                setToolTipText(null);
             }
             return this;
         }
