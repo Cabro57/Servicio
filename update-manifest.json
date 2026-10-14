@@ -1,5 +1,5 @@
 {
-  "version": "2.16.2",
+  "version": "2.16.3",
   "releaseDate": "2026-10-14",
   "minRequiredVersion": "2.0.0",
   "releasesApiUrl": "https://api.github.com/repos/Cabro57/Servicio/releases/latest",
@@ -8,9 +8,9 @@
       "source": "github",
       "name": "servicio.jar",
       "path": "servicio.jar",
-      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.16.2/servicio.jar",
-      "sha256": "71801e52ae5598bfeefb748de6f534ce04c3914abf89e07d6084c8326aea6558",
-      "size": 13587623
+      "url": "https://github.com/Cabro57/Servicio/releases/download/v2.16.3/servicio.jar",
+      "sha256": "3a187f0e47faca3612b94b271a4450411e9e1a8751adcd9792393c3ba3e655d3",
+      "size": 13587597
     },
     {
       "source": "maven",
