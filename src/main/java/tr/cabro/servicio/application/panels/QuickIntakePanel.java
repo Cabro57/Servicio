@@ -106,13 +106,13 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
     protected void initComponent() {
         setLayout(new BorderLayout());
 
-        JPanel form = new JPanel(new MigLayout(
-                "insets 16 20 12 20, fillx, width 940:940:",
+        JPanel form = new IntakeForm(new MigLayout(
+                "insets 16 20 12 20, fillx, width 700:940:",
                 "[grow, fill, sg col]24[]24[grow, fill, sg col]", "[top]"));
 
         JScrollPane scroll = new JScrollPane(form);
         scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         add(scroll, BorderLayout.CENTER);
 
@@ -408,5 +408,25 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         l.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Servicio.dangerColor");
         l.setVisible(false);
         return l;
+    }
+
+    /**
+     * Görünüm genişliğini izleyen form kabı. Pencere asgari genişliğin altına inmedikçe içerik
+     * pencereyle daralır; inerse sağ taraf kırpılmak yerine yatay kaydırma çıkar.
+     */
+    private static final class IntakeForm extends JPanel implements Scrollable {
+        IntakeForm(LayoutManager layout) {
+            super(layout);
+        }
+
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) { return 16; }
+        @Override public int getScrollableBlockIncrement(Rectangle r, int o, int d) { return o == SwingConstants.VERTICAL ? r.height : r.width; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return getParent() instanceof JViewport vp && vp.getWidth() >= getMinimumSize().width;
+        }
     }
 }
