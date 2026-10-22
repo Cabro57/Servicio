@@ -121,6 +121,20 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         form.add(buildRightColumn(), "wmin 0, growy");
     }
 
+    /**
+     * Tercih edilen genişlik pencereyi aşmasın: modal içeriğin tercih ettiği boyda açıldığı için,
+     * form 940 px isterken pencere dardaysa sağ taraf pencere dışına taşıyordu. Dar pencerede
+     * kaydırma çubuğu devreye girer ({@link IntakeForm}).
+     */
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension d = super.getPreferredSize();
+        Window w = SwingUtilities.getWindowAncestor(this);
+        if (w == null) w = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+        if (w != null) d.width = Math.min(d.width, Math.max(480, w.getWidth() - 120));
+        return d;
+    }
+
     private JPanel buildLeftColumn() {
         JPanel col = column();
 

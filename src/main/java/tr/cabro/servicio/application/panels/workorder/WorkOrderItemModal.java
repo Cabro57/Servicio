@@ -157,7 +157,6 @@ public class WorkOrderItemModal extends JPanel {
         this.workOrder = workOrder;
         this.onSaved = onSaved;
         setLayout(new MigLayout("insets 4 20 16 20, fill, gap 18", "[grow, fill][340!, fill]", "[grow, fill]"));
-        setPreferredSize(new Dimension(900, 580));
         add(buildCatalog(), "wmin 0, hmin 0");
         add(buildBasket(), "hmin 0");
         bindKeys();
@@ -809,10 +808,14 @@ public class WorkOrderItemModal extends JPanel {
         l.totalLabel = new JLabel();
         l.totalLabel.putClientProperty(FlatClientProperties.STYLE, "font: bold");
         JLabel times = WorkOrderPanelSupport.createCaption("×");
-        row.add(stepper, "split 4, gapright 2");
-        row.add(times);
-        row.add(l.priceField, "w 100!");
-        row.add(l.totalLabel, "growx, al right, span, wrap");
+        // Hesap satırı ayrı bir kapta: split hücresi tek sütuna sığmayıp toplam etiketini × düğmesinin üstüne taşıyordu.
+        JPanel calc = new JPanel(new MigLayout("insets 0, fillx, gap 4 0", "[][][84::84][0::, grow, right]", "[center]"));
+        calc.setOpaque(false);
+        calc.add(stepper);
+        calc.add(times);
+        calc.add(l.priceField, "growx");
+        calc.add(l.totalLabel, "growx, wmin 0, al right");
+        row.add(calc, "span 3, growx, wmin 0, wrap");
         if (l.type == ItemType.PART) {
             // Garanti takibi için seri no; her parça satırında, katalogtan da elle girişten de yazılır.
             l.serialField = new JTextField(l.serialNo);
@@ -1060,6 +1063,19 @@ public class WorkOrderItemModal extends JPanel {
                     });
                     return null;
                 });
+    }
+
+    /** 900x580 hedef boyut; küçük ekran/yüksek ölçekte pencereyi aşmasın diye pencereye göre kısılır. */
+    @Override
+    public Dimension getPreferredSize() {
+        Window w = SwingUtilities.getWindowAncestor(this);
+        if (w == null) w = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+        int width = 900, height = 580;
+        if (w != null) {
+            width = Math.min(width, Math.max(640, w.getWidth() - 120));
+            height = Math.min(height, Math.max(420, w.getHeight() - 200));
+        }
+        return new Dimension(width, height);
     }
 
     private void bindKeys() {
