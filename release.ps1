@@ -223,7 +223,15 @@ if ($releaseExists) {
     } else {
         $createArgs = @($tag, $jar, $manifest, $signature, "--title", $tag, "--notes", $Notes)
     }
-    if ($Prerelease) { $createArgs += "--prerelease" }
+    if ($Prerelease) {
+        $createArgs += "--prerelease"
+        # Beta çoğunlukla test dalından yayınlanır; --target verilmezse GitHub etiketi varsayılan
+        # dalın (master) ucuna koyar ve etiket/kaynak zip'i derlenen koddan farklı olur.
+        $branch = (& git rev-parse --abbrev-ref HEAD).Trim()
+        & git ls-remote --exit-code --heads origin $branch *> $null
+        if ($LASTEXITCODE -ne 0) { Fail "'$branch' dalı GitHub'da yok; önce 'git push -u origin $branch' çalıştırın." }
+        $createArgs += @("--target", $branch)
+    }
     Invoke-Native gh release create @createArgs
     if ($LASTEXITCODE -ne 0) { Fail "gh release create başarısız." }
     Ok "Yeni release '$tag' oluşturuldu; JAR + manifest + imza yüklendi."
