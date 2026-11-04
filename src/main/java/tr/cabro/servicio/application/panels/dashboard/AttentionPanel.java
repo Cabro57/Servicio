@@ -5,6 +5,10 @@ import net.miginfocom.swing.MigLayout;
 import tr.cabro.servicio.Servicio;
 import tr.cabro.servicio.application.forms.FormAccounts;
 import tr.cabro.servicio.application.forms.FormCustomer;
+import tr.cabro.servicio.application.forms.FormDevice;
+import tr.cabro.servicio.application.forms.FormDevices;
+import tr.cabro.servicio.model.DeviceLoan;
+import tr.cabro.servicio.model.enums.LoanDirection;
 import tr.cabro.servicio.application.forms.FormWorkOrder;
 import tr.cabro.servicio.application.forms.FormWorkOrders;
 import tr.cabro.servicio.application.panels.CollectionPanel;
@@ -37,16 +41,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * "Dikkat bekleyenler": kullanıcıdan hamle bekleyen üç kuyruk tek kartta, sekmelerle.
+ * "Dikkat bekleyenler": kullanıcıdan hamle bekleyen dört kuyruk tek kartta, sekmelerle.
  * Teslime hazır (müşteri aranacak), borçlu müşteriler (tahsilat) ve parça bekleyen
- * servisler (tedarik takibi). Her satır kaydını açar; borçlu satırında doğrudan
+ * servisler (tedarik takibi) ve açık emanetler (gecikmişler kırmızı). Her satır kaydını açar; borçlu satırında doğrudan
  * "Tahsilat" düğmesi vardır.
  */
 public class AttentionPanel extends JPanel {
 
     private static final int ROWS = 4;
 
-    private enum Tab { READY, DEBT, WAITING }
+    private enum Tab { READY, DEBT, WAITING, LOAN }
 
     private final ViewTabs tabs = new ViewTabs();
     private final JPanel list = new JPanel(new MigLayout("insets 0, fillx, wrap, gapy 4", "[fill]", ""));
@@ -58,6 +62,7 @@ public class AttentionPanel extends JPanel {
     private PageResult<WorkOrder> ready;
     private PageResult<WorkOrder> waiting;
     private PageResult<CustomerBalanceDto> debt;
+    private List<DeviceLoan> openLoans = Collections.emptyList();
     private Map<Long, Customer> debtCustomers = Collections.emptyMap();
 
     /** Tahsilat alındığında çağrılır: kasa, hareketler ve durum çubuğu da tazelensin. */
@@ -73,6 +78,7 @@ public class AttentionPanel extends JPanel {
         tabs.addView(Tab.READY.name(), "Teslime hazır");
         tabs.addView(Tab.DEBT.name(), "Borçlu");
         tabs.addView(Tab.WAITING.name(), "Parça bekliyor");
+        tabs.addView(Tab.LOAN.name(), "Emanette");
         tabs.setOnChange(key -> select(Tab.valueOf(key), true));
 
         btnSeeAll = DashboardUi.link("Tümünü gör", this::openAll);
@@ -105,20 +111,28 @@ public class AttentionPanel extends JPanel {
                     .thenApply(cs -> cs.stream().collect(Collectors.toMap(Customer::getId, Function.identity(), (a, b) -> a)));
         });
 
-        CompletableFuture.allOf(readyF, waitingF, customersF).thenRun(() -> SwingUtilities.invokeLater(() -> {
+        CompletableFuture<List<DeviceLoan>> loansF = ServiceManager.getDeviceLoanService().getOpen();
+
+        CompletableFuture.allOf(readyF, waitingF, customersF, loansF).thenRun(() -> SwingUtilities.invokeLater(() -> {
             ready = readyF.join();
+            openLoans = loansF.join();
             waiting = waitingF.join();
             debt = debtF.join();
             debtCustomers = customersF.join();
             tabs.setCount(Tab.READY.name(), ready.getTotalItems());
             tabs.setCount(Tab.DEBT.name(), debt.getTotalItems());
             tabs.setCount(Tab.WAITING.name(), waiting.getTotalItems());
-            // Kullanıcı sekme seçmediyse ilk dolu kuyruk öne gelir: önce teslim, sonra para, sonra tedarik.
+            tabs.setCount(Tab.LOAN.name(), (long) openLoans.size());
+            boolean overdueLoan = openLoans.stream().anyMatch(DeviceLoan::isOverdue);
+            // Kullanıcı sekme seçmediyse ilk dolu kuyruk öne gelir: gecikmiş emanet (cihaz/depozito
+            // risk altında), sonra teslim, para, tedarik ve diğer açık emanetler.
             Tab target = current;
             if (!userPickedTab || target == null) {
-                if (ready.getTotalItems() > 0) target = Tab.READY;
+                if (overdueLoan) target = Tab.LOAN;
+                else if (ready.getTotalItems() > 0) target = Tab.READY;
                 else if (debt.getTotalItems() > 0) target = Tab.DEBT;
                 else if (waiting.getTotalItems() > 0) target = Tab.WAITING;
+                else if (!openLoans.isEmpty()) target = Tab.LOAN;
                 else target = Tab.READY;
             }
             select(target, false);
@@ -148,7 +162,17 @@ public class AttentionPanel extends JPanel {
 
     private void render() {
         list.removeAll();
-        if (current == Tab.DEBT) {
+        if (current == Tab.LOAN) {
+            if (openLoans.isEmpty()) {
+                list.add(DashboardUi.emptyState("Emanette cihaz yok",
+                        "Cihaz sayfasından yedek cihaz verdiğinde ya da emanet aldığında burada takip edilir."));
+            } else {
+                // Gecikmişler önce, sonra iade tarihi en yakın olan (sorgu sırası).
+                openLoans.stream().sorted(java.util.Comparator.comparing((DeviceLoan l) -> !l.isOverdue()))
+                        .limit(ROWS).forEach(l -> list.add(loanRow(l)));
+            }
+            btnSeeAll.setVisible(!openLoans.isEmpty());
+        } else if (current == Tab.DEBT) {
             if (debt == null || debt.getItems().isEmpty()) {
                 list.add(DashboardUi.emptyState("Borçlu müşteri yok",
                         "Ödemesi kalan servis ya da açık hesap satış olduğunda burada listelenir."));
@@ -225,7 +249,35 @@ public class AttentionPanel extends JPanel {
         return row;
     }
 
+    /** Emanet satırı: gecikmişte kırmızı nokta; müşteri, altında cihaz, kod ve süre; sağda depozito. */
+    private JButton loanRow(DeviceLoan l) {
+        boolean out = l.getDirection() == LoanDirection.OUT;
+        String customer = l.getCustomer() != null ? l.getCustomer().getFullName() : "Müşteri #" + l.getCustomerId();
+        String device = l.getDevice() != null ? l.getDevice().getDisplayName() : "Cihaz";
+        long days = l.getGivenAt() != null ? ChronoUnit.DAYS.between(l.getGivenAt().toLocalDate(), LocalDate.now()) : 0;
+        String when;
+        if (l.isOverdue()) {
+            when = (out ? "iade " : "teslim ") + ChronoUnit.DAYS.between(l.getDueAt().toLocalDate(), LocalDate.now()) + " gün gecikti";
+        } else {
+            when = (out ? "verileli " : "bırakılalı ") + (days == 0 ? "bugün" : days + " gün");
+        }
+        String sub = device + "  ·  " + l.getCode() + (out ? "" : " (emanet alındı)") + "  ·  " + when;
+        JComponent right = l.hasDeposit() ? RowKit.money(Format.formatPrice(l.getDeposit()), null, "depozito", null) : null;
+        JButton row = RowKit.row(l.isOverdue() ? BadgeColor.RED : BadgeColor.YELLOW, customer, sub,
+                l.isOverdue() ? "Servicio.dangerColor" : null, right);
+        row.getAccessibleContext().setAccessibleName(customer + ", " + device + ", emanet");
+        row.addActionListener(e -> ServiceManager.getDeviceService().get(l.getDeviceId())
+                .thenAccept(opt -> SwingUtilities.invokeLater(() -> opt.ifPresent(d -> FormManager.showForm(new FormDevice(d))))));
+        return row;
+    }
+
     private void openAll() {
+        if (current == Tab.LOAN) {
+            FormDevices form = (FormDevices) AllForms.getForm(FormDevices.class);
+            FormManager.showForm(form);
+            form.showOnLoan();
+            return;
+        }
         if (current == Tab.DEBT) {
             FormManager.showForm(AllForms.getForm(FormAccounts.class));
             return;

@@ -116,11 +116,18 @@ public class PinPanel extends Form {
     }
 
     private JComponent footer() {
-        JPanel p = new JPanel(new MigLayout("insets 0, fillx, gap 8, hidemode 3", "[grow][][]", "[center]"));
+        JPanel p = new JPanel(new MigLayout("insets 0, fillx, gap 8, hidemode 3", "[grow][][][]", "[center]"));
         p.setOpaque(false);
         session.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");
         session.setIconTextGap(6);
         p.add(session, "wmin 0");
+
+        JButton forgot = new JButton("PIN'imi unuttum");
+        forgot.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
+        forgot.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground; arc: 10; margin: 4,8,4,8");
+        forgot.setFocusable(false);
+        forgot.addActionListener(e -> PinRecoveryDialogs.openForgot(this, this::requestFocusInWindow));
+        p.add(forgot);
 
         JLabel version = new JLabel("v" + Servicio.getInstance().getAppVersion());
         version.putClientProperty(FlatClientProperties.STYLE, "font: -1; foreground: $Label.disabledForeground");

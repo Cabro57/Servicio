@@ -283,6 +283,9 @@ public class FormCashReport extends Form {
     private String who(Payment p) {
         Customer c = p.getCustomerId() != null ? customers.get(p.getCustomerId()) : null;
         if (c != null) return c.getFullName();
+        if (p.getCustomerId() == null && p.getAllocations().stream().anyMatch(a -> a.getTargetType() == AllocationTargetType.DEVICE_LOAN)) {
+            return "Emanet depozitosu";
+        }
         return p.getCustomerId() != null ? "Müşteri #" + p.getCustomerId() : "Perakende satış";
     }
 
@@ -292,6 +295,7 @@ public class FormCashReport extends Form {
         for (PaymentAllocation a : p.getAllocations()) {
             if (a.getTargetType() == AllocationTargetType.WORK_ORDER) docs.add("SRV-" + a.getTargetId());
             else if (a.getTargetType() == AllocationTargetType.SALE) docs.add((a.getAmount() != null && a.getAmount().signum() < 0 ? "İADE · SAT-" : "SAT-") + a.getTargetId());
+            else if (a.getTargetType() == AllocationTargetType.DEVICE_LOAN) docs.add("EMN-" + a.getTargetId());
         }
         String kind;
         boolean negative = p.getAmount() != null && p.getAmount().signum() < 0;
@@ -315,6 +319,13 @@ public class FormCashReport extends Form {
             if (a.getTargetType() == AllocationTargetType.SALE) {
                 saleService.getById(a.getTargetId()).thenAccept(opt -> SwingUtilities.invokeLater(() ->
                         opt.ifPresent(s -> FormManager.showForm(new FormSale(s)))));
+                return;
+            }
+            if (a.getTargetType() == AllocationTargetType.DEVICE_LOAN) {
+                ServiceManager.getDeviceLoanService().get(a.getTargetId())
+                        .thenCompose(opt -> opt.isPresent() ? ServiceManager.getDeviceService().get(opt.get().getDeviceId())
+                                : java.util.concurrent.CompletableFuture.completedFuture(java.util.Optional.<tr.cabro.servicio.model.Device>empty()))
+                        .thenAccept(opt -> SwingUtilities.invokeLater(() -> opt.ifPresent(d -> FormManager.showForm(new FormDevice(d)))));
                 return;
             }
         }

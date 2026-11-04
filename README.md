@@ -331,7 +331,7 @@ işletme verisinin korunmasını, makineye özel tercihlerin ise korunmamasını
 
 ## 🤝 Katkıda Bulunma
 
-Bu proje şu an tek geliştirici tarafından, kapalı/özel bir kod tabanı olarak yürütülmektedir.
+Bu proje tek geliştirici tarafından yürütülen, kaynak kodu görünür ama tescilli bir yazılımdır; dışarıdan kod katkısı kabul edilmemektedir.
 Hata bildirimi veya öneri için lütfen bir [Issue](https://github.com/Cabro57/Servicio/issues)
 açın.
 
@@ -339,7 +339,9 @@ açın.
 
 ## 📄 Lisans
 
-Lisans modeli henüz belirlenmemiştir. Aksi açıkça belirtilmedikçe tüm hakları saklıdır.
+Servicio tescilli bir yazılımdır; tüm hakları saklıdır. Kaynak kodun bu depoda herkese açık
+görünmesi kullanma, kopyalama, değiştirme ya da dağıtma hakkı vermez. Ayrıntılar için
+[LICENSE](LICENSE) dosyasına bakın.
 
 ---
 

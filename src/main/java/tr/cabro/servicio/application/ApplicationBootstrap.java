@@ -93,6 +93,13 @@ public final class ApplicationBootstrap {
      * Servicio.run() içinden çağrılır.
      */
     public static void setupLookAndFeel() {
+        // Linux'ta (GNOME) sistem yazısı ~15 px, Windows'ta 12 px. FlatLaf Linux'ta 15 px'i "ölçek 1"
+        // saydığı için yazılar %25 büyürken MigLayout'taki sabit genişlikler (500!, 340!, 940...) aynı
+        // kalıyor, pencere içerikleri taşıp kesiliyordu. Bölen 12 olunca ölçek her platformda
+        // "yazı boyu / 12" olur: düzen yazıyla birlikte büyür, oranlar Windows'takiyle aynı kalır.
+        if (com.formdev.flatlaf.util.SystemInfo.isLinux && System.getProperty("flatlaf.uiScale.fontSizeDivider") == null) {
+            System.setProperty("flatlaf.uiScale.fontSizeDivider", "12");
+        }
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("themes");
         FlatLaf.setPreferredFontFamily(FlatRobotoFont.FAMILY);

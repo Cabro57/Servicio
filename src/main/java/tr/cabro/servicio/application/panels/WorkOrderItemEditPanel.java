@@ -42,11 +42,14 @@ public class WorkOrderItemEditPanel extends JPanel {
 
         spnQuantity = new JSpinner(new SpinnerNumberModel(item.getQuantity() != null ? item.getQuantity().intValue() : 1, 1, 999, 1));
 
-        add(new JLabel("Adı:")); add(txtName, "growx, wrap");
+        // Metin alanının tercih edilen genişliği içindeki metin kadardır; uzun seri no/ad pencereyi
+        // genişletiyordu. Genişlik sabit (0:360:), metin alan içinde kayar.
+        String field = "w 0:360:, growx, wrap";
+        add(new JLabel("Adı:")); add(txtName, field);
         add(new JLabel("Adet:")); add(spnQuantity, "w 90!, wrap");
-        add(new JLabel("Alış Fiyatı:")); add(txtPurchasePrice, "growx, wrap");
-        add(new JLabel("Satış Fiyatı:")); add(txtSalePrice, "growx, wrap");
-        add(new JLabel("Seri No:")); add(txtSerialNo, "growx, wrap");
+        add(new JLabel("Alış Fiyatı:")); add(txtPurchasePrice, field);
+        add(new JLabel("Satış Fiyatı:")); add(txtSalePrice, field);
+        add(new JLabel("Seri No:")); add(txtSerialNo, field);
     }
 
     public WorkOrderItem getUpdatedItem() {

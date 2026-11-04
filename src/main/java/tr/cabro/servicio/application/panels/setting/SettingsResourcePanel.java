@@ -396,7 +396,7 @@ public class SettingsResourcePanel extends JPanel implements SettingsModal.Heade
 
         Meter() {
             setOpaque(false);
-            setPreferredSize(new Dimension(200, 8));
+            setPreferredSize(com.formdev.flatlaf.util.UIScale.scale(new Dimension(200, 8)));
         }
 
         void setValue(double value, boolean alert) {

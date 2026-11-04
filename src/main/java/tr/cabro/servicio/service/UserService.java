@@ -115,6 +115,109 @@ public class UserService {
         });
     }
 
+    // ------------------------------------------------------------------ PIN kurtarma
+
+    /** Karışabilecek karakterler (0/O, 1/I/L) yok; kod elle yazılıp okunacak. */
+    private static final String CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+    /** Veri klasöründe bu dosya varken kilit ekranı kodsuz PIN sıfırlamaya izin verir (destek yöntemi). */
+    public static final String RESET_FILE_NAME = "pin-sifirla.txt";
+    private static final int MAX_RECOVERY_ATTEMPTS = 5;
+    private static final java.time.Duration RECOVERY_COOLDOWN = java.time.Duration.ofMinutes(5);
+    private int recoveryFailures;
+    private java.time.Instant recoveryLockedUntil;
+
+    /**
+     * Yeni kurtarma kodu üretir ({@code XXXX-XXXX-XXXX}); özeti yazılır, eski kod geçersiz olur.
+     * Düz kod yalnızca dönüş değerinde bir kez görünür.
+     */
+    public CompletableFuture<String> generateRecoveryCode(Long userId) {
+        return DbExecutor.supply(() -> {
+            repository.findById(userId).orElseThrow(() -> new ValidationException("Kullanıcı bulunamadı."));
+            StringBuilder raw = new StringBuilder();
+            for (int i = 0; i < 12; i++) raw.append(CODE_ALPHABET.charAt(RANDOM.nextInt(CODE_ALPHABET.length())));
+            repository.setRecoveryCode(userId, PasswordUtil.hash(raw.toString()));
+            return raw.substring(0, 4) + "-" + raw.substring(4, 8) + "-" + raw.substring(8);
+        });
+    }
+
+    public CompletableFuture<Boolean> hasRecoveryCode() {
+        return DbExecutor.supply(() -> repository.findById(1L)
+                .map(u -> u.getRecoveryCode() != null && !u.getRecoveryCode().isBlank()).orElse(false));
+    }
+
+    /**
+     * Kurtarma koduyla yeni PIN belirler. 5 yanlış denemeden sonra 5 dakika bekletir.
+     * Kod doğruysa {@code true}; kod yanlışsa {@code false}.
+     */
+    public CompletableFuture<Boolean> resetPinWithRecoveryCode(String code, String newPin) {
+        return DbExecutor.supply(() -> {
+            validateNewPin(newPin);
+            synchronized (this) {
+                if (recoveryLockedUntil != null && java.time.Instant.now().isBefore(recoveryLockedUntil)) {
+                    long secs = java.time.Duration.between(java.time.Instant.now(), recoveryLockedUntil).toSeconds() + 1;
+                    throw new ValidationException("Çok fazla yanlış deneme. " + secs + " saniye sonra tekrar deneyin.");
+                }
+            }
+            User user = repository.findById(1L).orElseThrow(() -> new ValidationException("Kullanıcı bulunamadı."));
+            if (user.getRecoveryCode() == null || user.getRecoveryCode().isBlank()) {
+                throw new ValidationException("Kurtarma kodu oluşturulmamış.");
+            }
+            String normalized = code == null ? "" : code.toUpperCase(java.util.Locale.ROOT).replaceAll("[^A-Z0-9]", "");
+            if (normalized.length() != 12 || !PasswordUtil.verify(normalized, user.getRecoveryCode())) {
+                synchronized (this) {
+                    if (++recoveryFailures >= MAX_RECOVERY_ATTEMPTS) {
+                        recoveryFailures = 0;
+                        recoveryLockedUntil = java.time.Instant.now().plus(RECOVERY_COOLDOWN);
+                    }
+                }
+                return false;
+            }
+            synchronized (this) {
+                recoveryFailures = 0;
+                recoveryLockedUntil = null;
+            }
+            repository.setPassword(user.getId(), PasswordUtil.hash(newPin));
+            return true;
+        });
+    }
+
+    /** Destek yöntemi: veri klasöründe sıfırlama dosyası var mı? */
+    public static java.io.File resetFile() {
+        String base = System.getProperty("servicio.baseDir");
+        return base != null ? new java.io.File(base, RESET_FILE_NAME) : null;
+    }
+
+    public static boolean isResetFilePresent() {
+        java.io.File f = resetFile();
+        return f != null && f.isFile();
+    }
+
+    /**
+     * Sıfırlama dosyası varken kodsuz yeni PIN belirler ve dosyayı siler (tek kullanımlık).
+     * Bu yolu ancak bilgisayara ve veri klasörüne erişimi olan biri açabilir; o kişi veritabanını
+     * zaten elle değiştirebileceği için yeni bir açık oluşturmaz.
+     */
+    public CompletableFuture<Boolean> resetPinWithFile(String newPin) {
+        return DbExecutor.supply(() -> {
+            validateNewPin(newPin);
+            java.io.File f = resetFile();
+            if (f == null || !f.isFile()) return false;
+            repository.setPassword(1L, PasswordUtil.hash(newPin));
+            if (!f.delete()) {
+                tr.cabro.servicio.Servicio.getLogger().warn("PIN sıfırlama dosyası silinemedi: {}", f.getAbsolutePath());
+            }
+            tr.cabro.servicio.Servicio.getLogger().warn("PIN, veri klasöründeki sıfırlama dosyasıyla sıfırlandı");
+            return true;
+        });
+    }
+
+    private static void validateNewPin(String newPin) {
+        if (newPin == null || !newPin.matches("\\d{6}")) {
+            throw new ValidationException("Yeni PIN 6 haneli rakamlardan oluşmalıdır.");
+        }
+    }
+
     // Sistemde kayıtlı bir işletme sahibi var mı?
     public CompletableFuture<Boolean> hasSetupCompleted() {
         return DbExecutor.supply(() -> {

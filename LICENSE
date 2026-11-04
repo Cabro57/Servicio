@@ -1,0 +1,39 @@
+Servicio — Tescilli Yazılım Lisansı / Proprietary Software License
+
+Copyright (c) 2025-2026 Cabro57. Tüm hakları saklıdır. All rights reserved.
+
+TÜRKÇE
+
+Bu depodaki kaynak kod, derlenmiş dosyalar, görseller ve belgeler ("Yazılım") Cabro57'ye
+aittir. Kaynak kodun herkese açık bir depoda görünür olması, Yazılım üzerinde herhangi bir
+kullanım, kopyalama, değiştirme, dağıtma, alt lisanslama ya da satış hakkı vermez.
+
+1. Yazılım'ın yalnızca Cabro57 tarafından resmi olarak dağıtılan sürümleri, lisans sahibinin
+   izin verdiği işletmede kurulup kullanılabilir.
+2. Yazılım'ın tamamı ya da bir bölümü yazılı izin olmadan kopyalanamaz, değiştirilemez,
+   türev çalışmalarda kullanılamaz, yeniden dağıtılamaz, satılamaz ya da kiralanamaz.
+3. Tersine mühendislik, kaynak kodun başka bir ürüne aktarılması ve marka/logo kullanımı
+   yazılı izne tabidir.
+4. Yazılım "OLDUĞU GİBİ" sunulur. Yürürlükteki mevzuatın izin verdiği ölçüde, Yazılım'ın
+   kullanımından doğan veri kaybı, iş kaybı ya da dolaylı zararlardan Cabro57 sorumlu
+   tutulamaz. Verilerin yedeklenmesi kullanıcının sorumluluğundadır.
+5. Bu koşullara aykırı kullanımda lisans kendiliğinden sona erer.
+
+İzin ve lisans talepleri için: https://github.com/Cabro57/Servicio/issues
+
+ENGLISH
+
+The source code, binaries, images and documents in this repository (the "Software") are
+the property of Cabro57. Public visibility of the source code does NOT grant any right to
+use, copy, modify, distribute, sublicense or sell the Software.
+
+1. Only official releases distributed by Cabro57 may be installed and used, by businesses
+   authorized by the licensor.
+2. No part of the Software may be copied, modified, used in derivative works, redistributed,
+   sold or rented without prior written permission.
+3. Reverse engineering, porting the source into another product, and use of the name/logo
+   require written permission.
+4. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. To the extent permitted
+   by law, Cabro57 is not liable for data loss, loss of business or indirect damages arising
+   from use of the Software. Users are responsible for backing up their data.
+5. This license terminates automatically upon any breach of these terms.

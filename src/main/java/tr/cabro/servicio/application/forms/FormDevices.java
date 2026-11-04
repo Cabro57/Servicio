@@ -80,6 +80,11 @@ public class FormDevices extends AbstractTableForm {
 
     private static final String VIEW_ALL = "all";
     private static final String VIEW_IN_SHOP = "inshop";
+    private static final String VIEW_LOANERS = "loaners";
+    private static final String VIEW_ON_LOAN = "onloan";
+
+    /** Açık emaneti olan cihazlar (verilen yedekler ve emanet bırakılanlar). */
+    private static final String ON_LOAN_CONDITION = "d.id IN (SELECT device_id FROM device_loans WHERE returned_at IS NULL AND is_deleted = 0)";
     private static final String TYPE_PREFIX = "type:";
 
     /** Teslim/iade edilmemiş bir servis kaydı olan cihazlar. */
@@ -90,15 +95,24 @@ public class FormDevices extends AbstractTableForm {
     protected void initViews() {
         addView(VIEW_ALL, "Tümü");
         addView(VIEW_IN_SHOP, "Atölyede");
+        addView(VIEW_ON_LOAN, "Emanette");
+        addView(VIEW_LOANERS, "Yedek cihazlar");
         ServiceManager.getDeviceDictionaryManager().getAllTypes().thenAccept(types -> SwingUtilities.invokeLater(() -> {
             for (DeviceType type : types) addView(TYPE_PREFIX + type.getId(), type.getName());
             refreshViewCounts();
         })).exceptionally(ex -> null);
     }
 
+    /** Ana sayfadaki "Emanette" sekmesinin "Tümünü gör" bağlantısı. */
+    public void showOnLoan() {
+        SwingUtilities.invokeLater(() -> selectView(VIEW_ON_LOAN));
+    }
+
     @Override
     protected Map<String, ColumnFilterValue> viewFilters(String key) {
         if (VIEW_IN_SHOP.equals(key)) return Map.of("view:inshop", ColumnFilterValue.condition(IN_SHOP_CONDITION));
+        if (VIEW_ON_LOAN.equals(key)) return Map.of("view:onloan", ColumnFilterValue.condition(ON_LOAN_CONDITION));
+        if (VIEW_LOANERS.equals(key)) return Map.of("view:loaners", ColumnFilterValue.condition("d.is_loaner = 1"));
         if (key != null && key.startsWith(TYPE_PREFIX)) {
             // Kimlik veritabanından gelen sayı; koşula sayı olarak girer (kullanıcı girdisi değil).
             long typeId = Long.parseLong(key.substring(TYPE_PREFIX.length()));
@@ -124,9 +138,12 @@ public class FormDevices extends AbstractTableForm {
                 .thenApply(PageResult::getTotalItems);
         CompletableFuture<Long> inShop = deviceService.searchFilteredPaged(null, viewFilters(VIEW_IN_SHOP), 1, 1)
                 .thenApply(PageResult::getTotalItems);
-        CompletableFuture.allOf(total, inShop).thenRun(() -> SwingUtilities.invokeLater(() -> summary.set(
+        CompletableFuture<Long> onLoan = deviceService.searchFilteredPaged(null, viewFilters(VIEW_ON_LOAN), 1, 1)
+                .thenApply(PageResult::getTotalItems);
+        CompletableFuture.allOf(total, inShop, onLoan).thenRun(() -> SwingUtilities.invokeLater(() -> summary.set(
                 ListSummary.Part.strong(total.join() + " kayıtlı cihaz"),
-                inShop.join() > 0 ? ListSummary.Part.meaning(inShop.join() + " cihaz şu an atölyede", "Servicio.infoColor") : null
+                inShop.join() > 0 ? ListSummary.Part.meaning(inShop.join() + " cihaz şu an atölyede", "Servicio.infoColor") : null,
+                onLoan.join() > 0 ? ListSummary.Part.meaning(onLoan.join() + " cihaz emanette", "Servicio.warningColor") : null
         ))).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz özeti yüklenemedi", ex));
     }
 
@@ -182,7 +199,7 @@ public class FormDevices extends AbstractTableForm {
     private void configureTableColumns() {
         table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<Device>(
                 d -> (d.getBrand() != null ? d.getBrand().getName() + " " : "") + (d.getModel() != null ? d.getModel() : ""),
-                d -> d.getDeviceType() != null ? d.getDeviceType().getName() : "Türü belirsiz"));
+                FormDevices::deviceSubtitle));
         table.getColumnModel().getColumn(1).setCellRenderer(StyledLabelCellRenderer.of(SwingConstants.LEADING, null, 8));
         table.getColumnModel().getColumn(2).setCellRenderer(
                 StyledLabelCellRenderer.of(SwingConstants.LEADING, "foreground: $Label.disabledForeground", 8));
@@ -204,6 +221,17 @@ public class FormDevices extends AbstractTableForm {
             public void onDelete(Device d) {}
         });
 
+    }
+
+    /** Tür + dükkân cihazı/emanet durumu: "Telefon · Yedek · Emanette: Ali Veli". */
+    private static String deviceSubtitle(Device d) {
+        StringBuilder s = new StringBuilder(d.getDeviceType() != null ? d.getDeviceType().getName() : "Türü belirsiz");
+        if (d.isLoaner()) s.append(" · Yedek");
+        if (d.getOpenLoanDirection() != null) {
+            s.append(d.getOpenLoanDirection() == tr.cabro.servicio.model.enums.LoanDirection.OUT ? " · Emanette: " : " · Emanet bırakan: ")
+                    .append(d.getOpenLoanParty() != null ? d.getOpenLoanParty() : "—");
+        }
+        return s.toString();
     }
 
     @Override

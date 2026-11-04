@@ -5,6 +5,7 @@ import tr.cabro.servicio.application.component.Inputs;
 import tr.cabro.servicio.model.enums.CategoryScope;
 import tr.cabro.servicio.application.utils.Toasts;
 import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.util.UIScale;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Toast;
 import raven.modal.component.SimpleModalBorder;
@@ -1065,15 +1066,18 @@ public class WorkOrderItemModal extends JPanel {
                 });
     }
 
-    /** 900x580 hedef boyut; küçük ekran/yüksek ölçekte pencereyi aşmasın diye pencereye göre kısılır. */
+    /**
+     * 900x580 hedef boyut (UI ölçeğiyle büyür; sepet sütunu MigLayout'ta zaten ölçekli);
+     * küçük ekran/yüksek ölçekte pencereyi aşmasın diye pencereye göre kısılır.
+     */
     @Override
     public Dimension getPreferredSize() {
         Window w = SwingUtilities.getWindowAncestor(this);
         if (w == null) w = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
-        int width = 900, height = 580;
+        int width = UIScale.scale(900), height = UIScale.scale(580);
         if (w != null) {
-            width = Math.min(width, Math.max(640, w.getWidth() - 120));
-            height = Math.min(height, Math.max(420, w.getHeight() - 200));
+            width = Math.min(width, Math.max(UIScale.scale(640), w.getWidth() - UIScale.scale(120)));
+            height = Math.min(height, Math.max(UIScale.scale(420), w.getHeight() - UIScale.scale(200)));
         }
         return new Dimension(width, height);
     }

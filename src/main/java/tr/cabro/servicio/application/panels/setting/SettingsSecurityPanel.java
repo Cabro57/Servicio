@@ -99,7 +99,31 @@ public class SettingsSecurityPanel extends JPanel {
         // --- Kilit PIN'i ---
         SettingsKit.section(page, "Kilit PIN'i", "Açılışta ve kilit ekranında istenen 6 haneli şifre.", createPinForm());
 
+        // --- Kurtarma kodu ---
+        JPanel recovery = new JPanel(new net.miginfocom.swing.MigLayout("insets 0, wrap, gap 0 8", "[]", ""));
+        recovery.setOpaque(false);
+        recoveryState.putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, "foreground: $Label.disabledForeground");
+        recovery.add(recoveryState, "wmin 0");
+        JButton btnRecovery = new JButton("Yeni kurtarma kodu oluştur", new Ikon("icons/shield-user.svg", 16, "Label.foreground"));
+        btnRecovery.addActionListener(e -> {
+            User mem = MyDrawerBuilder.getInstance().getUser();
+            Long id = mem != null && mem.getId() != null ? mem.getId() : 1L;
+            tr.cabro.servicio.application.panels.PinRecoveryDialogs.showNewCode(this, id, this::loadRecoveryState);
+        });
+        recovery.add(btnRecovery, "growx 0");
+        SettingsKit.section(page, "Kurtarma kodu", "PIN unutulursa kilit ekranında \"PIN'imi unuttum\" ile yeni PIN belirlemek için.", recovery);
+        loadRecoveryState();
+
         return page;
+    }
+
+    private final JLabel recoveryState = new JLabel(" ");
+
+    private void loadRecoveryState() {
+        ServiceManager.getUserService().hasRecoveryCode().thenAccept(has -> SwingUtilities.invokeLater(() ->
+                recoveryState.setText(has ? "Kurtarma kodu oluşturulmuş. Kaybettiyseniz yenisini oluşturun; eskisi geçersiz olur."
+                        : "Henüz kurtarma kodu yok. PIN'i unutursanız uygulamaya giremezsiniz; şimdi oluşturun.")))
+                .exceptionally(ex -> null);
     }
 
     /**

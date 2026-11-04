@@ -52,7 +52,7 @@ public final class ManifestSigner {
         Files.writeString(keyFile, Base64.getEncoder().encodeToString(pair.getPrivate().getEncoded()),
                 StandardCharsets.US_ASCII);
         System.out.println("Özel anahtar yazıldı: " + keyFile.toAbsolutePath());
-        System.out.println("Açık anahtar (ManifestSignature.PUBLIC_KEY):");
+        System.out.println("Açık anahtar (ManifestSignature.PUBLIC_KEYS listesine eklenecek):");
         System.out.println(Base64.getEncoder().encodeToString(pair.getPublic().getEncoded()));
     }
 

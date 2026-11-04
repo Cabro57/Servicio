@@ -232,6 +232,8 @@ public class SetupPanel extends Form {
             Toasts.show(this, Toast.Type.SUCCESS, Messages.get("toast.setup.completed"));
             // Doğrudan sisteme al ve inaktif monitörü başlat
             FormManager.login();
+            // Kurtarma kodu ilk kurulumda bir kez gösterilir (tek kullanıcı: id 1, bkz. UserService.authenticate).
+            SwingUtilities.invokeLater(() -> PinRecoveryDialogs.showNewCode(FormManager.getFrame(), 1L, null));
         })).exceptionally(ex -> {
             SwingUtilities.invokeLater(() -> {
                 btnSave.setEnabled(true);

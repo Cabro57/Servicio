@@ -33,6 +33,20 @@ public enum DocumentText {
     WARRANTY_CERTIFICATE_NOTE("Garanti belgesi — kapsam",
             "Bu garanti, cihazın normal kullanım koşullarında ortaya çıkan donanımsal arızalarını kapsar; " +
                     "düşürme, sıvı teması, yetkisiz müdahale ve kullanıcı hatasından kaynaklanan hasarları kapsamaz."),
+    LOAN_OUT_TERMS("Emanet teslim — müşteri taahhüdü",
+            "Yukarıda bilgileri yazılı cihaz, belirtilen durumda ve aksesuarlarla tarafıma emanet olarak teslim edilmiştir. " +
+                    "Cihazı özenle kullanacağımı ve en geç iade tarihinde aynı durumda geri getireceğimi; kırılma, sıvı teması, " +
+                    "kayıp veya çalınma halinde oluşan zararın depozitodan kesileceğini, depozitoyu aşan zararı ayrıca " +
+                    "ödeyeceğimi kabul ederim. İade öncesi cihazdaki kişisel verilerimi silmek benim sorumluluğumdadır."),
+    LOAN_OUT_RETURN_NOTE("Emanet iade — beyan",
+            "Emanet cihaz yukarıda belirtilen durumda iade alınmış, depozito hesabı yukarıdaki şekilde kapatılmıştır. " +
+                    "Taraflar bu emanetle ilgili birbirlerinden başka bir talepte bulunmayacaklarını kabul eder."),
+    LOAN_IN_TERMS("Emanet alındı — işletme taahhüdü",
+            "Yukarıda bilgileri yazılı cihaz, belirtilen durumda ve aksesuarlarla işletmemize emanet olarak bırakılmıştır. " +
+                    "Cihaz teslim alındığı haliyle korunacak; bu belgenin ibrazı ile müşteriye ya da yazılı olarak " +
+                    "yetkilendirdiği kişiye teslim edilecektir."),
+    LOAN_IN_HANDOVER_NOTE("Emanet teslim edildi — müşteri beyanı",
+            "Emanete bıraktığım cihazı yukarıda belirtilen durumda ve aksesuarlarıyla eksiksiz teslim aldım."),
     SLIP_FOOTER("Fişlerin alt notu",
             "Teşekkür ederiz");
 

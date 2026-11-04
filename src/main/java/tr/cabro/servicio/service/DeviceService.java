@@ -45,6 +45,11 @@ public class DeviceService {
         return DbExecutor.run(() -> deviceRepository.delete(id));
     }
 
+    /** Dükkân cihazı (yedek, emanet verilebilir) işaretini yazar. */
+    public CompletableFuture<Void> setLoaner(Long id, boolean loaner) {
+        return DbExecutor.run(() -> deviceRepository.setLoaner(id, loaner));
+    }
+
     public CompletableFuture<Optional<Device>> get(Long id) {
         return DbExecutor.supply(() -> deviceRepository.findById(id));
     }

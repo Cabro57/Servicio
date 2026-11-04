@@ -14,6 +14,9 @@ public class User {
     private String email;
     private String password;
 
+    /** PIN kurtarma kodunun bcrypt özeti ({@code users.recovery_code}); null = kod oluşturulmamış. */
+    private String recoveryCode;
+
     // İşletme bilgileri (ad, telefon, adres, logo…) V28'den beri Business / business_profile'da.
 
     // Profil resminin "profiles/" alt klasöründeki dosya adı

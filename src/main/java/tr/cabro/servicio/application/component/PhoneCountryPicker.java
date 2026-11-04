@@ -52,6 +52,10 @@ final class PhoneCountryPicker {
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setFocusable(false);
         list.setFixedCellHeight(UIScale.scale(ROW_HEIGHT));
+        // Sabit genişlik yoksa JList genişliği ölçmek için ~240 satırın hepsini çizer; her satır
+        // ilk kez bayrak SVG'sini classpath'te arıyordu (açılışta ~350 ms EDT donması). Dikey
+        // listede hücre zaten liste genişliğinde çizilir; kaydırma alanı boyu ayrıca verilir.
+        list.setFixedCellWidth(UIScale.scale(MIN_WIDTH));
         list.setVisibleRowCount(VISIBLE_ROWS);
         list.setBackground(UIManager.getColor("Table.background"));
 

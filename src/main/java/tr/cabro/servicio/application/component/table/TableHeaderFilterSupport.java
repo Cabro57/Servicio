@@ -224,7 +224,7 @@ public class TableHeaderFilterSupport<T> {
         list.add(new JLabel("Yükleniyor…"));
         JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(BorderFactory.createEmptyBorder());
-        scroll.setPreferredSize(new Dimension(280, 220));
+        scroll.setPreferredSize(com.formdev.flatlaf.util.UIScale.scale(new Dimension(280, 220)));
         panel.add(scroll, "growx");
 
         JPanel buttons = new JPanel(new MigLayout("insets 0", "[grow][]"));

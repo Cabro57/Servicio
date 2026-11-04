@@ -146,8 +146,10 @@ public final class FormKit {
         JPanel c = new JPanel(new MigLayout("insets 0, gap 0, wrap, fillx, hidemode 3", "[grow, fill]", "[]4[]3[]"));
         c.setOpaque(false);
         label.setLabelFor(input instanceof JScrollPane sp ? sp.getViewport().getView() : input);
-        c.add(label);
-        c.add(input);
+        // wmin 0: uzun içerikli giriş (depo adı, seri no...) hücreyi, dolayısıyla pencereyi genişletmesin;
+        // alan hücre kadar daralır, taşan kısım kesilmez.
+        c.add(label, "wmin 0");
+        c.add(input, "wmin 0");
         if (below != null) {
             c.add(below, "wmin 0");
             Component view = input instanceof JScrollPane sp ? sp.getViewport().getView() : input;

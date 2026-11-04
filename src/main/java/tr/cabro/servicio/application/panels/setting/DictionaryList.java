@@ -66,7 +66,7 @@ class DictionaryList<T> extends JPanel {
         scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         // Tercih edilen yükseklik bilerek küçük: liste sayfayı uzatmasın, kendi içinde kaysın.
-        scroll.setPreferredSize(new Dimension(200, 200));
+        scroll.setPreferredSize(com.formdev.flatlaf.util.UIScale.scale(new Dimension(200, 200)));
         add(scroll);
         bindKeys();
         addFocusListener(new FocusAdapter() {

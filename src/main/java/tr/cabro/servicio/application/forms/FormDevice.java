@@ -7,6 +7,7 @@ import tr.cabro.servicio.application.component.detail.DetailKit;
 import tr.cabro.servicio.application.component.detail.DetailListSection;
 import tr.cabro.servicio.application.component.table.ViewTabs;
 import tr.cabro.servicio.application.panels.edit.DeviceEditPanel;
+import tr.cabro.servicio.application.panels.loan.DeviceLoanDialogs;
 import tr.cabro.servicio.application.renderer.MoneyCellRenderer;
 import tr.cabro.servicio.application.renderer.MultiLineTableCellRenderer;
 import tr.cabro.servicio.application.system.AllForms;
@@ -17,12 +18,15 @@ import tr.cabro.servicio.application.utils.ErrorHandler;
 import tr.cabro.servicio.i18n.DateFormats;
 import tr.cabro.servicio.model.Customer;
 import tr.cabro.servicio.model.Device;
+import tr.cabro.servicio.model.DeviceLoan;
 import tr.cabro.servicio.model.DeviceTransaction;
 import tr.cabro.servicio.model.WorkOrder;
 import tr.cabro.servicio.model.contract.Visualizable;
 import tr.cabro.servicio.model.enums.BadgeColor;
 import tr.cabro.servicio.model.enums.DeviceTransactionType;
+import tr.cabro.servicio.model.enums.LoanDirection;
 import tr.cabro.servicio.model.enums.ServiceStatus;
+import tr.cabro.servicio.service.DeviceLoanService;
 import tr.cabro.servicio.service.DeviceService;
 import tr.cabro.servicio.service.DeviceTransactionService;
 import tr.cabro.servicio.service.ServiceManager;
@@ -31,68 +35,84 @@ import tr.cabro.servicio.util.PhoneHelper;
 
 import javax.swing.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
- * Cihaz detayı: kimlik şeridinde cihazın şu anki durumu (atölyede / 2.el stokta / satıldı),
- * servis sayısı ve servis tutarı; altta servis ve 2.el alım-satım hareketlerinin birleşik geçmişi
- * (Tümü / Servis / Alım-satım), sağda cihaz bilgileri ve son sahibi.
+ * Cihaz detayı: kimlik şeridinde cihazın şu anki durumu (atölyede / 2.el stokta / satıldı / emanette),
+ * servis sayısı ve servis tutarı; altta servis, 2.el alım-satım ve emanet hareketlerinin birleşik
+ * geçmişi, sağda cihaz bilgileri, emanet kartı ve son sahibi.
  */
 public class FormDevice extends Form {
 
     private static final String VIEW_ALL = "all";
     private static final String VIEW_SERVICE = "service";
     private static final String VIEW_TRADE = "trade";
+    private static final String VIEW_LOAN = "loan";
 
     private Device device;
     private final DeviceService deviceService;
     private final WorkOrderService workOrderService;
     private final DeviceTransactionService deviceTransactionService;
+    private final DeviceLoanService deviceLoanService;
 
     private DetailHeader header;
     private final Badge typeBadge = new Badge(simple("Cihaz", BadgeColor.GRAY));
+    private final Badge loanerBadge = new Badge(simple("Dükkân cihazı", BadgeColor.TEAL));
     private final Badge stateBadge = new Badge(simple("-", BadgeColor.BLUE));
+    private JButton loanButton;
     private DetailListSection<HistoryEntry> history;
     private ViewTabs views;
     private List<HistoryEntry> entries = Collections.emptyList();
     private Customer lastOwner;
+    private DeviceLoan openLoan;
+    private DeviceLoan lastLoan;
 
     private JLabel factType, factBrand, factModel, factSerial, factAccessory, factCreated;
     private JLabel ownerName, ownerPhone;
     private JButton ownerLink;
+    private JPanel loanCard;
+    private JLabel loanTitle, loanLine1, loanLine2;
+    private JButton loanCloseButton, loanDocsButton, loanCancelLink;
 
     public FormDevice(Device device) {
         this.device = device;
         this.deviceService = ServiceManager.getDeviceService();
         this.workOrderService = ServiceManager.getWorkOrderService();
         this.deviceTransactionService = ServiceManager.getDeviceTransactionService();
+        this.deviceLoanService = ServiceManager.getDeviceLoanService();
         init();
     }
 
-    /** Servis kaydı ya da 2.el hareketinin birleşik geçmiş satırı. */
+    /** Servis kaydı, 2.el hareketi ya da emanetin birleşik geçmiş satırı. */
     private static class HistoryEntry {
-        enum Kind { SERVICE, PURCHASE, SALE }
+        enum Kind { SERVICE, PURCHASE, SALE, LOAN }
 
         final Kind kind;
         final LocalDateTime date;
         final Customer customer;
         final WorkOrder workOrder;          // yalnızca SERVICE
         final DeviceTransaction transaction; // yalnızca PURCHASE/SALE
+        final DeviceLoan loan;               // yalnızca LOAN
 
-        HistoryEntry(Kind kind, LocalDateTime date, Customer customer, WorkOrder workOrder, DeviceTransaction transaction) {
+        HistoryEntry(Kind kind, LocalDateTime date, Customer customer, WorkOrder workOrder, DeviceTransaction transaction, DeviceLoan loan) {
             this.kind = kind;
             this.date = date;
             this.customer = customer;
             this.workOrder = workOrder;
             this.transaction = transaction;
+            this.loan = loan;
         }
 
         String title() {
             switch (kind) {
                 case SERVICE: return "SRV-" + workOrder.getId() + " servis";
                 case PURCHASE: return "2.el alım";
+                case LOAN: return loan.getCode() + " · " + loan.getDirection().getDisplayName().toLowerCase(Locale.ROOT);
                 default: return "2.el satış";
             }
         }
@@ -101,6 +121,19 @@ public class FormDevice extends Form {
             if (kind == Kind.SERVICE) {
                 String fault = workOrder.getReportedFault();
                 return fault != null && !fault.isBlank() ? fault : "Şikâyet girilmemiş";
+            }
+            if (kind == Kind.LOAN) {
+                if (loan.isOpen()) {
+                    return loan.isOverdue() ? "Açık · iade tarihi geçti" : "Açık"
+                            + (loan.getDueAt() != null ? " · " + (loan.getDirection() == LoanDirection.OUT ? "iade " : "teslim ")
+                            + loan.getDueAt().format(DateFormats.shortDate()) : "");
+                }
+                String closed = (loan.getDirection() == LoanDirection.OUT ? "İade alındı " : "Teslim edildi ")
+                        + loan.getReturnedAt().format(DateFormats.shortDate());
+                if (loan.getDamageCharge() != null && loan.getDamageCharge().signum() > 0) {
+                    closed += " · hasar kesintisi " + tr.cabro.servicio.util.Format.formatPrice(loan.getDamageCharge());
+                }
+                return closed;
             }
             if (kind == Kind.SALE && transaction.getWarrantyMonths() != null && transaction.getWarrantyMonths() > 0) {
                 return transaction.getWarrantyMonths() + " ay garanti";
@@ -111,6 +144,7 @@ public class FormDevice extends Form {
 
         BigDecimal amount() {
             if (kind == Kind.SERVICE) return workOrder.getTotalServiceAmount();
+            if (kind == Kind.LOAN) return loan.hasDeposit() ? loan.getDeposit() : null;
             return transaction.getPrice();
         }
     }
@@ -128,10 +162,12 @@ public class FormDevice extends Form {
 
         header = new DetailHeader();
         header.addBadge(typeBadge);
+        header.addBadge(loanerBadge);
         header.addBadge(stateBadge);
         header.addStat("services", "Servis");
         header.addStat("serviceTotal", "Servis tutarı");
         header.addStat("last", "Son işlem");
+        loanButton = header.addAction("Emanet", "icons/handshake.svg", this::onLoanAction);
         header.addAction("Düzenle", "icons/pencil.svg", () -> DeviceEditPanel.open(this, device, this::formRefresh));
         header.setPrimary("Yeni Servis", "icons/wrench.svg", () -> {
             FormWorkOrders form = (FormWorkOrders) AllForms.getForm(FormWorkOrders.class);
@@ -148,11 +184,12 @@ public class FormDevice extends Form {
                 new ColumnDef<HistoryEntry>("Tutar", BigDecimal.class, HistoryEntry::amount).alignment(SwingConstants.TRAILING),
                 ColumnDef.<HistoryEntry>badge("Durum", ServiceStatus.class,
                         h -> h.kind == HistoryEntry.Kind.SERVICE ? h.workOrder.getServiceStatus() : null)
-        ), "Henüz geçmiş yok", "Bu cihaz servise geldiğinde ya da 2.el alınıp satıldığında burada görünür.", false);
+        ), "Henüz geçmiş yok", "Bu cihaz servise geldiğinde, 2.el alınıp satıldığında ya da emanet verildiğinde burada görünür.", false);
         views = new ViewTabs();
         views.addView(VIEW_ALL, "Tümü");
         views.addView(VIEW_SERVICE, "Servis");
         views.addView(VIEW_TRADE, "Alım-satım");
+        views.addView(VIEW_LOAN, "Emanet");
         views.setOnChange(k -> applyView());
         history.setTabs(views);
 
@@ -171,6 +208,7 @@ public class FormDevice extends Form {
         t.getColumnModel().getColumn(4).setMinWidth(130);
         history.setOnOpen(h -> {
             if (h.kind == HistoryEntry.Kind.SERVICE) FormManager.showForm(new FormWorkOrder(h.workOrder));
+            else if (h.kind == HistoryEntry.Kind.LOAN) DeviceLoanDialogs.showDocumentMenu(history.getTable(), this, h.loan);
             else if (h.customer != null) FormManager.showForm(new FormCustomer(h.customer));
         });
         add(history, "grow, wmin 0, hmin 0");
@@ -180,8 +218,30 @@ public class FormDevice extends Form {
     }
 
     private JPanel buildSideColumn() {
-        JPanel column = new JPanel(new MigLayout("insets 0, wrap, fillx, gapy 16", "[grow, fill]", ""));
+        JPanel column = new JPanel(new MigLayout("insets 0, wrap, fillx, gapy 16, hidemode 3", "[grow, fill]", ""));
         column.setOpaque(false);
+
+        // --- Emanet: açık emanet ya da son emanet, eylemleriyle ---
+        loanDocsButton = DetailKit.link("Belgeler", () -> {
+            DeviceLoan l = openLoan != null ? openLoan : lastLoan;
+            if (l != null) DeviceLoanDialogs.showDocumentMenu(loanDocsButton, this, l);
+        });
+        loanCard = DetailKit.card("Emanet", loanDocsButton);
+        loanTitle = new JLabel(" ");
+        loanTitle.putClientProperty(com.formdev.flatlaf.FlatClientProperties.STYLE, "font: bold");
+        loanLine1 = DetailKit.muted(" ");
+        loanLine2 = DetailKit.muted(" ");
+        loanCloseButton = DetailKit.secondaryButton("İade al", "icons/undo-2.svg", this::onLoanAction);
+        loanCancelLink = DetailKit.link("Yanlış kayıt? İptal et", () -> {
+            if (openLoan != null) DeviceLoanDialogs.confirmCancel(this, openLoan, this::formRefresh);
+        });
+        loanCard.add(loanTitle, "wmin 0");
+        loanCard.add(loanLine1, "wmin 0");
+        loanCard.add(loanLine2, "wmin 0");
+        loanCard.add(loanCloseButton, "gaptop 8, split 2, growx 0");
+        loanCard.add(loanCancelLink, "gapleft push, growx 0");
+        loanCard.setVisible(false);
+        column.add(loanCard);
 
         JPanel info = DetailKit.card("Cihaz bilgileri", null);
         JPanel facts = DetailKit.facts();
@@ -207,6 +267,12 @@ public class FormDevice extends Form {
         return column;
     }
 
+    /** Açık emanet varsa kapatır (iade al / teslim et), yoksa yeni emanet başlatır (ver / al). */
+    private void onLoanAction() {
+        if (openLoan != null) DeviceLoanDialogs.openClose(this, openLoan, this::formRefresh);
+        else DeviceLoanDialogs.openStart(this, device, this::formRefresh);
+    }
+
     @Override
     public void formRefresh() {
         deviceService.get(device.getId()).thenAccept(updated ->
@@ -220,6 +286,7 @@ public class FormDevice extends Form {
     private void refreshData() {
         header.setTitle(device.getDisplayName());
         typeBadge.setVisualizable(simple(device.getDeviceType() != null ? device.getDeviceType().getName() : "Türü belirsiz", BadgeColor.GRAY));
+        loanerBadge.setVisible(device.isLoaner());
         header.setMeta(device.getSerialNo() != null && !device.getSerialNo().isBlank() ? "SN " + device.getSerialNo() : "Seri no girilmemiş",
                 device.getAccessory() != null && !device.getAccessory().isBlank() ? "Aksesuar: " + device.getAccessory() : null,
                 device.getCreatedAt() != null ? "Kayıt " + device.getCreatedAt().format(DateFormats.shortDate()) : null);
@@ -232,31 +299,39 @@ public class FormDevice extends Form {
         DetailKit.setFact(factCreated, device.getCreatedAt() != null ? device.getCreatedAt().format(DateFormats.dateTime()) : null);
 
         history.showLoading();
-        workOrderService.getAllByDevice(device.getId()).thenCombine(deviceTransactionService.getHistoryByDeviceId(device.getId()),
-                (workOrders, transactions) -> {
-                    List<HistoryEntry> list = new ArrayList<>();
-                    for (WorkOrder wo : workOrders) {
-                        list.add(new HistoryEntry(HistoryEntry.Kind.SERVICE, wo.getCreatedAt(), wo.getCustomer(), wo, null));
-                    }
-                    for (DeviceTransaction tr : transactions) {
-                        HistoryEntry.Kind kind = tr.getType() == DeviceTransactionType.PURCHASE
-                                ? HistoryEntry.Kind.PURCHASE : HistoryEntry.Kind.SALE;
-                        list.add(new HistoryEntry(kind, tr.getTransactionDate(), tr.getCustomer(), null, tr));
-                    }
-                    list.sort(Comparator.comparing((HistoryEntry h) -> h.date, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
-                    SwingUtilities.invokeLater(() -> applyHistory(list, workOrders));
-                    return null;
-                }).exceptionally(ex -> {
-                    SwingUtilities.invokeLater(() -> history.showError("Cihaz geçmişi yüklenemedi."));
-                    return ErrorHandler.handle(this, "Cihaz geçmişi yüklenemedi", ex);
-                });
+        CompletableFuture<List<WorkOrder>> woF = workOrderService.getAllByDevice(device.getId());
+        CompletableFuture<List<DeviceTransaction>> trF = deviceTransactionService.getHistoryByDeviceId(device.getId());
+        CompletableFuture<List<DeviceLoan>> loanF = deviceLoanService.getByDevice(device.getId());
+        CompletableFuture.allOf(woF, trF, loanF).thenRun(() -> {
+            List<WorkOrder> workOrders = woF.join();
+            List<DeviceLoan> loans = loanF.join();
+            List<HistoryEntry> list = new ArrayList<>();
+            for (WorkOrder wo : workOrders) {
+                list.add(new HistoryEntry(HistoryEntry.Kind.SERVICE, wo.getCreatedAt(), wo.getCustomer(), wo, null, null));
+            }
+            for (DeviceTransaction tr : trF.join()) {
+                HistoryEntry.Kind kind = tr.getType() == DeviceTransactionType.PURCHASE
+                        ? HistoryEntry.Kind.PURCHASE : HistoryEntry.Kind.SALE;
+                list.add(new HistoryEntry(kind, tr.getTransactionDate(), tr.getCustomer(), null, tr, null));
+            }
+            for (DeviceLoan loan : loans) {
+                list.add(new HistoryEntry(HistoryEntry.Kind.LOAN, loan.getGivenAt(), loan.getCustomer(), null, null, loan));
+            }
+            list.sort(Comparator.comparing((HistoryEntry h) -> h.date, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+            SwingUtilities.invokeLater(() -> applyHistory(list, workOrders, loans));
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> history.showError("Cihaz geçmişi yüklenemedi."));
+            return ErrorHandler.handle(this, "Cihaz geçmişi yüklenemedi", ex);
+        });
     }
 
-    private void applyHistory(List<HistoryEntry> list, List<WorkOrder> workOrders) {
+    private void applyHistory(List<HistoryEntry> list, List<WorkOrder> workOrders, List<DeviceLoan> loans) {
         entries = list;
+        long tradeCount = list.stream().filter(h -> h.kind == HistoryEntry.Kind.PURCHASE || h.kind == HistoryEntry.Kind.SALE).count();
         views.setCount(VIEW_ALL, (long) list.size());
         views.setCount(VIEW_SERVICE, (long) workOrders.size());
-        views.setCount(VIEW_TRADE, (long) (list.size() - workOrders.size()));
+        views.setCount(VIEW_TRADE, tradeCount);
+        views.setCount(VIEW_LOAN, (long) loans.size());
         applyView();
 
         BigDecimal serviceTotal = workOrders.stream().map(WorkOrder::getTotalServiceAmount).filter(Objects::nonNull)
@@ -265,22 +340,80 @@ public class FormDevice extends Form {
         header.setStat("serviceTotal", tr.cabro.servicio.util.Format.formatPrice(serviceTotal), null);
         header.setStat("last", list.isEmpty() || list.get(0).date == null ? "—" : list.get(0).date.format(DateFormats.shortDate()), null);
 
-        // Şu anki durum: açık servis > son 2.el hareketi.
+        openLoan = loans.stream().filter(DeviceLoan::isOpen).findFirst().orElse(null);
+        lastLoan = loans.isEmpty() ? null : loans.get(0);
+
+        // Şu anki durum: açık emanet > açık servis > son 2.el hareketi.
         boolean inShop = workOrders.stream().anyMatch(w -> w.getServiceStatus() != ServiceStatus.DELIVERED
                 && w.getServiceStatus() != ServiceStatus.RETURN);
-        HistoryEntry lastTrade = list.stream().filter(h -> h.kind != HistoryEntry.Kind.SERVICE).findFirst().orElse(null);
-        if (inShop) stateBadge.setVisualizable(simple("Atölyede", BadgeColor.BLUE));
+        HistoryEntry lastTrade = list.stream().filter(h -> h.kind == HistoryEntry.Kind.PURCHASE || h.kind == HistoryEntry.Kind.SALE)
+                .findFirst().orElse(null);
+        if (openLoan != null) stateBadge.setVisualizable(simple(openLoan.getDirection() == LoanDirection.OUT ? "Emanette" : "Emanet bırakıldı",
+                openLoan.isOverdue() ? BadgeColor.RED : BadgeColor.YELLOW));
+        else if (inShop) stateBadge.setVisualizable(simple("Atölyede", BadgeColor.BLUE));
         else if (lastTrade != null && lastTrade.kind == HistoryEntry.Kind.PURCHASE) stateBadge.setVisualizable(simple("2.el stokta", BadgeColor.PURPLE));
         else if (lastTrade != null) stateBadge.setVisualizable(simple("2.el satıldı", BadgeColor.GREEN));
-        stateBadge.setVisible(inShop || lastTrade != null);
+        stateBadge.setVisible(openLoan != null || inShop || lastTrade != null);
 
-        // Son sahibi: en yeni hareketin kişisi (2.el alımda cihaz artık dükkânda, satıcı eski sahip).
-        HistoryEntry latest = list.stream().filter(h -> h.customer != null).findFirst().orElse(null);
+        applyLoan();
+
+        // Son sahibi: en yeni servis/2.el hareketinin kişisi (emanet sahipliği değiştirmez;
+        // 2.el alımda cihaz artık dükkânda, satıcı eski sahip).
+        HistoryEntry latest = list.stream().filter(h -> h.customer != null && h.kind != HistoryEntry.Kind.LOAN).findFirst().orElse(null);
         lastOwner = latest != null && latest.kind != HistoryEntry.Kind.PURCHASE ? latest.customer : null;
-        ownerName.setText(lastOwner != null ? lastOwner.getFullName()
+        ownerName.setText(device.isLoaner() ? "Dükkân (yedek cihaz)" : lastOwner != null ? lastOwner.getFullName()
                 : (latest != null ? "Dükkânda (2.el stok)" : "Bilinmiyor"));
-        ownerPhone.setText(lastOwner != null ? PhoneHelper.formatForDisplay(lastOwner.getPhoneNumber1()) : " ");
-        ownerLink.setVisible(lastOwner != null);
+        ownerPhone.setText(lastOwner != null && !device.isLoaner() ? PhoneHelper.formatForDisplay(lastOwner.getPhoneNumber1()) : " ");
+        ownerLink.setVisible(lastOwner != null && !device.isLoaner());
+    }
+
+    /** Emanet düğmesi, uyarı satırı ve emanet kartı. */
+    private void applyLoan() {
+        LoanDirection direction = DeviceLoanDialogs.directionFor(device);
+        if (openLoan != null) {
+            loanButton.setText(openLoan.getDirection().getCloseActionName());
+            String who = openLoan.getCustomer() != null ? openLoan.getCustomer().getFullName() : "—";
+            long days = ChronoUnit.DAYS.between(openLoan.getGivenAt().toLocalDate(), LocalDate.now());
+            String due = openLoan.getDueAt() != null
+                    ? (openLoan.getDirection() == LoanDirection.OUT ? " · iade " : " · teslim ") + openLoan.getDueAt().format(DateFormats.shortDate()) : "";
+            String text = (openLoan.getDirection() == LoanDirection.OUT ? "Emanette: " : "Emanet bırakan: ") + who
+                    + " · " + (days == 0 ? "bugün" : days + " gündür") + due + (openLoan.isOverdue() ? " (gecikti)" : "");
+            header.setNotice(text, null, "icons/handshake.svg",
+                    openLoan.isOverdue() ? "Servicio.dangerColor" : "Servicio.infoColor", openLoan.isOverdue());
+        } else {
+            loanButton.setText(direction.getActionName());
+            header.setNotice(null, null, "icons/handshake.svg", "Servicio.infoColor", false);
+        }
+
+        DeviceLoan shown = openLoan != null ? openLoan : lastLoan;
+        loanCard.setVisible(shown != null || device.isLoaner());
+        loanCancelLink.setVisible(openLoan != null);
+        if (shown == null) {
+            loanTitle.setText("Şu an emanette değil");
+            loanLine1.setText("Müşteriye yedek olarak verilebilir.");
+            loanLine2.setText(" ");
+            loanCloseButton.setText(direction.getActionName());
+            loanCloseButton.setVisible(true);
+            loanDocsButton.setVisible(false);
+            return;
+        }
+        loanDocsButton.setVisible(true);
+        String who = shown.getCustomer() != null ? shown.getCustomer().getFullName() : "—";
+        if (shown.isOpen()) {
+            loanTitle.setText(who);
+            loanLine1.setText((shown.getDirection() == LoanDirection.OUT ? "Verildi " : "Bırakıldı ")
+                    + shown.getGivenAt().format(DateFormats.shortDate())
+                    + (shown.getDueAt() != null ? " · " + (shown.getDirection() == LoanDirection.OUT ? "iade " : "teslim ")
+                    + shown.getDueAt().format(DateFormats.shortDate()) : ""));
+            loanLine2.setText(shown.hasDeposit() ? "Depozito " + tr.cabro.servicio.util.Format.formatPrice(shown.getDeposit()) : " ");
+            loanCloseButton.setText(shown.getDirection().getCloseActionName());
+        } else {
+            loanTitle.setText("Şu an emanette değil");
+            loanLine1.setText("Son: " + who + " · " + shown.getReturnedAt().format(DateFormats.shortDate()));
+            loanLine2.setText(" ");
+            loanCloseButton.setText(direction.getActionName());
+        }
+        loanCloseButton.setVisible(true);
     }
 
     private void applyView() {
@@ -288,7 +421,9 @@ public class FormDevice extends Form {
         List<HistoryEntry> rows = VIEW_SERVICE.equals(key)
                 ? entries.stream().filter(h -> h.kind == HistoryEntry.Kind.SERVICE).collect(Collectors.toList())
                 : VIEW_TRADE.equals(key)
-                ? entries.stream().filter(h -> h.kind != HistoryEntry.Kind.SERVICE).collect(Collectors.toList())
+                ? entries.stream().filter(h -> h.kind == HistoryEntry.Kind.PURCHASE || h.kind == HistoryEntry.Kind.SALE).collect(Collectors.toList())
+                : VIEW_LOAN.equals(key)
+                ? entries.stream().filter(h -> h.kind == HistoryEntry.Kind.LOAN).collect(Collectors.toList())
                 : entries;
         history.setData(rows);
     }

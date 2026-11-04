@@ -68,6 +68,7 @@ public class FormCustomer extends Form {
     private static final String SECTION_PAYMENTS = "payments";
     private static final String SECTION_DEVICES = "devices";
     private static final String SECTION_SECONDHAND = "secondhand";
+    private static final String SECTION_LOANS = "loans";
 
     /** Son hareketler listesinde gösterilen en fazla satır; tamamı ilgili bölümde. */
     private static final int RECENT_ACTIVITY_LIMIT = 15;
@@ -92,6 +93,7 @@ public class FormCustomer extends Form {
     private CustomerListSection<Payment> paymentsSection;
     private CustomerListSection<Device> devicesSection;
     private CustomerListSection<DeviceTransaction> secondHandSection;
+    private CustomerListSection<DeviceLoan> loansSection;
 
     private List<WorkOrder> workOrders = List.of();
 
@@ -119,7 +121,8 @@ public class FormCustomer extends Form {
         nav.addSection(SECTION_SALES, "Satışlar", "icons/shopping-bag.svg", "Ctrl+3");
         nav.addSection(SECTION_PAYMENTS, "Ödemeler", "icons/hand-coins.svg", "Ctrl+4");
         nav.addSection(SECTION_DEVICES, "Cihazlar", "icons/tablet-smartphone.svg", "Ctrl+5");
-        nav.addSection(SECTION_SECONDHAND, "2.El Alım-Satım", "icons/handshake.svg", "Ctrl+6");
+        nav.addSection(SECTION_SECONDHAND, "2.El Alım-Satım", "icons/arrow-down-up.svg", "Ctrl+6");
+        nav.addSection(SECTION_LOANS, "Emanetler", "icons/handshake.svg", "Ctrl+7");
         nav.setCount(SECTION_OVERVIEW, null);
         // Sol kolon: bölüm menüsü, altında müşteri bilgileri ve notu.
         infoPanel = new CustomerInfoPanel(this::openEditModal);
@@ -141,6 +144,7 @@ public class FormCustomer extends Form {
         sections.add(createPaymentsSection(), SECTION_PAYMENTS);
         sections.add(createDevicesSection(), SECTION_DEVICES);
         sections.add(createSecondHandSection(), SECTION_SECONDHAND);
+        sections.add(createLoansSection(), SECTION_LOANS);
         add(sections, "grow, wmin 0, hmin 0");
 
         installSectionShortcuts();
@@ -162,10 +166,10 @@ public class FormCustomer extends Form {
         ((CardLayout) sections.getLayout()).show(sections, id);
     }
 
-    /** Ctrl+1..6 bölümler arasında geçer; menüdeki ipuçları aynı sırayı gösterir. */
+    /** Ctrl+1..7 bölümler arasında geçer; menüdeki ipuçları aynı sırayı gösterir. */
     private void installSectionShortcuts() {
         InputMap inputMap = getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 7; i++) {
             String sectionId = nav.idAt(i);
             String actionKey = "customerSection" + i;
             inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_1 + i, InputEvent.CTRL_DOWN_MASK), actionKey);
@@ -306,6 +310,46 @@ public class FormCustomer extends Form {
         return secondHandSection;
     }
 
+    private JComponent createLoansSection() {
+        loansSection = new CustomerListSection<>("Emanetler", Arrays.asList(
+                new ColumnDef<>("Kayıt", DeviceLoan.class, l -> l),
+                new ColumnDef<>("Cihaz", Device.class, DeviceLoan::getDevice),
+                new ColumnDef<>("Tarih", String.class, l -> l.getGivenAt() != null ? l.getGivenAt().format(DateFormats.shortDate()) : "-"),
+                ColumnDef.currency("Depozito", l -> l.hasDeposit() ? l.getDeposit() : null),
+                new ColumnDef<DeviceLoan>("", String.class, l -> "").editable(true)
+        ), "Emanet yok", "Bu müşteriye verilen yedek cihazlar ve bıraktığı emanetler burada listelenir.", false);
+        loansSection.setOnOpen(this::openLoanDevice);
+        JTable table = loansSection.getTable();
+        table.getColumnModel().getColumn(0).setCellRenderer(new MultiLineTableCellRenderer<DeviceLoan>(
+                l -> l.getCode() + " · " + l.getDirection().getDisplayName().toLowerCase(java.util.Locale.ROOT),
+                FormCustomer::loanState));
+        table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer<Device>(
+                d -> d != null ? d.getBrand() + " " + d.getModel() : "Belirtilmedi",
+                d -> d != null && d.getSerialNo() != null ? "SN: " + d.getSerialNo() : ""));
+        table.getColumnModel().getColumn(0).setPreferredWidth(240);
+        table.getColumnModel().getColumn(1).setPreferredWidth(260);
+        DynamicActionColumnSupport.install(table, 4, loansSection.getTableModel(), List.of(
+                DynamicActionColumnSupport.button("icons/eye.svg", new Color(13, 110, 253), "Cihaz detayı", this::openLoanDevice)));
+        table.getColumnModel().getColumn(4).setMaxWidth(60);
+        return loansSection;
+    }
+
+    /** "Açık · iade 12.11", "Gecikti · iade 01.11" ya da "İade alındı 05.11". */
+    private static String loanState(DeviceLoan l) {
+        boolean out = l.getDirection() == tr.cabro.servicio.model.enums.LoanDirection.OUT;
+        if (l.isOpen()) {
+            String due = l.getDueAt() != null ? " · " + (out ? "iade " : "teslim ") + l.getDueAt().format(DateFormats.shortDate()) : "";
+            return (l.isOverdue() ? "Gecikti" : "Açık") + due;
+        }
+        return (out ? "İade alındı " : "Teslim edildi ") + l.getReturnedAt().format(DateFormats.shortDate());
+    }
+
+    private void openLoanDevice(DeviceLoan loan) {
+        deviceService.get(loan.getDeviceId()).thenAccept(opt -> SwingUtilities.invokeLater(() ->
+                opt.ifPresent(this::openDevice)
+        )).exceptionally(ex -> ErrorHandler.handle(this, "Cihaz yüklenemedi", ex));
+    }
+
     private String saleLabel(Sale s) {
         return s.getType() == SaleType.RETURN
                 ? "İADE-" + s.getId() + " (SAT-" + s.getParentSaleId() + ")"
@@ -356,6 +400,11 @@ public class FormCustomer extends Form {
             secondHandSection.setData(list);
             nav.setCount(SECTION_SECONDHAND, list.size());
         })).exceptionally(ex -> sectionError(secondHandSection, "2.el işlemleri yüklenemedi", ex));
+
+        ServiceManager.getDeviceLoanService().getByCustomer(id).thenAccept(list -> SwingUtilities.invokeLater(() -> {
+            loansSection.setData(list);
+            nav.setCount(SECTION_LOANS, list.size());
+        })).exceptionally(ex -> sectionError(loansSection, "Emanetler yüklenemedi", ex));
 
         CompletableFuture.allOf(workOrdersF, salesF, paymentsF, tradesF)
                 .thenAccept(v -> {

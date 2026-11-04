@@ -32,13 +32,22 @@ public interface DeviceRepository extends SqlObject {
             "serial_no=:serialNo, accessory=:accessory WHERE id=:id")
     void update(@BindBean Device device);
 
+    /** Dükkân cihazı işareti; genel {@link #update} bu kolona dokunmaz (servis kaydı cihazı güncellerken işaret silinmesin). */
+    @SqlUpdate("UPDATE devices SET is_loaner = :loaner, updated_at = CURRENT_TIMESTAMP WHERE id = :id")
+    void setLoaner(@Bind("id") Long id, @Bind("loaner") boolean loaner);
+
     @SqlUpdate("DELETE FROM devices WHERE id = :id")
     void delete(@Bind("id") Long id);
 
     // ÖNEMLİ: Alias isimleri unique olmalı
     String BASE_SELECT = "SELECT " +
             "d.id, d.model, d.serial_no, d.accessory, " +
-            "d.created_at, d.is_deleted, d.updated_at, " +
+            "d.created_at, d.is_deleted, d.updated_at, d.is_loaner, " +
+            // Açık emanet (en fazla bir tane): yönü ve kimde olduğu.
+            "(SELECT l.direction FROM device_loans l WHERE l.device_id = d.id AND l.returned_at IS NULL AND l.is_deleted = 0) AS open_loan_direction, " +
+            "(SELECT COALESCE(NULLIF(TRIM(c.business_name), ''), TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, ''))) " +
+            " FROM device_loans l JOIN customers c ON c.id = l.customer_id " +
+            " WHERE l.device_id = d.id AND l.returned_at IS NULL AND l.is_deleted = 0) AS open_loan_party, " +
             "dt.id AS device_type_id, " +
             "dt.name AS device_type_name, " +
             "db.id AS device_brand_id, " +

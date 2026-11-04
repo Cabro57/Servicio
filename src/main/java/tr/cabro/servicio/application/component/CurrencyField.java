@@ -122,7 +122,7 @@ public class CurrencyField extends JFormattedTextField {
             popup.add(item);
         }
 
-        int width = Math.max(getWidth(), 170);
+        int width = Math.max(getWidth(), com.formdev.flatlaf.util.UIScale.scale(170));
         popup.setPreferredSize(new Dimension(width, popup.getPreferredSize().height));
         Popups.showBelow(popup, this);
     }

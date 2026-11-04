@@ -10,5 +10,7 @@ import org.jdbi.v3.core.enums.EnumByName;
 @EnumByName
 public enum AllocationTargetType {
     WORK_ORDER,
-    SALE
+    SALE,
+    /** Emanet cihaz depozitosu (device_loans); müşteri carisine yazılmaz, yalnızca kasada görünür. */
+    DEVICE_LOAN
 }

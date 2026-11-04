@@ -3,7 +3,7 @@ package tr.cabro.servicio.application;
 import tr.cabro.servicio.application.component.AppSplashScreen;
 import javax.swing.*;
 
-public class SplashScreenTest {
+public class SplashScreenDemo {
 
     public static void main(String[] args) {
         // Swing arayüz bileşenlerini güvenli bir şekilde başlatmak için invokeLater kullanıyoruz

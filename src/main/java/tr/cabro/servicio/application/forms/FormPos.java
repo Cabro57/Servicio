@@ -1186,7 +1186,7 @@ public class FormPos extends Form {
         JPanel panel = new JPanel(new MigLayout("fill, insets 4 15 10 15, gapy 10", "[grow]", "[pref!][grow]"));
         panel.add(search, "growx, wrap");
         panel.add(area, "grow");
-        panel.setPreferredSize(new Dimension(760, 480));
+        panel.setPreferredSize(com.formdev.flatlaf.util.UIScale.scale(new Dimension(760, 480)));
 
         SimpleModalBorder.Option[] options = {
                 new SimpleModalBorder.Option("Kapat", SimpleModalBorder.CLOSE_OPTION)

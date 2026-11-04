@@ -19,6 +19,10 @@ public class DeviceRowMapper implements RowMapper<Device> {
         device.setSerialNo(rs.getString("serial_no"));
         device.setAccessory(rs.getString("accessory"));
         device.setDeleted(rs.getBoolean("is_deleted"));
+        device.setLoaner(rs.getBoolean("is_loaner"));
+        String loanDirection = rs.getString("open_loan_direction");
+        device.setOpenLoanDirection(loanDirection != null ? tr.cabro.servicio.model.enums.LoanDirection.valueOf(loanDirection) : null);
+        device.setOpenLoanParty(rs.getString("open_loan_party"));
 
         // Hatalı olan rs.getTimestamp yerine rs.getString kullanıyoruz
         device.setCreatedAt(parseDateTime(rs.getString("created_at")));

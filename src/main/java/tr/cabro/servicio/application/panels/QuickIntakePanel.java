@@ -131,7 +131,7 @@ public class QuickIntakePanel extends AbstractEditPanel<WorkOrder> {
         Dimension d = super.getPreferredSize();
         Window w = SwingUtilities.getWindowAncestor(this);
         if (w == null) w = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
-        if (w != null) d.width = Math.min(d.width, Math.max(480, w.getWidth() - 120));
+        if (w != null) d.width = Math.min(d.width, Math.max(com.formdev.flatlaf.util.UIScale.scale(480), w.getWidth() - com.formdev.flatlaf.util.UIScale.scale(120)));
         return d;
     }
 

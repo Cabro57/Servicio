@@ -24,6 +24,14 @@ public interface UserRepository {
             "profile_picture=:profilePicture WHERE id=:id")
     void update(@BindBean User user);
 
+    /** Yalnızca kurtarma kodu özeti; genel {@link #update} bu kolona dokunmaz. */
+    @SqlUpdate("UPDATE users SET recovery_code = :hash WHERE id = :id")
+    void setRecoveryCode(@Bind("id") Long id, @Bind("hash") String hash);
+
+    /** Yalnızca PIN özeti (kurtarma akışı). */
+    @SqlUpdate("UPDATE users SET password = :hash WHERE id = :id")
+    void setPassword(@Bind("id") Long id, @Bind("hash") String hash);
+
     @SqlUpdate("DELETE FROM users WHERE id = :id")
     void delete(@Bind("id") Long id);
 

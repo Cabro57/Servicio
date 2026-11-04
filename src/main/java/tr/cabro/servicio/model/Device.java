@@ -30,6 +30,17 @@ public class Device {
 
     private String accessory;
 
+    /** Dükkân cihazı (yedek): müşteriye emanet verilebilir. Yalnızca {@code DeviceService.setLoaner} yazar. */
+    @ColumnName("is_loaner")
+    private boolean loaner;
+
+    /**
+     * DB kolonu değil: cihazın açık emanetinin yönü ve kimde olduğu (liste/detay için,
+     * {@code DeviceRepository.BASE_SELECT} alt sorgusundan). Açık emanet yoksa null.
+     */
+    private tr.cabro.servicio.model.enums.LoanDirection openLoanDirection;
+    private String openLoanParty;
+
     @ColumnName("is_deleted")
     private boolean deleted;
 

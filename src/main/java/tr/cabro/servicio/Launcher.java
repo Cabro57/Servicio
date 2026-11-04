@@ -21,6 +21,12 @@ public final class Launcher {
     public static void main(String[] args) {
         File baseFolder = DataDirResolver.resolveBaseFolder();
         System.setProperty("servicio.baseDir", baseFolder.getAbsolutePath());
+        // Linux'ta UI ölçeği "yazı boyu / 12" olsun (bkz. ApplicationBootstrap.setupLookAndFeel).
+        // FlatLaf/UIScale sınıfları ilk kez yüklenmeden önce ayarlanır.
+        if (System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("linux")
+                && System.getProperty("flatlaf.uiScale.fontSizeDivider") == null) {
+            System.setProperty("flatlaf.uiScale.fontSizeDivider", "12");
+        }
         Servicio.main(args);
     }
 }

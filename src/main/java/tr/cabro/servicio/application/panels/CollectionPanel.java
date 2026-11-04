@@ -102,7 +102,7 @@ public class CollectionPanel extends JPanel {
 
     private void init() {
         setLayout(new MigLayout("fillx, insets 4 20 16 20, gap 12 10, hidemode 3", "[pref!][grow, fill]", "[][]10[][]16[]6[grow, fill]14[]"));
-        setPreferredSize(new Dimension(660, 600));
+        setPreferredSize(com.formdev.flatlaf.util.UIScale.scale(new Dimension(660, 600)));
 
         // --- Müşteri + borç ---
         customerBox = new CustomerSelectBox(e -> NewCustomerModal.push(modalId, c -> customerBox.appendCustomer(c)));

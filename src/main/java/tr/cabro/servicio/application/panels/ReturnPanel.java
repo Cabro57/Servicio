@@ -83,7 +83,7 @@ public class ReturnPanel extends JPanel {
 
     private void init() {
         setLayout(new MigLayout("fill, insets 15, gap 10", "[grow]", "[grow][][pref!]"));
-        setPreferredSize(new Dimension(560, 460));
+        setPreferredSize(com.formdev.flatlaf.util.UIScale.scale(new Dimension(560, 460)));
 
         setupTable();
         JTable table = buildTable();

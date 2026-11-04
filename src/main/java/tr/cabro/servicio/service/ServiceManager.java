@@ -27,6 +27,7 @@ public final class ServiceManager {
     @Getter private static DeviceAccessCredentialService deviceAccessCredentialService;
     @Getter private static AppSettingService appSettingService;
     @Getter private static DeviceTransactionService deviceTransactionService;
+    @Getter private static DeviceLoanService deviceLoanService;
     @Getter private static ExchangeRateManager exchangeRateManager;
     @Getter private static PaymentService paymentService;
     @Getter private static SaleService saleService;
@@ -90,6 +91,7 @@ public final class ServiceManager {
 
         appSettingService = new AppSettingService(appSettingRepo);
         deviceTransactionService = new DeviceTransactionService(deviceTransactionRepo);
+        deviceLoanService = new DeviceLoanService(jdbi.onDemand(tr.cabro.servicio.database.repository.DeviceLoanRepository.class));
         exchangeRateManager = new ExchangeRateManager(exchangeRateRepo);
 
         // Eski Device.password verisini yeni tabloya bir kerelik taşı (idempotent — bkz. servis içi yorum)

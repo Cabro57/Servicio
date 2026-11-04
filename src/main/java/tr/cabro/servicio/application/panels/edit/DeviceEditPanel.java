@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 public class DeviceEditPanel extends AbstractEditPanel<Device> {
 
     private DeviceFormPanel deviceForm;
+    private JCheckBox loanerCheck;
 
     public DeviceEditPanel(Device data) {
         super(data);
@@ -61,7 +62,10 @@ public class DeviceEditPanel extends AbstractEditPanel<Device> {
             // Yeni kayıtta IMEI ile mevcut bir cihaz bulunduysa o cihaz güncellenir.
             boolean update = data.getId() != null;
             if (!update) data.setCreatedAt(LocalDateTime.now());
-            ServiceManager.getDeviceService().save(data, update).thenAccept(saved -> SwingUtilities.invokeLater(() -> {
+            boolean loaner = data.isLoaner();
+            ServiceManager.getDeviceService().save(data, update)
+                    .thenCompose(saved -> ServiceManager.getDeviceService().setLoaner(saved.getId(), loaner).thenApply(v -> saved))
+                    .thenAccept(saved -> SwingUtilities.invokeLater(() -> {
                 Toasts.show(owner, Toast.Type.SUCCESS,
                         Messages.get(update ? "toast.entity.updated" : "toast.entity.added", saved.getDisplayName()));
                 if (onSaved != null) onSaved.run();
@@ -81,6 +85,10 @@ public class DeviceEditPanel extends AbstractEditPanel<Device> {
         form.add(FormKit.rail("Cihaz", "IMEI okutulunca sistemde aranır. Servis kaydı açılınca cihaz müşterinin geçmişine bağlanır."), "top");
         deviceForm = new DeviceFormPanel();
         form.add(deviceForm);
+
+        form.add(FormKit.rail("Dükkân cihazı", "Dükkânın kendi cihazı (yedek telefon). İşaretliyse cihaz sayfasından müşteriye emanet verilebilir."), "top");
+        loanerCheck = new JCheckBox("Bu cihaz dükkânın; müşteriye emanet (yedek) olarak verilebilir");
+        form.add(loanerCheck);
 
         addHierarchyListener(e -> {
             if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing()) {
@@ -108,6 +116,7 @@ public class DeviceEditPanel extends AbstractEditPanel<Device> {
         data.setModel(form.getModel());
         data.setSerialNo(form.getSerialNo());
         data.setAccessory(form.getAccessory());
+        data.setLoaner(loanerCheck.isSelected());
         data.setUpdatedAt(LocalDateTime.now());
         return data;
     }
@@ -117,6 +126,7 @@ public class DeviceEditPanel extends AbstractEditPanel<Device> {
         boolean isEdit = data.getId() != null;
         deviceForm.setLookupFillsForm(!isEdit);
         if (isEdit) deviceForm.setDevice(data); else deviceForm.clear();
+        loanerCheck.setSelected(data.isLoaner());
     }
 
     @Override
